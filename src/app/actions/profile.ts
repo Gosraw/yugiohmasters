@@ -1110,7 +1110,7 @@ export async function chooseBossMonster(
     return;
   }
 
-  revalidateIdentity();
+revalidateIdentity();
 
-  redirect("/");
+redirect("/draft");
 }

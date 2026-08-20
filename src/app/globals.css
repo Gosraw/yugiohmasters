@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+:root { color-scheme: dark; }
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(164, 114, 22, .18), transparent 35rem),
+    linear-gradient(180deg, #0d1017 0%, #07090d 70%);
+  color: #f4f4f5;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.field {
+  width: 100%;
+  border-radius: 0.9rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.045);
+  padding: 0.85rem 1rem;
+  color: white;
+  outline: none;
+}
+
+.field:focus {
+  border-color: rgb(252 211 77 / 0.55);
+  box-shadow: 0 0 0 3px rgb(245 158 11 / 0.08);
+}
+
+.primary-button {
+  border-radius: 0.9rem;
+  border: 1px solid rgb(252 211 77 / .35);
+  background: linear-gradient(180deg, #b98934, #7a5419);
+  padding: .85rem 1rem;
+  font-weight: 800;
+  color: #fff7df;
+  box-shadow: 0 8px 30px rgb(180 120 20 / .14);
+}
+
+.primary-button:disabled { opacity: .55; }
+
+.panel {
+  border: 1px solid rgb(255 255 255 / .08);
+  background: rgb(255 255 255 / .035);
+  border-radius: 1.25rem;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .03);
+}
+
+.gold-text {
+  background: linear-gradient(90deg, #fff1b3, #d6a23e, #fff0ad);
+  color: transparent;
+  background-clip: text;
+}

@@ -23,18 +23,12 @@ export async function startInitialDraft() {
     userId,
   } = await requireUser();
 
-  // -------------------------------------------------------
-  // League membership ophalen
-  // -------------------------------------------------------
-
   const {
     data: membership,
     error: membershipError,
   } = await supabase
     .from("league_members")
-    .select(
-      "league_id,role"
-    )
+    .select("league_id")
     .eq(
       "profile_id",
       userId
@@ -51,159 +45,19 @@ export async function startInitialDraft() {
     );
   }
 
-  // -------------------------------------------------------
-  // Alleen admin
-  // -------------------------------------------------------
-
-  if (
-    membership.role !==
-    "admin"
-  ) {
-    throw new Error(
-      "Alleen de admin kan de Initial Draft starten."
-    );
-  }
-
-  // -------------------------------------------------------
-  // BELANGRIJK:
-  // Is er al een Initial Draft geweest?
-  //
-  // Active:
-  // iemand probeert dubbel te starten.
-  //
-  // Completed:
-  // draft is definitief al uitgevoerd.
-  //
-  // Setup:
-  // draft bestaat al maar is nog niet gestart.
-  // -------------------------------------------------------
-
   const {
-    data: existingInitialDrafts,
-    error: existingDraftError,
-  } = await supabase
-    .from("drafts")
-    .select(
-      "id,status"
-    )
-    .eq(
-      "league_id",
-      membership.league_id
-    )
-    .eq(
-      "name",
-      "Initial Draft"
-    )
-    .in(
-      "status",
-      [
-        "setup",
-        "active",
-        "completed",
-      ]
-    )
-    .limit(1);
-
-  if (existingDraftError) {
-    throw new Error(
-      `Initial Draft kon niet worden gecontroleerd: ${existingDraftError.message}`
-    );
-  }
-
-  if (
-    existingInitialDrafts &&
-    existingInitialDrafts.length >
-      0
-  ) {
-    const existing =
-      existingInitialDrafts[0];
-
-    if (
-      existing.status ===
-      "completed"
-    ) {
-      throw new Error(
-        "De Initial Draft is al voltooid en kan niet opnieuw worden gestart."
-      );
-    }
-
-    if (
-      existing.status ===
-      "active"
-    ) {
-      throw new Error(
-        "Er is al een actieve Initial Draft."
-      );
-    }
-
-    throw new Error(
-      "Er bestaat al een Initial Draft voor deze league."
-    );
-  }
-
-  // -------------------------------------------------------
-  // Alle leagueleden worden deelnemers
-  // -------------------------------------------------------
-
-  const {
-    data: members,
-    error: membersError,
-  } = await supabase
-    .from("league_members")
-    .select(
-      "profile_id"
-    )
-    .eq(
-      "league_id",
-      membership.league_id
-    );
-
-  if (
-    membersError ||
-    !members ||
-    members.length === 0
-  ) {
-    throw new Error(
-      "Geen spelers gevonden voor deze league."
-    );
-  }
-
-  const participantIds =
-    members.map(
-      (member) =>
-        member.profile_id
-    );
-
-  // -------------------------------------------------------
-  // Initial Draft starten
-  //
-  // Databasefunctie maakt:
-  // - draft
-  // - draft_players
-  // - 60 Main picks
-  // - 2 Fusion picks
-  // - 2 XYZ picks
-  // -------------------------------------------------------
-
-  const {
-    error: startError,
+    error,
   } = await supabase.rpc(
-    "start_initial_draft",
+    "start_personal_initial_draft",
     {
       target_league_id:
         membership.league_id,
-
-      draft_name:
-        "Initial Draft",
-
-      participant_ids:
-        participantIds,
     }
   );
 
-  if (startError) {
+  if (error) {
     throw new Error(
-      startError.message
+      error.message
     );
   }
 

@@ -1110,7 +1110,49 @@ export async function chooseBossMonster(
     return;
   }
 
-revalidateIdentity();
+  // ======================================================
+  // PERSONAL INITIAL DRAFT
+  // ======================================================
 
-redirect("/draft");
+  const {
+    data: membership,
+    error: membershipError,
+  } = await supabase
+    .from("league_members")
+    .select("league_id")
+    .eq(
+      "profile_id",
+      userId
+    )
+    .limit(1)
+    .maybeSingle();
+
+  if (
+    membershipError ||
+    !membership
+  ) {
+    throw new Error(
+      "League membership niet gevonden."
+    );
+  }
+
+  const {
+    error: draftError,
+  } = await supabase.rpc(
+    "start_personal_initial_draft",
+    {
+      target_league_id:
+        membership.league_id,
+    }
+  );
+
+  if (draftError) {
+    throw new Error(
+      `Initial Draft starten mislukt: ${draftError.message}`
+    );
+  }
+
+  revalidateIdentity();
+
+  redirect("/draft");
 }

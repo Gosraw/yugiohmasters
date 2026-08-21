@@ -67,6 +67,17 @@ export function ArchiveDeckButton({
         disabled ||
         pending
       }
+      onClick={(
+        event
+      ) => {
+        if (
+          !window.confirm(
+            "Archive this deck? You can keep building other decks, but this one moves out of normal use."
+          )
+        ) {
+          event.preventDefault();
+        }
+      }}
       className="
         inline-flex cursor-pointer items-center justify-center gap-2
         rounded-xl border border-red-400/30

@@ -6,6 +6,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { requireUser } from "@/lib/supabase/queries";
+import { EmptyState } from "@/components/empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -374,14 +375,12 @@ export default async function CardsPage({
       </div>
 
       {cards.length === 0 ? (
-        <div className="panel mt-5 p-8 text-center">
-          <p className="text-lg font-black">
-            No cards found
-          </p>
-
-          <p className="mt-2 text-sm text-zinc-500">
-            Try changing your search or filters.
-          </p>
+        <div className="mt-5">
+          <EmptyState
+            icon={<Search size={22} />}
+            title="No cards found"
+            description="Try changing your search or filters."
+          />
         </div>
       ) : (
         <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">

@@ -21,6 +21,10 @@ import {
   addTradeItem,
 } from "@/app/actions/trades";
 
+import {
+  SubmitButton,
+} from "@/components/submit-button";
+
 // =========================================================
 // TYPES
 // =========================================================
@@ -954,8 +958,8 @@ export function TradeCollectionBrowser({
                           }
                         />
 
-                        <button
-                          type="submit"
+                        <SubmitButton
+                          pendingLabel="Adding..."
                           className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs font-black text-amber-200 transition-all duration-150 hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-amber-300/20 active:scale-[0.97]"
                         >
                           <Plus
@@ -977,7 +981,7 @@ export function TradeCollectionBrowser({
                               .length
                           }
                           )
-                        </button>
+                        </SubmitButton>
                       </form>
                     ) : (
                       <button

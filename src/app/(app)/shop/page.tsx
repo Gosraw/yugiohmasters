@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 
 import {
-  CheckCircle2,
   Clock3,
   Coins,
   Crown,
@@ -977,34 +976,8 @@ export default async function ShopPage({
           </div>
         </header>
 
-        {/* ==================================================
-            MESSAGES
-        ================================================== */}
-
-        {params.error && (
-          <div className="mt-4 rounded-2xl border border-red-300/20 bg-red-300/[0.05] p-4">
-            <p className="text-sm font-bold text-red-200">
-              {
-                params.error
-              }
-            </p>
-          </div>
-        )}
-
-        {params.success && (
-          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.05] p-4">
-            <CheckCircle2
-              size={17}
-              className="text-emerald-300"
-            />
-
-            <p className="text-sm font-bold text-emerald-200">
-              {
-                params.success
-              }
-            </p>
-          </div>
-        )}
+        {/* Success/error messages are shown by the shared
+            ActionFeedbackBanner in the (app) layout. */}
 
         {/* ==================================================
             PACK OPENING RESULT

@@ -174,7 +174,7 @@ export async function createDeck(
   );
 
   redirect(
-    `/decks/${deckId}`
+    `/decks/${deckId}?success=${encodeURIComponent("Deck created!")}`
   );
 }
 
@@ -467,7 +467,7 @@ export async function markDeckReady(
   );
 
   redirect(
-    `/decks/${deckId}`
+    `/decks/${deckId}?success=${encodeURIComponent("Deck marked Ready!")}`
   );
 }
 
@@ -548,7 +548,7 @@ export async function markDeckDraft(
   );
 
   redirect(
-    `/decks/${deckId}`
+    `/decks/${deckId}?success=${encodeURIComponent("Deck moved back to Draft.")}`
   );
 }
 
@@ -617,7 +617,7 @@ export async function setActiveDeck(
   );
 
   redirect(
-    `/decks/${deckId}`
+    `/decks/${deckId}?success=${encodeURIComponent("This is now your active deck!")}`
   );
 }
 
@@ -701,7 +701,7 @@ export async function renameDeck(
   );
 
   redirect(
-    `/decks/${deckId}`
+    `/decks/${deckId}?success=${encodeURIComponent("Deck renamed.")}`
   );
 }
 
@@ -773,6 +773,6 @@ export async function archiveDeck(
   );
 
   redirect(
-    "/decks"
+    `/decks?success=${encodeURIComponent("Deck archived.")}`
   );
 }

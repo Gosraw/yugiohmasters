@@ -553,17 +553,23 @@ export function PackOpeningReveal({
                     ? "Volgende kaart"
                     : "Kaart onthullen"
                 }
-                className="group block w-full cursor-pointer [perspective:1400px] disabled:cursor-wait"
+                className="group block w-full cursor-pointer disabled:cursor-wait"
               >
-                <div
-                  className={`relative aspect-[421/614] w-full transition-transform duration-500 [transform-style:preserve-3d] ${
-                    flipped
-                      ? "[transform:rotateY(180deg)]"
-                      : ""
-                  }`}
-                >
-                  {/* BACK FACE — mystery card */}
-                  <div className="absolute inset-0 overflow-hidden rounded-[24px] border border-amber-300/20 bg-gradient-to-br from-zinc-900 via-black to-violet-950/30 p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] transition-all duration-300 [backface-visibility:hidden] group-hover:-translate-y-1 group-hover:border-amber-300/35">
+                <div className="relative aspect-[421/614] w-full">
+                  {/* MYSTERY CARD — cross-fades out on reveal.
+                      Deliberately NOT a 3D flip: backface-
+                      visibility + preserve-3d rendering is
+                      inconsistent across phones/browsers and
+                      was the actual cause of cards randomly
+                      appearing blank. A plain opacity+scale
+                      cross-fade can't render "nothing". */}
+                  <div
+                    className={`absolute inset-0 overflow-hidden rounded-[24px] border border-amber-300/20 bg-gradient-to-br from-zinc-900 via-black to-violet-950/30 p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] transition-all duration-300 group-hover:-translate-y-1 group-hover:border-amber-300/35 ${
+                      flipped
+                        ? "scale-95 opacity-0"
+                        : "scale-100 opacity-100"
+                    }`}
+                  >
                     <div className="pointer-events-none absolute inset-0">
                       <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/[0.05] blur-[70px]" />
                     </div>
@@ -588,17 +594,17 @@ export function PackOpeningReveal({
                     </div>
                   </div>
 
-                  {/* FRONT FACE — the actual pulled card */}
+                  {/* THE ACTUAL PULLED CARD */}
                   <div
-                    className={`absolute inset-0 overflow-hidden rounded-[24px] border bg-black/70 p-3 shadow-[0_30px_100px_rgba(0,0,0,.55)] [backface-visibility:hidden] [transform:rotateY(180deg)] ${
+                    className={`absolute inset-0 overflow-hidden rounded-[24px] border bg-black/70 p-3 shadow-[0_30px_100px_rgba(0,0,0,.55)] transition-all duration-300 ${
                       rarityStyles[
                         currentRarity
                       ] ??
                       "border-zinc-500/30"
                     } ${
                       flipped
-                        ? `pull-face-in ${glowClassForRank(currentRank)}`
-                        : ""
+                        ? `scale-100 opacity-100 ${glowClassForRank(currentRank)}`
+                        : "scale-95 opacity-0"
                     }`}
                   >
                     {flipped && (

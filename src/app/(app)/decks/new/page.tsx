@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 
 import { createDeck } from "@/app/actions/decks";
+import { SubmitButton } from "@/components/submit-button";
 
 export default function NewDeckPage() {
   return (
@@ -70,13 +71,13 @@ export default function NewDeckPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              type="submit"
+            <SubmitButton
+              pendingLabel="Creating..."
               className="primary-button inline-flex items-center justify-center gap-2"
             >
               <Plus size={17} />
               Create Deck
-            </button>
+            </SubmitButton>
 
             <Link
               href="/decks"

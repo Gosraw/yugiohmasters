@@ -16,6 +16,10 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  SubmitButton,
+} from "@/components/submit-button";
+
 export const dynamic =
   "force-dynamic";
 
@@ -271,8 +275,8 @@ export default async function NewTradeWithPlayerPage({
             }
           />
 
-          <button
-            type="submit"
+          <SubmitButton
+            pendingLabel="Starting..."
             className="primary-button inline-flex cursor-pointer items-center justify-center gap-2 transition-all hover:-translate-y-0.5 active:scale-[0.97]"
           >
             <Repeat2
@@ -280,7 +284,7 @@ export default async function NewTradeWithPlayerPage({
             />
 
             Start Trade
-          </button>
+          </SubmitButton>
         </form>
       </section>
     </main>

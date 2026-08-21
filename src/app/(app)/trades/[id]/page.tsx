@@ -32,6 +32,14 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  SubmitButton,
+} from "@/components/submit-button";
+
+import {
+  ConfirmSubmitButton,
+} from "@/components/confirm-submit-button";
+
 export const dynamic = "force-dynamic";
 
 type Trade = {
@@ -245,13 +253,13 @@ function SelectedCardTile({
             value={tradeItem.id}
           />
 
-          <button
-            type="submit"
+          <SubmitButton
             title="Remove from trade"
+            pendingLabel=""
             className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-red-400/30 bg-black/90 text-red-300 transition-all hover:scale-110 hover:bg-red-400/20 active:scale-90"
           >
             <Minus size={15} />
-          </button>
+          </SubmitButton>
         </form>
       )}
     </div>
@@ -845,16 +853,16 @@ export default async function TradeDetailPage({
                     className="field resize-y"
                   />
 
-                  <button
-                    type="submit"
+                  <SubmitButton
                     disabled={
                       offeredCards.length === 0
                     }
+                    pendingLabel="Sending..."
                     className="primary-button mt-3 inline-flex cursor-pointer items-center justify-center gap-2 transition-all hover:-translate-y-0.5 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Send size={16} />
                     Send Trade
-                  </button>
+                  </SubmitButton>
                 </form>
               </div>
             </div>
@@ -897,15 +905,15 @@ export default async function TradeDetailPage({
                   value={trade.id}
                 />
 
-                <button
-                  type="submit"
+                <SubmitButton
+                  pendingLabel="Accepting..."
                   className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm font-black text-emerald-200 transition-all hover:-translate-y-0.5 hover:bg-emerald-400/20 active:scale-[0.97]"
                 >
                   <CheckCircle2
                     size={16}
                   />
                   Accept Trade
-                </button>
+                </SubmitButton>
               </form>
 
               <form
@@ -917,13 +925,14 @@ export default async function TradeDetailPage({
                   value={trade.id}
                 />
 
-                <button
-                  type="submit"
+                <ConfirmSubmitButton
+                  confirmMessage="Decline this trade offer?"
+                  pendingLabel="Declining..."
                   className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm font-black text-red-200 transition-all hover:-translate-y-0.5 hover:bg-red-400/20 active:scale-[0.97]"
                 >
                   <XCircle size={16} />
                   Decline
-                </button>
+                </ConfirmSubmitButton>
               </form>
             </div>
           </section>
@@ -960,13 +969,14 @@ export default async function TradeDetailPage({
                     value={trade.id}
                   />
 
-                  <button
-                    type="submit"
+                  <ConfirmSubmitButton
+                    confirmMessage="Cancel this trade?"
+                    pendingLabel="Cancelling..."
                     className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-2.5 text-sm font-black text-red-200 transition-all hover:-translate-y-0.5 hover:bg-red-400/20 active:scale-[0.97]"
                   >
                     <XCircle size={16} />
                     Cancel Trade
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </div>
             </div>

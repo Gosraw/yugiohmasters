@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { pickDraftCard } from "@/app/actions/draft";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 
 export type DraftChoiceCard = {
   optionId: string;
@@ -187,13 +188,14 @@ export function DraftChoiceGrid({
                       value={card.optionId}
                     />
 
-                    <button
-                      type="submit"
+                    <ConfirmSubmitButton
+                      confirmMessage={`Draft ${card.name}? This choice is final.`}
+                      pendingLabel="Choosing..."
                       className="primary-button flex w-full items-center justify-center gap-1 px-2 py-2 text-[10px] sm:gap-2 sm:text-sm"
                     >
                       <Check size={14} />
                       Choose
-                    </button>
+                    </ConfirmSubmitButton>
                   </form>
                 </div>
               </div>
@@ -276,13 +278,14 @@ export function DraftChoiceGrid({
                     }
                   />
 
-                  <button
-                    type="submit"
+                  <ConfirmSubmitButton
+                    confirmMessage={`Draft ${detailCard.name}? This choice is final.`}
+                    pendingLabel="Choosing..."
                     className="primary-button flex w-full items-center justify-center gap-2"
                   >
                     <Check size={17} />
                     Choose this card
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </div>
 

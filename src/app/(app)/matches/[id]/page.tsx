@@ -35,6 +35,14 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  SubmitButton,
+} from "@/components/submit-button";
+
+import {
+  ConfirmSubmitButton,
+} from "@/components/confirm-submit-button";
+
 export const dynamic =
   "force-dynamic";
 
@@ -1655,11 +1663,11 @@ export default async function MatchDetailPage({
                           }
                         />
 
-                        <button
-                          type="submit"
+                        <SubmitButton
                           disabled={
                             insufficientDp
                           }
+                          pendingLabel="Accepting..."
                           className="primary-button inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <Zap
@@ -1671,7 +1679,7 @@ export default async function MatchDetailPage({
                             match.wager_dp_amount
                           }{" "}
                           DP & Accept
-                        </button>
+                        </SubmitButton>
                       </form>
 
                       <form
@@ -1687,12 +1695,13 @@ export default async function MatchDetailPage({
                           }
                         />
 
-                        <button
-                          type="submit"
+                        <ConfirmSubmitButton
+                          confirmMessage="Decline this challenge?"
+                          pendingLabel="Declining..."
                           className="rounded-xl border border-red-400/20 px-4 py-3 text-sm font-black text-red-300"
                         >
                           Decline
-                        </button>
+                        </ConfirmSubmitButton>
                       </form>
                     </div>
                   </div>
@@ -1768,12 +1777,12 @@ export default async function MatchDetailPage({
                     )}
 
                     <div className="mt-4 flex flex-wrap gap-3">
-                      <button
-                        type="submit"
+                      <SubmitButton
                         disabled={
                           selectableCards.length ===
                           0
                         }
+                        pendingLabel="Accepting..."
                         className="primary-button inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <LockKeyhole
@@ -1781,17 +1790,19 @@ export default async function MatchDetailPage({
                         />
 
                         Wager Card & Accept
-                      </button>
+                      </SubmitButton>
 
-                      <button
+                      <ConfirmSubmitButton
+                        confirmMessage="Decline this challenge?"
                         formAction={
                           declineMatchChallenge
                         }
                         formNoValidate
+                        pendingLabel="Declining..."
                         className="rounded-xl border border-red-400/20 px-4 py-3 text-sm font-black text-red-300"
                       >
                         Decline
-                      </button>
+                      </ConfirmSubmitButton>
                     </div>
                   </form>
                 ) : (
@@ -1811,8 +1822,8 @@ export default async function MatchDetailPage({
                         }
                       />
 
-                      <button
-                        type="submit"
+                      <SubmitButton
+                        pendingLabel="Accepting..."
                         className="primary-button inline-flex items-center gap-2"
                       >
                         <CheckCircle2
@@ -1820,7 +1831,7 @@ export default async function MatchDetailPage({
                         />
 
                         Accept Duel
-                      </button>
+                      </SubmitButton>
                     </form>
 
                     <form
@@ -1836,12 +1847,13 @@ export default async function MatchDetailPage({
                         }
                       />
 
-                      <button
-                        type="submit"
+                      <ConfirmSubmitButton
+                        confirmMessage="Decline this challenge?"
+                        pendingLabel="Declining..."
                         className="rounded-xl border border-red-400/20 px-4 py-3 text-sm font-black text-red-300"
                       >
                         Decline
-                      </button>
+                      </ConfirmSubmitButton>
                     </form>
                   </div>
                 )}
@@ -1882,12 +1894,13 @@ export default async function MatchDetailPage({
                     }
                   />
 
-                  <button
-                    type="submit"
+                  <ConfirmSubmitButton
+                    confirmMessage="Cancel this challenge?"
+                    pendingLabel="Cancelling..."
                     className="rounded-xl border border-red-400/20 px-4 py-3 text-sm font-black text-red-300"
                   >
                     Cancel Challenge
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               </>
             ) : null}
@@ -1980,8 +1993,8 @@ export default async function MatchDetailPage({
                 />
               </label>
 
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Submitting..."
                 className="primary-button inline-flex items-center gap-2"
               >
                 <CheckCircle2
@@ -1989,7 +2002,7 @@ export default async function MatchDetailPage({
                 />
 
                 Submit Result
-              </button>
+              </SubmitButton>
             </form>
           </section>
         )}
@@ -2048,8 +2061,8 @@ export default async function MatchDetailPage({
                     }
                   />
 
-                  <button
-                    type="submit"
+                  <SubmitButton
+                    pendingLabel="Confirming..."
                     className="primary-button inline-flex items-center gap-2"
                   >
                     <CheckCircle2
@@ -2057,7 +2070,7 @@ export default async function MatchDetailPage({
                     />
 
                     Confirm Result
-                  </button>
+                  </SubmitButton>
                 </form>
 
                 <form
@@ -2088,8 +2101,8 @@ export default async function MatchDetailPage({
                     />
                   </label>
 
-                  <button
-                    type="submit"
+                  <SubmitButton
+                    pendingLabel="Disputing..."
                     className="mt-3 inline-flex items-center gap-2 rounded-xl border border-orange-300/20 px-4 py-3 text-sm font-black text-orange-200"
                   >
                     <AlertTriangle
@@ -2097,7 +2110,7 @@ export default async function MatchDetailPage({
                     />
 
                     Dispute Result
-                  </button>
+                  </SubmitButton>
                 </form>
               </div>
             ) : null}
@@ -2202,8 +2215,9 @@ export default async function MatchDetailPage({
                   className="field w-full resize-y"
                 />
 
-                <button
-                  type="submit"
+                <ConfirmSubmitButton
+                  confirmMessage="Lock in this final result?"
+                  pendingLabel="Resolving..."
                   className="primary-button inline-flex items-center gap-2"
                 >
                   <ShieldCheck
@@ -2211,7 +2225,7 @@ export default async function MatchDetailPage({
                   />
 
                   Resolve Duel
-                </button>
+                </ConfirmSubmitButton>
               </form>
             )}
           </section>

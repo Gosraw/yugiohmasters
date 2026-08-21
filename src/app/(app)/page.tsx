@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import {
+  AlertCircle,
   ArrowRight,
+  Bell,
   Crown,
   Flame,
   Layers3,
@@ -84,6 +86,10 @@ type Match = {
 
   player_one_id: string;
   player_two_id: string;
+
+  result_submitted_by:
+    | string
+    | null;
 };
 
 type Trade = {
@@ -229,7 +235,7 @@ export default async function DashboardPage() {
     } = await supabase
       .from("matches")
       .select(
-        "id,status,winner_id,player_one_id,player_two_id"
+        "id,status,winner_id,player_one_id,player_two_id,result_submitted_by"
       )
       .eq(
         "league_id",
@@ -311,6 +317,74 @@ export default async function DashboardPage() {
         trade.status ===
         "pending"
     ).length;
+
+  // ======================================================
+  // NEEDS YOUR ATTENTION
+  //
+  // Pulls together every "the ball is in your court" item
+  // from the data already fetched above, so the dashboard
+  // can surface it as one clear action list instead of the
+  // player having to go hunt for it page by page.
+  // ======================================================
+
+  type ActionItem = {
+    id: string;
+    href: string;
+    label: string;
+    hint: string;
+  };
+
+  const actionItems: ActionItem[] =
+    [];
+
+  for (const match of matches) {
+    if (
+      match.status ===
+        "pending" &&
+      match.player_two_id ===
+        userId
+    ) {
+      actionItems.push({
+        id: `match-accept-${match.id}`,
+        href: `/matches/${match.id}`,
+        label:
+          "Duel challenge waiting",
+        hint: "Accept or decline it.",
+      });
+    }
+
+    if (
+      match.status ===
+        "result_submitted" &&
+      match.result_submitted_by !==
+        userId
+    ) {
+      actionItems.push({
+        id: `match-confirm-${match.id}`,
+        href: `/matches/${match.id}`,
+        label:
+          "Duel result to confirm",
+        hint: "Check it and confirm or dispute.",
+      });
+    }
+  }
+
+  for (const trade of trades) {
+    if (
+      trade.status ===
+        "pending" &&
+      trade.receiver_id ===
+        userId
+    ) {
+      actionItems.push({
+        id: `trade-${trade.id}`,
+        href: `/trades/${trade.id}`,
+        label:
+          "Trade offer waiting",
+        hint: "Review and respond.",
+      });
+    }
+  }
 
   // ======================================================
   // UI
@@ -443,6 +517,68 @@ export default async function DashboardPage() {
             </div>
           </div>
         </section>
+
+        {/* ==================================================
+            NEEDS YOUR ATTENTION
+        ================================================== */}
+
+        {actionItems.length >
+          0 && (
+          <section className="mt-6 overflow-hidden rounded-2xl border border-amber-300/20 bg-amber-300/[0.035] p-5">
+            <div className="flex items-center gap-2">
+              <Bell
+                size={17}
+                className="text-amber-300"
+              />
+
+              <p className="text-xs font-black tracking-[.2em] text-amber-300">
+                NEEDS YOUR ATTENTION
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
+              {actionItems.map(
+                (item) => (
+                  <Link
+                    key={
+                      item.id
+                    }
+                    href={
+                      item.href
+                    }
+                    className="group flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-black/30 active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <AlertCircle
+                        size={16}
+                        className="shrink-0 text-amber-300"
+                      />
+
+                      <div>
+                        <p className="text-sm font-black text-zinc-200 group-hover:text-amber-100">
+                          {
+                            item.label
+                          }
+                        </p>
+
+                        <p className="text-xs text-zinc-500">
+                          {
+                            item.hint
+                          }
+                        </p>
+                      </div>
+                    </div>
+
+                    <ArrowRight
+                      size={15}
+                      className="shrink-0 text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-amber-300"
+                    />
+                  </Link>
+                )
+              )}
+            </div>
+          </section>
+        )}
 
  {/* ==================================================
     DUELIST PROGRESSION

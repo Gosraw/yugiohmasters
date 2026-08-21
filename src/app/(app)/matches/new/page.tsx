@@ -24,6 +24,10 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  SubmitButton,
+} from "@/components/submit-button";
+
 export const dynamic =
   "force-dynamic";
 
@@ -1177,12 +1181,12 @@ export default async function NewMatchPage() {
                 </p>
               </div>
 
-              <button
-                type="submit"
+              <SubmitButton
                 disabled={
                   profiles.length ===
                   0
                 }
+                pendingLabel="Sending challenge..."
                 className="primary-button inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 px-6 transition-all hover:-translate-y-0.5 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Send
@@ -1190,7 +1194,7 @@ export default async function NewMatchPage() {
                 />
 
                 Issue Challenge
-              </button>
+              </SubmitButton>
             </div>
           </section>
         </form>

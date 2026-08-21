@@ -35,6 +35,14 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  SubmitButton,
+} from "@/components/submit-button";
+
+import {
+  ConfirmSubmitButton,
+} from "@/components/confirm-submit-button";
+
 export const dynamic =
   "force-dynamic";
 
@@ -881,8 +889,9 @@ export default async function CompetitionDetailPage({
                             }
                           />
 
-                          <button
-                            type="submit"
+                          <ConfirmSubmitButton
+                            confirmMessage="Remove this player from the competition?"
+                            pendingLabel="Removing..."
                             className="inline-flex items-center gap-1.5 rounded-lg border border-red-300/15 px-2.5 py-1.5 text-[10px] font-black text-red-300 transition hover:bg-red-300/[0.05]"
                           >
                             <UserMinus
@@ -890,7 +899,7 @@ export default async function CompetitionDetailPage({
                             />
 
                             Remove
-                          </button>
+                          </ConfirmSubmitButton>
                         </form>
                       )}
                     </div>
@@ -953,12 +962,12 @@ export default async function CompetitionDetailPage({
                           )}
                         </p>
 
-                        <button
-                          type="submit"
+                        <SubmitButton
+                          pendingLabel="Adding..."
                           className="rounded-lg border border-cyan-300/20 bg-cyan-300/[0.05] px-3 py-1.5 text-[10px] font-black text-cyan-200"
                         >
                           Add
-                        </button>
+                        </SubmitButton>
                       </form>
                     )
                   )}
@@ -981,8 +990,9 @@ export default async function CompetitionDetailPage({
                     }
                   />
 
-                  <button
-                    type="submit"
+                  <ConfirmSubmitButton
+                    confirmMessage="Start the competition? Once started, no more duelists can be added."
+                    pendingLabel="Starting..."
                     className="primary-button inline-flex w-full items-center justify-center gap-2"
                   >
                     <Play
@@ -990,7 +1000,7 @@ export default async function CompetitionDetailPage({
                     />
 
                     Start Competition
-                  </button>
+                  </ConfirmSubmitButton>
                 </form>
               )}
             </div>
@@ -1328,12 +1338,13 @@ export default async function CompetitionDetailPage({
                 }
               />
 
-              <button
-                type="submit"
+              <ConfirmSubmitButton
+                confirmMessage="Finalize the competition? This freezes the standings."
+                pendingLabel="Finalizing..."
                 className="rounded-xl border border-amber-300/20 bg-amber-300/[0.06] px-4 py-2.5 text-sm font-black text-amber-200"
               >
                 Finalize Competition
-              </button>
+              </ConfirmSubmitButton>
             </form>
           </section>
         )}
@@ -1372,8 +1383,9 @@ export default async function CompetitionDetailPage({
                 }
               />
 
-              <button
-                type="submit"
+              <ConfirmSubmitButton
+                confirmMessage="Distribute rewards now? This can only succeed once."
+                pendingLabel="Distributing..."
                 className="primary-button inline-flex items-center gap-2"
               >
                 <Gift
@@ -1381,7 +1393,7 @@ export default async function CompetitionDetailPage({
                 />
 
                 Distribute Rewards
-              </button>
+              </ConfirmSubmitButton>
             </form>
           </section>
         )}

@@ -3,10 +3,13 @@
 import Link from "next/link";
 
 import {
+  Award,
   Home,
   Layers3,
   LibraryBig,
+  Medal,
   Repeat2,
+  ShoppingBag,
   Swords,
   Trophy,
   UserRound,
@@ -43,9 +46,24 @@ const items = [
     icon: Swords,
   },
   {
+    href: "/shop",
+    label: "SHOP",
+    icon: ShoppingBag,
+  },
+  {
     href: "/trades",
     label: "TRADES",
     icon: Repeat2,
+  },
+  {
+    href: "/competitions",
+    label: "COMPETE",
+    icon: Medal,
+  },
+  {
+    href: "/achievements",
+    label: "AWARDS",
+    icon: Award,
   },
   {
     href: "/profile",

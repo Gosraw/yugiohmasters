@@ -28,6 +28,10 @@ import {
 } from "@/components/profile-form";
 
 import {
+  SubmitButton,
+} from "@/components/submit-button";
+
+import {
   ACHIEVEMENT_REWARDS,
   type AchievementRewardId,
 } from "@/lib/achievement-rewards";
@@ -1063,8 +1067,8 @@ export default async function ProfilePage() {
                         }
                       />
 
-                      <button
-                        type="submit"
+                      <SubmitButton
+                        pendingLabel="Selecting..."
                         className={`w-full rounded-xl border p-4 text-left transition ${
                           selected
                             ? "border-violet-300/30 bg-violet-300/[0.06]"
@@ -1092,7 +1096,7 @@ export default async function ProfilePage() {
                             />
                           )}
                         </div>
-                      </button>
+                      </SubmitButton>
                     </form>
                   );
                 }
@@ -1226,8 +1230,8 @@ export default async function ProfilePage() {
                                 unequipAchievementTitle
                               }
                             >
-                              <button
-                                type="submit"
+                              <SubmitButton
+                                pendingLabel="Unequipping..."
                                 className="inline-flex items-center gap-2 rounded-xl border border-zinc-500/20 bg-white/[0.02] px-3 py-2 text-xs font-black text-zinc-400 transition hover:text-zinc-200"
                               >
                                 <LockKeyhole
@@ -1235,7 +1239,7 @@ export default async function ProfilePage() {
                                 />
 
                                 Unequip Title
-                              </button>
+                              </SubmitButton>
                             </form>
                           ) : (
                             <form
@@ -1251,8 +1255,8 @@ export default async function ProfilePage() {
                                 }
                               />
 
-                              <button
-                                type="submit"
+                              <SubmitButton
+                                pendingLabel="Equipping..."
                                 className="inline-flex items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] px-3 py-2 text-xs font-black text-amber-200 transition hover:border-amber-300/35 hover:bg-amber-300/[0.1]"
                               >
                                 <Crown
@@ -1260,7 +1264,7 @@ export default async function ProfilePage() {
                                 />
 
                                 Equip Title
-                              </button>
+                              </SubmitButton>
                             </form>
                           )}
                         </div>

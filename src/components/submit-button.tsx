@@ -4,7 +4,8 @@ import {
   LoaderCircle,
 } from "lucide-react";
 
-import {
+import type {
+  MouseEvent,
   ReactNode,
 } from "react";
 
@@ -31,6 +32,24 @@ type SubmitButtonProps = {
   className?: string;
 
   disabled?: boolean;
+
+  // For a secondary action inside a form that has a
+  // different default `action` (e.g. a "Decline" button
+  // next to the main "Accept" submit).
+  formAction?: (
+    formData: FormData
+  ) => void;
+
+  formNoValidate?: boolean;
+
+  title?: string;
+
+  // Lets a wrapper (e.g. ConfirmSubmitButton) intercept the
+  // click before the form submits, without every caller having
+  // to reimplement useFormStatus itself.
+  onClick?: (
+    event: MouseEvent<HTMLButtonElement>
+  ) => void;
 };
 
 export function SubmitButton({
@@ -38,6 +57,10 @@ export function SubmitButton({
   pendingLabel,
   className,
   disabled = false,
+  formAction,
+  formNoValidate,
+  title,
+  onClick,
 }: SubmitButtonProps) {
   const {
     pending,
@@ -46,6 +69,18 @@ export function SubmitButton({
   return (
     <button
       type="submit"
+      title={
+        title
+      }
+      formAction={
+        formAction
+      }
+      formNoValidate={
+        formNoValidate
+      }
+      onClick={
+        onClick
+      }
       disabled={
         disabled ||
         pending

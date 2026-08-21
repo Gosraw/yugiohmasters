@@ -659,7 +659,7 @@ export async function createMatchChallenge(
   revalidatePath("/profile");
 
   redirect(
-    `/matches/${matchId}`
+    `/matches/${matchId}?success=${encodeURIComponent("Challenge sent!")}`
   );
 }
 
@@ -821,7 +821,7 @@ export async function acceptMatchChallenge(
   revalidatePath("/profile");
 
   redirect(
-    `/matches/${matchId}`
+    `/matches/${matchId}?success=${encodeURIComponent("Duel accepted!")}`
   );
 }
 
@@ -877,7 +877,9 @@ export async function declineMatchChallenge(
   );
   revalidatePath("/profile");
 
-  redirect("/matches");
+  redirect(
+    `/matches?success=${encodeURIComponent("Challenge declined.")}`
+  );
 }
 
 // =========================================================
@@ -932,7 +934,9 @@ export async function cancelMatchChallenge(
   );
   revalidatePath("/profile");
 
-  redirect("/matches");
+  redirect(
+    `/matches?success=${encodeURIComponent("Challenge cancelled.")}`
+  );
 }
 
 // =========================================================
@@ -1060,7 +1064,7 @@ export async function completeMatch(
   );
 
   redirect(
-    `/matches/${matchId}`
+    `/matches/${matchId}?success=${encodeURIComponent("Result submitted — waiting for confirmation.")}`
   );
 }
 
@@ -1118,7 +1122,7 @@ export async function confirmMatchResult(
   revalidatePath("/profile");
 
   redirect(
-    `/matches/${matchId}`
+    `/matches/${matchId}?success=${encodeURIComponent("Result confirmed!")}`
   );
 }
 
@@ -1187,7 +1191,7 @@ export async function disputeMatchResult(
   );
 
   redirect(
-    `/matches/${matchId}`
+    `/matches/${matchId}?success=${encodeURIComponent("Dispute filed — a league admin will review it.")}`
   );
 }
 
@@ -1353,6 +1357,6 @@ export async function resolveDisputedMatch(
   revalidatePath("/profile");
 
   redirect(
-    `/matches/${matchId}`
+    `/matches/${matchId}?success=${encodeURIComponent("Dispute resolved.")}`
   );
     }

@@ -124,7 +124,7 @@ export async function createTrade(
   );
 
   redirect(
-    `/trades/${tradeId}`
+    `/trades/${tradeId}?success=${encodeURIComponent("Trade started!")}`
   );
 }
 
@@ -336,7 +336,7 @@ export async function submitTrade(
   );
 
   redirect(
-    `/trades/${tradeId}`
+    `/trades/${tradeId}?success=${encodeURIComponent("Trade sent!")}`
   );
 }
 
@@ -393,7 +393,7 @@ export async function acceptTrade(
   );
 
   redirect(
-    `/trades/${tradeId}`
+    `/trades/${tradeId}?success=${encodeURIComponent("Trade accepted!")}`
   );
 }
 
@@ -446,7 +446,7 @@ export async function declineTrade(
   );
 
   redirect(
-    "/trades"
+    `/trades?success=${encodeURIComponent("Trade declined.")}`
   );
 }
 
@@ -499,6 +499,6 @@ export async function cancelTrade(
   );
 
   redirect(
-    "/trades"
+    `/trades?success=${encodeURIComponent("Trade cancelled.")}`
   );
 }

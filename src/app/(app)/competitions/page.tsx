@@ -23,6 +23,10 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  SubmitButton,
+} from "@/components/submit-button";
+
 export const dynamic =
   "force-dynamic";
 
@@ -509,8 +513,8 @@ export default async function CompetitionsPage() {
                 </select>
               </label>
 
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Creating..."
                 className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-amber-300/25 bg-amber-300/10 px-5 py-3 text-sm font-black text-amber-200 transition hover:bg-amber-300/15 active:scale-[0.98]"
               >
                 <Plus
@@ -518,7 +522,7 @@ export default async function CompetitionsPage() {
                 />
 
                 Create
-              </button>
+              </SubmitButton>
             </form>
           </div>
         </section>

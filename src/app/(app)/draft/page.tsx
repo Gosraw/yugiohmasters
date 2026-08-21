@@ -15,6 +15,9 @@ import {
   type DraftChoiceCard,
 } from "@/components/draft-choice-grid";
 
+import { SubmitButton } from "@/components/submit-button";
+import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+
 import { requireUser } from "@/lib/supabase/queries";
 
 export const dynamic = "force-dynamic";
@@ -365,12 +368,13 @@ export default async function DraftPage() {
                 startInitialDraft
               }
             >
-              <button
-                type="submit"
+              <ConfirmSubmitButton
+                confirmMessage="Start the initial draft for the whole league? This can't be redone for players who already drafted."
+                pendingLabel="Starting..."
                 className="primary-button mt-6"
               >
                 Start Initial Draft
-              </button>
+              </ConfirmSubmitButton>
             </form>
           ) : (
             <p className="mt-6 text-sm text-zinc-500">
@@ -565,12 +569,12 @@ export default async function DraftPage() {
               value={player.id}
             />
 
-            <button
-              type="submit"
+            <SubmitButton
+              pendingLabel="Revealing..."
               className="primary-button mt-6"
             >
               Reveal Next 3 Cards
-            </button>
+            </SubmitButton>
           </form>
         </section>
       </main>

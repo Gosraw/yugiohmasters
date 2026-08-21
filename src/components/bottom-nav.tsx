@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import {
   Award,
+  Compass,
   Home,
   Layers3,
   LibraryBig,
@@ -64,6 +65,11 @@ const items = [
     href: "/achievements",
     label: "AWARDS",
     icon: Award,
+  },
+  {
+    href: "/explore",
+    label: "EXPLORE",
+    icon: Compass,
   },
   {
     href: "/profile",

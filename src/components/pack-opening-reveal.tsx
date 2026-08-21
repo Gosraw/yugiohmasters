@@ -14,7 +14,9 @@ import {
 } from "lucide-react";
 
 import {
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -181,6 +183,38 @@ export function PackOpeningReveal({
     setFlipped,
   ] = useState(false);
 
+  // Briefly locks the slot right after a flip so a fast
+  // second tap can't skip past the card before it was
+  // actually visible — this was the root cause of cards
+  // never being seen: the flip used to re-mount the whole
+  // element (via a React `key`) to restart the shake
+  // animation, which also silently killed the CSS flip
+  // transition (a freshly-mounted element has no "from"
+  // state to animate from, so it just snapped straight to
+  // the end state), making it easy to tap twice and jump
+  // straight past the reveal.
+  const [
+    busy,
+    setBusy,
+  ] = useState(false);
+
+  const busyTimeout =
+    useRef<ReturnType<
+      typeof setTimeout
+    > | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (
+        busyTimeout.current
+      ) {
+        clearTimeout(
+          busyTimeout.current
+        );
+      }
+    };
+  }, []);
+
   const highestPull =
     useMemo(() => {
       return [...pulls].sort(
@@ -249,8 +283,24 @@ export function PackOpeningReveal({
     ] ?? 1;
 
   function handleSlotClick() {
+    if (busy) {
+      return;
+    }
+
     if (!flipped) {
       setFlipped(true);
+
+      // Lock taps for the length of the flip animation
+      // (700ms) plus a beat, so the card is guaranteed to
+      // actually be on screen before the next tap can
+      // advance past it.
+      setBusy(true);
+
+      busyTimeout.current =
+        setTimeout(() => {
+          setBusy(false);
+        }, 700);
+
       return;
     }
 
@@ -266,6 +316,15 @@ export function PackOpeningReveal({
   }
 
   function revealAll() {
+    if (
+      busyTimeout.current
+    ) {
+      clearTimeout(
+        busyTimeout.current
+      );
+    }
+
+    setBusy(false);
     setFlipped(false);
 
     setRevealed(
@@ -274,6 +333,15 @@ export function PackOpeningReveal({
   }
 
   function restart() {
+    if (
+      busyTimeout.current
+    ) {
+      clearTimeout(
+        busyTimeout.current
+      );
+    }
+
+    setBusy(false);
     setFlipped(false);
     setRevealed(0);
   }
@@ -339,7 +407,6 @@ export function PackOpeningReveal({
         <section className="mt-6">
           <div className="mx-auto max-w-sm">
             <div
-              key={`shake-${revealed}-${flipped}`}
               className={
                 flipped &&
                 currentRank >= 4
@@ -352,12 +419,15 @@ export function PackOpeningReveal({
                 onClick={
                   handleSlotClick
                 }
+                disabled={
+                  busy
+                }
                 aria-label={
                   flipped
                     ? "Volgende kaart"
                     : "Kaart onthullen"
                 }
-                className="group block w-full cursor-pointer [perspective:1400px]"
+                className="group block w-full cursor-pointer [perspective:1400px] disabled:cursor-wait"
               >
                 <div
                   className={`relative aspect-[421/614] w-full transition-transform duration-500 [transform-style:preserve-3d] ${
@@ -500,9 +570,12 @@ export function PackOpeningReveal({
 
                 <div className="relative mt-4 flex items-center justify-between">
                   <p className="text-xs font-bold text-zinc-600">
-                    {flipped
-                      ? "Tap for next card"
-                      : `Card ${revealed + 1} of ${pulls.length}`}
+                    {flipped &&
+                    busy
+                      ? "Revealing..."
+                      : flipped
+                        ? "Tap for next card"
+                        : `Card ${revealed + 1} of ${pulls.length}`}
                   </p>
 
                   <ChevronRight

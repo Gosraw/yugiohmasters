@@ -303,28 +303,191 @@ export default async function CompetitionDetailPage({
     competitionData as Competition;
 
   // ======================================================
-  // CURRENT MEMBERSHIP
+  // PARALLEL READS
+  //
+  // Membership, league members, competition players, reward
+  // rules, standings, final results and linked matches only
+  // ever depend on the competition loaded above - never on
+  // each other - so fetch them together instead of one at a
+  // time. Standings/final results are conditional on the
+  // competition status, so those two resolve to an empty
+  // result inline instead of skipping the Promise.all slot.
   // ======================================================
 
-  const {
-    data: membership,
-    error: membershipError,
-  } = await supabase
-    .from(
-      "league_members"
-    )
-    .select(
-      "profile_id,role"
-    )
-    .eq(
-      "league_id",
-      competition.league_id
-    )
-    .eq(
-      "profile_id",
-      userId
-    )
-    .maybeSingle();
+  const wantsStandings =
+    competition.status ===
+      "active" &&
+    competition.competition_type ===
+      "round_robin";
+
+  const wantsFinalResults =
+    competition.status ===
+    "completed";
+
+  const [
+    {
+      data: membership,
+      error: membershipError,
+    },
+    {
+      data: memberData,
+      error: memberError,
+    },
+    {
+      data: competitionPlayerData,
+      error: competitionPlayerError,
+    },
+    {
+      data: rewardData,
+      error: rewardError,
+    },
+    {
+      data: standingsData,
+      error: standingsError,
+    },
+    {
+      data: finalResultData,
+      error: finalResultError,
+    },
+    {
+      data: matchData,
+      error: matchError,
+    },
+  ] = await Promise.all([
+    supabase
+      .from(
+        "league_members"
+      )
+      .select(
+        "profile_id,role"
+      )
+      .eq(
+        "league_id",
+        competition.league_id
+      )
+      .eq(
+        "profile_id",
+        userId
+      )
+      .maybeSingle(),
+
+    supabase
+      .from(
+        "league_members"
+      )
+      .select(
+        "profile_id,role"
+      )
+      .eq(
+        "league_id",
+        competition.league_id
+      ),
+
+    supabase
+      .from(
+        "competition_players"
+      )
+      .select(
+        "profile_id"
+      )
+      .eq(
+        "competition_id",
+        competition.id
+      ),
+
+    supabase
+      .from(
+        "competition_reward_rules"
+      )
+      .select(
+        `
+          placement,
+          duel_points,
+          voucher_type,
+          voucher_quantity
+        `
+      )
+      .eq(
+        "competition_id",
+        competition.id
+      )
+      .order(
+        "placement",
+        {
+          ascending:
+            true,
+        }
+      ),
+
+    wantsStandings
+      ? supabase.rpc(
+          "get_competition_standings",
+          {
+            target_competition_id:
+              competition.id,
+          }
+        )
+      : Promise.resolve({
+          data: [] as Standing[],
+          error: null,
+        }),
+
+    wantsFinalResults
+      ? supabase
+          .from(
+            "competition_results"
+          )
+          .select(
+            `
+              profile_id,
+              placement,
+              wins,
+              losses,
+              draws,
+              points
+            `
+          )
+          .eq(
+            "competition_id",
+            competition.id
+          )
+          .order(
+            "placement",
+            {
+              ascending:
+                true,
+            }
+          )
+      : Promise.resolve({
+          data: [] as FinalResult[],
+          error: null,
+        }),
+
+    supabase
+      .from("matches")
+      .select(
+        `
+          id,
+          player_one_id,
+          player_two_id,
+          status,
+          winner_id,
+          result,
+          completed_at
+        `
+      )
+      .eq(
+        "competition_id",
+        competition.id
+      )
+      .order(
+        "created_at",
+        {
+          ascending:
+            false,
+        }
+      ),
+  ]);
 
   if (
     membershipError ||
@@ -337,25 +500,6 @@ export default async function CompetitionDetailPage({
     String(
       membership.role
     ) === "admin";
-
-  // ======================================================
-  // LEAGUE MEMBERS
-  // ======================================================
-
-  const {
-    data: memberData,
-    error: memberError,
-  } = await supabase
-    .from(
-      "league_members"
-    )
-    .select(
-      "profile_id,role"
-    )
-    .eq(
-      "league_id",
-      competition.league_id
-    );
 
   if (memberError) {
     throw new Error(
@@ -419,25 +563,6 @@ export default async function CompetitionDetailPage({
           profile,
         ]
       )
-    );
-
-  // ======================================================
-  // COMPETITION PLAYERS
-  // ======================================================
-
-  const {
-    data: competitionPlayerData,
-    error: competitionPlayerError,
-  } = await supabase
-    .from(
-      "competition_players"
-    )
-    .select(
-      "profile_id"
-    )
-    .eq(
-      "competition_id",
-      competition.id
     );
 
   if (
@@ -506,33 +631,6 @@ export default async function CompetitionDetailPage({
   // REWARD RULES
   // ======================================================
 
-  const {
-    data: rewardData,
-    error: rewardError,
-  } = await supabase
-    .from(
-      "competition_reward_rules"
-    )
-    .select(
-      `
-        placement,
-        duel_points,
-        voucher_type,
-        voucher_quantity
-      `
-    )
-    .eq(
-      "competition_id",
-      competition.id
-    )
-    .order(
-      "placement",
-      {
-        ascending:
-          true,
-      }
-    );
-
   if (rewardError) {
     throw new Error(
       rewardError.message
@@ -547,121 +645,33 @@ export default async function CompetitionDetailPage({
   // LIVE STANDINGS
   // ======================================================
 
-  let standings:
-    Standing[] =
-    [];
-
-  if (
-    competition.status ===
-      "active" &&
-    competition.competition_type ===
-      "round_robin"
-  ) {
-    const {
-      data,
-      error,
-    } = await supabase.rpc(
-      "get_competition_standings",
-      {
-        target_competition_id:
-          competition.id,
-      }
+  if (standingsError) {
+    throw new Error(
+      standingsError.message
     );
-
-    if (error) {
-      throw new Error(
-        error.message
-      );
-    }
-
-    standings =
-      (data ??
-        []) as Standing[];
   }
+
+  const standings =
+    (standingsData ??
+      []) as Standing[];
 
   // ======================================================
   // FINAL RESULTS
   // ======================================================
 
-  let finalResults:
-    FinalResult[] =
-    [];
-
-  if (
-    competition.status ===
-    "completed"
-  ) {
-    const {
-      data,
-      error,
-    } = await supabase
-      .from(
-        "competition_results"
-      )
-      .select(
-        `
-          profile_id,
-          placement,
-          wins,
-          losses,
-          draws,
-          points
-        `
-      )
-      .eq(
-        "competition_id",
-        competition.id
-      )
-      .order(
-        "placement",
-        {
-          ascending:
-            true,
-        }
-      );
-
-    if (error) {
-      throw new Error(
-        error.message
-      );
-    }
-
-    finalResults =
-      (data ??
-        []) as FinalResult[];
+  if (finalResultError) {
+    throw new Error(
+      finalResultError.message
+    );
   }
+
+  const finalResults =
+    (finalResultData ??
+      []) as FinalResult[];
 
   // ======================================================
   // LINKED MATCHES
   // ======================================================
-
-  const {
-    data: matchData,
-    error: matchError,
-  } = await supabase
-    .from("matches")
-    .select(
-      `
-        id,
-        player_one_id,
-        player_two_id,
-        status,
-        winner_id,
-        result,
-        completed_at
-      `
-    )
-    .eq(
-      "competition_id",
-      competition.id
-    )
-    .order(
-      "created_at",
-      {
-        ascending:
-          false,
-      }
-    );
 
   if (matchError) {
     throw new Error(

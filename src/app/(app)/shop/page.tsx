@@ -458,25 +458,139 @@ export default async function ShopPage({
   } = await requireUser();
 
   // ======================================================
-  // PROFILE / DP
+  // PARALLEL READS
+  //
+  // Profile, pack types, active rotation, vouchers and recent
+  // purchases are all independent of each other - fetch them
+  // together instead of waiting on each one in turn.
   // ======================================================
 
-  const {
-    data:
-      profileData,
+  const [
+    {
+      data:
+        profileData,
 
-    error:
-      profileError,
-  } = await supabase
-    .from("profiles")
-    .select(
-      "id,duelist_name,duel_points"
-    )
-    .eq(
-      "id",
-      userId
-    )
-    .single();
+      error:
+        profileError,
+    },
+    {
+      data:
+        packData,
+
+      error:
+        packError,
+    },
+    {
+      data:
+        rotationData,
+
+      error:
+        rotationError,
+    },
+    {
+      data:
+        voucherData,
+
+      error:
+        voucherError,
+    },
+    {
+      data:
+        purchaseData,
+
+      error:
+        purchaseError,
+    },
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(
+        "id,duelist_name,duel_points"
+      )
+      .eq(
+        "id",
+        userId
+      )
+      .single(),
+
+    supabase
+      .from(
+        "shop_pack_types"
+      )
+      .select(
+        `
+          id,
+          code,
+          name,
+          description,
+          price_dp,
+          cards_per_pack
+        `
+      )
+      .eq(
+        "active",
+        true
+      )
+      .order(
+        "sort_order",
+        {
+          ascending:
+            true,
+        }
+      ),
+
+    supabase
+      .from(
+        "active_shop_rotation_cards"
+      )
+      .select("*")
+      .order(
+        "slot_number",
+        {
+          ascending:
+            true,
+        }
+      ),
+
+    supabase
+      .from(
+        "reward_vouchers"
+      )
+      .select(
+        "id,voucher_type,quantity"
+      )
+      .eq(
+        "profile_id",
+        userId
+      )
+      .order(
+        "created_at",
+        {
+          ascending:
+            true,
+        }
+      ),
+
+    supabase
+      .from(
+        "shop_purchases"
+      )
+      .select(
+        "id,purchase_type,dp_spent,created_at"
+      )
+      .eq(
+        "profile_id",
+        userId
+      )
+      .order(
+        "created_at",
+        {
+          ascending:
+            false,
+        }
+      )
+      .limit(5),
+  ]);
 
   if (
     profileError ||
@@ -490,42 +604,6 @@ export default async function ShopPage({
   const profile =
     profileData as Profile;
 
-  // ======================================================
-  // PACK TYPES
-  // ======================================================
-
-  const {
-    data:
-      packData,
-
-    error:
-      packError,
-  } = await supabase
-    .from(
-      "shop_pack_types"
-    )
-    .select(
-      `
-        id,
-        code,
-        name,
-        description,
-        price_dp,
-        cards_per_pack
-      `
-    )
-    .eq(
-      "active",
-      true
-    )
-    .order(
-      "sort_order",
-      {
-        ascending:
-          true,
-      }
-    );
-
   if (packError) {
     throw new Error(
       packError.message
@@ -535,29 +613,6 @@ export default async function ShopPage({
   const packs =
     (packData ??
       []) as PackType[];
-
-  // ======================================================
-  // ACTIVE ROTATION
-  // ======================================================
-
-  const {
-    data:
-      rotationData,
-
-    error:
-      rotationError,
-  } = await supabase
-    .from(
-      "active_shop_rotation_cards"
-    )
-    .select("*")
-    .order(
-      "slot_number",
-      {
-        ascending:
-          true,
-      }
-    );
 
   if (rotationError) {
     throw new Error(
@@ -573,35 +628,6 @@ export default async function ShopPage({
     rotationCards[0] ??
     null;
 
-  // ======================================================
-  // VOUCHERS
-  // ======================================================
-
-  const {
-    data:
-      voucherData,
-
-    error:
-      voucherError,
-  } = await supabase
-    .from(
-      "reward_vouchers"
-    )
-    .select(
-      "id,voucher_type,quantity"
-    )
-    .eq(
-      "profile_id",
-      userId
-    )
-    .order(
-      "created_at",
-      {
-        ascending:
-          true,
-      }
-    );
-
   if (voucherError) {
     throw new Error(
       voucherError.message
@@ -611,6 +637,16 @@ export default async function ShopPage({
   const vouchers =
     (voucherData ??
       []) as Voucher[];
+
+  if (purchaseError) {
+    throw new Error(
+      purchaseError.message
+    );
+  }
+
+  const recentPurchases =
+    (purchaseData ??
+      []) as Purchase[];
 
   // ======================================================
   // SOLD BUYERS
@@ -677,46 +713,6 @@ export default async function ShopPage({
         ]
       )
     );
-
-  // ======================================================
-  // RECENT PURCHASES
-  // ======================================================
-
-  const {
-    data:
-      purchaseData,
-
-    error:
-      purchaseError,
-  } = await supabase
-    .from(
-      "shop_purchases"
-    )
-    .select(
-      "id,purchase_type,dp_spent,created_at"
-    )
-    .eq(
-      "profile_id",
-      userId
-    )
-    .order(
-      "created_at",
-      {
-        ascending:
-          false,
-      }
-    )
-    .limit(5);
-
-  if (purchaseError) {
-    throw new Error(
-      purchaseError.message
-    );
-  }
-
-  const recentPurchases =
-    (purchaseData ??
-      []) as Purchase[];
 
   // ======================================================
   // OPENING RESULT

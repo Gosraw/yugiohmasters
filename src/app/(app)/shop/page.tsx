@@ -30,6 +30,10 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  SubmitButton,
+} from "@/components/submit-button";
+
 export const dynamic =
   "force-dynamic";
 
@@ -1287,15 +1291,15 @@ export default async function ShopPage({
                           }
                         />
 
-                        <button
-                          type="submit"
+                        <SubmitButton
                           disabled={
                             !canAfford
                           }
+                          pendingLabel="Opening..."
                           className="primary-button disabled:cursor-not-allowed disabled:opacity-35"
                         >
                           Open
-                        </button>
+                        </SubmitButton>
                       </form>
                     </div>
 
@@ -1322,8 +1326,8 @@ export default async function ShopPage({
                             }
                           />
 
-                          <button
-                            type="submit"
+                          <SubmitButton
+                            pendingLabel="Opening..."
                             className="inline-flex items-center gap-2 rounded-xl border border-violet-300/20 bg-violet-300/[0.05] px-3 py-2 text-xs font-black text-violet-200"
                           >
                             <Ticket
@@ -1334,7 +1338,7 @@ export default async function ShopPage({
                             {
                               voucher.quantity
                             }
-                          </button>
+                          </SubmitButton>
                         </form>
                       </div>
                     )}
@@ -1424,16 +1428,16 @@ export default async function ShopPage({
                     value="special"
                   />
 
-                  <button
-                    type="submit"
+                  <SubmitButton
                     disabled={
                       profile.duel_points <
                       rotation.special_pack_price_dp
                     }
+                    pendingLabel="Opening..."
                     className="primary-button w-full disabled:cursor-not-allowed disabled:opacity-35"
                   >
                     Open Special Pack
-                  </button>
+                  </SubmitButton>
                 </form>
 
                 {(() => {
@@ -1469,15 +1473,15 @@ export default async function ShopPage({
                         }
                       />
 
-                      <button
-                        type="submit"
+                      <SubmitButton
+                        pendingLabel="Opening..."
                         className="w-full rounded-xl border border-violet-300/20 bg-violet-300/[0.05] px-3 py-2 text-xs font-black text-violet-200"
                       >
                         Use Special Voucher · x
                         {
                           voucher.quantity
                         }
-                      </button>
+                      </SubmitButton>
                     </form>
                   );
                 })()}
@@ -1699,15 +1703,15 @@ export default async function ShopPage({
                                 }
                               />
 
-                              <button
-                                type="submit"
+                              <SubmitButton
                                 disabled={
                                   !canAfford
                                 }
+                                pendingLabel="Buying..."
                                 className="rounded-xl border border-amber-300/20 bg-amber-300/[0.07] px-3 py-2 text-[10px] font-black text-amber-200 transition hover:bg-amber-300/[0.12] disabled:cursor-not-allowed disabled:opacity-30"
                               >
                                 Buy
-                              </button>
+                              </SubmitButton>
                             </form>
                           )}
                         </div>

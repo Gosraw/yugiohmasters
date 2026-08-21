@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  Ban,
   CheckCircle2,
   Search,
   SlidersHorizontal,
@@ -23,6 +24,7 @@ export type DeckBrowserCard = {
     def: number | null;
     game_rarity: string | null;
     rarity_score: number | null;
+    format_eligible: boolean;
   };
 
   quantity: number;
@@ -712,12 +714,19 @@ export function DeckCollectionBrowser({
                 group
                   .availableInstances[0];
 
+              const ineligible =
+                !card.format_eligible;
+
               return (
                 <div
                   key={
                     card.id
                   }
-                  className="panel group overflow-hidden transition-all duration-150 hover:-translate-y-1 hover:border-amber-300/25 hover:shadow-lg"
+                  className={`panel group overflow-hidden transition-all duration-150 hover:-translate-y-1 hover:shadow-lg ${
+                    ineligible
+                      ? "opacity-70 hover:border-red-300/25"
+                      : "hover:border-amber-300/25"
+                  }`}
                 >
                   <Link
                     href={`/cards/${card.id}?returnTo=${encodeURIComponent(
@@ -740,7 +749,11 @@ export function DeckCollectionBrowser({
                           height={
                             614
                           }
-                          className="aspect-[421/614] h-auto w-full object-cover transition duration-200 group-hover:scale-[1.025]"
+                          className={`aspect-[421/614] h-auto w-full object-cover transition duration-200 group-hover:scale-[1.025] ${
+                            ineligible
+                              ? "grayscale"
+                              : ""
+                          }`}
                           unoptimized
                         />
                       ) : (
@@ -763,6 +776,17 @@ export function DeckCollectionBrowser({
                           group.quantity
                         }
                       </span>
+
+                      {ineligible && (
+                        <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-950/90 px-2 py-1 text-[8px] font-black uppercase text-red-200">
+                          <Ban
+                            size={
+                              9
+                            }
+                          />
+                          Not legal
+                        </span>
+                      )}
                     </div>
                   </Link>
 
@@ -822,7 +846,21 @@ export function DeckCollectionBrowser({
                       )}
                     </div>
 
-                    {nextInstance ? (
+                    {ineligible ? (
+                      <button
+                        type="button"
+                        disabled
+                        title="This card isn't legal in the current Duelist Circle format."
+                        className="mt-3 inline-flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-xl border border-red-400/15 bg-red-400/[0.03] px-3 py-2 text-[10px] font-black uppercase text-red-300/70"
+                      >
+                        <Ban
+                          size={
+                            11
+                          }
+                        />
+                        Not format legal
+                      </button>
+                    ) : nextInstance ? (
                       <form
                         action={
                           addCardToDeck

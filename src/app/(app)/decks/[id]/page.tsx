@@ -93,6 +93,9 @@ type CardCatalogItem = {
   rarity_score:
     | number
     | null;
+
+  format_eligible:
+    boolean;
 };
 
 type CardInstance = {
@@ -422,7 +425,7 @@ export default async function DeckBuilderPage({
         "card_catalog"
       )
       .select(
-        "id,name,image_url,card_type,atk,def,game_rarity,rarity_score"
+        "id,name,image_url,card_type,atk,def,game_rarity,rarity_score,format_eligible"
       )
       .in(
         "id",
@@ -1127,7 +1130,7 @@ export default async function DeckBuilderPage({
                 Add Main Deck cards from your Collection.
               </div>
             ) : (
-              <div className="mt-4 grid grid-cols-5 gap-2">
+              <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5">
                 {mainDeckCards.map(
                   (item) => (
                     <DeckCardTile
@@ -1178,7 +1181,7 @@ export default async function DeckBuilderPage({
                 Fusion and XYZ cards appear here.
               </div>
             ) : (
-              <div className="mt-4 grid grid-cols-5 gap-2">
+              <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5">
                 {extraDeckCards.map(
                   (item) => (
                     <DeckCardTile

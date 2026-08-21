@@ -14,6 +14,13 @@ import {
 
 // =========================================================
 // HELPERS
+//
+// Every failure here redirects back with ?error=... instead of
+// throwing, so ActionFeedbackBanner can show it as a dismissible
+// banner - the same pattern src/app/actions/shop.ts already uses.
+// A thrown Error would instead blow away the whole page with the
+// app-wide error.tsx interstitial, which is far too heavy-handed
+// for routine, expected failures like "Extra Deck is full".
 // =========================================================
 
 function getString(
@@ -23,6 +30,17 @@ function getString(
   return String(
     formData.get(key) ?? ""
   ).trim();
+}
+
+function safeMessage(
+  value:
+    | string
+    | undefined
+) {
+  return encodeURIComponent(
+    value ??
+      "Something went wrong."
+  );
 }
 
 async function requireOwnedDeck(
@@ -51,8 +69,10 @@ async function requireOwnedDeck(
     error ||
     !deck
   ) {
-    throw new Error(
-      "Deck niet gevonden."
+    redirect(
+      `/decks?error=${safeMessage(
+        "Deck niet gevonden."
+      )}`
     );
   }
 
@@ -60,8 +80,10 @@ async function requireOwnedDeck(
     deck.owner_id !==
     userId
   ) {
-    throw new Error(
-      "Dit deck is niet van jou."
+    redirect(
+      `/decks?error=${safeMessage(
+        "Dit deck is niet van jou."
+      )}`
     );
   }
 
@@ -103,16 +125,20 @@ export async function createDeck(
     );
 
   if (!name) {
-    throw new Error(
-      "Decknaam is verplicht."
+    redirect(
+      `/decks?error=${safeMessage(
+        "Decknaam is verplicht."
+      )}`
     );
   }
 
   if (
     name.length > 80
   ) {
-    throw new Error(
-      "Decknaam mag maximaal 80 tekens bevatten."
+    redirect(
+      `/decks?error=${safeMessage(
+        "Decknaam mag maximaal 80 tekens bevatten."
+      )}`
     );
   }
 
@@ -138,8 +164,10 @@ export async function createDeck(
     membershipError ||
     !membership
   ) {
-    throw new Error(
-      "League niet gevonden."
+    redirect(
+      `/decks?error=${safeMessage(
+        "League niet gevonden."
+      )}`
     );
   }
 
@@ -158,14 +186,18 @@ export async function createDeck(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    redirect(
+      `/decks?error=${safeMessage(
+        error.message
+      )}`
     );
   }
 
   if (!deckId) {
-    throw new Error(
-      "Deck kon niet worden aangemaakt."
+    redirect(
+      `/decks?error=${safeMessage(
+        "Deck kon niet worden aangemaakt."
+      )}`
     );
   }
 
@@ -197,12 +229,19 @@ export async function addCardToDeck(
       "card_instance_id"
     );
 
-  if (
-    !deckId ||
-    !cardInstanceId
-  ) {
-    throw new Error(
-      "Deck of kaart ontbreekt."
+  if (!deckId) {
+    redirect(
+      `/decks?error=${safeMessage(
+        "Deck ontbreekt."
+      )}`
+    );
+  }
+
+  if (!cardInstanceId) {
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Kaart ontbreekt."
+      )}`
     );
   }
 
@@ -219,8 +258,10 @@ export async function addCardToDeck(
     deck.status !==
     "draft"
   ) {
-    throw new Error(
-      "Alleen een Draft deck kan worden aangepast."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Alleen een Draft deck kan worden aangepast."
+      )}`
     );
   }
 
@@ -245,8 +286,10 @@ export async function addCardToDeck(
     instanceError ||
     !instance
   ) {
-    throw new Error(
-      "Kaartinstance niet gevonden."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Kaartinstance niet gevonden."
+      )}`
     );
   }
 
@@ -254,16 +297,20 @@ export async function addCardToDeck(
     instance.current_owner_id !==
     userId
   ) {
-    throw new Error(
-      "Deze kaart is niet van jou."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Deze kaart is niet van jou."
+      )}`
     );
   }
 
   if (
     instance.locked
   ) {
-    throw new Error(
-      "Deze kaart is locked en kan niet aan een deck worden toegevoegd."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Deze kaart is locked en kan niet aan een deck worden toegevoegd."
+      )}`
     );
   }
 
@@ -281,8 +328,10 @@ export async function addCardToDeck(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        error.message
+      )}`
     );
   }
 
@@ -314,12 +363,19 @@ export async function removeCardFromDeck(
       "deck_card_id"
     );
 
-  if (
-    !deckId ||
-    !deckCardId
-  ) {
-    throw new Error(
-      "Deckkaart ontbreekt."
+  if (!deckId) {
+    redirect(
+      `/decks?error=${safeMessage(
+        "Deck ontbreekt."
+      )}`
+    );
+  }
+
+  if (!deckCardId) {
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Deckkaart ontbreekt."
+      )}`
     );
   }
 
@@ -335,8 +391,10 @@ export async function removeCardFromDeck(
     deck.status !==
     "draft"
   ) {
-    throw new Error(
-      "Alleen een Draft deck kan worden aangepast."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Alleen een Draft deck kan worden aangepast."
+      )}`
     );
   }
 
@@ -363,8 +421,10 @@ export async function removeCardFromDeck(
     deckCardError ||
     !deckCard
   ) {
-    throw new Error(
-      "Deckkaart niet gevonden."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Deckkaart niet gevonden."
+      )}`
     );
   }
 
@@ -379,8 +439,10 @@ export async function removeCardFromDeck(
   );
 
   if (error) {
-    throw new Error(
-      `Kaart verwijderen mislukt: ${error.message}`
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        `Kaart verwijderen mislukt: ${error.message}`
+      )}`
     );
   }
 
@@ -412,8 +474,10 @@ export async function markDeckReady(
     );
 
   if (!deckId) {
-    throw new Error(
-      "Deck ontbreekt."
+    redirect(
+      `/decks?error=${safeMessage(
+        "Deck ontbreekt."
+      )}`
     );
   }
 
@@ -429,8 +493,10 @@ export async function markDeckReady(
     deck.status ===
     "archived"
   ) {
-    throw new Error(
-      "Een gearchiveerd deck kan niet Ready worden gemaakt."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Een gearchiveerd deck kan niet Ready worden gemaakt."
+      )}`
     );
   }
 
@@ -457,8 +523,10 @@ export async function markDeckReady(
   );
 
   if (error) {
-    throw new Error(
-      `Deck kan nog niet Ready worden gemaakt: ${error.message}`
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        `Deck kan nog niet Ready worden gemaakt: ${error.message}`
+      )}`
     );
   }
 
@@ -485,8 +553,10 @@ export async function markDeckDraft(
     );
 
   if (!deckId) {
-    throw new Error(
-      "Deck ontbreekt."
+    redirect(
+      `/decks?error=${safeMessage(
+        "Deck ontbreekt."
+      )}`
     );
   }
 
@@ -502,16 +572,20 @@ export async function markDeckDraft(
     deck.status ===
     "archived"
   ) {
-    throw new Error(
-      "Een gearchiveerd deck kan niet worden aangepast."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Een gearchiveerd deck kan niet worden aangepast."
+      )}`
     );
   }
 
   if (
     deck.is_active
   ) {
-    throw new Error(
-      "Je actieve deck kan niet naar Draft worden teruggezet. Activeer eerst een ander Ready deck."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Je actieve deck kan niet naar Draft worden teruggezet. Activeer eerst een ander Ready deck."
+      )}`
     );
   }
 
@@ -538,8 +612,10 @@ export async function markDeckDraft(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        error.message
+      )}`
     );
   }
 
@@ -566,8 +642,10 @@ export async function setActiveDeck(
     );
 
   if (!deckId) {
-    throw new Error(
-      "Deck ontbreekt."
+    redirect(
+      `/decks?error=${safeMessage(
+        "Deck ontbreekt."
+      )}`
     );
   }
 
@@ -583,8 +661,10 @@ export async function setActiveDeck(
     deck.status !==
     "ready"
   ) {
-    throw new Error(
-      "Alleen een Ready deck kan Active worden."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Alleen een Ready deck kan Active worden."
+      )}`
     );
   }
 
@@ -607,8 +687,10 @@ export async function setActiveDeck(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        error.message
+      )}`
     );
   }
 
@@ -641,22 +723,28 @@ export async function renameDeck(
     );
 
   if (!deckId) {
-    throw new Error(
-      "Deck ontbreekt."
+    redirect(
+      `/decks?error=${safeMessage(
+        "Deck ontbreekt."
+      )}`
     );
   }
 
   if (!name) {
-    throw new Error(
-      "Decknaam is verplicht."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Decknaam is verplicht."
+      )}`
     );
   }
 
   if (
     name.length > 80
   ) {
-    throw new Error(
-      "Decknaam mag maximaal 80 tekens bevatten."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Decknaam mag maximaal 80 tekens bevatten."
+      )}`
     );
   }
 
@@ -672,8 +760,10 @@ export async function renameDeck(
     deck.status ===
     "archived"
   ) {
-    throw new Error(
-      "Een gearchiveerd deck kan niet worden hernoemd."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Een gearchiveerd deck kan niet worden hernoemd."
+      )}`
     );
   }
 
@@ -691,8 +781,10 @@ export async function renameDeck(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        error.message
+      )}`
     );
   }
 
@@ -722,8 +814,10 @@ export async function archiveDeck(
     );
 
   if (!deckId) {
-    throw new Error(
-      "Deck ontbreekt."
+    redirect(
+      `/decks?error=${safeMessage(
+        "Deck ontbreekt."
+      )}`
     );
   }
 
@@ -738,8 +832,10 @@ export async function archiveDeck(
   if (
     deck.is_active
   ) {
-    throw new Error(
-      "Je actieve deck kan niet worden gearchiveerd. Activeer eerst een ander deck."
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        "Je actieve deck kan niet worden gearchiveerd. Activeer eerst een ander deck."
+      )}`
     );
   }
 
@@ -763,8 +859,10 @@ export async function archiveDeck(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    redirect(
+      `/decks/${deckId}?error=${safeMessage(
+        error.message
+      )}`
     );
   }
 

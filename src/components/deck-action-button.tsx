@@ -51,7 +51,7 @@ export function DeckActionButton({
             disabled:cursor-wait disabled:opacity-50
           `
           : `
-            inline-flex h-8 w-8 cursor-pointer items-center justify-center
+            inline-flex h-10 w-10 cursor-pointer items-center justify-center
             rounded-lg border border-red-400/30 bg-black/90
             text-red-300 shadow-lg
             transition-all duration-150

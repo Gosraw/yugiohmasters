@@ -20,6 +20,10 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  getLeagueIdForUser,
+} from "@/lib/league-stats";
+
 export const dynamic =
   "force-dynamic";
 
@@ -171,14 +175,22 @@ export default async function CollectionPage({
     userId,
   } = await requireUser();
 
+  // A player can technically belong to more than one league. Scoping by
+  // the player's league (not just current_owner_id) keeps this page
+  // consistent with the deck builder, which already scopes card_instances
+  // by league_id - see the deck_cards fix in commit b90a694 for why this
+  // matters.
+  const leagueId =
+    await getLeagueIdForUser(
+      supabase,
+      userId
+    );
+
   // ======================================================
   // OWNED CARD INSTANCES
   // ======================================================
 
-  const {
-    data: instanceData,
-    error: instanceError,
-  } = await supabase
+  let instanceQuery = supabase
     .from(
       "card_instances"
     )
@@ -194,13 +206,25 @@ export default async function CollectionPage({
     .eq(
       "current_owner_id",
       userId
-    )
-    .order(
-      "acquired_at",
-      {
-        ascending: false,
-      }
     );
+
+  if (leagueId) {
+    instanceQuery =
+      instanceQuery.eq(
+        "league_id",
+        leagueId
+      );
+  }
+
+  const {
+    data: instanceData,
+    error: instanceError,
+  } = await instanceQuery.order(
+    "acquired_at",
+    {
+      ascending: false,
+    }
+  );
 
   if (instanceError) {
     return (

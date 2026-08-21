@@ -482,15 +482,24 @@ export default async function DashboardPage() {
         {actionItems.length >
           0 && (
           <section className="mt-6 overflow-hidden rounded-2xl border border-amber-300/20 bg-amber-300/[0.035] p-5">
-            <div className="flex items-center gap-2">
-              <Bell
-                size={17}
-                className="text-amber-300"
-              />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Bell
+                  size={17}
+                  className="text-amber-300"
+                />
 
-              <p className="text-xs font-black tracking-[.2em] text-amber-300">
-                NEEDS YOUR ATTENTION
-              </p>
+                <p className="text-xs font-black tracking-[.2em] text-amber-300">
+                  NEEDS YOUR ATTENTION
+                </p>
+              </div>
+
+              <Link
+                href="/attention"
+                className="cursor-pointer text-[10px] font-black uppercase tracking-wider text-amber-300/70 transition hover:text-amber-200"
+              >
+                View all
+              </Link>
             </div>
 
             <div className="mt-4 grid gap-2.5 sm:grid-cols-2">

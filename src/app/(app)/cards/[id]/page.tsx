@@ -37,6 +37,10 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  getLeagueIdForUser,
+} from "@/lib/league-stats";
+
 export const dynamic =
   "force-dynamic";
 
@@ -189,6 +193,15 @@ export default async function CardDetailPage({
     userId,
   } = await requireUser();
 
+  // A player can technically belong to more than one league. Scoping
+  // owned-copies lookups by league_id keeps this page consistent with
+  // the deck builder (see the deck_cards fix in commit b90a694).
+  const leagueId =
+    await getLeagueIdForUser(
+      supabase,
+      userId
+    );
+
   // ======================================================
   // CARD
   // ======================================================
@@ -218,10 +231,7 @@ export default async function CardDetailPage({
   // OWNED PHYSICAL COPIES
   // ======================================================
 
-  const {
-    data: copiesData,
-    error: copiesError,
-  } = await supabase
+  let ownedCopiesQuery = supabase
     .from(
       "card_instances"
     )
@@ -241,13 +251,25 @@ export default async function CardDetailPage({
     .eq(
       "current_owner_id",
       userId
-    )
-    .order(
-      "copy_number",
-      {
-        ascending: true,
-      }
     );
+
+  if (leagueId) {
+    ownedCopiesQuery =
+      ownedCopiesQuery.eq(
+        "league_id",
+        leagueId
+      );
+  }
+
+  const {
+    data: copiesData,
+    error: copiesError,
+  } = await ownedCopiesQuery.order(
+    "copy_number",
+    {
+      ascending: true,
+    }
+  );
 
   const ownedCopies =
     copiesError

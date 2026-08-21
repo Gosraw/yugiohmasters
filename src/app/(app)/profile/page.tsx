@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Award,
+  Bell,
   BookOpen,
   CheckCircle2,
   Crown,
@@ -16,6 +17,7 @@ import {
   ShieldCheck,
   Sparkles,
   Swords,
+  Timer,
   Trophy,
   UserRound,
   Zap,
@@ -1504,6 +1506,22 @@ export default async function ProfilePage() {
             >
               <Rss size={14} />
               Activity
+            </Link>
+
+            <Link
+              href="/attention"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-amber-300/25 hover:text-amber-200"
+            >
+              <Bell size={14} />
+              Attention
+            </Link>
+
+            <Link
+              href="/duel-companion"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-cyan-300/25 hover:text-cyan-200"
+            >
+              <Timer size={14} />
+              Duel Tools
             </Link>
           </div>
 

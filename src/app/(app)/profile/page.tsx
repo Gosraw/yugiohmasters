@@ -891,7 +891,7 @@ export default async function ProfilePage() {
             HERO
         ================================================== */}
 
-        <section className="relative mt-6 overflow-hidden rounded-[28px] border border-amber-300/15 bg-gradient-to-br from-white/[0.045] via-black/45 to-black/75 shadow-[0_30px_100px_rgba(0,0,0,.45)]">
+        <section className="arena-frame relative mt-6 overflow-hidden rounded-[28px] border border-amber-300/15 bg-gradient-to-br from-white/[0.045] via-black/45 to-black/75 shadow-[0_30px_100px_rgba(0,0,0,.45)]">
           {profile.profile_banner_url && (
             <div className="pointer-events-none absolute inset-0 opacity-20">
               <Image

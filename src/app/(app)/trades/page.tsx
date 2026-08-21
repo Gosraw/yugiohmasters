@@ -735,7 +735,7 @@ export default async function TradesPage() {
             HERO
         ================================================== */}
 
-        <header className="relative mt-6 overflow-hidden rounded-[28px] border border-cyan-300/10 bg-gradient-to-br from-white/[0.045] via-black/45 to-black/70 p-6 shadow-[0_30px_100px_rgba(0,0,0,.45)] sm:p-8">
+        <header className="arena-frame relative mt-6 overflow-hidden rounded-[28px] border border-cyan-300/10 bg-gradient-to-br from-white/[0.045] via-black/45 to-black/70 p-6 shadow-[0_30px_100px_rgba(0,0,0,.45)] sm:p-8">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-cyan-400/[0.05] blur-[100px]" />
 

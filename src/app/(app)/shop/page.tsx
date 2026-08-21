@@ -901,7 +901,7 @@ export default async function ShopPage({
             HERO
         ================================================== */}
 
-        <header className="relative overflow-hidden rounded-[28px] border border-amber-300/15 bg-gradient-to-br from-white/[0.045] via-black/50 to-black/80 p-6 shadow-[0_30px_100px_rgba(0,0,0,.5)] sm:p-8">
+        <header className="arena-frame relative overflow-hidden rounded-[28px] border border-amber-300/15 bg-gradient-to-br from-white/[0.045] via-black/50 to-black/80 p-6 shadow-[0_30px_100px_rgba(0,0,0,.5)] sm:p-8">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -right-20 -top-24 h-80 w-80 rounded-full bg-amber-400/[0.07] blur-[100px]" />
 

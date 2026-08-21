@@ -47,6 +47,10 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  InstallAppCard,
+} from "@/components/install-app-card";
+
+import {
   computeRivalSummaries,
   currentStreak,
   getLeagueProfiles,
@@ -1577,6 +1581,10 @@ export default async function ProfilePage() {
             </div>
           </div>
         </section>
+
+        <div className="mt-6">
+          <InstallAppCard />
+        </div>
       </div>
     </main>
   );

@@ -378,8 +378,8 @@ export default async function CardsPage({
         <div className="mt-5">
           <EmptyState
             icon={<Search size={22} />}
-            title="No cards found"
-            description="Try changing your search or filters."
+            title="No cards match that search."
+            description="Try a different name, rarity or type."
           />
         </div>
       ) : (

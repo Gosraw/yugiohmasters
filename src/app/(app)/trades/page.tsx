@@ -884,14 +884,17 @@ export default async function TradesPage() {
 
           {incoming.length ===
           0 ? (
-            <div className="panel mt-4 p-6">
+            <div className="panel mt-4 flex flex-col items-center gap-3 p-6 text-center">
               <p className="font-black text-zinc-300">
-                No incoming trades
+                No deals on the table.
               </p>
 
-              <p className="mt-1 text-sm text-zinc-600">
-                Nothing requires your attention right now.
-              </p>
+              <Link
+                href="/trades/new"
+                className="primary-button inline-flex items-center gap-2 px-4 py-2 text-xs"
+              >
+                Start Trade
+              </Link>
             </div>
           ) : (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -1046,7 +1049,7 @@ export default async function TradesPage() {
           0 ? (
             <div className="panel mt-4 p-6">
               <p className="text-sm text-zinc-600">
-                No completed trade history yet.
+                No deals finalized yet - the trade block is open for business.
               </p>
             </div>
           ) : (

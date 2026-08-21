@@ -1075,12 +1075,25 @@ export default async function CollectionPage({
             />
 
             <h2 className="mt-4 text-xl font-black">
-              No cards found
+              {totalCards === 0
+                ? "Your binder is empty."
+                : "No cards found"}
             </h2>
 
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
-              Adjust your search or filters to find another part of your Collection.
+              {totalCards === 0
+                ? "Open a pack or draft a starting collection to fill it."
+                : "Adjust your search or filters to find another part of your Collection."}
             </p>
+
+            {totalCards === 0 && (
+              <Link
+                href="/shop"
+                className="primary-button mt-4 inline-flex items-center gap-2 px-4 py-2 text-xs"
+              >
+                Visit the Card Shop
+              </Link>
+            )}
           </section>
         ) : (
           /* ==================================================

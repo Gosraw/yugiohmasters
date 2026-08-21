@@ -1251,7 +1251,7 @@ export default async function MatchesPage() {
           {incoming.length ===
           0 ? (
             <div className="panel mt-4 p-6 text-sm text-zinc-500">
-              No incoming challenges.
+              No one has called you out yet.
             </div>
           ) : (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -1349,8 +1349,17 @@ export default async function MatchesPage() {
 
           {active.length ===
           0 ? (
-            <div className="panel mt-4 p-6 text-sm text-zinc-500">
-              No active duels.
+            <div className="panel mt-4 flex flex-col items-center gap-3 p-6 text-center">
+              <p className="text-sm text-zinc-500">
+                Your arena is quiet.
+              </p>
+
+              <Link
+                href="/matches/new"
+                className="primary-button inline-flex items-center gap-2 px-4 py-2 text-xs"
+              >
+                Challenge a Duelist
+              </Link>
             </div>
           ) : (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -1510,7 +1519,7 @@ export default async function MatchesPage() {
           {history.length ===
           0 ? (
             <div className="panel mt-4 p-6 text-sm text-zinc-500">
-              No duel history yet.
+              Nothing recorded yet - your legend starts with duel one.
             </div>
           ) : (
             <div className="mt-4 grid gap-4 md:grid-cols-2">

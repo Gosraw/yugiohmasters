@@ -318,7 +318,7 @@ export default async function ActivityFeedPage() {
 
         {feed.length === 0 ? (
           <div className="panel mt-8 p-8 text-center text-zinc-500">
-            Nothing has happened yet - play a duel to get the feed going.
+            The league has been quiet. Play a duel to get the feed going.
           </div>
         ) : (
           <div className="mt-8 space-y-2">

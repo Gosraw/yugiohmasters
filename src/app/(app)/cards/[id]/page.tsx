@@ -95,8 +95,7 @@ type DeckRow = {
 
 type DeckCardRow = {
   deck_id: string;
-  card_catalog_id: string;
-  quantity: number;
+  card_instance_id: string;
 };
 
 // =========================================================
@@ -312,8 +311,16 @@ export default async function CardDetailPage({
 
   if (
     deckIds.length >
+    0 &&
+    ownedCopies.length >
     0
   ) {
+    const ownedCopyIds =
+      ownedCopies.map(
+        (copy) =>
+          copy.id
+      );
+
     const {
       data: deckCardsData,
       error: deckCardsError,
@@ -324,17 +331,16 @@ export default async function CardDetailPage({
       .select(
         `
           deck_id,
-          card_catalog_id,
-          quantity
+          card_instance_id
         `
       )
       .in(
         "deck_id",
         deckIds
       )
-      .eq(
-        "card_catalog_id",
-        id
+      .in(
+        "card_instance_id",
+        ownedCopyIds
       );
 
     if (deckCardsError) {
@@ -358,35 +364,58 @@ export default async function CardDetailPage({
       )
     );
 
-  const usedInDecks =
-    deckCardRows
-      .map(
-        (row) => {
-          const deck =
-            deckMap.get(
-              row.deck_id
-            );
+  const deckUsageCount =
+    new Map<
+      string,
+      number
+    >();
 
-          if (!deck) {
-            return null;
-          }
+  for (
+    const row
+    of deckCardRows
+  ) {
+    deckUsageCount.set(
+      row.deck_id,
+      (
+        deckUsageCount.get(
+          row.deck_id
+        ) ?? 0
+      ) + 1
+    );
+  }
 
-          return {
-            deck,
-            quantity:
-              row.quantity,
-          };
+  const usedInDecks = [
+    ...deckUsageCount.entries(),
+  ]
+    .map(
+      ([
+        deckId,
+        quantity,
+      ]) => {
+        const deck =
+          deckMap.get(
+            deckId
+          );
+
+        if (!deck) {
+          return null;
         }
-      )
-      .filter(
-        (
-          value
-        ): value is {
-          deck: DeckRow;
-          quantity: number;
-        } =>
-          Boolean(value)
-      );
+
+        return {
+          deck,
+          quantity,
+        };
+      }
+    )
+    .filter(
+      (
+        value
+      ): value is {
+        deck: DeckRow;
+        quantity: number;
+      } =>
+        Boolean(value)
+    );
 
   // ======================================================
   // DISPLAY DATA

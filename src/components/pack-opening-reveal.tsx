@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Crown,
   Layers3,
+  LoaderCircle,
   PackageOpen,
   RotateCcw,
   Sparkles,
@@ -198,10 +199,27 @@ export function PackOpeningReveal({
     setBusy,
   ] = useState(false);
 
+  // Whether the current card's art has actually finished
+  // loading yet — used both to show a small spinner instead
+  // of a blank card while it loads, and to gate when the
+  // slot unlocks (see markImageReady below). Card art can
+  // genuinely take a second or more to load the first time,
+  // and advancing before it has loaded is exactly what made
+  // cards 1-2 look like they briefly flip then show nothing:
+  // the card was swapped out again before its image ever
+  // painted.
+  const [
+    imageLoaded,
+    setImageLoaded,
+  ] = useState(false);
+
   const busyTimeout =
     useRef<ReturnType<
       typeof setTimeout
     > | null>(null);
+
+  const flipStartedAt =
+    useRef(0);
 
   useEffect(() => {
     return () => {
@@ -214,6 +232,72 @@ export function PackOpeningReveal({
       }
     };
   }, []);
+
+  // Warm the browser's image cache for every card in the
+  // pack as soon as the reveal screen mounts, so that by the
+  // time the player taps through to each card its art is
+  // usually already downloaded and appears instantly instead
+  // of popping in mid-reveal.
+  useEffect(() => {
+    if (
+      typeof window ===
+      "undefined"
+    ) {
+      return;
+    }
+
+    pulls.forEach((pull) => {
+      if (
+        pull.card.image_url
+      ) {
+        const preload =
+          new window.Image();
+
+        preload.src =
+          pull.card.image_url;
+      }
+    });
+  }, [pulls]);
+
+  function clearBusyTimeout() {
+    if (
+      busyTimeout.current
+    ) {
+      clearTimeout(
+        busyTimeout.current
+      );
+
+      busyTimeout.current =
+        null;
+    }
+  }
+
+  // Unlocks the slot once the current card's art has loaded
+  // AND at least 550ms have passed since the flip started
+  // (so the flip animation itself always has time to play),
+  // whichever finishes last. A 3s failsafe always releases
+  // the lock even if the image never fires load/error, so a
+  // broken image link can't soft-lock the reveal.
+  function markImageReady() {
+    setImageLoaded(true);
+
+    const elapsed =
+      Date.now() -
+      flipStartedAt.current;
+
+    const remaining =
+      Math.max(
+        0,
+        550 - elapsed
+      );
+
+    clearBusyTimeout();
+
+    busyTimeout.current =
+      setTimeout(() => {
+        setBusy(false);
+      }, remaining);
+  }
 
   const highestPull =
     useMemo(() => {
@@ -289,22 +373,35 @@ export function PackOpeningReveal({
 
     if (!flipped) {
       setFlipped(true);
-
-      // Lock taps for the length of the flip animation
-      // (700ms) plus a beat, so the card is guaranteed to
-      // actually be on screen before the next tap can
-      // advance past it.
+      setImageLoaded(false);
       setBusy(true);
+
+      flipStartedAt.current =
+        Date.now();
+
+      // Failsafe: always unlock after 3s even if the image
+      // never fires load/error, so a broken card image can
+      // never soft-lock the reveal screen.
+      clearBusyTimeout();
 
       busyTimeout.current =
         setTimeout(() => {
           setBusy(false);
-        }, 700);
+        }, 3000);
+
+      // Cards with no art at all have nothing to wait for.
+      if (
+        !currentPull?.card
+          .image_url
+      ) {
+        markImageReady();
+      }
 
       return;
     }
 
     setFlipped(false);
+    setImageLoaded(false);
 
     setRevealed(
       (current) =>
@@ -316,16 +413,10 @@ export function PackOpeningReveal({
   }
 
   function revealAll() {
-    if (
-      busyTimeout.current
-    ) {
-      clearTimeout(
-        busyTimeout.current
-      );
-    }
-
+    clearBusyTimeout();
     setBusy(false);
     setFlipped(false);
+    setImageLoaded(false);
 
     setRevealed(
       pulls.length
@@ -333,16 +424,10 @@ export function PackOpeningReveal({
   }
 
   function restart() {
-    if (
-      busyTimeout.current
-    ) {
-      clearTimeout(
-        busyTimeout.current
-      );
-    }
-
+    clearBusyTimeout();
     setBusy(false);
     setFlipped(false);
+    setImageLoaded(false);
     setRevealed(0);
   }
 
@@ -480,6 +565,9 @@ export function PackOpeningReveal({
                         {currentPull.card
                           .image_url ? (
                           <Image
+                            key={
+                              currentPull.id
+                            }
                             src={
                               currentPull
                                 .card
@@ -496,14 +584,37 @@ export function PackOpeningReveal({
                             height={
                               614
                             }
-                            className="h-full w-full rounded-xl object-cover"
+                            className={`h-full w-full rounded-xl object-cover transition-opacity duration-200 ${
+                              imageLoaded
+                                ? "opacity-100"
+                                : "opacity-0"
+                            }`}
                             unoptimized
+                            onLoad={
+                              markImageReady
+                            }
+                            onError={
+                              markImageReady
+                            }
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center text-xs text-zinc-600">
                             No image
                           </div>
                         )}
+
+                        {!imageLoaded &&
+                          currentPull.card
+                            .image_url && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <LoaderCircle
+                                size={
+                                  28
+                                }
+                                className="animate-spin text-amber-300/70"
+                              />
+                            </div>
+                          )}
 
                         {sparkleCountForRank(
                           currentRank

@@ -18,6 +18,51 @@ import {
   useState,
 } from "react";
 
+// =========================================================
+// RARITY-SCALED REVEAL EFFECTS
+//
+// Higher rank = more dramatic reveal (bigger glow, shake,
+// sparkles, banner text). Rank comes from `rarityRank` below.
+// =========================================================
+
+function glowClassForRank(
+  rank: number
+) {
+  if (rank >= 6) return "pull-glow-6";
+  if (rank === 5) return "pull-glow-5";
+  if (rank === 4) return "pull-glow-4";
+  if (rank === 3) return "pull-glow-3";
+  if (rank === 2) return "pull-glow-2";
+  return "";
+}
+
+function sparkleCountForRank(
+  rank: number
+) {
+  if (rank >= 6) return 6;
+  if (rank === 5) return 4;
+  if (rank === 4) return 2;
+  return 0;
+}
+
+const sparklePositions = [
+  "left-[8%] top-[10%]",
+  "right-[10%] top-[16%]",
+  "left-[14%] bottom-[14%]",
+  "right-[8%] bottom-[10%]",
+  "left-[46%] top-[4%]",
+  "right-[42%] bottom-[4%]",
+];
+
+function bannerForRank(
+  rank: number
+) {
+  if (rank >= 6) return "LEGENDARY PULL!";
+  if (rank === 5) return "Secret Rare!";
+  if (rank === 4) return "Ultra Rare!";
+  return null;
+}
+
 type Pull = {
   id: string;
 
@@ -131,6 +176,11 @@ export function PackOpeningReveal({
     setRevealed,
   ] = useState(0);
 
+  const [
+    flipped,
+    setFlipped,
+  ] = useState(false);
+
   const highestPull =
     useMemo(() => {
       return [...pulls].sort(
@@ -185,7 +235,27 @@ export function PackOpeningReveal({
       )
     ];
 
-  function revealNext() {
+  const currentRarity =
+    currentPull
+      ? (currentPull.card
+          .game_rarity ??
+          currentPull.pulled_rarity ??
+          "Normal")
+      : "Normal";
+
+  const currentRank =
+    rarityRank[
+      currentRarity
+    ] ?? 1;
+
+  function handleSlotClick() {
+    if (!flipped) {
+      setFlipped(true);
+      return;
+    }
+
+    setFlipped(false);
+
     setRevealed(
       (current) =>
         Math.min(
@@ -196,12 +266,15 @@ export function PackOpeningReveal({
   }
 
   function revealAll() {
+    setFlipped(false);
+
     setRevealed(
       pulls.length
     );
   }
 
   function restart() {
+    setFlipped(false);
     setRevealed(0);
   }
 
@@ -265,41 +338,171 @@ export function PackOpeningReveal({
         currentPull && (
         <section className="mt-6">
           <div className="mx-auto max-w-sm">
-            <button
-              type="button"
-              onClick={
-                revealNext
+            <div
+              key={`shake-${revealed}-${flipped}`}
+              className={
+                flipped &&
+                currentRank >= 4
+                  ? "pull-shake-once"
+                  : ""
               }
-              className="group block w-full cursor-pointer"
             >
-              <div className="relative overflow-hidden rounded-[24px] border border-amber-300/20 bg-gradient-to-br from-zinc-900 via-black to-violet-950/30 p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] transition-all duration-300 group-hover:-translate-y-1 group-hover:border-amber-300/35 active:scale-[0.98]">
-                <div className="pointer-events-none absolute inset-0">
-                  <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/[0.05] blur-[70px]" />
-                </div>
-
-                <div className="relative flex aspect-[421/614] items-center justify-center rounded-2xl border border-amber-300/15 bg-black/70">
-                  <div className="text-center">
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-amber-300/20 bg-amber-300/[0.04]">
-                      <Sparkles
-                        size={34}
-                        className="text-amber-300"
-                      />
+              <button
+                type="button"
+                onClick={
+                  handleSlotClick
+                }
+                aria-label={
+                  flipped
+                    ? "Volgende kaart"
+                    : "Kaart onthullen"
+                }
+                className="group block w-full cursor-pointer [perspective:1400px]"
+              >
+                <div
+                  className={`relative aspect-[421/614] w-full transition-transform duration-500 [transform-style:preserve-3d] ${
+                    flipped
+                      ? "[transform:rotateY(180deg)]"
+                      : ""
+                  }`}
+                >
+                  {/* BACK FACE — mystery card */}
+                  <div className="absolute inset-0 overflow-hidden rounded-[24px] border border-amber-300/20 bg-gradient-to-br from-zinc-900 via-black to-violet-950/30 p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] transition-all duration-300 [backface-visibility:hidden] group-hover:-translate-y-1 group-hover:border-amber-300/35">
+                    <div className="pointer-events-none absolute inset-0">
+                      <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/[0.05] blur-[70px]" />
                     </div>
 
-                    <p className="mt-5 text-xs font-black uppercase tracking-[.28em] text-amber-200">
-                      Duelist Circle
-                    </p>
+                    <div className="relative flex h-full items-center justify-center rounded-2xl border border-amber-300/15 bg-black/70">
+                      <div className="text-center">
+                        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-amber-300/20 bg-amber-300/[0.04]">
+                          <Sparkles
+                            size={34}
+                            className="text-amber-300"
+                          />
+                        </div>
 
-                    <p className="mt-2 text-[9px] font-bold uppercase tracking-[.2em] text-zinc-600">
-                      Tap to Reveal
-                    </p>
+                        <p className="mt-5 text-xs font-black uppercase tracking-[.28em] text-amber-200">
+                          Duelist Circle
+                        </p>
+
+                        <p className="mt-2 text-[9px] font-bold uppercase tracking-[.2em] text-zinc-600">
+                          Tap to Reveal
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* FRONT FACE — the actual pulled card */}
+                  <div
+                    className={`absolute inset-0 overflow-hidden rounded-[24px] border bg-black/70 p-3 shadow-[0_30px_100px_rgba(0,0,0,.55)] [backface-visibility:hidden] [transform:rotateY(180deg)] ${
+                      rarityStyles[
+                        currentRarity
+                      ] ??
+                      "border-zinc-500/30"
+                    } ${
+                      flipped
+                        ? `pull-face-in ${glowClassForRank(currentRank)}`
+                        : ""
+                    }`}
+                  >
+                    {flipped && (
+                      <>
+                        {currentPull.card
+                          .image_url ? (
+                          <Image
+                            src={
+                              currentPull
+                                .card
+                                .image_url
+                            }
+                            alt={
+                              currentPull
+                                .card
+                                .name
+                            }
+                            width={
+                              421
+                            }
+                            height={
+                              614
+                            }
+                            className="h-full w-full rounded-xl object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-xs text-zinc-600">
+                            No image
+                          </div>
+                        )}
+
+                        {sparkleCountForRank(
+                          currentRank
+                        ) > 0 &&
+                          Array.from({
+                            length:
+                              sparkleCountForRank(
+                                currentRank
+                              ),
+                          }).map(
+                            (
+                              _,
+                              index
+                            ) => (
+                              <Sparkles
+                                key={
+                                  index
+                                }
+                                size={
+                                  18
+                                }
+                                style={{
+                                  animationDelay: `${index * 0.18}s`,
+                                }}
+                                className={`pull-sparkle pointer-events-none absolute text-amber-200 ${sparklePositions[index % sparklePositions.length]}`}
+                              />
+                            )
+                          )}
+
+                        {currentRank >=
+                          6 && (
+                          <div className="pull-burst-ring pointer-events-none absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-yellow-300/60" />
+                        )}
+
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b-xl bg-gradient-to-t from-black/85 to-transparent p-3">
+                          {bannerForRank(
+                            currentRank
+                          ) && (
+                            <p className="text-center text-xs font-black uppercase tracking-[.15em] text-amber-200">
+                              {bannerForRank(
+                                currentRank
+                              )}
+                            </p>
+                          )}
+
+                          <p className="mt-1 truncate text-center text-sm font-black text-zinc-100">
+                            {
+                              currentPull
+                                .card
+                                .name
+                            }
+                          </p>
+
+                          <p className="mt-0.5 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                            {
+                              currentRarity
+                            }
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 <div className="relative mt-4 flex items-center justify-between">
                   <p className="text-xs font-bold text-zinc-600">
-                    Card{" "}
-                    {revealed + 1}
+                    {flipped
+                      ? "Tap for next card"
+                      : `Card ${revealed + 1} of ${pulls.length}`}
                   </p>
 
                   <ChevronRight
@@ -307,8 +510,8 @@ export function PackOpeningReveal({
                     className="text-amber-300 transition-transform group-hover:translate-x-1"
                   />
                 </div>
-              </div>
-            </button>
+              </button>
+            </div>
           </div>
 
           <div className="mt-4 text-center">

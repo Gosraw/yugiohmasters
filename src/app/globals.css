@@ -53,3 +53,49 @@ body {
   color: transparent;
   background-clip: text;
 }
+
+/* =========================================================
+   PACK OPENING REVEAL EFFECTS
+   Intensity scales with card rarity (rank 1 = Normal .. 6 = Legendary).
+========================================================= */
+
+@keyframes pull-fade-in {
+  from { opacity: 0; transform: scale(.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pull-shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
+  40%, 60% { transform: translate3d(5px, 0, 0); }
+}
+
+@keyframes pull-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
+  50% { box-shadow: 0 0 55px var(--pull-glow, rgba(255, 255, 255, .25)); }
+}
+
+@keyframes pull-sparkle {
+  0%, 100% { opacity: 0; transform: scale(.4); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pull-burst {
+  0% { transform: scale(.5); opacity: .85; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+.pull-face-in { animation: pull-fade-in .35s ease-out both; }
+
+.pull-shake-once { animation: pull-shake .55s ease-in-out 1; }
+
+.pull-glow-2 { --pull-glow: rgba(96, 165, 250, .35); animation: pull-glow-pulse 1.6s ease-in-out 2; }
+.pull-glow-3 { --pull-glow: rgba(103, 232, 249, .4); animation: pull-glow-pulse 1.5s ease-in-out 2; }
+.pull-glow-4 { --pull-glow: rgba(252, 211, 77, .5); animation: pull-glow-pulse 1.3s ease-in-out 3; }
+.pull-glow-5 { --pull-glow: rgba(196, 181, 253, .55); animation: pull-glow-pulse 1.2s ease-in-out 4; }
+.pull-glow-6 { --pull-glow: rgba(250, 204, 21, .65); animation: pull-glow-pulse 1.1s ease-in-out infinite; }
+
+.pull-sparkle { animation: pull-sparkle 1.4s ease-in-out infinite; }
+
+.pull-burst-ring { animation: pull-burst 1.2s ease-out 1; }

@@ -88,7 +88,11 @@ function isActiveRoute(
   );
 }
 
-export function BottomNav() {
+export function BottomNav({
+  attentionCount = 0,
+}: {
+  attentionCount?: number;
+}) {
   const pathname =
     usePathname();
 
@@ -132,7 +136,7 @@ export function BottomNav() {
                   />
 
                   <div
-                    className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-150 ${
+                    className={`relative flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-150 ${
                       active
                         ? "bg-amber-300/[0.08]"
                         : "group-hover:bg-white/[0.04]"
@@ -147,6 +151,12 @@ export function BottomNav() {
                       }
                       className="transition-transform duration-150 group-hover:scale-105"
                     />
+
+                    {href === "/" && attentionCount > 0 && (
+                      <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full border border-[#090b10] bg-red-500 px-1 text-[9px] font-black text-white">
+                        {attentionCount > 9 ? "9+" : attentionCount}
+                      </span>
+                    )}
                   </div>
 
                   <span

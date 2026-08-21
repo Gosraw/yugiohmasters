@@ -97,7 +97,17 @@ function playerName(
 // PAGE
 // =========================================================
 
-export default async function NewMatchPage() {
+export default async function NewMatchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    opponent?: string;
+  }>;
+}) {
+  const {
+    opponent: preselectedOpponentId,
+  } = await searchParams;
+
   const {
     supabase,
     userId,
@@ -777,6 +787,10 @@ export default async function NewMatchPage() {
                           name="opponent_id"
                           value={
                             profile.id
+                          }
+                          defaultChecked={
+                            profile.id ===
+                            preselectedOpponentId
                           }
                           required
                           className="peer sr-only"

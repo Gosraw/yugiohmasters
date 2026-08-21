@@ -30,6 +30,10 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  computeAttentionItems,
+} from "@/lib/attention-items";
+
 export const dynamic =
   "force-dynamic";
 
@@ -321,70 +325,15 @@ export default async function DashboardPage() {
   // ======================================================
   // NEEDS YOUR ATTENTION
   //
-  // Pulls together every "the ball is in your court" item
-  // from the data already fetched above, so the dashboard
-  // can surface it as one clear action list instead of the
-  // player having to go hunt for it page by page.
+  // Shared with the /attention page and the bottom nav badge
+  // via src/lib/attention-items.ts, so they always agree.
   // ======================================================
 
-  type ActionItem = {
-    id: string;
-    href: string;
-    label: string;
-    hint: string;
-  };
-
-  const actionItems: ActionItem[] =
-    [];
-
-  for (const match of matches) {
-    if (
-      match.status ===
-        "pending" &&
-      match.player_two_id ===
-        userId
-    ) {
-      actionItems.push({
-        id: `match-accept-${match.id}`,
-        href: `/matches/${match.id}`,
-        label:
-          "Duel challenge waiting",
-        hint: "Accept or decline it.",
-      });
-    }
-
-    if (
-      match.status ===
-        "result_submitted" &&
-      match.result_submitted_by !==
-        userId
-    ) {
-      actionItems.push({
-        id: `match-confirm-${match.id}`,
-        href: `/matches/${match.id}`,
-        label:
-          "Duel result to confirm",
-        hint: "Check it and confirm or dispute.",
-      });
-    }
-  }
-
-  for (const trade of trades) {
-    if (
-      trade.status ===
-        "pending" &&
-      trade.receiver_id ===
-        userId
-    ) {
-      actionItems.push({
-        id: `trade-${trade.id}`,
-        href: `/trades/${trade.id}`,
-        label:
-          "Trade offer waiting",
-        hint: "Review and respond.",
-      });
-    }
-  }
+  const actionItems = computeAttentionItems(
+    matches,
+    trades,
+    userId
+  );
 
   // ======================================================
   // UI
@@ -479,6 +428,14 @@ export default async function DashboardPage() {
                 >
                   <Layers3 size={17} />
                   Manage Decks
+                </Link>
+
+                <Link
+                  href="/duel-companion"
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-black text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.06] hover:text-white active:scale-[0.97]"
+                >
+                  <Zap size={17} />
+                  Duel Companion
                 </Link>
               </div>
             </div>

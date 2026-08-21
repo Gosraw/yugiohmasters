@@ -4,11 +4,15 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Award,
+  BookOpen,
   CheckCircle2,
   Crown,
+  Flame,
   Home,
   LockKeyhole,
   Medal,
+  Rss,
+  ScrollText,
   ShieldCheck,
   Sparkles,
   Swords,
@@ -39,6 +43,14 @@ import {
 import {
   requireUser,
 } from "@/lib/supabase/queries";
+
+import {
+  computeRivalSummaries,
+  currentStreak,
+  getLeagueProfiles,
+  involvesPlayer,
+  profileName,
+} from "@/lib/league-stats";
 
 export const dynamic =
   "force-dynamic";
@@ -475,6 +487,45 @@ export default async function ProfilePage() {
       leagueMatches,
       userId
     );
+
+  // ======================================================
+  // TROPHY ROOM: TOP RIVAL
+  // ======================================================
+
+  const leagueProfiles =
+    await getLeagueProfiles(
+      supabase,
+      leagueId
+    );
+
+  const rivalSummaries =
+    computeRivalSummaries(
+      matches.filter(
+        (match) =>
+          match.status === "completed"
+      ),
+      userId
+    );
+
+  const topRival = rivalSummaries[0] ?? null;
+
+  const topRivalProfile = topRival
+    ? leagueProfiles.find(
+        (candidate) => candidate.id === topRival.opponentId
+      )
+    : null;
+
+  const topRivalStreak = topRival
+    ? currentStreak(
+        matches.filter(
+          (match) =>
+            match.status === "completed" &&
+            involvesPlayer(match, topRival.opponentId) &&
+            involvesPlayer(match, userId)
+        ),
+        userId
+      )
+    : null;
 
   // ======================================================
   // RIVALRY WINS
@@ -1371,6 +1422,102 @@ export default async function ProfilePage() {
               }
             </p>
           </div>
+        </section>
+
+        {/* ==================================================
+            TROPHY ROOM
+        ================================================== */}
+
+        <section className="panel relative mt-6 overflow-hidden p-6">
+          <div className="flex items-center gap-2">
+            <ScrollText
+              size={18}
+              className="text-amber-300"
+            />
+
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[.18em] text-zinc-600">
+                Trophy Room
+              </p>
+
+              <h2 className="mt-1 text-xl font-black text-zinc-100">
+                Legacy &amp; Rivalries
+              </h2>
+            </div>
+          </div>
+
+          {topRival && topRivalProfile ? (
+            <Link
+              href={`/rivalries/${topRival.opponentId}`}
+              className="group mt-5 flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-red-300/15 bg-red-300/[0.03] p-4 transition-all hover:-translate-y-0.5 hover:border-red-300/30"
+            >
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-wider text-red-300">
+                  Top Rival
+                </p>
+                <p className="mt-1 truncate text-lg font-black text-zinc-100 group-hover:text-red-200">
+                  {profileName(topRivalProfile)}
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {topRival.wins}-{topRival.losses}
+                  {topRival.draws > 0 ? `-${topRival.draws}` : ""} across{" "}
+                  {topRival.total} duels
+                  {topRivalStreak &&
+                  topRivalStreak.type === "W" &&
+                  topRivalStreak.count >= 2
+                    ? ` · ${topRivalStreak.count}-duel streak`
+                    : ""}
+                </p>
+              </div>
+
+              <Swords
+                size={20}
+                className="shrink-0 text-red-300/60 transition-transform group-hover:translate-x-1"
+              />
+            </Link>
+          ) : (
+            <div className="mt-5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-zinc-500">
+              Play your first duel to start a rivalry.
+            </div>
+          )}
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <Link
+              href="/rivalries"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-red-300/25 hover:text-red-200"
+            >
+              <Swords size={14} />
+              Rivalries
+            </Link>
+
+            <Link
+              href="/records"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-amber-300/25 hover:text-amber-200"
+            >
+              <BookOpen size={14} />
+              Record Book
+            </Link>
+
+            <Link
+              href="/activity"
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-violet-300/25 hover:text-violet-200"
+            >
+              <Rss size={14} />
+              Activity
+            </Link>
+          </div>
+
+          {winStreak >= 2 && (
+            <div className="mt-4 flex items-center gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[0.03] px-4 py-3">
+              <Flame
+                size={16}
+                className="text-amber-300"
+              />
+              <p className="text-sm font-bold text-amber-200">
+                You&apos;re on a {winStreak}-duel league win streak.
+              </p>
+            </div>
+          )}
         </section>
 
         {/* ==================================================

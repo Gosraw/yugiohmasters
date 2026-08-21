@@ -11,6 +11,7 @@ import {
   Lock,
   LockKeyhole,
   Repeat2,
+  ScrollText,
   Shield,
   ShieldCheck,
   Sparkles,
@@ -1182,6 +1183,16 @@ export default async function CardDetailPage({
                               </p>
                             </div>
                           )}
+
+                          <Link
+                            href={`/cards/legacy/${copy.id}`}
+                            className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-amber-300/15 bg-amber-300/[0.04] px-3 py-2 text-[10px] font-black uppercase tracking-wider text-amber-200 transition-all hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/[0.08] active:scale-[0.97]"
+                          >
+                            <ScrollText
+                              size={12}
+                            />
+                            View Card Legacy
+                          </Link>
                         </div>
                       );
                     }

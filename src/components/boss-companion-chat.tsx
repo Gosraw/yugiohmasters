@@ -157,7 +157,7 @@ export function BossCompanionChat({
           onClick={() =>
             setOpen(false)
           }
-          className="cursor-pointer text-[10px] font-black uppercase tracking-wider text-zinc-500 transition hover:text-zinc-200"
+          className="cursor-pointer rounded-lg px-2.5 py-2 text-[10px] font-black uppercase tracking-wider text-zinc-500 transition hover:text-zinc-200"
         >
           Close
         </button>
@@ -213,7 +213,7 @@ export function BossCompanionChat({
                 ask(prompt)
               }
               disabled={pending}
-              className="cursor-pointer rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[9px] font-bold text-zinc-400 transition hover:border-violet-300/30 hover:text-violet-200 disabled:cursor-wait disabled:opacity-50"
+              className="cursor-pointer rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[9px] font-bold text-zinc-400 transition hover:border-violet-300/30 hover:text-violet-200 disabled:cursor-wait disabled:opacity-50"
             >
               {prompt}
             </button>
@@ -248,7 +248,7 @@ export function BossCompanionChat({
             pending ||
             !input.trim()
           }
-          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-violet-300/25 bg-violet-300/10 text-violet-200 transition hover:bg-violet-300/20 disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-violet-300/25 bg-violet-300/10 text-violet-200 transition hover:bg-violet-300/20 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Send size={14} />
         </button>

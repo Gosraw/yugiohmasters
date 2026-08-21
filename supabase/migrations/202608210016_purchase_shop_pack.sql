@@ -257,7 +257,8 @@ begin
   into chosen_card_id
   from public.card_catalog card
   where
-    card.game_rarity = target_rarity
+    card.format_eligible = true
+    and card.game_rarity = target_rarity
     and (
       select count(*)
       from public.card_instances instance
@@ -300,7 +301,8 @@ begin
   into chosen_card_id
   from public.card_catalog card
   where
-    card.game_rarity = target_rarity
+    card.format_eligible = true
+    and card.game_rarity = target_rarity
     and (
       select count(*)
       from public.card_instances instance
@@ -325,7 +327,8 @@ begin
     into chosen_card_id
     from public.card_catalog card
     where
-      (
+      card.format_eligible = true
+      and (
         select count(*)
         from public.card_instances instance
         where
@@ -364,7 +367,8 @@ begin
   into chosen_card_id
   from public.card_catalog card
   where
-    (
+    card.format_eligible = true
+    and (
       select count(*)
       from public.card_instances instance
       where

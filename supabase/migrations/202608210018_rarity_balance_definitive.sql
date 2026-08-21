@@ -1394,7 +1394,7 @@ begin
       return 'Super Rare';
     elsif roll < 98 then
       return 'Ultra Rare';
-    elsif roll < 99.65 then
+    elsif roll < 99.8 then
       return 'Secret Rare';
     else
       return 'Legendary';
@@ -1414,7 +1414,7 @@ begin
       return 'Super Rare';
     elsif roll < 88 then
       return 'Ultra Rare';
-    elsif roll < 98 then
+    elsif roll < 99.3 then
       return 'Secret Rare';
     else
       return 'Legendary';
@@ -1434,7 +1434,7 @@ begin
       return 'Super Rare';
     elsif roll < 93.3 then
       return 'Ultra Rare';
-    elsif roll < 98.8 then
+    elsif roll < 99.45 then
       return 'Secret Rare';
     else
       return 'Legendary';

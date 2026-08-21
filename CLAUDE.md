@@ -183,6 +183,25 @@ the owner's Mac (Cowork-style), some things to know:
   have a little Dutch/English text mixing (e.g. "Er zijn nog geen
   andere spelers in deze league") — left as-is, not in scope unless
   the owner asks for a full i18n pass.
+- **NEVER run `npm run build` (or `npm run start`) from the device
+  bridge.** It fails with "Failed to load SWC binary for linux/arm64"
+  (same root cause as the existing `npm test`/`npm run build` note
+  above), but critically it does NOT fail cleanly first — it writes a
+  partial `.next` build (BUILD_ID, manifests, a `.next/server/app/...`
+  tree missing most routes) into the owner's real project folder
+  *before* crashing on the missing SWC binary. That corrupted `.next`
+  then sits there and can cause confusing, inconsistent runtime errors
+  (routes that were compiled before the crash keep working, routes
+  that weren't throw a generic digest-only "Server Components render"
+  error - e.g. minified React error #441) the next time the owner runs
+  `npm run dev` or `npm start` themselves, for reasons that have
+  nothing to do with their actual code. This already happened once
+  (2026-08-21) and cost real debugging time chasing a phantom code
+  bug. If you need a production build verified, ask the owner to run
+  `npm run build` in their own terminal - don't attempt it from the
+  bridge. If `.next` is ever suspected of being corrupted, `mv` it
+  aside (the bridge can't delete) and tell the owner to run
+  `rm -rf .next` themselves, then rebuild clean.
 
 ## Talking to the owner
 

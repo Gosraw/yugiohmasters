@@ -30,6 +30,10 @@ import {
 } from "@/components/boss-monster-companion";
 
 import {
+  BossCompanionChat,
+} from "@/components/boss-companion-chat";
+
+import {
   getCurrentProfile,
   requireUser,
 } from "@/lib/supabase/queries";
@@ -483,6 +487,14 @@ export default async function DashboardPage() {
                   activeDeck
                 )}
               />
+
+              {bossMonster && (
+                <BossCompanionChat
+                  bossName={
+                    bossMonster.name
+                  }
+                />
+              )}
             </div>
           </div>
         </section>

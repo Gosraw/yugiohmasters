@@ -287,7 +287,7 @@ function reportPackSimulation() {
 
   console.log("Cross-pack DP efficiency for Super Rare+ (lower = more efficient):");
   for (const packCode of Object.keys(PACK_CONFIG)) {
-    const { tally, totalCards, cfg } = results[packCode];
+    const { tally, cfg } = results[packCode];
     const rank3plus = RARITIES.filter((r) => RANK[r] >= 3).reduce((sum, r) => sum + tally[r], 0);
     const dpPerRank3plus = (RUNS * cfg.priceDp) / rank3plus;
     console.log(`  ${packCode.padEnd(8)} ~${dpPerRank3plus.toFixed(0)} DP / Super Rare+`);
@@ -371,12 +371,14 @@ function reportDraftSimulation() {
   ).toFixed(2);
   console.log(`\nAverage Ultra Rare+ cards per starting 62-card draft: ~${rank4plusAvg}`);
   console.log(
-    "This is the 'always pick the shiniest card' upper bound, and real\n" +
-    "scarcity constraints during a real draft (limited League copies,\n" +
-    "multiple players drafting from the same pool) push this lower still -\n" +
-    "so a starting collection averaging well under 1 Legendary and a small\n" +
-    "handful of Ultra Rare+ cards across 62 picks is consistent with a slow,\n" +
-    "meaningful power curve rather than an immediately stacked deck."
+    "⚠ This is HIGH: a rational 'always pick the shiniest of 3' player\n" +
+    "ends up with roughly a third of their starting draft at Ultra Rare or\n" +
+    "better under the current draft.rarity_weights (42/28/17/8/4/1). Real\n" +
+    "per-league scarcity (copy limits, other players drafting the same\n" +
+    "pool) pulls this down somewhat, but the raw weights themselves are\n" +
+    "already generous - even a single random pick (no best-of-3 choice at\n" +
+    "all) has a 13% chance of landing Ultra Rare+. See the session report\n" +
+    "for a suggested, more conservative weight table to consider."
   );
 }
 

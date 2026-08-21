@@ -33,6 +33,10 @@ import {
   SubmitButton,
 } from "@/components/submit-button";
 
+import {
+  PackArt,
+} from "@/components/pack-art";
+
 export const dynamic =
   "force-dynamic";
 
@@ -1254,16 +1258,13 @@ export default async function ShopPage({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {packs.map(
               (pack) => {
                 const accent =
                   packAccent(
                     pack.code
                   );
-
-                const Icon =
-                  accent.icon;
 
                 const neededVoucherType =
                   voucherTypeForPack(
@@ -1286,83 +1287,60 @@ export default async function ShopPage({
                     key={
                       pack.id
                     }
-                    className={`relative overflow-hidden rounded-[22px] border bg-gradient-to-br p-5 ${accent.border} ${accent.background}`}
+                    className={`relative flex gap-4 overflow-hidden rounded-[22px] border bg-gradient-to-br p-4 ${accent.border} ${accent.background}`}
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div
-                        className={`flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-black/30 ${accent.text}`}
-                      >
-                        <Icon
-                          size={20}
-                        />
-                      </div>
-
-                      <span className="rounded-full border border-cyan-300/15 bg-black/30 px-3 py-1 text-[9px] font-black uppercase text-cyan-200">
-                        {
-                          pack.cards_per_pack
-                        }{" "}
-                        cards
-                      </span>
-                    </div>
-
-                    <h3 className="mt-5 text-xl font-black">
-                      {
-                        pack.name
-                      }
-                    </h3>
-
-                    <p className="mt-2 min-h-12 text-sm leading-6 text-zinc-500">
-                      {
-                        pack.description
-                      }
-                    </p>
-
-                    <div className="mt-5 flex items-end justify-between gap-4">
-                      <div>
-                        <p className="text-[8px] font-black uppercase tracking-wider text-zinc-600">
-                          Price
-                        </p>
-
-                        <p className="mt-1 text-2xl font-black text-cyan-100">
-                          {
-                            pack.price_dp
-                          }{" "}
-                          <span className="text-xs text-cyan-300">
-                            DP
-                          </span>
-                        </p>
-                      </div>
-
-                      <form
-                        action={
-                          purchasePack
+                    <div className="w-24 shrink-0 sm:w-28">
+                      <PackArt
+                        code={
+                          pack.code
                         }
-                      >
-                        <input
-                          type="hidden"
-                          name="pack_code"
-                          value={
-                            pack.code
-                          }
-                        />
-
-                        <SubmitButton
-                          disabled={
-                            !canAfford
-                          }
-                          pendingLabel="Opening..."
-                          className="primary-button disabled:cursor-not-allowed disabled:opacity-35"
-                        >
-                          Open
-                        </SubmitButton>
-                      </form>
+                        name={
+                          pack.name
+                        }
+                      />
                     </div>
 
-                    {voucher && (
-                      <div className="mt-4 border-t border-white/[0.06] pt-4">
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-lg font-black leading-tight">
+                          {
+                            pack.name
+                          }
+                        </h3>
+
+                        <span className="shrink-0 rounded-full border border-cyan-300/15 bg-black/30 px-2 py-1 text-[8px] font-black uppercase text-cyan-200">
+                          {
+                            pack.cards_per_pack
+                          }{" "}
+                          cards
+                        </span>
+                      </div>
+
+                      <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-zinc-500">
+                        {
+                          pack.description
+                        }
+                      </p>
+
+                      <div className="mt-auto flex items-end justify-between gap-3 pt-3">
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-wider text-zinc-600">
+                            Price
+                          </p>
+
+                          <p className="mt-1 text-xl font-black text-cyan-100">
+                            {
+                              pack.price_dp
+                            }{" "}
+                            <span className="text-xs text-cyan-300">
+                              DP
+                            </span>
+                          </p>
+                        </div>
+
                         <form
                           action={
-                            redeemPackVoucher
+                            purchasePack
                           }
                         >
                           <input
@@ -1373,30 +1351,58 @@ export default async function ShopPage({
                             }
                           />
 
-                          <input
-                            type="hidden"
-                            name="voucher_id"
-                            value={
-                              voucher.id
-                            }
-                          />
-
                           <SubmitButton
-                            pendingLabel="Opening..."
-                            className="inline-flex items-center gap-2 rounded-xl border border-violet-300/20 bg-violet-300/[0.05] px-3 py-2 text-xs font-black text-violet-200"
-                          >
-                            <Ticket
-                              size={13}
-                            />
-
-                            Use Voucher · x
-                            {
-                              voucher.quantity
+                            disabled={
+                              !canAfford
                             }
+                            pendingLabel="Opening..."
+                            className="primary-button px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-35"
+                          >
+                            Open
                           </SubmitButton>
                         </form>
                       </div>
-                    )}
+
+                      {voucher && (
+                        <div className="mt-3 border-t border-white/[0.06] pt-3">
+                          <form
+                            action={
+                              redeemPackVoucher
+                            }
+                          >
+                            <input
+                              type="hidden"
+                              name="pack_code"
+                              value={
+                                pack.code
+                              }
+                            />
+
+                            <input
+                              type="hidden"
+                              name="voucher_id"
+                              value={
+                                voucher.id
+                              }
+                            />
+
+                            <SubmitButton
+                              pendingLabel="Opening..."
+                              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-violet-300/20 bg-violet-300/[0.05] px-3 py-2 text-xs font-black text-violet-200"
+                            >
+                              <Ticket
+                                size={13}
+                              />
+
+                              Use Voucher · x
+                              {
+                                voucher.quantity
+                              }
+                            </SubmitButton>
+                          </form>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               }
@@ -1415,7 +1421,17 @@ export default async function ShopPage({
           <section className="relative mt-8 overflow-hidden rounded-[26px] border border-cyan-300/20 bg-gradient-to-br from-cyan-400/[0.07] via-violet-500/[0.05] to-black/60 p-6">
             <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-cyan-400/[0.08] blur-[90px]" />
 
-            <div className="relative grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div className="relative grid gap-6 lg:grid-cols-[auto_1fr_auto] lg:items-end">
+              <div className="mx-auto w-32 sm:w-36 lg:mx-0">
+                <PackArt
+                  code="special"
+                  name={
+                    rotation.special_pack_name ??
+                    undefined
+                  }
+                />
+              </div>
+
               <div>
                 <div className="flex items-center gap-2">
                   <Sparkles

@@ -219,3 +219,66 @@ body {
   50% { background-position: -20% 0; }
   100% { background-position: -120% 0; }
 }
+
+/* =========================================================
+   V5 - BOOSTER PACK ART
+   ========================================================= */
+
+.pack-shell {
+  overflow: hidden;
+  border-radius: 1.1rem;
+  clip-path: polygon(
+    7% 0%, 93% 0%, 100% 5%, 100% 95%, 93% 100%,
+    7% 100%, 0% 95%, 0% 5%
+  );
+}
+
+.pack-glow {
+  background: radial-gradient(
+    120% 70% at 50% 55%,
+    var(--pack-glow, transparent) 0%,
+    transparent 65%
+  );
+  opacity: .55;
+}
+
+.pack-sheen {
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgb(255 255 255 / .22) 50%,
+    transparent 65%
+  );
+  background-size: 240% 240%;
+  animation: pack-sheen-sweep 6.5s ease-in-out infinite;
+  mix-blend-mode: overlay;
+}
+
+@keyframes pack-sheen-sweep {
+  0% { background-position: 130% 130%; }
+  50% { background-position: 0% 0%; }
+  100% { background-position: -130% -130%; }
+}
+
+/* Respect reduced-motion for every "big moment" animation in
+   the app, not just the ones added in this section - the pack
+   reveal (pull-*) animations predate this rule and were never
+   covered by it. */
+@media (prefers-reduced-motion: reduce) {
+  .pack-sheen { animation: none; }
+
+  .pull-shake-once { animation: none; }
+
+  .pull-glow-2,
+  .pull-glow-3,
+  .pull-glow-4,
+  .pull-glow-5,
+  .pull-glow-6 {
+    animation: none;
+    box-shadow: 0 0 25px var(--pull-glow, transparent);
+  }
+
+  .pull-sparkle { animation: none; opacity: .7; }
+
+  .pull-burst-ring { animation: none; opacity: 0; }
+}

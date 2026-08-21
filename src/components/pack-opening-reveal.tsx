@@ -22,6 +22,10 @@ import {
   useState,
 } from "react";
 
+import {
+  PackArt,
+} from "@/components/pack-art";
+
 // =========================================================
 // RARITY-SCALED REVEAL EFFECTS
 //
@@ -574,22 +578,24 @@ export function PackOpeningReveal({
                       <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/[0.05] blur-[70px]" />
                     </div>
 
-                    <div className="relative flex h-full items-center justify-center rounded-2xl border border-amber-300/15 bg-black/70">
-                      <div className="text-center">
-                        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-amber-300/20 bg-amber-300/[0.04]">
-                          <Sparkles
-                            size={34}
-                            className="text-amber-300"
-                          />
-                        </div>
+                    <div className="relative h-full overflow-hidden rounded-2xl border border-amber-300/15 bg-black/70">
+                      <PackArt
+                        code={
+                          packCode
+                        }
+                        name={
+                          packName ||
+                          packLabel(
+                            packCode
+                          )
+                        }
+                        fill
+                      />
 
-                        <p className="mt-5 text-xs font-black uppercase tracking-[.28em] text-amber-200">
-                          Duelist Circle
-                        </p>
-
-                        <p className="mt-2 text-[9px] font-bold uppercase tracking-[.2em] text-zinc-600">
+                      <div className="pointer-events-none absolute inset-x-0 top-[38%] flex justify-center">
+                        <span className="rounded-full border border-white/25 bg-black/60 px-4 py-1.5 text-[9px] font-black uppercase tracking-[.25em] text-white backdrop-blur-sm">
                           Tap to Reveal
-                        </p>
+                        </span>
                       </div>
                     </div>
                   </div>

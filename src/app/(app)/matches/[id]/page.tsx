@@ -1209,9 +1209,13 @@ export default async function MatchDetailPage({
             DUEL HERO
         ================================================== */}
 
-        <header className="relative mt-6 overflow-hidden rounded-[28px] border border-red-300/10 bg-gradient-to-br from-white/[0.045] via-black/50 to-black/75 p-6 shadow-[0_30px_100px_rgba(0,0,0,.45)] sm:p-8">
+        <header className="arena-frame relative mt-6 overflow-hidden rounded-[28px] border border-red-300/10 bg-gradient-to-br from-white/[0.045] via-black/50 to-black/75 p-6 shadow-[0_30px_100px_rgba(0,0,0,.45)] sm:p-8">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute left-1/2 top-0 h-64 w-64 -translate-x-1/2 rounded-full bg-red-500/[0.05] blur-[100px]" />
+
+            <div className="absolute left-[15%] top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-violet-500/[0.05] blur-[110px]" />
+
+            <div className="absolute right-[15%] top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-cyan-500/[0.05] blur-[110px]" />
           </div>
 
           <div className="relative">
@@ -1242,7 +1246,7 @@ export default async function MatchDetailPage({
 
               {match.wager_type !==
                 "none" && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/20 bg-cyan-300/[0.06] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-200">
+                <span className="energy-line inline-flex items-center gap-1.5 rounded-full border border-cyan-300/20 bg-cyan-300/[0.06] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-200">
                   <Crown
                     size={11}
                   />
@@ -1258,17 +1262,17 @@ export default async function MatchDetailPage({
                 : "Duel Arena"}
             </p>
 
-            <div className="mt-5 grid items-center gap-5 md:grid-cols-[1fr_auto_1fr]">
+            <div className="mt-6 grid items-center gap-6 md:grid-cols-[1fr_auto_1fr]">
               {/* PLAYER ONE */}
 
               <div className="text-center md:text-right">
-                <p className="text-2xl font-black sm:text-3xl">
+                <p className="text-3xl font-black leading-tight sm:text-4xl">
                   {playerName(
                     playerOne
                   )}
                 </p>
 
-                <p className="mt-1 text-xs font-black uppercase tracking-[.15em] text-zinc-600">
+                <p className="mt-1.5 text-xs font-black uppercase tracking-[.15em] text-zinc-600">
                   {playerOne
                     ?.custom_title ??
                     "League Duelist"}
@@ -1287,22 +1291,26 @@ export default async function MatchDetailPage({
 
               {/* VS */}
 
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-red-300/20 bg-red-300/[0.06] shadow-[0_0_35px_rgba(248,113,113,.08)]">
-                <span className="text-sm font-black tracking-[.16em] text-red-200">
-                  VS
-                </span>
+              <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
+                <div className="pointer-events-none absolute inset-0 animate-pulse rounded-full bg-red-500/[0.12] blur-xl" />
+
+                <div className="corner-cut relative flex h-full w-full items-center justify-center border border-red-300/25 bg-black/60 shadow-[0_0_35px_rgba(248,113,113,.15)]">
+                  <span className="versus-mark text-xl tracking-[.05em]">
+                    VS
+                  </span>
+                </div>
               </div>
 
               {/* PLAYER TWO */}
 
               <div className="text-center md:text-left">
-                <p className="text-2xl font-black sm:text-3xl">
+                <p className="text-3xl font-black leading-tight sm:text-4xl">
                   {playerName(
                     playerTwo
                   )}
                 </p>
 
-                <p className="mt-1 text-xs font-black uppercase tracking-[.15em] text-zinc-600">
+                <p className="mt-1.5 text-xs font-black uppercase tracking-[.15em] text-zinc-600">
                   {playerTwo
                     ?.custom_title ??
                     "League Duelist"}
@@ -1320,7 +1328,9 @@ export default async function MatchDetailPage({
               </div>
             </div>
 
-            <p className="mt-6 text-center text-xs text-zinc-600">
+            <div className="duel-divider mx-auto mt-6 max-w-xs" />
+
+            <p className="mt-4 text-center text-xs text-zinc-600">
               Created{" "}
               {formatDate(
                 match.created_at

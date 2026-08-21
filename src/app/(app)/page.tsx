@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+import type {
+  CSSProperties,
+} from "react";
+
 import {
   AlertCircle,
   ArrowRight,
@@ -383,18 +387,26 @@ export default async function DashboardPage() {
             HERO
         ================================================== */}
 
-        <section className="relative mt-6 overflow-hidden rounded-[28px] border border-amber-300/15 bg-gradient-to-br from-white/[0.045] via-black/45 to-black/70 shadow-[0_30px_100px_rgba(0,0,0,.45)]">
+        <section className="arena-frame relative mt-6 overflow-hidden rounded-[28px] border border-amber-300/15 bg-gradient-to-br from-white/[0.045] via-black/45 to-black/70 shadow-[0_30px_100px_rgba(0,0,0,.45)]">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-amber-400/[0.06] blur-[120px]" />
 
             <div className="absolute -right-24 -top-24 h-[420px] w-[420px] rounded-full bg-violet-500/[0.07] blur-[130px]" />
+
+            <div
+              className="spell-glow -bottom-20 right-[8%] h-72 w-72"
+              style={{
+                "--glow-color":
+                  "rgba(139, 92, 246, .28)",
+              } as CSSProperties}
+            />
           </div>
 
           <div className="relative grid lg:grid-cols-[1.08fr_.92fr]">
             {/* LEFT */}
 
             <div className="relative z-10 flex min-h-[390px] flex-col justify-center p-6 sm:p-8 lg:p-10">
-              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.18em] text-amber-200">
+              <div className="energy-line inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.18em] text-amber-200">
                 <Crown size={12} />
                 Duelist Hub
               </div>

@@ -99,3 +99,123 @@ body {
 .pull-sparkle { animation: pull-sparkle 1.4s ease-in-out infinite; }
 
 .pull-burst-ring { animation: pull-burst 1.2s ease-out 1; }
+
+
+/* =========================================================
+   V4 — ARENA / DUEL-FRAME DESIGN LANGUAGE
+   Opt-in classes layered on top of .panel, used on the pages
+   where a duel-terminal / card-frame feel matters most (Home
+   hero, Match VS presentation, Profile identity card, Shop
+   headers). Not applied globally - keeps the rest of the app's
+   proven layout intact while giving key screens a distinct,
+   less "SaaS dashboard" identity.
+========================================================= */
+
+.corner-cut {
+  clip-path: polygon(
+    16px 0%, 100% 0%, 100% calc(100% - 16px),
+    calc(100% - 16px) 100%, 0% 100%, 0% 16px
+  );
+}
+
+.corner-cut-lg {
+  clip-path: polygon(
+    28px 0%, 100% 0%, 100% calc(100% - 28px),
+    calc(100% - 28px) 100%, 0% 100%, 0% 28px
+  );
+}
+
+.arena-frame {
+  /* Adds a gold card-frame hairline to the top and bottom edges of
+     whatever panel already has - it never overrides an existing
+     border/background, so it's safe to layer onto any panel. */
+  position: relative;
+}
+
+.arena-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg, transparent, rgb(252 211 77 / .5) 18%, rgb(252 211 77 / .5) 82%, transparent),
+    linear-gradient(90deg, transparent, rgb(252 211 77 / .22) 18%, rgb(252 211 77 / .22) 82%, transparent);
+  background-size: 100% 1px, 100% 1px;
+  background-position: top, bottom;
+  background-repeat: no-repeat;
+}
+
+.spell-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  background: radial-gradient(circle, var(--glow-color, rgba(252, 211, 77, .35)), transparent 70%);
+  pointer-events: none;
+}
+
+.duel-divider {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / .2), transparent);
+}
+
+.duel-divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: rgb(252 211 77 / .6);
+  border: 1px solid rgb(252 211 77 / .85);
+}
+
+.versus-mark {
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -.02em;
+  background: linear-gradient(180deg, #fff1b3, #d6a23e 60%, #a97a2c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 22px rgba(252, 211, 77, .35));
+}
+
+.hud-label {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+
+.energy-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.energy-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgb(252 211 77 / .12) 48%,
+    rgb(252 211 77 / .22) 50%,
+    rgb(252 211 77 / .12) 52%,
+    transparent 70%
+  );
+  background-size: 220% 100%;
+  animation: energy-sweep 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .energy-line::after { animation: none; }
+}
+
+@keyframes energy-sweep {
+  0% { background-position: 120% 0; }
+  50% { background-position: -20% 0; }
+  100% { background-position: -120% 0; }
+}

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -259,18 +260,19 @@ export function PackOpeningReveal({
     });
   }, [pulls]);
 
-  function clearBusyTimeout() {
-    if (
-      busyTimeout.current
-    ) {
-      clearTimeout(
+  const clearBusyTimeout =
+    useCallback(() => {
+      if (
         busyTimeout.current
-      );
+      ) {
+        clearTimeout(
+          busyTimeout.current
+        );
 
-      busyTimeout.current =
-        null;
-    }
-  }
+        busyTimeout.current =
+          null;
+      }
+    }, []);
 
   // Unlocks the slot once the current card's art has loaded
   // AND at least 550ms have passed since the flip started
@@ -278,26 +280,29 @@ export function PackOpeningReveal({
   // whichever finishes last. A 3s failsafe always releases
   // the lock even if the image never fires load/error, so a
   // broken image link can't soft-lock the reveal.
-  function markImageReady() {
-    setImageLoaded(true);
+  const markImageReady =
+    useCallback(() => {
+      setImageLoaded(true);
 
-    const elapsed =
-      Date.now() -
-      flipStartedAt.current;
+      const elapsed =
+        Date.now() -
+        flipStartedAt.current;
 
-    const remaining =
-      Math.max(
-        0,
-        550 - elapsed
-      );
+      const remaining =
+        Math.max(
+          0,
+          550 - elapsed
+        );
 
-    clearBusyTimeout();
+      clearBusyTimeout();
 
-    busyTimeout.current =
-      setTimeout(() => {
-        setBusy(false);
-      }, remaining);
-  }
+      busyTimeout.current =
+        setTimeout(() => {
+          setBusy(false);
+        }, remaining);
+    }, [
+      clearBusyTimeout,
+    ]);
 
   const highestPull =
     useMemo(() => {
@@ -365,6 +370,42 @@ export function PackOpeningReveal({
     rarityRank[
       currentRarity
     ] ?? 1;
+
+  const imageElementRef =
+    useRef<HTMLImageElement | null>(
+      null
+    );
+
+  // Safety net for a known React/browser race: when an
+  // image is already in the browser cache, the native
+  // `load` event can fire the instant the <img> is inserted
+  // — sometimes before our onLoad handler is even attached,
+  // so it's silently missed and the slot stays "waiting"
+  // forever (only rescued by the 3s failsafe, which reads as
+  // "this card just didn't work"). After each paint, check
+  // the image's own `.complete` flag directly and unlock
+  // immediately if it turns out it was already done.
+  useEffect(() => {
+    if (
+      !flipped ||
+      !currentPull?.card
+        .image_url
+    ) {
+      return;
+    }
+
+    if (
+      imageElementRef
+        .current
+        ?.complete
+    ) {
+      markImageReady();
+    }
+  }, [
+    flipped,
+    currentPull,
+    markImageReady,
+  ]);
 
   function handleSlotClick() {
     if (busy) {
@@ -567,6 +608,9 @@ export function PackOpeningReveal({
                           <Image
                             key={
                               currentPull.id
+                            }
+                            ref={
+                              imageElementRef
                             }
                             src={
                               currentPull

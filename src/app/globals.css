@@ -22,6 +22,15 @@ body {
   padding: 0.85rem 1rem;
   color: white;
   outline: none;
+  /* Never let a computed font-size drop below 16px on a text
+     input/textarea/select - iOS Safari auto-zooms the page on
+     focus for anything smaller, which is the classic "form
+     jumps and zooms in" complaint. This is unlayered CSS, so
+     per Tailwind v4's cascade-layer setup it already wins over
+     any text-xs/text-sm utility placed on the same element -
+     one rule fixes every .field input app-wide instead of
+     patching each one by hand. */
+  font-size: 1rem;
 }
 
 .field:focus {

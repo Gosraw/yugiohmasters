@@ -1108,14 +1108,47 @@ export default async function DeckBuilderPage({
           </div>
 
           {editable ? (
-            <DeckCollectionBrowser
-              deckId={
-                deck.id
-              }
-              cards={
-                browserCards
-              }
-            />
+            <>
+              {/* Below xl the Main/Extra Deck lists sit below this
+                  whole card browser (they only go sticky at xl:),
+                  so on phone/tablet a player loses sight of their
+                  deck progress while scrolling a long card grid.
+                  This compact bar keeps counts visible without
+                  duplicating the full lists. */}
+              {/* Not sticky: the browser's own search bar
+                  below already claims the sticky top slot, and
+                  two stacked sticky elements at the same offset
+                  would overlap on a short viewport. This still
+                  keeps the current count visible without having
+                  to scroll all the way to the Main/Extra lists. */}
+              <div className="mt-4 flex items-center gap-4 rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 xl:hidden">
+                <span
+                  className={`text-xs font-black ${
+                    mainCount >=
+                    40
+                      ? "text-emerald-300"
+                      : "text-zinc-400"
+                  }`}
+                >
+                  Main {mainCount}/60
+                </span>
+
+                <span className="h-3 w-px bg-white/10" />
+
+                <span className="text-xs font-black text-zinc-400">
+                  Extra {extraCount}/15
+                </span>
+              </div>
+
+              <DeckCollectionBrowser
+                deckId={
+                  deck.id
+                }
+                cards={
+                  browserCards
+                }
+              />
+            </>
           ) : (
             <div className="panel mt-4 p-6">
               <div className="flex items-start gap-3">

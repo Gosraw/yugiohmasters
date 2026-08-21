@@ -192,6 +192,11 @@ export function DeckCollectionBrowser({
       "name-asc"
     );
 
+  const [
+    filtersOpen,
+    setFiltersOpen,
+  ] = useState(false);
+
   const rarities =
     useMemo(() => {
       return [
@@ -358,6 +363,12 @@ export function DeckCollectionBrowser({
     rarity !== "all" ||
     sort !== "name-asc";
 
+  const hasSecondaryFilters =
+    category !== "all" ||
+    section !== "all" ||
+    rarity !== "all" ||
+    sort !== "name-asc";
+
   function resetFilters() {
     setSearch("");
     setCategory("all");
@@ -371,11 +382,12 @@ export function DeckCollectionBrowser({
 
   return (
     <>
-      {/* SEARCH */}
+      {/* SEARCH - sticky so it stays reachable while scrolling a
+          long card grid instead of forcing a scroll back to top. */}
 
-      <div className="panel mt-4 p-4">
-        <div className="flex flex-col gap-4">
-          <div className="relative">
+      <div className="panel sticky top-2 z-20 p-4 backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
             <Search
               size={18}
               className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
@@ -411,6 +423,43 @@ export function DeckCollectionBrowser({
               </button>
             )}
           </div>
+
+          {/* Filter type/section/rarity/sort collapse behind this
+              toggle on small screens only - sm: and up they stay
+              expanded, matching the previous always-open layout. */}
+          <button
+            type="button"
+            onClick={() =>
+              setFiltersOpen(
+                (open) => !open
+              )
+            }
+            aria-expanded={
+              filtersOpen
+            }
+            className={`relative flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-xl border px-3 text-xs font-black transition-all active:scale-95 sm:hidden ${
+              filtersOpen
+                ? "border-amber-300/40 bg-amber-300/15 text-amber-200"
+                : "border-white/10 bg-white/[0.025] text-zinc-400"
+            }`}
+          >
+            <SlidersHorizontal
+              size={15}
+            />
+
+            Filters
+
+            {hasSecondaryFilters && (
+              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border border-black bg-amber-300" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div
+        className={`panel mt-3 p-4 ${filtersOpen ? "block" : "hidden"} sm:block`}
+      >
+        <div className="flex flex-col gap-4">
 
           {/* CARD TYPE */}
 

@@ -206,7 +206,7 @@ export function DraftChoiceGrid({
 
       {detailCard && (
         <div
-          className="fixed inset-0 z-[100] overflow-y-auto bg-black/85 p-3 backdrop-blur-sm sm:p-6"
+          className="fixed inset-0 z-[100] overflow-y-auto bg-black/85 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:p-6"
           onClick={() =>
             setDetailCard(null)
           }

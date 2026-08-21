@@ -3,16 +3,12 @@
 import Link from "next/link";
 
 import {
-  Award,
   Compass,
   Home,
   Layers3,
   LibraryBig,
-  Medal,
-  Repeat2,
   ShoppingBag,
   Swords,
-  Trophy,
   UserRound,
 } from "lucide-react";
 
@@ -20,16 +16,16 @@ import {
   usePathname,
 } from "next/navigation";
 
+// Kept deliberately short - one-handed, thumb-reachable core
+// actions only. League standing, Trades, Competitions and
+// Achievements moved to /explore: still one tap away, but no
+// longer competing for space in the primary bar. See explore
+// page.tsx for where they now live.
 const items = [
   {
     href: "/",
     label: "HOME",
     icon: Home,
-  },
-  {
-    href: "/league",
-    label: "LEAGUE",
-    icon: Trophy,
   },
   {
     href: "/cards/collection",
@@ -52,23 +48,8 @@ const items = [
     icon: ShoppingBag,
   },
   {
-    href: "/trades",
-    label: "TRADES",
-    icon: Repeat2,
-  },
-  {
-    href: "/competitions",
-    label: "COMPETE",
-    icon: Medal,
-  },
-  {
-    href: "/achievements",
-    label: "AWARDS",
-    icon: Award,
-  },
-  {
     href: "/explore",
-    label: "EXPLORE",
+    label: "MORE",
     icon: Compass,
   },
   {

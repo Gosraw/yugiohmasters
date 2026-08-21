@@ -7,8 +7,11 @@ import {
   BookOpen,
   Compass,
   Layers3,
+  Medal,
+  Repeat2,
   Swords,
   Timer,
+  Trophy,
 } from "lucide-react";
 
 import type {
@@ -27,6 +30,27 @@ type ExploreItem = {
 };
 
 const items: ExploreItem[] = [
+  {
+    href: "/league",
+    label: "League",
+    description: "Standings, rank and where you sit against everyone else.",
+    icon: Trophy,
+    accent: "amber",
+  },
+  {
+    href: "/trades",
+    label: "Trades",
+    description: "Offer, review and complete card trades with the league.",
+    icon: Repeat2,
+    accent: "cyan",
+  },
+  {
+    href: "/competitions",
+    label: "Competitions",
+    description: "League tournaments, standings and reward rules.",
+    icon: Medal,
+    accent: "violet",
+  },
   {
     href: "/rivalries",
     label: "Rivalries",

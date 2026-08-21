@@ -42,7 +42,7 @@ export function DeckActionButton({
       className={
         isAdd
           ? `
-            inline-flex w-full cursor-pointer items-center justify-center gap-2
+            inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2
             rounded-xl border border-amber-300/20 bg-amber-300/10
             px-3 py-2 text-xs font-black text-amber-200
             transition-all duration-150
@@ -51,7 +51,7 @@ export function DeckActionButton({
             disabled:cursor-wait disabled:opacity-50
           `
           : `
-            inline-flex h-10 w-10 cursor-pointer items-center justify-center
+            inline-flex h-11 w-11 cursor-pointer items-center justify-center
             rounded-lg border border-red-400/30 bg-black/90
             text-red-300 shadow-lg
             transition-all duration-150

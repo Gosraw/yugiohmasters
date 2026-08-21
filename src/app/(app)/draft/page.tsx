@@ -130,33 +130,70 @@ export default async function DraftPage() {
   }
 
   // ======================================================
-  // ACTIVE DRAFT
+  // ACTIVE DRAFT FOR CURRENT PLAYER
   // ======================================================
 
   const {
-    data: activeDraft,
-    error: draftError,
+    data: activeDraftPlayer,
+    error: activeDraftPlayerError,
   } = await supabase
-    .from("drafts")
+    .from("draft_players")
     .select(
-      "id,name,status,main_picks_per_player,fusion_picks_per_player,xyz_picks_per_player"
+      "id,draft_id,status,main_picks_completed,fusion_picks_completed,xyz_picks_completed"
     )
     .eq(
-      "league_id",
-      membership.league_id
+      "profile_id",
+      userId
     )
     .eq(
       "status",
-      "active"
+      "drafting"
     )
     .order(
-      "created_at",
+      "joined_at",
       {
         ascending: false,
       }
     )
     .limit(1)
     .maybeSingle();
+
+  let activeDraft = null;
+  let draftError =
+    activeDraftPlayerError;
+
+  if (
+    activeDraftPlayer &&
+    !activeDraftPlayerError
+  ) {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("drafts")
+      .select(
+        "id,name,status,main_picks_per_player,fusion_picks_per_player,xyz_picks_per_player"
+      )
+      .eq(
+        "id",
+        activeDraftPlayer.draft_id
+      )
+      .eq(
+        "league_id",
+        membership.league_id
+      )
+      .eq(
+        "status",
+        "active"
+      )
+      .maybeSingle();
+
+    activeDraft =
+      data;
+
+    draftError =
+      error;
+  }
 
   if (draftError) {
     return (
@@ -179,24 +216,20 @@ export default async function DraftPage() {
       data: completedDraft,
       error: completedDraftError,
     } = await supabase
-      .from("drafts")
+      .from("draft_players")
       .select(
-        "id,name,status,completed_at"
+        "id,draft_id,status,completed_at"
       )
       .eq(
-        "league_id",
-        membership.league_id
-      )
-      .eq(
-        "name",
-        "Initial Draft"
+        "profile_id",
+        userId
       )
       .eq(
         "status",
         "completed"
       )
       .order(
-        "created_at",
+        "completed_at",
         {
           ascending: false,
         }

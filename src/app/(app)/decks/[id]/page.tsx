@@ -8,6 +8,7 @@ import {
   House,
   LockKeyhole,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Swords,
@@ -178,12 +179,22 @@ function DeckCardTile({
     `/decks/${deckId}`;
 
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-white/10 bg-black/20 transition-all duration-150 hover:-translate-y-1 hover:border-amber-300/30 hover:shadow-lg">
+    <div
+      className={`group relative overflow-hidden rounded-lg border bg-black/20 transition-all duration-150 hover:-translate-y-1 hover:shadow-lg ${
+        card.format_eligible
+          ? "border-white/10 hover:border-amber-300/30"
+          : "border-red-400/40 hover:border-red-300/60"
+      }`}
+    >
       <Link
         href={`/cards/${card.id}?returnTo=${encodeURIComponent(
           returnTo
         )}`}
-        title={`${card.name} #${instance.copy_number}`}
+        title={
+          card.format_eligible
+            ? `${card.name} #${instance.copy_number}`
+            : `${card.name} #${instance.copy_number} - no longer format-legal`
+        }
         className="block cursor-pointer"
       >
         {card.image_url ? (
@@ -632,6 +643,15 @@ export default async function DeckBuilderPage({
       )
   );
 
+  const ineligibleInDeckCount =
+    [
+      ...mainDeckCards,
+      ...extraDeckCards,
+    ].filter(
+      (item) =>
+        !item.card.format_eligible
+    ).length;
+
   // =======================================================
   // CLIENT BROWSER DATA
   // =======================================================
@@ -935,6 +955,33 @@ export default async function DeckBuilderPage({
           </div>
         </div>
       </section>
+
+      {ineligibleInDeckCount > 0 && (
+        <section className="mt-4 rounded-2xl border border-red-300/15 bg-red-300/[0.03] p-4">
+          <div className="flex items-start gap-3">
+            <ShieldAlert
+              size={17}
+              className="mt-0.5 shrink-0 text-red-300"
+            />
+
+            <div>
+              <p className="text-sm font-black text-red-100">
+                {ineligibleInDeckCount} card
+                {ineligibleInDeckCount === 1 ? "" : "s"} in this deck{" "}
+                {ineligibleInDeckCount === 1 ? "is" : "are"} no longer
+                format-legal
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-zinc-600">
+                A card&apos;s legality can change after it was added.
+                Marked with a red border below - consider swapping{" "}
+                {ineligibleInDeckCount === 1 ? "it" : "them"} out before
+                your next league duel.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* SETTINGS */}
 

@@ -284,6 +284,44 @@ const rarityStyles: Record<
     "border-yellow-300/50 bg-yellow-300/15 text-yellow-200",
 };
 
+const RARITY_RANK = [
+  "Normal",
+  "Rare",
+  "Super Rare",
+  "Ultra Rare",
+  "Secret Rare",
+  "Legendary",
+];
+
+// A light, subtle Boss Monster touch on a fresh pack opening -
+// not a full AI reaction, just a short in-character line keyed
+// off the best rarity pulled. See boss-companion-chat.tsx for
+// the full AI companion.
+function bossPullReaction(
+  bestRarity:
+    | string
+    | null
+) {
+  if (!bestRarity) {
+    return "Your Boss Monster is watching.";
+  }
+
+  const rank =
+    RARITY_RANK.indexOf(
+      bestRarity
+    );
+
+  if (rank >= 5) {
+    return "Your Boss Monster stirs - a Legendary. Rare company.";
+  }
+
+  if (rank >= 3) {
+    return "Your Boss Monster approves of that pull.";
+  }
+
+  return "Your Boss Monster nods. A solid addition to the collection.";
+}
+
 // =========================================================
 // HELPERS
 // =========================================================
@@ -861,6 +899,43 @@ export default async function ShopPage({
   // SUMMARY
   // ======================================================
 
+  const bestPullRarity =
+    openingPulls.reduce(
+      (
+        best: string | null,
+        pull
+      ) => {
+        const card =
+          pullCardMap.get(
+            pull.card_catalog_id
+          );
+
+        const rarity =
+          card?.game_rarity ??
+          pull.pulled_rarity ??
+          null;
+
+        if (!rarity) {
+          return best;
+        }
+
+        if (
+          !best ||
+          RARITY_RANK.indexOf(
+            rarity
+          ) >
+            RARITY_RANK.indexOf(
+              best
+            )
+        ) {
+          return rarity;
+        }
+
+        return best;
+      },
+      null
+    );
+
   const availableSlots =
     rotationCards.filter(
       (card) =>
@@ -1077,7 +1152,18 @@ export default async function ShopPage({
               )}
             </div>
 
-            <div className="mt-5">
+            <p className="mt-5 flex items-center gap-2 text-xs font-bold text-violet-200/80">
+              <Crown
+                size={13}
+                className="text-amber-300"
+              />
+
+              {bossPullReaction(
+                bestPullRarity
+              )}
+            </p>
+
+            <div className="mt-4">
               <Link
                 href="/shop"
                 className="text-sm font-black text-amber-300 transition hover:text-amber-200"

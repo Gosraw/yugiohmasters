@@ -44,6 +44,20 @@ begin;
 --   DP is likewise never reserved at submit - only checked and
 --   moved atomically at accept.
 --
+--   accept_trade() makes "first valid accept wins" concurrency
+--   -safe using ONLY transaction-scoped row locks (never the
+--   persistent card_instances.locked columns): it locks the
+--   trade row FOR UPDATE first (serializes two accepts of the
+--   SAME trade), then locks every involved card_instance FOR
+--   UPDATE in a deterministic id order (serializes two accepts
+--   of DIFFERENT trades that happen to share a physical card,
+--   and avoids deadlocks between trades sharing several cards).
+--   Only after both sets of locks are held does it re-check live
+--   ownership, league membership, DP balances, and perform the
+--   transfer. These locks are released automatically when the
+--   transaction commits or rolls back - nothing persists on the
+--   row itself.
+--
 -- Part 1b: LOCK-CONSISTENCY BUG FIX, MATCH WAGERS ONLY.
 --   card_instances_lock_consistency requires lock_reference_id
 --   + locked_at whenever locked = true. The original
@@ -270,12 +284,12 @@ begin
     (select auth.uid());
 
 
-  -- Lock the TRADE ROW, not any card. Two concurrent accept
-  -- attempts on the SAME trade serialize here. Concurrent
-  -- accepts of DIFFERENT trades that happen to share a card
-  -- are allowed to race - whichever gets past the live
-  -- ownership check below first wins; the loser fails
-  -- cleanly instead of doing a partial transfer.
+  -- Lock the TRADE ROW first. Two concurrent accept attempts on
+  -- the SAME trade serialize here. This alone does NOT protect
+  -- against two DIFFERENT pending trades that happen to share a
+  -- physical card - that race is closed below, right after the
+  -- status checks, by additionally locking every involved
+  -- card_instance in a deterministic order.
 
   select
     t.league_id,
@@ -317,6 +331,34 @@ begin
 
 
   -- -------------------------------------------------------
+  -- Lock every card_instance involved in this trade, in a
+  -- deterministic order (by id), BEFORE checking or touching
+  -- anything else below. The trade-row lock above only
+  -- serializes two accept attempts on the SAME trade; it does
+  -- nothing for two DIFFERENT pending trades that happen to
+  -- share a physical card. Without this, both accepts could
+  -- read the live ownership check as passing before either
+  -- one's ownership UPDATE commits. Locking here, by id, means:
+  -- whichever accept gets these row locks first proceeds to the
+  -- ownership check and transfer while the other one blocks
+  -- until the first commits (or rolls back) - true "first valid
+  -- accept wins" instead of a race. Locking in a fixed id order
+  -- (rather than whatever order the join happens to return
+  -- rows) also means two trades that share several overlapping
+  -- cards always attempt to acquire those locks in the same
+  -- order, which avoids a deadlock between them.
+  -- -------------------------------------------------------
+
+  perform ci.id
+  from public.card_instances ci
+  join public.trade_items ti
+    on ti.card_instance_id = ci.id
+  where ti.trade_id = target_trade_id
+  order by ci.id
+  for update of ci;
+
+
+  -- -------------------------------------------------------
   -- Both players must still actually be league members.
   -- -------------------------------------------------------
 
@@ -345,12 +387,17 @@ begin
 
 
   -- -------------------------------------------------------
-  -- LIVE ownership - the one authoritative check. A card can
-  -- be offered in several pending trades at once; whichever
-  -- accept reaches here first while ownership still matches
-  -- wins. Every later accept for a trade touching the same
-  -- card fails right here instead of doing a partial
-  -- transfer - first valid accept wins.
+  -- LIVE ownership - the one authoritative check. Because the
+  -- card_instance rows above are now locked, this read is safe
+  -- from the concurrent-accept race: a second accept on a
+  -- different trade touching the same card cannot reach this
+  -- point until the first accept's row locks are released
+  -- (i.e. that transaction has committed or rolled back), so
+  -- whichever accept gets here first while ownership still
+  -- matches wins, and every later accept for a trade touching
+  -- the same card reliably sees the updated owner and fails
+  -- right here instead of racing into a partial transfer -
+  -- first valid accept wins, for real.
   -- -------------------------------------------------------
 
   if exists (
@@ -1506,10 +1553,13 @@ to authenticated;
 -- happen automatically, no matter which code path caused the
 -- change:
 --
---  1. The card instance is removed from every deck it was
---     sitting in (deck_cards references specific
+--  1. The card instance is removed from every deck of the OLD
+--     owner it was sitting in (deck_cards references specific
 --     card_instance_id rows, not just the catalog card - see
---     202608190009_deck_management.sql / deck_cards).
+--     202608190009_deck_management.sql / deck_cards). Scoped to
+--     decks.owner_id = old.current_owner_id specifically, so a
+--     stray deck_cards row belonging to someone else is never
+--     touched even in a data-integrity edge case.
 --  2. If that pulled a deck below (or above) its Ready
 --     requirements, the deck drops back to Draft - and, if it
 --     was the player's Active deck, is deactivated - rather
@@ -1543,10 +1593,22 @@ declare
   deck_extra_max integer;
 begin
 
+  -- Only ever touch decks belonging to the OLD owner. Joining
+  -- to decks and filtering on d.owner_id = old.current_owner_id
+  -- (rather than trusting that a card_instance can only ever
+  -- appear in its current owner's decks) means that even if a
+  -- data-integrity issue somehow left this card_instance sitting
+  -- in another player's deck_cards row, this trigger will never
+  -- blindly rip it out of a deck that isn't the previous
+  -- owner's.
+
   for affected_deck in
     select distinct dc.deck_id
     from public.deck_cards dc
+    join public.decks d
+      on d.id = dc.deck_id
     where dc.card_instance_id = new.id
+      and d.owner_id = old.current_owner_id
   loop
 
     delete from public.deck_cards

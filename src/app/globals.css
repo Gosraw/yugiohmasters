@@ -109,6 +109,102 @@ body {
 
 .pull-burst-ring { animation: pull-burst 1.2s ease-out 1; }
 
+/* ---------------------------------------------------------
+   SECRET RARE — its own identity (darkness + shimmer
+   streaks), not just "Ultra Rare with more particles".
+--------------------------------------------------------- */
+
+@keyframes pull-secret-streak {
+  0% { transform: translateX(-130%) rotate(18deg); opacity: 0; }
+  15% { opacity: .8; }
+  85% { opacity: .8; }
+  100% { transform: translateX(130%) rotate(18deg); opacity: 0; }
+}
+
+.pull-secret-vignette {
+  background: radial-gradient(
+    120% 90% at 50% 50%,
+    transparent 35%,
+    rgba(0, 0, 0, .55) 100%
+  );
+}
+
+.pull-secret-streak {
+  width: 40%;
+  height: 220%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(221, 214, 254, .5),
+    transparent
+  );
+  animation: pull-secret-streak 2.6s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------
+   SCREEN REACTION — a brief, contained flash for Ultra Rare
+   and above. Lives inside the reveal card, not a true
+   viewport-wide flash (stays readable, not jarring).
+--------------------------------------------------------- */
+
+@keyframes pull-screen-flash {
+  0% { opacity: 0; }
+  12% { opacity: .55; }
+  100% { opacity: 0; }
+}
+
+.pull-screen-flash {
+  animation: pull-screen-flash .6s ease-out 1;
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(255, 255, 255, .9),
+    transparent 70%
+  );
+}
+
+/* ---------------------------------------------------------
+   LEGENDARY CINEMATIC — the multi-beat sequence: dim,
+   buildup, silhouette, flash, impact, reveal.
+--------------------------------------------------------- */
+
+@keyframes legendary-dim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes legendary-silhouette-pulse {
+  0%, 100% { box-shadow: 0 0 25px rgba(250, 204, 21, .25); }
+  50% { box-shadow: 0 0 55px rgba(250, 204, 21, .55); }
+}
+
+@keyframes legendary-flash {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes legendary-impact-shake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(4px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-9px, 0, 0); }
+  40%, 60% { transform: translate3d(9px, 0, 0); }
+}
+
+@keyframes legendary-line-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.legendary-dim { animation: legendary-dim-in .5s ease-out both; }
+
+.legendary-silhouette { animation: legendary-silhouette-pulse 1.6s ease-in-out infinite; }
+
+.legendary-flash { animation: legendary-flash .45s ease-out 1; }
+
+.legendary-impact-shake { animation: legendary-impact-shake .5s ease-in-out 1; }
+
+.legendary-line-in { animation: legendary-line-in .4s ease-out both; }
+
 
 /* =========================================================
    V4 — ARENA / DUEL-FRAME DESIGN LANGUAGE
@@ -290,4 +386,24 @@ body {
   .pull-sparkle { animation: none; opacity: .7; }
 
   .pull-burst-ring { animation: none; opacity: 0; }
+
+  /* Fase G/H/J additions - same rule: no motion, keep a
+     legible static end-state. The React side also checks
+     prefers-reduced-motion directly (see pack-opening-reveal
+     .tsx) and skips mounting the flash/impact/shimmer pieces
+     entirely under reduced motion - this CSS is the backstop
+     for anything that still renders. */
+  .pull-secret-streak { animation: none; opacity: .25; }
+
+  .pull-screen-flash { animation: none; opacity: 0; }
+
+  .legendary-dim { animation: none; }
+
+  .legendary-silhouette { animation: none; box-shadow: 0 0 25px rgba(250, 204, 21, .35); }
+
+  .legendary-flash { animation: none; opacity: 0; }
+
+  .legendary-impact-shake { animation: none; }
+
+  .legendary-line-in { animation: none; }
 }

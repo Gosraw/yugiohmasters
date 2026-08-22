@@ -4,12 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 
 import {
+  CheckCircle2,
   ChevronRight,
   Crown,
   Layers3,
   LoaderCircle,
   PackageOpen,
   RotateCcw,
+  SkipForward,
   Sparkles,
   Star,
 } from "lucide-react";
@@ -20,11 +22,16 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import {
   PackArt,
 } from "@/components/pack-art";
+
+import {
+  generateLegendaryFlavor,
+} from "@/lib/shop/legendary-flavor";
 
 // =========================================================
 // RARITY-SCALED REVEAL EFFECTS
@@ -50,7 +57,76 @@ function sparkleCountForRank(
   if (rank >= 6) return 6;
   if (rank === 5) return 4;
   if (rank === 4) return 2;
+  if (rank === 3) return 2;
   return 0;
+}
+
+// =========================================================
+// REDUCED MOTION (JS-level)
+//
+// The CSS side already neutralizes every pull-*/legendary-*
+// animation under `prefers-reduced-motion: reduce` (see
+// globals.css) as a backstop, but Fase J calls for real JS-
+// level handling too: under reduced motion we skip MOUNTING
+// the flash/impact-shake/shimmer pieces at all (not just
+// relying on their animation being turned off), and compress
+// the Legendary cinematic's timeline so it resolves almost
+// immediately instead of just playing motionlessly for 4+
+// seconds.
+// =========================================================
+
+function subscribeToReducedMotion(
+  onChange: () => void
+) {
+  if (
+    typeof window ===
+      "undefined" ||
+    !window.matchMedia
+  ) {
+    return () => {};
+  }
+
+  const query =
+    window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    );
+
+  query.addEventListener(
+    "change",
+    onChange
+  );
+
+  return () =>
+    query.removeEventListener(
+      "change",
+      onChange
+    );
+}
+
+function getReducedMotionSnapshot() {
+  if (
+    typeof window ===
+      "undefined" ||
+    !window.matchMedia
+  ) {
+    return false;
+  }
+
+  return window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+}
+
+function getReducedMotionServerSnapshot() {
+  return false;
+}
+
+function usePrefersReducedMotion() {
+  return useSyncExternalStore(
+    subscribeToReducedMotion,
+    getReducedMotionSnapshot,
+    getReducedMotionServerSnapshot
+  );
 }
 
 const sparklePositions = [
@@ -84,6 +160,10 @@ type Pull = {
     | string
     | null;
 
+  is_first_for_player:
+    | boolean
+    | null;
+
   card: {
     id: string;
 
@@ -110,8 +190,143 @@ type Pull = {
       | null;
 
     card_type: string;
+
+    attribute:
+      | string
+      | null;
+
+    monster_type:
+      | string
+      | null;
+
+    archetype:
+      | string
+      | null;
+
+    level:
+      | number
+      | null;
+
+    rank:
+      | number
+      | null;
+
+    link_rating:
+      | number
+      | null;
   };
 };
+
+// =========================================================
+// LEGENDARY CINEMATIC — steps and timelines
+//
+// A "first ever pull of this Legendary" gets the full 11-beat
+// sequence (dim -> buildup -> flavor -> hint -> silhouette ->
+// pause -> flash -> impact -> reveal -> nameplate -> added).
+// A later duplicate of the same card gets a shorter sequence
+// that starts at the silhouette beat - still a premium moment,
+// just without the backstory buildup. See Fase I: under the
+// game's current card-scarcity rules a Legendary is capped at
+// exactly one copy per league (see card_copy_limit() - this
+// predates this session's work), so in practice this duplicate
+// branch is not reachable today. It's still implemented
+// correctly and defensively, in case that scarcity rule ever
+// changes.
+// =========================================================
+
+const LEGENDARY_STEP = {
+  DIM: 0,
+  BUILDUP: 1,
+  HINT: 2,
+  SILHOUETTE: 3,
+  PAUSE: 4,
+  FLASH: 5,
+  IMPACT: 6,
+  REVEAL: 7,
+  ADDED: 8,
+} as const;
+
+const LEGENDARY_FINAL_STEP =
+  LEGENDARY_STEP.ADDED;
+
+// Step where Skip first becomes available for a first-ever
+// pull - after the first buildup beat has had a moment to be
+// seen, per "a short first buildup may be deliberately
+// visible, but must then offer Skip."
+const LEGENDARY_SKIP_UNLOCKS_AT =
+  LEGENDARY_STEP.BUILDUP;
+
+type LegendaryTimeline = Partial<
+  Record<
+    (typeof LEGENDARY_STEP)[keyof typeof LEGENDARY_STEP],
+    number
+  >
+>;
+
+const FIRST_PULL_TIMELINE: LegendaryTimeline =
+  {
+    [LEGENDARY_STEP.DIM]: 0,
+    [LEGENDARY_STEP.BUILDUP]: 500,
+    [LEGENDARY_STEP.HINT]: 1500,
+    [LEGENDARY_STEP.SILHOUETTE]: 2300,
+    [LEGENDARY_STEP.PAUSE]: 3000,
+    [LEGENDARY_STEP.FLASH]: 3400,
+    [LEGENDARY_STEP.IMPACT]: 3700,
+    [LEGENDARY_STEP.REVEAL]: 4000,
+    [LEGENDARY_STEP.ADDED]: 4700,
+  };
+
+const DUPLICATE_TIMELINE: LegendaryTimeline =
+  {
+    [LEGENDARY_STEP.SILHOUETTE]: 0,
+    [LEGENDARY_STEP.PAUSE]: 500,
+    [LEGENDARY_STEP.FLASH]: 900,
+    [LEGENDARY_STEP.IMPACT]: 1200,
+    [LEGENDARY_STEP.REVEAL]: 1500,
+    [LEGENDARY_STEP.ADDED]: 2000,
+  };
+
+// Reduced motion: same beats, heavily compressed, so the
+// sequence still "happens" (busy-lock, is_first_for_player
+// captions etc. all stay consistent) but never sits on a
+// flash/shake/particle-heavy frame for long.
+const FIRST_PULL_TIMELINE_REDUCED: LegendaryTimeline =
+  {
+    [LEGENDARY_STEP.DIM]: 0,
+    [LEGENDARY_STEP.BUILDUP]: 120,
+    [LEGENDARY_STEP.HINT]: 320,
+    [LEGENDARY_STEP.SILHOUETTE]: 480,
+    [LEGENDARY_STEP.PAUSE]: 560,
+    [LEGENDARY_STEP.FLASH]: 600,
+    [LEGENDARY_STEP.IMPACT]: 640,
+    [LEGENDARY_STEP.REVEAL]: 680,
+    [LEGENDARY_STEP.ADDED]: 900,
+  };
+
+const DUPLICATE_TIMELINE_REDUCED: LegendaryTimeline =
+  {
+    [LEGENDARY_STEP.SILHOUETTE]: 0,
+    [LEGENDARY_STEP.PAUSE]: 80,
+    [LEGENDARY_STEP.FLASH]: 120,
+    [LEGENDARY_STEP.IMPACT]: 160,
+    [LEGENDARY_STEP.REVEAL]: 200,
+    [LEGENDARY_STEP.ADDED]: 350,
+  };
+
+function legendaryTimelineFor(
+  isFirstPull: boolean,
+  reducedMotion: boolean
+): LegendaryTimeline {
+  if (isFirstPull) {
+    return reducedMotion
+      ? FIRST_PULL_TIMELINE_REDUCED
+      : FIRST_PULL_TIMELINE;
+  }
+
+  return reducedMotion
+    ? DUPLICATE_TIMELINE_REDUCED
+    : DUPLICATE_TIMELINE;
+}
 
 type PackOpeningRevealProps = {
   packName: string;
@@ -171,6 +386,20 @@ function packLabel(
     return "Deluxe Pack";
   }
 
+  if (
+    code ===
+    "special_attribute"
+  ) {
+    return "Attribute Spotlight";
+  }
+
+  if (
+    code ===
+    "special_archetype"
+  ) {
+    return "Archetype Spotlight";
+  }
+
   return "Special Pack";
 }
 
@@ -226,6 +455,41 @@ export function PackOpeningReveal({
   const flipStartedAt =
     useRef(0);
 
+  const reducedMotion =
+    usePrefersReducedMotion();
+
+  // Legendary cinematic step (0..8, see LEGENDARY_STEP above).
+  // Only meaningful while the current card is a Legendary and
+  // `flipped` is true - reset to 0 every time a new card is
+  // flipped.
+  const [
+    legendaryStep,
+    setLegendaryStep,
+  ] = useState<number>(0);
+
+  const [
+    legendarySkipped,
+    setLegendarySkipped,
+  ] = useState(false);
+
+  const legendaryTimers =
+    useRef<
+      ReturnType<
+        typeof setTimeout
+      >[]
+    >([]);
+
+  const clearLegendaryTimers =
+    useCallback(() => {
+      legendaryTimers.current.forEach(
+        (timer) =>
+          clearTimeout(timer)
+      );
+
+      legendaryTimers.current =
+        [];
+    }, []);
+
   useEffect(() => {
     return () => {
       if (
@@ -235,8 +499,12 @@ export function PackOpeningReveal({
           busyTimeout.current
         );
       }
+
+      clearLegendaryTimers();
     };
-  }, []);
+  }, [
+    clearLegendaryTimers,
+  ]);
 
   // Warm the browser's image cache for every card in the
   // pack as soon as the reveal screen mounts, so that by the
@@ -278,6 +546,31 @@ export function PackOpeningReveal({
       }
     }, []);
 
+  const complete =
+    revealed >=
+    pulls.length;
+
+  const currentPull =
+    pulls[
+      Math.min(
+        revealed,
+        pulls.length - 1
+      )
+    ];
+
+  const currentRarity =
+    currentPull
+      ? (currentPull.card
+          .game_rarity ??
+          currentPull.pulled_rarity ??
+          "Normal")
+      : "Normal";
+
+  const currentRank =
+    rarityRank[
+      currentRarity
+    ] ?? 1;
+
   // Unlocks the slot once the current card's art has loaded
   // AND at least 550ms have passed since the flip started
   // (so the flip animation itself always has time to play),
@@ -287,6 +580,15 @@ export function PackOpeningReveal({
   const markImageReady =
     useCallback(() => {
       setImageLoaded(true);
+
+      // Legendary pulls: the card art loading in the
+      // background is not what gates the slot - the
+      // cinematic sequence's own timeline (or a Skip) is.
+      // Bail out here so this doesn't race ahead and clear
+      // `busy` mid-cinematic.
+      if (currentRank === 6) {
+        return;
+      }
 
       const elapsed =
         Date.now() -
@@ -306,6 +608,7 @@ export function PackOpeningReveal({
         }, remaining);
     }, [
       clearBusyTimeout,
+      currentRank,
     ]);
 
   const highestPull =
@@ -350,30 +653,70 @@ export function PackOpeningReveal({
       )[0] ?? null;
     }, [pulls]);
 
-  const complete =
-    revealed >=
-    pulls.length;
-
-  const currentPull =
-    pulls[
-      Math.min(
-        revealed,
-        pulls.length - 1
-      )
-    ];
-
-  const currentRarity =
+  // `is_first_for_player` is null for anything that isn't a
+  // Legendary pull. Treat null/undefined as "assume first" -
+  // showing the full cinematic is never the wrong call, while
+  // silently downgrading an actual first pull to the short
+  // duplicate version would be.
+  const isFirstLegendaryPull =
     currentPull
-      ? (currentPull.card
-          .game_rarity ??
-          currentPull.pulled_rarity ??
-          "Normal")
-      : "Normal";
+      ?.is_first_for_player !==
+    false;
 
-  const currentRank =
-    rarityRank[
-      currentRarity
-    ] ?? 1;
+  const legendaryFlavor =
+    useMemo(() => {
+      if (
+        !currentPull ||
+        currentRank !== 6
+      ) {
+        return [];
+      }
+
+      return generateLegendaryFlavor(
+        {
+          id: currentPull
+            .card.id,
+
+          name: currentPull
+            .card.name,
+
+          attribute:
+            currentPull.card
+              .attribute,
+
+          monster_type:
+            currentPull.card
+              .monster_type,
+
+          archetype:
+            currentPull.card
+              .archetype,
+
+          card_type:
+            currentPull.card
+              .card_type,
+
+          atk: currentPull
+            .card.atk,
+
+          def: currentPull
+            .card.def,
+
+          level: currentPull
+            .card.level,
+
+          rank: currentPull
+            .card.rank,
+
+          link_rating:
+            currentPull.card
+              .link_rating,
+        }
+      );
+    }, [
+      currentPull,
+      currentRank,
+    ]);
 
   const imageElementRef =
     useRef<HTMLImageElement | null>(
@@ -411,6 +754,83 @@ export function PackOpeningReveal({
     markImageReady,
   ]);
 
+  // Schedules the Legendary cinematic's step transitions per
+  // the chosen timeline, and - since markImageReady bails out
+  // for Legendary cards (see above) - is also what eventually
+  // clears `busy`, at the timeline's final beat.
+  const startLegendarySequence =
+    useCallback(
+      (
+        isFirstPull: boolean
+      ) => {
+        clearLegendaryTimers();
+
+        setLegendaryStep(0);
+        setLegendarySkipped(
+          false
+        );
+
+        const timeline =
+          legendaryTimelineFor(
+            isFirstPull,
+            reducedMotion
+          );
+
+        Object.entries(
+          timeline
+        ).forEach(
+          ([
+            step,
+            delay,
+          ]) => {
+            const timer =
+              setTimeout(
+                () => {
+                  setLegendaryStep(
+                    Number(
+                      step
+                    )
+                  );
+
+                  if (
+                    Number(
+                      step
+                    ) ===
+                    LEGENDARY_FINAL_STEP
+                  ) {
+                    setBusy(
+                      false
+                    );
+                  }
+                },
+                delay
+              );
+
+            legendaryTimers.current.push(
+              timer
+            );
+          }
+        );
+      },
+      [
+        clearLegendaryTimers,
+        reducedMotion,
+      ]
+    );
+
+  // Jumps straight to the end of the cinematic. Available from
+  // LEGENDARY_SKIP_UNLOCKS_AT onward for a first-ever pull (the
+  // "short first buildup" is allowed to play once), or
+  // immediately for a duplicate (its sequence is already short).
+  function skipLegendary() {
+    clearLegendaryTimers();
+    setLegendarySkipped(true);
+    setLegendaryStep(
+      LEGENDARY_FINAL_STEP
+    );
+    setBusy(false);
+  }
+
   function handleSlotClick() {
     if (busy) {
       return;
@@ -424,18 +844,36 @@ export function PackOpeningReveal({
       flipStartedAt.current =
         Date.now();
 
-      // Failsafe: always unlock after 3s even if the image
-      // never fires load/error, so a broken card image can
-      // never soft-lock the reveal screen.
+      const isLegendary =
+        currentRank === 6;
+
+      // Failsafe: always unlock even if something goes wrong,
+      // so a broken card/animation can never soft-lock the
+      // reveal screen. Legendary gets a longer window since
+      // its own cinematic can legitimately run several
+      // seconds - this failsafe is a backstop, not the normal
+      // path (the cinematic's own final beat / Skip clears
+      // `busy` first in the ordinary case).
       clearBusyTimeout();
 
       busyTimeout.current =
-        setTimeout(() => {
-          setBusy(false);
-        }, 3000);
+        setTimeout(
+          () => {
+            setBusy(false);
+          },
+          isLegendary
+            ? 9000
+            : 3000
+        );
 
-      // Cards with no art at all have nothing to wait for.
-      if (
+      if (isLegendary) {
+        startLegendarySequence(
+          currentPull
+            ?.is_first_for_player !==
+            false
+        );
+      } else if (
+        // Cards with no art at all have nothing to wait for.
         !currentPull?.card
           .image_url
       ) {
@@ -447,6 +885,11 @@ export function PackOpeningReveal({
 
     setFlipped(false);
     setImageLoaded(false);
+    clearLegendaryTimers();
+    setLegendaryStep(0);
+    setLegendarySkipped(
+      false
+    );
 
     setRevealed(
       (current) =>
@@ -459,9 +902,14 @@ export function PackOpeningReveal({
 
   function revealAll() {
     clearBusyTimeout();
+    clearLegendaryTimers();
     setBusy(false);
     setFlipped(false);
     setImageLoaded(false);
+    setLegendaryStep(0);
+    setLegendarySkipped(
+      false
+    );
 
     setRevealed(
       pulls.length
@@ -470,9 +918,14 @@ export function PackOpeningReveal({
 
   function restart() {
     clearBusyTimeout();
+    clearLegendaryTimers();
     setBusy(false);
     setFlipped(false);
     setImageLoaded(false);
+    setLegendaryStep(0);
+    setLegendarySkipped(
+      false
+    );
     setRevealed(0);
   }
 
@@ -538,10 +991,18 @@ export function PackOpeningReveal({
           <div className="mx-auto max-w-sm">
             <div
               className={
-                flipped &&
-                currentRank >= 4
-                  ? "pull-shake-once"
-                  : ""
+                reducedMotion
+                  ? ""
+                  : flipped &&
+                      currentRank === 6
+                    ? legendaryStep >=
+                      LEGENDARY_STEP.IMPACT
+                      ? "legendary-impact-shake"
+                      : ""
+                    : flipped &&
+                        currentRank >= 4
+                      ? "pull-shake-once"
+                      : ""
               }
             >
               <button
@@ -672,6 +1133,39 @@ export function PackOpeningReveal({
                             </div>
                           )}
 
+                        {/* SECRET RARE — its own identity:
+                            a dark vignette plus a couple of
+                            diagonal shimmer streaks, distinct
+                            from "Ultra Rare with more sparkles". */}
+                        {currentRank ===
+                          5 &&
+                          !reducedMotion && (
+                          <>
+                            <div className="pull-secret-vignette pointer-events-none absolute inset-0" />
+
+                            <div className="pull-secret-streak pointer-events-none absolute -left-1/4 top-0" />
+
+                            <div
+                              className="pull-secret-streak pointer-events-none absolute -left-1/4 top-0"
+                              style={{
+                                animationDelay:
+                                  "1.1s",
+                              }}
+                            />
+                          </>
+                        )}
+
+                        {/* SCREEN REACTION — Ultra Rare and
+                            Secret Rare get a brief contained
+                            flash the moment they're revealed. */}
+                        {(currentRank ===
+                          4 ||
+                          currentRank ===
+                            5) &&
+                          !reducedMotion && (
+                          <div className="pull-screen-flash pointer-events-none absolute inset-0" />
+                        )}
+
                         {sparkleCountForRank(
                           currentRank
                         ) > 0 &&
@@ -729,7 +1223,94 @@ export function PackOpeningReveal({
                               currentRarity
                             }
                           </p>
+
+                          {currentRank ===
+                            6 &&
+                            legendaryStep >=
+                              LEGENDARY_STEP.ADDED && (
+                              <p className="legendary-line-in mt-2 flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-300">
+                                <CheckCircle2
+                                  size={
+                                    11
+                                  }
+                                />
+
+                                {isFirstLegendaryPull
+                                  ? "First Legendary Pull · Added to Collection"
+                                  : "Added to Collection"}
+                              </p>
+                            )}
                         </div>
+
+                        {/* ==============================
+                            LEGENDARY CINEMATIC OVERLAY
+                            Sits on top of the card art above
+                            (already loading in the
+                            background) until the REVEAL beat,
+                            then gets out of the way.
+                        ============================== */}
+
+                        {currentRank ===
+                          6 &&
+                          legendaryStep <
+                            LEGENDARY_STEP.REVEAL && (
+                          <div className="legendary-dim pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center overflow-hidden rounded-xl bg-black/92 p-5 text-center">
+                            {legendaryStep <
+                              LEGENDARY_STEP.SILHOUETTE && (
+                              <div className="space-y-3">
+                                {legendaryFlavor
+                                  .slice(
+                                    0,
+                                    legendaryStep >=
+                                      LEGENDARY_STEP.HINT
+                                      ? 2
+                                      : 1
+                                  )
+                                  .map(
+                                    (
+                                      line,
+                                      index
+                                    ) => (
+                                      <p
+                                        key={
+                                          index
+                                        }
+                                        className="legendary-line-in text-xs italic leading-5 text-amber-100/90"
+                                      >
+                                        {
+                                          line
+                                        }
+                                      </p>
+                                    )
+                                  )}
+
+                                <p className="pt-1 text-[8px] font-black uppercase tracking-[.3em] text-amber-300/60">
+                                  Duelist Circle Chronicle
+                                </p>
+                              </div>
+                            )}
+
+                            {legendaryStep >=
+                              LEGENDARY_STEP.SILHOUETTE && (
+                              <div
+                                className={`relative flex h-32 w-24 items-center justify-center rounded-2xl border border-amber-300/40 bg-black ${reducedMotion ? "" : "legendary-silhouette"}`}
+                              >
+                                <Crown
+                                  size={
+                                    28
+                                  }
+                                  className="text-amber-300/70"
+                                />
+                              </div>
+                            )}
+
+                            {legendaryStep >=
+                              LEGENDARY_STEP.FLASH &&
+                              !reducedMotion && (
+                                <div className="legendary-flash pointer-events-none absolute inset-0 bg-white" />
+                              )}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -754,7 +1335,32 @@ export function PackOpeningReveal({
             </div>
           </div>
 
-          <div className="mt-4 text-center">
+          <div className="mt-4 flex items-center justify-center gap-4">
+            {flipped &&
+              currentRank ===
+                6 &&
+              !legendarySkipped &&
+              legendaryStep <
+                LEGENDARY_FINAL_STEP &&
+              legendaryStep >=
+                LEGENDARY_SKIP_UNLOCKS_AT && (
+                <button
+                  type="button"
+                  onClick={
+                    skipLegendary
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300/25 bg-amber-300/[0.06] px-3 py-1.5 text-xs font-black text-amber-200 transition hover:bg-amber-300/[0.12]"
+                >
+                  <SkipForward
+                    size={
+                      12
+                    }
+                  />
+
+                  Skip
+                </button>
+              )}
+
             <button
               type="button"
               onClick={

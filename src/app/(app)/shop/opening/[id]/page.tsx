@@ -37,6 +37,10 @@ type Opening = {
     | string
     | null;
 
+  special_pack_rotation_id:
+    | string
+    | null;
+
   opened_at:
     string;
 };
@@ -55,6 +59,10 @@ type Pull = {
 
   pulled_rarity:
     | string
+    | null;
+
+  is_first_for_player:
+    | boolean
     | null;
 };
 
@@ -84,6 +92,30 @@ type Card = {
     | null;
 
   card_type: string;
+
+  attribute:
+    | string
+    | null;
+
+  monster_type:
+    | string
+    | null;
+
+  archetype:
+    | string
+    | null;
+
+  level:
+    | number
+    | null;
+
+  rank:
+    | number
+    | null;
+
+  link_rating:
+    | number
+    | null;
 };
 
 // =========================================================
@@ -126,6 +158,7 @@ export default async function PackOpeningPage({
         profile_id,
         pack_code,
         rotation_id,
+        special_pack_rotation_id,
         opened_at
       `
     )
@@ -169,7 +202,8 @@ export default async function PackOpeningPage({
         card_catalog_id,
         card_instance_id,
         pull_position,
-        pulled_rarity
+        pulled_rarity,
+        is_first_for_player
       `
     )
     .eq(
@@ -232,7 +266,13 @@ export default async function PackOpeningPage({
         rarity_score,
         atk,
         def,
-        card_type
+        card_type,
+        attribute,
+        monster_type,
+        archetype,
+        level,
+        rank,
+        link_rating
       `
     )
     .in(
@@ -286,6 +326,9 @@ export default async function PackOpeningPage({
             pulled_rarity:
               pull.pulled_rarity,
 
+            is_first_for_player:
+              pull.is_first_for_player,
+
             card,
           };
         }
@@ -313,36 +356,42 @@ export default async function PackOpeningPage({
         : opening.pack_code ===
             "deluxe"
           ? "Deluxe Pack"
-          : "Special Pack";
+          : opening.pack_code ===
+              "special_attribute"
+            ? "Attribute Spotlight"
+            : opening.pack_code ===
+                "special_archetype"
+              ? "Archetype Spotlight"
+              : "Special Pack";
 
   if (
-    opening.pack_code ===
-      "special" &&
-    opening.rotation_id
+    (opening.pack_code ===
+      "special_attribute" ||
+      opening.pack_code ===
+        "special_archetype") &&
+    opening.special_pack_rotation_id
   ) {
     const {
       data:
-        rotation,
+        specialRotation,
     } = await supabase
       .from(
-        "shop_rotations"
+        "shop_special_pack_rotations"
       )
       .select(
-        "special_pack_name"
+        "theme_label"
       )
       .eq(
         "id",
-        opening.rotation_id
+        opening.special_pack_rotation_id
       )
       .maybeSingle();
 
     if (
-      rotation
-        ?.special_pack_name
+      specialRotation?.theme_label
     ) {
       packName =
-        rotation
-          .special_pack_name;
+        specialRotation.theme_label;
     }
   }
 

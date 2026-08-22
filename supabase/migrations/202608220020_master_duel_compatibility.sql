@@ -36,19 +36,43 @@ begin;
 -- - see the audit script's own comments for the current state
 -- of that gap.
 --
--- DELIBERATE CHOICE ON "UNKNOWN" (documented, not hidden):
--- is_master_duel_offerable() below treats 'unknown' as
--- OFFERABLE (only 'forbidden' and 'not_available' are
--- excluded). The alternative - excluding 'unknown' by default
--- - would silently make almost the entire existing card pool
--- unofferable in Draft and Shop the moment this migration
--- runs, since every card starts at 'unknown' until the audit
--- script is actually run. That would be a real regression for
--- the three real players. If the owner wants the opposite
--- (conservative: only explicitly-confirmed-available cards
--- are offered), that's a one-line change to
--- is_master_duel_offerable() - flagged here rather than made
--- silently.
+-- CONSERVATIVE ELIGIBILITY (revised 2026-08-22, hardening pass):
+-- is_master_duel_offerable() below is CONSERVATIVE. Only
+-- 'unlimited', 'semi_limited', and 'limited' are offerable.
+-- 'forbidden', 'not_available', 'unknown', null, and any
+-- unrecognized value are all NOT offerable.
+--
+-- This supersedes an earlier draft of this same (still
+-- undeployed) migration, which treated 'unknown' as offerable
+-- to avoid an empty pool on day one. That permissive default
+-- was deliberately reversed on explicit instruction: it is
+-- safer for Draft/Shop to offer nothing than to offer a card
+-- nobody has actually confirmed is legal in Master Duel.
+--
+-- CONSEQUENCE - READ BEFORE DEPLOYING:
+-- Every existing card starts at 'unknown' (see column default
+-- below), so immediately after this migration runs, the
+-- Master Duel-aware Draft and Shop candidate pools WILL BE
+-- EMPTY (create_next_draft_offer/pick_shop_pack_card will raise
+-- their "no eligible cards"/"no rarity has enough available
+-- cards" exceptions). This is INTENTIONAL, not a bug - see the
+-- mandatory deployment order below.
+--
+-- MANDATORY DEPLOYMENT ORDER:
+--   A. Run this migration.
+--   B. Immediately run `npm run audit:master-duel:apply`
+--      (scripts/audit-master-duel.mjs --apply) so real
+--      unlimited/not_available statuses replace 'unknown' for
+--      every card with a valid external_card_id.
+--   C. Check the status counts (the script's own dry-run output,
+--      or select * from get_master_duel_status_counts()) and
+--      confirm the numbers look sane before trusting the pool.
+--   D. Only after B and C should Draft or Shop be used again -
+--      until then, offering cards is expected to fail loudly
+--      rather than silently offer an unverified card.
+-- Steps A-C should happen back-to-back, in one maintenance
+-- window; do not leave the app usable by real players between
+-- A and B.
 -- =========================================================
 
 
@@ -115,12 +139,13 @@ immutable
 set search_path = ''
 as $$
   select
-    target_status is distinct from 'forbidden'
-    and target_status is distinct from 'not_available';
+    coalesce(target_status, '') = any (
+      array['unlimited', 'semi_limited', 'limited']
+    );
 $$;
 
 comment on function public.is_master_duel_offerable(text) is
-  'True unless the status is forbidden or not_available. unknown/unlimited/semi_limited/limited are all offerable by default - see the migration header for why unknown is included.';
+  'CONSERVATIVE: true only for unlimited/semi_limited/limited. forbidden/not_available/unknown/null/anything unrecognized are all false - see the migration header for the mandatory deployment order this requires.';
 
 revoke all
   on function public.is_master_duel_offerable(text)

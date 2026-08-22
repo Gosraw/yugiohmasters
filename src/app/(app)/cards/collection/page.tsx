@@ -13,6 +13,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Swords,
+  Tag,
   UnlockKeyhole,
 } from "lucide-react";
 
@@ -24,47 +25,14 @@ import {
   getLeagueIdForUser,
 } from "@/lib/league-stats";
 
+import {
+  fetchOwnedCollection,
+  filterAndSortCollection,
+  rarityStyles,
+} from "@/lib/collection";
+
 export const dynamic =
   "force-dynamic";
-
-// =========================================================
-// RARITY CONFIG
-// =========================================================
-
-const rarityOrder: Record<
-  string,
-  number
-> = {
-  Normal: 1,
-  Rare: 2,
-  "Super Rare": 3,
-  "Ultra Rare": 4,
-  "Secret Rare": 5,
-  Legendary: 6,
-};
-
-const rarityStyles: Record<
-  string,
-  string
-> = {
-  Normal:
-    "border-zinc-500/30 bg-zinc-500/10 text-zinc-300",
-
-  Rare:
-    "border-blue-400/30 bg-blue-400/10 text-blue-300",
-
-  "Super Rare":
-    "border-cyan-300/30 bg-cyan-300/10 text-cyan-200",
-
-  "Ultra Rare":
-    "border-amber-300/40 bg-amber-300/10 text-amber-200",
-
-  "Secret Rare":
-    "border-violet-300/40 bg-violet-300/10 text-violet-200",
-
-  Legendary:
-    "border-yellow-300/50 bg-yellow-300/15 text-yellow-200 shadow-[0_0_20px_rgba(250,204,21,0.10)]",
-};
 
 // =========================================================
 // TYPES
@@ -74,71 +42,11 @@ type SearchParams = Promise<{
   q?: string;
   rarity?: string;
   type?: string;
+  attribute?: string;
+  availability?: string;
+  forTrade?: string;
   sort?: string;
 }>;
-
-type CardCatalogItem = {
-  id: string;
-  name: string;
-
-  image_url:
-    | string
-    | null;
-
-  card_type: string;
-
-  attribute:
-    | string
-    | null;
-
-  atk:
-    | number
-    | null;
-
-  def:
-    | number
-    | null;
-
-  game_rarity:
-    | string
-    | null;
-
-  rarity_score:
-    | number
-    | null;
-};
-
-type CardInstance = {
-  id: string;
-
-  card_catalog_id:
-    string;
-
-  copy_number:
-    number;
-
-  acquired_at:
-    string;
-
-  locked:
-    boolean;
-};
-
-type GroupedOwnedCard = {
-  card: CardCatalogItem;
-
-  instances:
-    CardInstance[];
-
-  quantity:
-    number;
-
-  lockedCount:
-    number;
-
-  availableCount:
-    number;
-};
 
 // =========================================================
 // PAGE
@@ -153,9 +61,7 @@ export default async function CollectionPage({
     await searchParams;
 
   const q =
-    params.q
-      ?.trim()
-      .toLowerCase() ??
+    params.q ??
     "";
 
   const rarity =
@@ -165,6 +71,18 @@ export default async function CollectionPage({
   const type =
     params.type ??
     "";
+
+  const attribute =
+    params.attribute ??
+    "";
+
+  const availability =
+    params.availability ??
+    "";
+
+  const forTrade =
+    params.forTrade ===
+    "1";
 
   const sort =
     params.sort ??
@@ -187,46 +105,20 @@ export default async function CollectionPage({
     );
 
   // ======================================================
-  // OWNED CARD INSTANCES
+  // OWNED COLLECTION (shared with Card Detail's Previous/Next
+  // navigation - see src/lib/collection.ts)
   // ======================================================
 
-  let instanceQuery = supabase
-    .from(
-      "card_instances"
-    )
-    .select(
-      `
-        id,
-        card_catalog_id,
-        copy_number,
-        acquired_at,
-        locked
-      `
-    )
-    .eq(
-      "current_owner_id",
-      userId
-    );
+  let allGroupedCards;
 
-  if (leagueId) {
-    instanceQuery =
-      instanceQuery.eq(
-        "league_id",
+  try {
+    allGroupedCards =
+      await fetchOwnedCollection(
+        supabase,
+        userId,
         leagueId
       );
-  }
-
-  const {
-    data: instanceData,
-    error: instanceError,
-  } = await instanceQuery.order(
-    "acquired_at",
-    {
-      ascending: false,
-    }
-  );
-
-  if (instanceError) {
+  } catch (error) {
     return (
       <main className="mx-auto max-w-7xl px-4 py-6">
         <div className="panel p-5">
@@ -235,197 +127,65 @@ export default async function CollectionPage({
           </p>
 
           <p className="mt-2 text-sm text-zinc-500">
-            {
-              instanceError.message
-            }
+            {error instanceof
+            Error
+              ? error.message
+              : String(
+                  error
+                )}
           </p>
         </div>
       </main>
     );
   }
 
-  const instances =
-    (instanceData ??
-      []) as CardInstance[];
-
   // ======================================================
-  // CARD CATALOG
-  // ======================================================
-
-  const catalogIds = [
-    ...new Set(
-      instances.map(
-        (instance) =>
-          instance.card_catalog_id
-      )
-    ),
-  ];
-
-  let catalogCards:
-    CardCatalogItem[] =
-    [];
-
-  if (
-    catalogIds.length >
-    0
-  ) {
-    const {
-      data: catalogData,
-      error: catalogError,
-    } = await supabase
-      .from(
-        "card_catalog"
-      )
-      .select(
-        `
-          id,
-          name,
-          image_url,
-          card_type,
-          attribute,
-          atk,
-          def,
-          game_rarity,
-          rarity_score
-        `
-      )
-      .in(
-        "id",
-        catalogIds
-      );
-
-    if (catalogError) {
-      return (
-        <main className="mx-auto max-w-7xl px-4 py-6">
-          <div className="panel p-5">
-            <p className="font-bold text-red-300">
-              Kaartinformatie kon niet worden geladen.
-            </p>
-
-            <p className="mt-2 text-sm text-zinc-500">
-              {
-                catalogError.message
-              }
-            </p>
-          </div>
-        </main>
-      );
-    }
-
-    catalogCards =
-      (catalogData ??
-        []) as CardCatalogItem[];
-  }
-
-  const cardMap =
-    new Map(
-      catalogCards.map(
-        (card) => [
-          card.id,
-          card,
-        ]
-      )
-    );
-
-  // ======================================================
-  // GROUP OWNED COPIES
-  // ======================================================
-
-  const groupedMap =
-    new Map<
-      string,
-      GroupedOwnedCard
-    >();
-
-  for (
-    const instance of
-    instances
-  ) {
-    const card =
-      cardMap.get(
-        instance.card_catalog_id
-      );
-
-    if (!card) {
-      continue;
-    }
-
-    const existing =
-      groupedMap.get(
-        card.id
-      );
-
-    if (existing) {
-      existing.instances.push(
-        instance
-      );
-
-      existing.quantity +=
-        1;
-
-      if (
-        instance.locked
-      ) {
-        existing.lockedCount +=
-          1;
-      } else {
-        existing.availableCount +=
-          1;
-      }
-
-      continue;
-    }
-
-    groupedMap.set(
-      card.id,
-      {
-        card,
-
-        instances: [
-          instance,
-        ],
-
-        quantity: 1,
-
-        lockedCount:
-          instance.locked
-            ? 1
-            : 0,
-
-        availableCount:
-          instance.locked
-            ? 0
-            : 1,
-      }
-    );
-  }
-
-  let groupedCards = [
-    ...groupedMap.values(),
-  ];
-
-  // ======================================================
-  // GLOBAL COLLECTION STATS
+  // GLOBAL COLLECTION STATS (always computed against the
+  // unfiltered collection, not the filtered view below)
   // ======================================================
 
   const totalCards =
-    instances.length;
+    allGroupedCards.reduce(
+      (
+        total,
+        group
+      ) =>
+        total +
+        group.quantity,
+      0
+    );
 
   const uniqueCards =
-    groupedCards.length;
+    allGroupedCards.length;
 
   const lockedCount =
-    instances.filter(
-      (instance) =>
-        instance.locked
-    ).length;
+    allGroupedCards.reduce(
+      (
+        total,
+        group
+      ) =>
+        total +
+        group.lockedCount,
+      0
+    );
 
   const availableCount =
     totalCards -
     lockedCount;
 
+  const forTradeTotal =
+    allGroupedCards.reduce(
+      (
+        total,
+        group
+      ) =>
+        total +
+        group.forTradeCount,
+      0
+    );
+
   const legendaryCount =
-    groupedCards.reduce(
+    allGroupedCards.reduce(
       (
         total,
         group
@@ -447,7 +207,7 @@ export default async function CollectionPage({
     );
 
   const fullyLockedGroups =
-    groupedCards.filter(
+    allGroupedCards.filter(
       (group) =>
         group.availableCount ===
           0 &&
@@ -456,184 +216,76 @@ export default async function CollectionPage({
     ).length;
 
   // ======================================================
-  // FILTERS
+  // FILTER + SORT
   // ======================================================
 
-  if (q) {
-    groupedCards =
-      groupedCards.filter(
-        (group) =>
-          group.card.name
-            .toLowerCase()
-            .includes(q)
-      );
-  }
-
-  if (rarity) {
-    groupedCards =
-      groupedCards.filter(
-        (group) =>
-          group.card
-            .game_rarity ===
-          rarity
-      );
-  }
-
-  if (
-    type ===
-    "Monster"
-  ) {
-    groupedCards =
-      groupedCards.filter(
-        (group) =>
-          group.card.card_type
-            .toLowerCase()
-            .includes(
-              "monster"
-            )
-      );
-  }
-
-  if (
-    type ===
-    "Spell"
-  ) {
-    groupedCards =
-      groupedCards.filter(
-        (group) =>
-          group.card.card_type
-            .toLowerCase()
-            .includes(
-              "spell"
-            )
-      );
-  }
-
-  if (
-    type ===
-    "Trap"
-  ) {
-    groupedCards =
-      groupedCards.filter(
-        (group) =>
-          group.card.card_type
-            .toLowerCase()
-            .includes(
-              "trap"
-            )
-      );
-  }
-
-  // ======================================================
-  // SORTING
-  // ======================================================
-
-  groupedCards =
-    [...groupedCards].sort(
-      (a, b) => {
-        if (
-          sort ===
-          "rarity"
-        ) {
-          const aRarity =
-            rarityOrder[
-              a.card
-                .game_rarity ??
-                ""
-            ] ??
-            0;
-
-          const bRarity =
-            rarityOrder[
-              b.card
-                .game_rarity ??
-                ""
-            ] ??
-            0;
-
-          if (
-            bRarity !==
-            aRarity
-          ) {
-            return (
-              bRarity -
-              aRarity
-            );
-          }
-
-          return (
-            Number(
-              b.card
-                .rarity_score ??
-                0
-            ) -
-            Number(
-              a.card
-                .rarity_score ??
-                0
-            )
-          );
-        }
-
-        if (
-          sort ===
-          "power"
-        ) {
-          return (
-            Number(
-              b.card
-                .rarity_score ??
-                0
-            ) -
-            Number(
-              a.card
-                .rarity_score ??
-                0
-            )
-          );
-        }
-
-        if (
-          sort ===
-          "atk"
-        ) {
-          return (
-            Number(
-              b.card.atk ??
-                -1
-            ) -
-            Number(
-              a.card.atk ??
-                -1
-            )
-          );
-        }
-
-        if (
-          sort ===
-          "copies"
-        ) {
-          return (
-            b.quantity -
-            a.quantity
-          );
-        }
-
-        if (
-          sort ===
-          "available"
-        ) {
-          return (
-            b.availableCount -
-            a.availableCount
-          );
-        }
-
-        return a.card.name.localeCompare(
-          b.card.name
-        );
+  const groupedCards =
+    filterAndSortCollection(
+      allGroupedCards,
+      {
+        q,
+        rarity,
+        type,
+        attribute,
+        availability,
+        forTrade,
+        sort,
       }
     );
+
+  // Query string this exact filtered view corresponds to - used
+  // both to keep "Apply/Reset" reflecting the active filters and
+  // to pass along as returnTo context so Card Detail's
+  // Previous/Next can walk this exact ordered list, and so
+  // navigating back from a card lands on the same filtered view
+  // instead of a blank Collection page.
+  const activeQuery =
+    new URLSearchParams();
+
+  if (q)
+    activeQuery.set(
+      "q",
+      q
+    );
+  if (rarity)
+    activeQuery.set(
+      "rarity",
+      rarity
+    );
+  if (type)
+    activeQuery.set(
+      "type",
+      type
+    );
+  if (attribute)
+    activeQuery.set(
+      "attribute",
+      attribute
+    );
+  if (availability)
+    activeQuery.set(
+      "availability",
+      availability
+    );
+  if (forTrade)
+    activeQuery.set(
+      "forTrade",
+      "1"
+    );
+  if (sort !== "name")
+    activeQuery.set(
+      "sort",
+      sort
+    );
+
+  const activeQueryString =
+    activeQuery.toString();
+
+  const collectionReturnTo = `/cards/collection${
+    activeQueryString
+      ? `?${activeQueryString}`
+      : ""
+  }`;
 
   // ======================================================
   // UI
@@ -761,7 +413,7 @@ export default async function CollectionPage({
             COLLECTION STATS
         ================================================== */}
 
-        <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-6">
           <div className="panel relative overflow-hidden p-4">
             <Boxes
               size={34}
@@ -830,7 +482,7 @@ export default async function CollectionPage({
             </p>
           </div>
 
-          <div className="panel relative col-span-2 overflow-hidden p-4 lg:col-span-1">
+          <div className="panel relative overflow-hidden p-4">
             <Sparkles
               size={34}
               className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white opacity-[0.035]"
@@ -843,6 +495,23 @@ export default async function CollectionPage({
             <p className="mt-1 text-2xl font-black text-yellow-200">
               {
                 legendaryCount
+              }
+            </p>
+          </div>
+
+          <div className="panel relative col-span-2 overflow-hidden p-4 lg:col-span-1">
+            <Tag
+              size={34}
+              className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white opacity-[0.035]"
+            />
+
+            <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
+              For Trade
+            </p>
+
+            <p className="mt-1 text-2xl font-black text-emerald-200">
+              {
+                forTradeTotal
               }
             </p>
           </div>
@@ -902,8 +571,8 @@ export default async function CollectionPage({
             Search & Filters
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-5">
-            <label className="relative lg:col-span-2">
+          <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <label className="relative md:col-span-2 lg:col-span-4">
               <Search
                 size={17}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
@@ -981,6 +650,66 @@ export default async function CollectionPage({
             </select>
 
             <select
+              name="attribute"
+              defaultValue={
+                attribute
+              }
+              className="field"
+            >
+              <option value="">
+                All attributes
+              </option>
+
+              <option value="DARK">
+                DARK
+              </option>
+
+              <option value="LIGHT">
+                LIGHT
+              </option>
+
+              <option value="EARTH">
+                EARTH
+              </option>
+
+              <option value="WATER">
+                WATER
+              </option>
+
+              <option value="FIRE">
+                FIRE
+              </option>
+
+              <option value="WIND">
+                WIND
+              </option>
+
+              <option value="DIVINE">
+                DIVINE
+              </option>
+            </select>
+
+            <select
+              name="availability"
+              defaultValue={
+                availability
+              }
+              className="field"
+            >
+              <option value="">
+                Owned or locked
+              </option>
+
+              <option value="available">
+                Has a free copy
+              </option>
+
+              <option value="locked">
+                Has a locked copy
+              </option>
+            </select>
+
+            <select
               name="sort"
               defaultValue={
                 sort
@@ -1013,7 +742,20 @@ export default async function CollectionPage({
             </select>
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5 text-xs font-black text-zinc-400 transition hover:border-emerald-300/30 hover:text-emerald-200 has-[:checked]:border-emerald-300/40 has-[:checked]:bg-emerald-300/10 has-[:checked]:text-emerald-200">
+              <input
+                type="checkbox"
+                name="forTrade"
+                value="1"
+                defaultChecked={
+                  forTrade
+                }
+                className="h-3.5 w-3.5 accent-emerald-400"
+              />
+              For Trade only
+            </label>
+
             <button
               type="submit"
               className="primary-button"
@@ -1025,7 +767,7 @@ export default async function CollectionPage({
               href="/cards/collection"
               className="inline-flex items-center justify-center rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
             >
-              Reset
+              Clear Filters
             </Link>
           </div>
         </form>
@@ -1128,16 +870,25 @@ export default async function CollectionPage({
                     key={
                       card.id
                     }
-                    href={`/cards/${card.id}`}
-                    className={`panel group block overflow-hidden transition duration-200 hover:-translate-y-1 ${
+                    href={`/cards/${card.id}?returnTo=${encodeURIComponent(
+                      collectionReturnTo
+                    )}`}
+                    className={`panel group relative block transition-all duration-200 hover:-translate-y-1 hover:z-10 ${
                       fullyLocked
                         ? "border-red-300/15 hover:border-red-300/30"
                         : "hover:border-amber-300/25"
                     }`}
                   >
-                    {/* CARD IMAGE */}
+                    {/* CARD IMAGE - nothing is ever overlaid on top of
+                        this: name/artwork/ATK/DEF stay fully visible.
+                        All rarity/quantity/lock/for-trade metadata is
+                        below the image instead (see CARD INFO). On
+                        lg+ screens, hovering scales the same image
+                        element up in place (no second image request,
+                        no layout shift - it's a CSS transform) as a
+                        lightweight desktop preview. */}
 
-                    <div className="relative bg-black/20">
+                    <div className="relative">
                       {card.image_url ? (
                         <Image
                           src={
@@ -1152,65 +903,22 @@ export default async function CollectionPage({
                           height={
                             614
                           }
-                          className={`aspect-[421/614] h-auto w-full object-cover transition duration-300 group-hover:scale-[1.02] ${
+                          className={`aspect-[421/614] h-auto w-full rounded-t-2xl object-cover transition-transform duration-200 ease-out lg:group-hover:z-20 lg:group-hover:scale-[1.7] lg:group-hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)] ${
                             fullyLocked
-                              ? "opacity-70"
+                              ? "opacity-75"
                               : ""
                           }`}
                           unoptimized
                         />
                       ) : (
-                        <div className="flex aspect-[421/614] items-center justify-center text-xs text-zinc-600">
+                        <div className="flex aspect-[421/614] items-center justify-center rounded-t-2xl bg-zinc-900 text-xs text-zinc-600">
                           No image
-                        </div>
-                      )}
-
-                      {/* RARITY */}
-
-                      <div className="absolute left-2 top-2">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-wider backdrop-blur-md ${rarityStyle}`}
-                        >
-                          <Sparkles
-                            size={9}
-                          />
-
-                          {
-                            rarityName
-                          }
-                        </span>
-                      </div>
-
-                      {/* TOTAL QUANTITY */}
-
-                      <div className="absolute bottom-2 right-2">
-                        <span className="rounded-full border border-amber-300/30 bg-black/85 px-2.5 py-1 text-xs font-black text-amber-200">
-                          x
-                          {
-                            group.quantity
-                          }
-                        </span>
-                      </div>
-
-                      {/* FULL LOCK */}
-
-                      {fullyLocked && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                          <div className="rounded-xl border border-red-300/25 bg-red-950/85 px-3 py-2 text-center backdrop-blur-sm">
-                            <LockKeyhole
-                              size={16}
-                              className="mx-auto text-red-200"
-                            />
-
-                            <p className="mt-1 text-[8px] font-black uppercase tracking-wider text-red-200">
-                              All Copies Locked
-                            </p>
-                          </div>
                         </div>
                       )}
                     </div>
 
-                    {/* CARD INFO */}
+                    {/* CARD INFO - priority order: name, gameplay
+                        info, then status/inventory metadata last. */}
 
                     <div className="p-3">
                       <p className="line-clamp-2 min-h-10 text-sm font-black leading-5 text-zinc-100">
@@ -1219,66 +927,16 @@ export default async function CollectionPage({
                         }
                       </p>
 
-                      <p className="mt-1 truncate text-xs text-zinc-500">
-                        {
-                          card.card_type
-                        }
-                      </p>
-
-                      {/* INVENTORY */}
-
-                      <div className="mt-3 grid grid-cols-2 gap-1.5">
-                        <div className="rounded-lg border border-cyan-300/10 bg-cyan-300/[0.025] px-2 py-2">
-                          <p className="text-[7px] font-black uppercase tracking-wider text-zinc-600">
-                            Available
-                          </p>
-
-                          <p className="mt-1 text-sm font-black text-cyan-200">
-                            {
-                              group.availableCount
-                            }
-                          </p>
-                        </div>
-
-                        <div className="rounded-lg border border-red-300/10 bg-red-300/[0.02] px-2 py-2">
-                          <p className="text-[7px] font-black uppercase tracking-wider text-zinc-600">
-                            Locked
-                          </p>
-
-                          <p
-                            className={`mt-1 text-sm font-black ${
-                              group.lockedCount >
-                              0
-                                ? "text-red-200"
-                                : "text-zinc-600"
-                            }`}
-                          >
-                            {
-                              group.lockedCount
-                            }
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* POWER INFO */}
-
-                      <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2">
-                        {card.rarity_score !=
-                        null ? (
-                          <span className="text-xs font-bold text-amber-200">
-                            {Number(
-                              card.rarity_score
-                            ).toFixed(
-                              1
-                            )}
-                          </span>
-                        ) : (
-                          <span />
-                        )}
+                      <div className="mt-1 flex items-center justify-between gap-2 text-xs text-zinc-500">
+                        <span className="truncate">
+                          {
+                            card.card_type
+                          }
+                        </span>
 
                         {card.atk !=
                           null && (
-                          <span className="text-[10px] text-zinc-500">
+                          <span className="shrink-0 text-zinc-500">
                             ATK{" "}
                             {
                               card.atk
@@ -1287,33 +945,61 @@ export default async function CollectionPage({
                         )}
                       </div>
 
-                      {/* STATE */}
+                      {/* METADATA */}
 
-                      <div className="mt-2">
-                        {fullyLocked ? (
-                          <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-red-300">
-                            <LockKeyhole
-                              size={9}
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-white/5 pt-2.5">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${rarityStyle}`}
+                        >
+                          <Sparkles
+                            size={8}
+                          />
+                          {
+                            rarityName
+                          }
+                        </span>
+
+                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[8px] font-black text-zinc-300">
+                          x
+                          {
+                            group.quantity
+                          }
+                        </span>
+
+                        {group.forTradeCount >
+                          0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-200">
+                            <Tag
+                              size={8}
                             />
+                            For Trade
+                          </span>
+                        )}
 
-                            unavailable
+                        {fullyLocked ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-red-300/30 bg-red-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-red-300">
+                            <LockKeyhole
+                              size={8}
+                            />
+                            All Locked
                           </span>
                         ) : group.lockedCount >
                           0 ? (
-                          <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-amber-300">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-300">
                             <ShieldCheck
-                              size={9}
+                              size={8}
                             />
-
-                            partly locked
+                            {
+                              group.availableCount
+                            }{" "}
+                            free
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-cyan-300">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-cyan-300">
                             <UnlockKeyhole
-                              size={9}
+                              size={8}
                             />
-
-                            free to use
+                            Free to use
                           </span>
                         )}
                       </div>

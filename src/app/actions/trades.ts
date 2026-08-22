@@ -269,6 +269,99 @@ export async function removeTradeItem(
 }
 
 // =========================================================
+// SET TRADE DUEL POINTS
+//
+// Lets the sender attach a DP amount to either side of a draft
+// trade (cards+DP, DP+cards, or DP-only). Never trusted at face
+// value later - accept_trade() re-validates both balances at
+// accept time before moving anything.
+// =========================================================
+
+export async function setTradeDp(
+  formData: FormData
+) {
+  const {
+    supabase,
+  } = await requireUser();
+
+  const tradeId =
+    String(
+      formData.get(
+        "trade_id"
+      ) ?? ""
+    ).trim();
+
+  const dpOffered =
+    Number(
+      formData.get(
+        "dp_offered"
+      ) ?? 0
+    );
+
+  const dpRequested =
+    Number(
+      formData.get(
+        "dp_requested"
+      ) ?? 0
+    );
+
+  if (!tradeId) {
+    throw new Error(
+      "Trade ontbreekt."
+    );
+  }
+
+  if (
+    !Number.isFinite(
+      dpOffered
+    ) ||
+    !Number.isFinite(
+      dpRequested
+    ) ||
+    dpOffered < 0 ||
+    dpRequested < 0
+  ) {
+    throw new Error(
+      "Ongeldig Duel Points bedrag."
+    );
+  }
+
+  const {
+    error,
+  } = await supabase.rpc(
+    "set_trade_dp",
+    {
+      target_trade_id:
+        tradeId,
+
+      target_dp_offered:
+        Math.floor(
+          dpOffered
+        ),
+
+      target_dp_requested:
+        Math.floor(
+          dpRequested
+        ),
+    }
+  );
+
+  if (error) {
+    throw new Error(
+      error.message
+    );
+  }
+
+  revalidatePath(
+    `/trades/${tradeId}`
+  );
+
+  redirect(
+    `/trades/${tradeId}`
+  );
+}
+
+// =========================================================
 // SUBMIT TRADE
 // =========================================================
 
@@ -500,5 +593,72 @@ export async function cancelTrade(
 
   redirect(
     `/trades?success=${encodeURIComponent("Trade cancelled.")}`
+  );
+}
+
+// =========================================================
+// COUNTER TRADE
+//
+// Only the receiver of a pending trade can counter it. Creates
+// a brand new draft trade (roles reversed, items pre-filled with
+// sides swapped) and marks the original as declined/superseded -
+// see counter_trade() in the migration for the exact mechanics.
+// =========================================================
+
+export async function counterTrade(
+  formData: FormData
+) {
+  const {
+    supabase,
+  } = await requireUser();
+
+  const tradeId =
+    String(
+      formData.get(
+        "trade_id"
+      ) ?? ""
+    ).trim();
+
+  if (!tradeId) {
+    throw new Error(
+      "Trade ontbreekt."
+    );
+  }
+
+  const {
+    data: newTradeId,
+    error,
+  } = await supabase.rpc(
+    "counter_trade",
+    {
+      target_trade_id:
+        tradeId,
+    }
+  );
+
+  if (error) {
+    throw new Error(
+      error.message
+    );
+  }
+
+  if (!newTradeId) {
+    throw new Error(
+      "Counter-offer kon niet worden aangemaakt."
+    );
+  }
+
+  revalidatePath(
+    "/trades"
+  );
+
+  revalidatePath(
+    `/trades/${tradeId}`
+  );
+
+  redirect(
+    `/trades/${newTradeId}?success=${encodeURIComponent(
+      "Counter-offer started - adjust it and send when ready."
+    )}`
   );
 }

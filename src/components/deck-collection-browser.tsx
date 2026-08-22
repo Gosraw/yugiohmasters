@@ -197,6 +197,11 @@ export function DeckCollectionBrowser({
     setFiltersOpen,
   ] = useState(false);
 
+  const [
+    onlyAvailable,
+    setOnlyAvailable,
+  ] = useState(false);
+
   const rarities =
     useMemo(() => {
       return [
@@ -284,6 +289,16 @@ export function DeckCollectionBrowser({
               return false;
             }
 
+            if (
+              onlyAvailable &&
+              group
+                .availableInstances
+                .length ===
+                0
+            ) {
+              return false;
+            }
+
             return true;
           }
         );
@@ -350,6 +365,7 @@ export function DeckCollectionBrowser({
     }, [
       cards,
       category,
+      onlyAvailable,
       rarity,
       search,
       section,
@@ -361,13 +377,15 @@ export function DeckCollectionBrowser({
     category !== "all" ||
     section !== "all" ||
     rarity !== "all" ||
-    sort !== "name-asc";
+    sort !== "name-asc" ||
+    onlyAvailable;
 
   const hasSecondaryFilters =
     category !== "all" ||
     section !== "all" ||
     rarity !== "all" ||
-    sort !== "name-asc";
+    sort !== "name-asc" ||
+    onlyAvailable;
 
   function resetFilters() {
     setSearch("");
@@ -375,6 +393,7 @@ export function DeckCollectionBrowser({
     setSection("all");
     setRarity("all");
     setSort("name-asc");
+    setOnlyAvailable(false);
   }
 
   const returnTo =
@@ -575,6 +594,32 @@ export function DeckCollectionBrowser({
                 }
               >
                 Fusion / XYZ
+              </FilterButton>
+            </div>
+          </div>
+
+          {/* AVAILABILITY */}
+
+          <div>
+            <p className="mb-2 text-[10px] font-black uppercase tracking-[.18em] text-zinc-600">
+              Availability
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              <FilterButton
+                active={
+                  onlyAvailable
+                }
+                onClick={() =>
+                  setOnlyAvailable(
+                    (
+                      value
+                    ) =>
+                      !value
+                  )
+                }
+              >
+                Only Available
               </FilterButton>
             </div>
           </div>
@@ -894,6 +939,37 @@ export function DeckCollectionBrowser({
                         </span>
                       )}
                     </div>
+
+                    {/* Explicit physical-copy breakdown - a card
+                        owned in multiple copies can be partly in
+                        this deck, partly locked (e.g. in a trade
+                        or wager) and partly free, so a bare
+                        quantity badge isn't enough. */}
+                    <p className="mt-1.5 text-[10px] font-bold text-zinc-600">
+                      Owned{" "}
+                      {
+                        group.quantity
+                      }
+                      {" · "}
+                      In deck{" "}
+                      {
+                        group.inDeck
+                      }
+                      {" · "}
+                      <span
+                        className={
+                          available >
+                          0
+                            ? "text-emerald-400"
+                            : "text-zinc-600"
+                        }
+                      >
+                        Available{" "}
+                        {
+                          available
+                        }
+                      </span>
+                    </p>
 
                     {ineligible ? (
                       <button

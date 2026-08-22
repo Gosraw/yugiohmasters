@@ -17,6 +17,7 @@ import {
   Sparkles,
   Star,
   Swords,
+  Tag,
   Unlock,
   UnlockKeyhole,
 } from "lucide-react";
@@ -34,12 +35,30 @@ import {
 } from "@/components/card-back-link";
 
 import {
+  CardDetailKeyNav,
+} from "@/components/card-detail-key-nav";
+
+import {
+  SubmitButton,
+} from "@/components/submit-button";
+
+import {
+  setCardForTrade,
+} from "@/app/actions/cards";
+
+import {
   requireUser,
 } from "@/lib/supabase/queries";
 
 import {
   getLeagueIdForUser,
 } from "@/lib/league-stats";
+
+import {
+  fetchOwnedCollection,
+  filterAndSortCollection,
+  parseCollectionReturnTo,
+} from "@/lib/collection";
 
 export const dynamic =
   "force-dynamic";
@@ -90,6 +109,9 @@ type OwnedCopy = {
 
   acquired_at:
     string;
+
+  for_trade:
+    boolean;
 };
 
 type DeckRow = {
@@ -241,7 +263,8 @@ export default async function CardDetailPage({
         copy_number,
         locked,
         lock_type,
-        acquired_at
+        acquired_at,
+        for_trade
       `
     )
     .eq(
@@ -490,6 +513,114 @@ export default async function CardDetailPage({
       0;
 
   // ======================================================
+  // PREVIOUS / NEXT
+  //
+  // Computed from the SAME filtered/sorted collection view the
+  // player was looking at (parsed out of returnTo), not raw
+  // catalog order - so Next actually walks the list they were
+  // browsing, not an unrelated global ordering.
+  // ======================================================
+
+  const collectionFilters =
+    parseCollectionReturnTo(
+      returnTo
+    );
+
+  let prevCardId:
+    | string
+    | null = null;
+
+  let nextCardId:
+    | string
+    | null = null;
+
+  if (
+    collectionFilters
+  ) {
+    const ownedGroups =
+      await fetchOwnedCollection(
+        supabase,
+        userId,
+        leagueId
+      );
+
+    const ordered =
+      filterAndSortCollection(
+        ownedGroups,
+        collectionFilters
+      );
+
+    const currentIndex =
+      ordered.findIndex(
+        (group) =>
+          group.card
+            .id === id
+      );
+
+    if (
+      currentIndex >=
+      0
+    ) {
+      if (
+        currentIndex >
+        0
+      ) {
+        prevCardId =
+          ordered[
+            currentIndex -
+              1
+          ].card.id;
+      }
+
+      if (
+        currentIndex <
+        ordered.length -
+          1
+      ) {
+        nextCardId =
+          ordered[
+            currentIndex +
+              1
+          ].card.id;
+      }
+    }
+  }
+
+  const withReturnTo = (
+    cardId: string
+  ) =>
+    returnTo
+      ? `/cards/${cardId}?returnTo=${encodeURIComponent(
+          returnTo
+        )}`
+      : `/cards/${cardId}`;
+
+  const prevHref =
+    prevCardId
+      ? withReturnTo(
+          prevCardId
+        )
+      : null;
+
+  const nextHref =
+    nextCardId
+      ? withReturnTo(
+          nextCardId
+        )
+      : null;
+
+  const backHref =
+    returnTo &&
+    returnTo.startsWith(
+      "/"
+    ) &&
+    !returnTo.startsWith(
+      "//"
+    )
+      ? returnTo
+      : "/cards/collection";
+
+  // ======================================================
   // UI
   // ======================================================
 
@@ -508,11 +639,62 @@ export default async function CardDetailPage({
             BACK
         ================================================== */}
 
-        <CardBackLink
-          returnTo={
-            returnTo
+        <CardDetailKeyNav
+          prevHref={
+            prevHref
+          }
+          nextHref={
+            nextHref
+          }
+          backHref={
+            backHref
           }
         />
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardBackLink
+            returnTo={
+              returnTo
+            }
+          />
+
+          {(prevHref ||
+            nextHref) && (
+            <div className="flex items-center gap-2">
+              {prevHref ? (
+                <Link
+                  href={
+                    prevHref
+                  }
+                  title="Previous card (ArrowLeft)"
+                  className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-4 text-sm font-black text-zinc-300 transition hover:border-amber-300/30 hover:text-amber-200"
+                >
+                  ← Previous
+                </Link>
+              ) : (
+                <span className="inline-flex h-11 cursor-not-allowed items-center gap-1.5 rounded-xl border border-white/5 bg-white/[0.01] px-4 text-sm font-black text-zinc-700">
+                  ← Previous
+                </span>
+              )}
+
+              {nextHref ? (
+                <Link
+                  href={
+                    nextHref
+                  }
+                  title="Next card (ArrowRight)"
+                  className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-4 text-sm font-black text-zinc-300 transition hover:border-amber-300/30 hover:text-amber-200"
+                >
+                  Next →
+                </Link>
+              ) : (
+                <span className="inline-flex h-11 cursor-not-allowed items-center gap-1.5 rounded-xl border border-white/5 bg-white/[0.01] px-4 text-sm font-black text-zinc-700">
+                  Next →
+                </span>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* ==================================================
             HEADER
@@ -767,7 +949,9 @@ export default async function CardDetailPage({
 
               <div className="mt-3 space-y-2">
                 <Link
-                  href="/cards/collection"
+                  href={
+                    backHref
+                  }
                   className="flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-3 text-sm font-black text-zinc-300 transition hover:border-amber-300/20 hover:text-amber-200"
                 >
                   <span className="flex items-center gap-2">
@@ -1163,23 +1347,34 @@ export default async function CardDetailPage({
                               }
                             </span>
 
-                            {copy.locked ? (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-red-400/25 bg-red-400/10 px-2 py-1 text-[9px] font-black uppercase text-red-200">
-                                <Lock
-                                  size={10}
-                                />
+                            <div className="flex items-center gap-1.5">
+                              {copy.for_trade && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/25 bg-violet-400/10 px-2 py-1 text-[9px] font-black uppercase text-violet-200">
+                                  <Tag
+                                    size={10}
+                                  />
+                                  For Trade
+                                </span>
+                              )}
 
-                                Locked
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 text-[9px] font-black uppercase text-emerald-200">
-                                <Unlock
-                                  size={10}
-                                />
+                              {copy.locked ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-red-400/25 bg-red-400/10 px-2 py-1 text-[9px] font-black uppercase text-red-200">
+                                  <Lock
+                                    size={10}
+                                  />
 
-                                Available
-                              </span>
-                            )}
+                                  Locked
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-1 text-[9px] font-black uppercase text-emerald-200">
+                                  <Unlock
+                                    size={10}
+                                  />
+
+                                  Available
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           <div className="mt-4 border-t border-white/[0.05] pt-3">
@@ -1244,6 +1439,60 @@ export default async function CardDetailPage({
                             />
                             View Card Legacy
                           </Link>
+
+                          {(!copy.locked ||
+                            copy.for_trade) && (
+                            <form
+                              action={
+                                setCardForTrade
+                              }
+                              className="mt-2"
+                            >
+                              <input
+                                type="hidden"
+                                name="card_instance_id"
+                                value={
+                                  copy.id
+                                }
+                              />
+
+                              <input
+                                type="hidden"
+                                name="for_trade"
+                                value={String(
+                                  !copy.for_trade
+                                )}
+                              />
+
+                              <input
+                                type="hidden"
+                                name="return_to"
+                                value={`/cards/${id}${
+                                  returnTo
+                                    ? `?returnTo=${encodeURIComponent(
+                                        returnTo
+                                      )}`
+                                    : ""
+                                }`}
+                              />
+
+                              <SubmitButton
+                                pendingLabel="Saving..."
+                                className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[10px] font-black uppercase tracking-wider ${
+                                  copy.for_trade
+                                    ? "border-violet-300/20 bg-violet-300/[0.04] text-violet-200 hover:border-violet-300/40"
+                                    : "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-emerald-300/30 hover:text-emerald-200"
+                                }`}
+                              >
+                                <Tag
+                                  size={12}
+                                />
+                                {copy.for_trade
+                                  ? "Remove From Trade List"
+                                  : "Mark For Trade"}
+                              </SubmitButton>
+                            </form>
+                          )}
                         </div>
                       );
                     }

@@ -353,20 +353,69 @@ export default async function DeckBuilderPage({
   const mainMaximum = 60;
   const extraMaximum = 15;
 
-  const cardsNeeded =
-    Math.max(
-      0,
+  // Every real reason this deck cannot become Ready, not just
+  // the main-deck-minimum case - a deck can also be blocked by
+  // being over the Main or Extra maximum, and the old message
+  // only ever reported the minimum shortfall (showing a
+  // nonsensical "Add 0 more" when an over-max was the actual
+  // blocker).
+  const readyReasons: string[] =
+    [];
+
+  if (
+    mainCount <
+    mainMinimum
+  ) {
+    const short =
       mainMinimum -
-        mainCount
+      mainCount;
+
+    readyReasons.push(
+      `Add ${short} more Main Deck card${
+        short === 1
+          ? ""
+          : "s"
+      } (currently ${mainCount}/${mainMinimum} minimum).`
     );
+  }
+
+  if (
+    mainCount >
+    mainMaximum
+  ) {
+    const over =
+      mainCount -
+      mainMaximum;
+
+    readyReasons.push(
+      `Remove ${over} Main Deck card${
+        over === 1
+          ? ""
+          : "s"
+      } (currently ${mainCount}, maximum ${mainMaximum}).`
+    );
+  }
+
+  if (
+    extraCount >
+    extraMaximum
+  ) {
+    const over =
+      extraCount -
+      extraMaximum;
+
+    readyReasons.push(
+      `Remove ${over} Extra Deck card${
+        over === 1
+          ? ""
+          : "s"
+      } (currently ${extraCount}, maximum ${extraMaximum}).`
+    );
+  }
 
   const canBeReady =
-    mainCount >=
-      mainMinimum &&
-    mainCount <=
-      mainMaximum &&
-    extraCount <=
-      extraMaximum;
+    readyReasons.length ===
+    0;
 
   // =======================================================
   // COLLECTION
@@ -845,18 +894,25 @@ export default async function DeckBuilderPage({
                   This deck can be marked Ready.
                 </p>
               ) : (
-                <p className="mt-2 text-sm text-zinc-500">
-                  Add{" "}
-                  <strong className="text-zinc-300">
-                    {cardsNeeded}
-                  </strong>{" "}
-                  more Main Deck card
-                  {cardsNeeded ===
-                  1
-                    ? ""
-                    : "s"}{" "}
-                  before this deck can become Ready.
-                </p>
+                <ul className="mt-2 space-y-1 text-sm text-zinc-500">
+                  {readyReasons.map(
+                    (reason) => (
+                      <li
+                        key={
+                          reason
+                        }
+                        className="flex items-start gap-2"
+                      >
+                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-zinc-600" />
+                        <span>
+                          {
+                            reason
+                          }
+                        </span>
+                      </li>
+                    )
+                  )}
+                </ul>
               )
             ) : deck.is_active ? (
               <p className="mt-2 text-sm text-cyan-200">
@@ -893,7 +949,7 @@ export default async function DeckBuilderPage({
                   label={
                     canBeReady
                       ? "Mark as Ready"
-                      : `Need ${cardsNeeded} More`
+                      : "Not Ready Yet"
                   }
                 />
               </form>
@@ -1088,7 +1144,49 @@ export default async function DeckBuilderPage({
       {/* BUILDER */}
 
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <section>
+        {/* Mobile/tablet view toggle (below xl only). Pure CSS -
+            two visually-hidden radios drive which panel is shown
+            via peer-checked, so switching between "Browse" and
+            "My Deck" needs no client JS. At xl: and above both
+            panels always render side by side and this toggle
+            itself is hidden. */}
+        <input
+          type="radio"
+          name="mobile-deck-view"
+          id="mobile-view-browse"
+          defaultChecked
+          className="peer/browse sr-only"
+        />
+
+        <input
+          type="radio"
+          name="mobile-deck-view"
+          id="mobile-view-deck"
+          className="peer/deck sr-only"
+        />
+
+        <div className="col-span-full flex gap-1.5 rounded-xl border border-white/10 bg-black/40 p-1.5 xl:hidden">
+          <label
+            htmlFor="mobile-view-browse"
+            className="flex-1 cursor-pointer rounded-lg px-3 py-2.5 text-center text-xs font-black uppercase tracking-wider text-zinc-500 transition-colors peer-checked/browse:bg-amber-300/15 peer-checked/browse:text-amber-200"
+          >
+            Browse ({
+              collectionCards.length
+            })
+          </label>
+
+          <label
+            htmlFor="mobile-view-deck"
+            className="flex-1 cursor-pointer rounded-lg px-3 py-2.5 text-center text-xs font-black uppercase tracking-wider text-zinc-500 transition-colors peer-checked/deck:bg-amber-300/15 peer-checked/deck:text-amber-200"
+          >
+            My Deck ({
+              mainCount +
+              extraCount
+            })
+          </label>
+        </div>
+
+        <section className="hidden peer-checked/browse:block xl:block">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-black tracking-[.2em] text-zinc-500">
@@ -1108,47 +1206,14 @@ export default async function DeckBuilderPage({
           </div>
 
           {editable ? (
-            <>
-              {/* Below xl the Main/Extra Deck lists sit below this
-                  whole card browser (they only go sticky at xl:),
-                  so on phone/tablet a player loses sight of their
-                  deck progress while scrolling a long card grid.
-                  This compact bar keeps counts visible without
-                  duplicating the full lists. */}
-              {/* Not sticky: the browser's own search bar
-                  below already claims the sticky top slot, and
-                  two stacked sticky elements at the same offset
-                  would overlap on a short viewport. This still
-                  keeps the current count visible without having
-                  to scroll all the way to the Main/Extra lists. */}
-              <div className="mt-4 flex items-center gap-4 rounded-xl border border-white/10 bg-black/40 px-4 py-2.5 xl:hidden">
-                <span
-                  className={`text-xs font-black ${
-                    mainCount >=
-                    40
-                      ? "text-emerald-300"
-                      : "text-zinc-400"
-                  }`}
-                >
-                  Main {mainCount}/60
-                </span>
-
-                <span className="h-3 w-px bg-white/10" />
-
-                <span className="text-xs font-black text-zinc-400">
-                  Extra {extraCount}/15
-                </span>
-              </div>
-
-              <DeckCollectionBrowser
-                deckId={
-                  deck.id
-                }
-                cards={
-                  browserCards
-                }
-              />
-            </>
+            <DeckCollectionBrowser
+              deckId={
+                deck.id
+              }
+              cards={
+                browserCards
+              }
+            />
           ) : (
             <div className="panel mt-4 p-6">
               <div className="flex items-start gap-3">
@@ -1174,7 +1239,7 @@ export default async function DeckBuilderPage({
           )}
         </section>
 
-        <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
+        <aside className="hidden space-y-4 peer-checked/deck:block xl:block xl:sticky xl:top-6 xl:self-start">
           <section className="panel p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">

@@ -942,9 +942,11 @@ export function DeckCollectionBrowser({
 
                     {/* Explicit physical-copy breakdown - a card
                         owned in multiple copies can be partly in
-                        this deck, partly locked (e.g. in a trade
-                        or wager) and partly free, so a bare
-                        quantity badge isn't enough. */}
+                        this deck, partly locked by an active
+                        Practice Duel wager, and partly free, so a
+                        bare quantity badge isn't enough. Being
+                        offered in a trade never affects this - see
+                        the 2026-08-22 no-card-locks pass. */}
                     <p className="mt-1.5 text-[10px] font-bold text-zinc-600">
                       Owned{" "}
                       {

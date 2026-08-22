@@ -2,44 +2,96 @@ begin;
 
 -- =========================================================
 -- DUELIST CIRCLE - COLLECTION / DECKBUILDING / TRADING PASS
--- (2026-08-22)
+-- (2026-08-22, revised same day - see PART 1a/2/4/5/6 below)
 --
 -- This migration is purely additive and safe to re-run
 -- (all statements are CREATE OR REPLACE / IF NOT EXISTS /
--- DROP+CREATE on functions and constraints only).
+-- DROP+CREATE on functions, triggers and constraints only).
+-- It has not been applied to production yet - the version
+-- below already reflects the "no card locks for trading"
+-- architecture change, so it can be applied directly without
+-- needing an older locking version first.
 --
--- Part 1: CRITICAL BUG FIX
---   card_instances_lock_consistency requires
---   lock_reference_id + locked_at whenever locked = true.
---   submit_trade() and add_match_wager_card() only ever set
---   locked + lock_type, never the other two columns — every
---   UPDATE that locks a card instance therefore violates this
---   CHECK constraint and fails at runtime. This is very likely
---   why trading (and card wagers) did not actually work in
---   production. Fixed by having every lock/unlock statement in
---   both trading.sql and duel_points_and_wagers.sql set/clear
---   all four lock columns consistently.
+-- ---------------------------------------------------------
+-- ARCHITECTURE: CURRENT OWNERSHIP IS THE HARD TRUTH
+-- ---------------------------------------------------------
+--
+-- card_instances.locked / lock_type / lock_reference_id /
+-- locked_at are NO LONGER used by trading, deck membership,
+-- or "For Trade" marking. A physical card may simultaneously:
+--   - sit in a deck
+--   - be marked For Trade
+--   - be offered in several different pending trades
+--   - be requested by several different players
+-- current_owner_id is the only thing that ever actually
+-- reserves anything. Whoever's accept_trade() call sees a
+-- card still owned by the right person wins; every other
+-- pending trade touching that same card simply fails its
+-- next accept attempt with a friendly "no longer available"
+-- error. First valid accept wins, no partial transfers.
+--
+-- Practice Duel card wagers are the one system that keeps
+-- using the locked/lock_type mechanism (a wagered card is
+-- genuinely reserved for the duration of that duel) - see the
+-- audit note above PART 1b.
+--
+-- Part 1a: TRADING, REWRITTEN FOR NO CARD LOCKS.
+--   submit_trade / accept_trade / decline_trade / cancel_trade
+--   / counter_trade no longer touch locked/lock_type/
+--   lock_reference_id/locked_at at all. Ownership is checked
+--   live at submit (friendly, non-authoritative) and again at
+--   accept (authoritative, atomic, "first valid accept wins").
+--   DP is likewise never reserved at submit - only checked and
+--   moved atomically at accept.
+--
+-- Part 1b: LOCK-CONSISTENCY BUG FIX, MATCH WAGERS ONLY.
+--   card_instances_lock_consistency requires lock_reference_id
+--   + locked_at whenever locked = true. The original
+--   add_match_wager_card() only ever set locked + lock_type,
+--   never the other two columns, so every UPDATE that locked a
+--   wagered card violated this CHECK constraint and failed at
+--   runtime. Fixed by setting/clearing all four lock columns
+--   consistently. (submit_trade had the same bug, but Part 1a
+--   removes card locking from trading entirely, which fixes it
+--   a different way - by no longer needing the lock at all.)
 --
 -- Part 2: "For Trade" flag on card_instances (additive column)
---   plus set_card_for_trade() RPC.
+--   plus set_card_for_trade() RPC. Purely an interest signal -
+--   reserves nothing, can be set regardless of deck usage or
+--   pending offers.
 --
 -- Part 3: DP support in trades (additive columns on trades)
---   plus set_trade_dp() RPC, and submit_trade()/accept_trade()
---   updated to validate + atomically move DP at accept time
---   (never client-trusted, re-checked against live balances).
+--   plus set_trade_dp() RPC. DP is never reserved at submit -
+--   only checked against the live balance and moved atomically
+--   inside accept_trade().
 --
 -- Part 4: Counter offers, without altering the trade_status
 --   enum (avoids ALTER TYPE ... ADD VALUE transaction-safety
 --   edge cases). Uses two new nullable columns on trades
 --   (parent_trade_id, superseded_by) plus counter_trade() RPC.
---   The original trade's status stays 'declined' (a value that
---   already exists) but superseded_by lets the UI show
---   "Countered -> view new offer" instead of a plain decline.
+--
+-- Part 5: OWNERSHIP-CHANGE SIDE EFFECTS (new).
+--   A trigger on card_instances that fires whenever
+--   current_owner_id actually changes - for ANY reason (an
+--   accepted trade, a settled card wager, or anything else
+--   built later) - and: removes that specific card_instance
+--   from every deck it was sitting in, drops a Ready/Active
+--   deck back to Draft if that removal broke its Main/Extra
+--   requirements, and resets For Trade to false (an interest
+--   signal tied to whoever set it, not something that survives
+--   a change of owner).
+--
+-- Part 6: STALE LOCK CLEANUP (new).
+--   A one-time, additive safety cleanup that clears any
+--   leftover lock_type = 'trade' state from before this
+--   rewrite. Only touches the four lock/for_trade metadata
+--   columns - current_owner_id and every other ownership fact
+--   is left completely untouched.
 -- =========================================================
 
 
 -- =========================================================
--- PART 1a. LOCK-CONSISTENCY FIX: TRADING RPCS
+-- PART 1a. TRADING - REWRITTEN, NO CARD LOCKS
 -- =========================================================
 
 create or replace function public.submit_trade(
@@ -55,6 +107,7 @@ declare
   current_user_id uuid;
 
   trade_sender_id uuid;
+  trade_receiver_id uuid;
   trade_status public.trade_status;
   trade_dp_offered integer;
 
@@ -68,10 +121,12 @@ begin
 
   select
     t.sender_id,
+    t.receiver_id,
     t.status,
     t.dp_offered
   into
     trade_sender_id,
+    trade_receiver_id,
     trade_status,
     trade_dp_offered
   from public.trades t
@@ -115,9 +170,10 @@ begin
 
   -- -------------------------------------------------------
   -- Sanity-check the sender can currently afford their own
-  -- DP offer. This is NOT the authoritative check (accept_trade
-  -- re-validates against the live balance at accept time), just
-  -- an early, friendlier failure.
+  -- DP offer. NOT the authoritative check - DP is never
+  -- reserved here. accept_trade() re-validates against the
+  -- live balance at accept time; this is just an early,
+  -- friendlier failure.
   -- -------------------------------------------------------
 
   if coalesce(trade_dp_offered, 0) > 0 then
@@ -136,7 +192,12 @@ begin
 
 
   -- -------------------------------------------------------
-  -- Nogmaals controleren of alle kaarten unlocked zijn
+  -- Ownership sanity-check, RIGHT NOW - not authoritative
+  -- (accept_trade re-checks live at accept time, which is
+  -- what actually matters), just a friendly early failure so
+  -- an obviously stale draft can't even be sent. No locking:
+  -- the same physical card is allowed to be offered in
+  -- several pending trades at once.
   -- -------------------------------------------------------
 
   if exists (
@@ -147,29 +208,23 @@ begin
       on ci.id = ti.card_instance_id
 
     where ti.trade_id = target_trade_id
-      and ci.locked = true
+
+      and (
+        (
+          ti.side = 'offered'
+          and ci.current_owner_id <> trade_sender_id
+        )
+        or
+        (
+          ti.side = 'requested'
+          and ci.current_owner_id <> trade_receiver_id
+        )
+      )
   )
   then
     raise exception
-      'One or more trade cards are already locked';
+      'One or more cards in this trade have changed owner. Remove them and try again.';
   end if;
-
-
-  -- -------------------------------------------------------
-  -- Alle kaarten locken
-  -- -------------------------------------------------------
-
-  update public.card_instances ci
-  set
-    locked = true,
-    lock_type = 'trade',
-    lock_reference_id = target_trade_id,
-    locked_at = now()
-  where ci.id in (
-    select ti.card_instance_id
-    from public.trade_items ti
-    where ti.trade_id = target_trade_id
-  );
 
 
   update public.trades
@@ -197,11 +252,15 @@ as $$
 declare
   current_user_id uuid;
 
+  trade_league_id uuid;
   trade_sender_id uuid;
   trade_receiver_id uuid;
   trade_status public.trade_status;
   trade_dp_offered integer;
   trade_dp_requested integer;
+
+  sender_still_member boolean;
+  receiver_still_member boolean;
 
   sender_new_balance integer;
   receiver_new_balance integer;
@@ -211,13 +270,22 @@ begin
     (select auth.uid());
 
 
+  -- Lock the TRADE ROW, not any card. Two concurrent accept
+  -- attempts on the SAME trade serialize here. Concurrent
+  -- accepts of DIFFERENT trades that happen to share a card
+  -- are allowed to race - whichever gets past the live
+  -- ownership check below first wins; the loser fails
+  -- cleanly instead of doing a partial transfer.
+
   select
+    t.league_id,
     t.sender_id,
     t.receiver_id,
     t.status,
     t.dp_offered,
     t.dp_requested
   into
+    trade_league_id,
     trade_sender_id,
     trade_receiver_id,
     trade_status,
@@ -249,7 +317,40 @@ begin
 
 
   -- -------------------------------------------------------
-  -- Ownership nogmaals controleren
+  -- Both players must still actually be league members.
+  -- -------------------------------------------------------
+
+  select exists (
+    select 1
+    from public.league_members lm
+    where lm.league_id = trade_league_id
+      and lm.profile_id = trade_sender_id
+  )
+  into sender_still_member;
+
+  select exists (
+    select 1
+    from public.league_members lm
+    where lm.league_id = trade_league_id
+      and lm.profile_id = trade_receiver_id
+  )
+  into receiver_still_member;
+
+  if not sender_still_member
+    or not receiver_still_member
+  then
+    raise exception
+      'One or both players are no longer members of this league.';
+  end if;
+
+
+  -- -------------------------------------------------------
+  -- LIVE ownership - the one authoritative check. A card can
+  -- be offered in several pending trades at once; whichever
+  -- accept reaches here first while ownership still matches
+  -- wins. Every later accept for a trade touching the same
+  -- card fails right here instead of doing a partial
+  -- transfer - first valid accept wins.
   -- -------------------------------------------------------
 
   if exists (
@@ -275,37 +376,18 @@ begin
   )
   then
     raise exception
-      'Trade card ownership changed';
-  end if;
-
-
-  -- -------------------------------------------------------
-  -- Alle kaarten moeten nog trade-locked zijn
-  -- -------------------------------------------------------
-
-  if exists (
-    select 1
-    from public.trade_items ti
-
-    join public.card_instances ci
-      on ci.id = ti.card_instance_id
-
-    where ti.trade_id = target_trade_id
-      and (
-        ci.locked = false
-        or ci.lock_type <> 'trade'
-      )
-  )
-  then
-    raise exception
-      'One or more trade cards are no longer locked for trade';
+      'One or more cards in this trade are no longer available.';
   end if;
 
 
   -- -------------------------------------------------------
   -- DP: re-validate against LIVE balances and move it
-  -- atomically. Never trust the trade record's own numbers
-  -- as proof of current affordability - re-check now.
+  -- atomically. Never trusted as reserved at submit time -
+  -- re-checked now, right before the transfer actually
+  -- happens. A player may have several pending DP offers
+  -- that together exceed their current balance; only the
+  -- accepts for which they can still afford it at THIS
+  -- moment succeed.
   -- -------------------------------------------------------
 
   if coalesce(trade_dp_offered, 0) > 0 then
@@ -319,7 +401,7 @@ begin
 
     if sender_new_balance is null then
       raise exception
-        'Sender no longer has enough Duel Points for this trade';
+        'Sender no longer has enough Duel Points for this trade.';
     end if;
 
     insert into public.duel_point_transactions (
@@ -360,7 +442,7 @@ begin
 
     if receiver_new_balance is null then
       raise exception
-        'You no longer have enough Duel Points for this trade';
+        'You no longer have enough Duel Points for this trade.';
     end if;
 
     insert into public.duel_point_transactions (
@@ -391,16 +473,17 @@ begin
 
 
   -- -------------------------------------------------------
-  -- Offered cards -> receiver
+  -- Ownership transfer. No lock columns to touch - they were
+  -- never set for trading in the first place. The
+  -- card_instance_ownership_change trigger (Part 5) takes
+  -- care of pulling these instances out of any decks, and
+  -- resetting For Trade, automatically as a side effect of
+  -- this UPDATE.
   -- -------------------------------------------------------
 
   update public.card_instances ci
   set
-    current_owner_id = trade_receiver_id,
-    locked = false,
-    lock_type = null,
-    lock_reference_id = null,
-    locked_at = null
+    current_owner_id = trade_receiver_id
   where ci.id in (
     select ti.card_instance_id
     from public.trade_items ti
@@ -409,17 +492,9 @@ begin
   );
 
 
-  -- -------------------------------------------------------
-  -- Requested cards -> sender
-  -- -------------------------------------------------------
-
   update public.card_instances ci
   set
-    current_owner_id = trade_sender_id,
-    locked = false,
-    lock_type = null,
-    lock_reference_id = null,
-    locked_at = null
+    current_owner_id = trade_sender_id
   where ci.id in (
     select ti.card_instance_id
     from public.trade_items ti
@@ -488,18 +563,7 @@ begin
   end if;
 
 
-  update public.card_instances ci
-  set
-    locked = false,
-    lock_type = null,
-    lock_reference_id = null,
-    locked_at = null
-  where ci.id in (
-    select ti.card_instance_id
-    from public.trade_items ti
-    where ti.trade_id = target_trade_id
-  );
-
+  -- No card locks to release - trading never locks cards.
 
   update public.trades
   set
@@ -564,21 +628,7 @@ begin
   end if;
 
 
-  if trade_status = 'pending'
-  then
-    update public.card_instances ci
-    set
-      locked = false,
-      lock_type = null,
-      lock_reference_id = null,
-      locked_at = null
-    where ci.id in (
-      select ti.card_instance_id
-      from public.trade_items ti
-      where ti.trade_id = target_trade_id
-    );
-  end if;
-
+  -- No card locks to release - trading never locks cards.
 
   update public.trades
   set
@@ -591,11 +641,18 @@ $$;
 
 
 -- =========================================================
--- PART 1b. LOCK-CONSISTENCY FIX: MATCH WAGER RPCS
+-- PART 1b. LOCK-CONSISTENCY FIX: MATCH WAGER RPCS ONLY
 --
--- Same bug, same fix, in the practice-match wager flow
--- (card_instances.locked is a single shared mechanism used
--- by both trading and match wagers - see card_instances.sql).
+-- Practice Duel card wagers are the one remaining system that
+-- still uses card_instances.locked - a wagered card is
+-- genuinely, exclusively reserved for the duration of that
+-- duel, which is a different situation from a trade offer
+-- (which is just interest, not a reservation). Same historical
+-- bug, same fix, as Part 1a used to need before it stopped
+-- needing locks at all: card_instances_lock_consistency
+-- requires lock_reference_id + locked_at whenever locked =
+-- true, and the original add_match_wager_card() only ever set
+-- locked + lock_type.
 -- =========================================================
 
 create or replace function public.add_match_wager_card(
@@ -1121,17 +1178,24 @@ $$;
 
 -- =========================================================
 -- PART 2. "FOR TRADE" FLAG
+--
+-- Purely an interest signal. Reserves nothing: a card can be
+-- marked For Trade while sitting in a deck, while it's being
+-- offered or requested in any number of pending trades, or
+-- even while it's locked by an active Practice Duel wager
+-- (marking interest in trading it later doesn't touch the
+-- wager). Only the current owner can set it.
 -- =========================================================
 
 alter table public.card_instances
   add column if not exists for_trade boolean not null default false;
 
 comment on column public.card_instances.for_trade is
-  'Player has signalled openness to trading this specific physical copy. Advisory only - other players may still offer on cards that are not marked.';
+  'Player has signalled openness to trading this specific physical copy. A pure interest signal - reserves nothing, does not block deck use or other trades, and is reset automatically whenever the card changes owner (see card_instance_ownership_change in Part 5).';
 
 create index if not exists card_instances_for_trade_idx
   on public.card_instances(league_id, for_trade)
-  where for_trade = true and locked = false;
+  where for_trade = true;
 
 
 create or replace function public.set_card_for_trade(
@@ -1146,7 +1210,6 @@ as $$
 declare
   current_user_id uuid;
   instance_owner_id uuid;
-  instance_locked boolean;
 begin
 
   current_user_id :=
@@ -1156,8 +1219,8 @@ begin
     raise exception 'Not authenticated';
   end if;
 
-  select current_owner_id, locked
-  into instance_owner_id, instance_locked
+  select current_owner_id
+  into instance_owner_id
   from public.card_instances
   where id = target_card_instance_id
   for update;
@@ -1170,9 +1233,9 @@ begin
     raise exception 'You do not own this card';
   end if;
 
-  if target_for_trade = true and instance_locked = true then
-    raise exception 'Locked cards cannot be marked for trade';
-  end if;
+  -- No lock check: For Trade reserves nothing, so it can be
+  -- set regardless of deck usage, pending trade offers, or
+  -- (yes, even) an active wager lock on this exact copy.
 
   update public.card_instances
   set for_trade = target_for_trade
@@ -1213,10 +1276,10 @@ alter table public.trades
   check (dp_requested >= 0);
 
 comment on column public.trades.dp_offered is
-  'Duel Points the sender is offering, moved atomically at accept_trade().';
+  'Duel Points the sender is offering. Never reserved - only checked against the live balance and moved atomically inside accept_trade().';
 
 comment on column public.trades.dp_requested is
-  'Duel Points the sender is requesting from the receiver, moved atomically at accept_trade().';
+  'Duel Points the sender is requesting from the receiver. Never reserved - only checked against the live balance and moved atomically inside accept_trade().';
 
 
 create or replace function public.set_trade_dp(
@@ -1361,18 +1424,7 @@ begin
     raise exception 'Only pending trades can be countered';
   end if;
 
-  -- Release the original trade's card locks, same as a decline.
-  update public.card_instances ci
-  set
-    locked = false,
-    lock_type = null,
-    lock_reference_id = null,
-    locked_at = null
-  where ci.id in (
-    select ti.card_instance_id
-    from public.trade_items ti
-    where ti.trade_id = target_trade_id
-  );
+  -- No card locks to release - trading never locks cards.
 
   -- Create the counter-offer as a new draft trade, roles reversed.
   insert into public.trades (
@@ -1400,7 +1452,10 @@ begin
 
   -- Pre-fill with the original items, sides swapped (mirrors the
   -- original ask/offer from the new sender's point of view). The
-  -- new sender can still add/remove cards before submitting.
+  -- new sender can still add/remove cards before submitting -
+  -- and since nothing was ever locked, the original cards may
+  -- well have moved on by then; add_trade_item / submit_trade
+  -- will catch that the normal way.
   insert into public.trade_items (
     trade_id,
     card_instance_id,
@@ -1438,6 +1493,144 @@ from public;
 grant execute
 on function public.counter_trade(uuid)
 to authenticated;
+
+
+-- =========================================================
+-- PART 5. OWNERSHIP-CHANGE SIDE EFFECTS
+--
+-- Current ownership is the single source of truth for what a
+-- card can be used for. The trade-off for no longer locking
+-- cards is that whenever a card's current_owner_id actually
+-- changes - an accepted trade, a settled card wager, or
+-- anything else that ever moves ownership - three things must
+-- happen automatically, no matter which code path caused the
+-- change:
+--
+--  1. The card instance is removed from every deck it was
+--     sitting in (deck_cards references specific
+--     card_instance_id rows, not just the catalog card - see
+--     202608190009_deck_management.sql / deck_cards).
+--  2. If that pulled a deck below (or above) its Ready
+--     requirements, the deck drops back to Draft - and, if it
+--     was the player's Active deck, is deactivated - rather
+--     than silently staying "Ready" while actually invalid.
+--     Readiness itself is otherwise computed live by the app
+--     from current deck_cards on every render, so this only
+--     needs to correct the *stored* decks.status/is_active.
+--  3. For Trade is reset to false - an interest signal tied to
+--     whoever set it, not something that should carry over to
+--     someone else's new copy.
+--
+-- Deliberately implemented as a trigger on card_instances
+-- itself (not inlined into accept_trade) so it applies
+-- uniformly to every ownership-changing path, present and
+-- future - trades, wager settlement, or anything built later -
+-- instead of needing to be duplicated into each one.
+-- =========================================================
+
+create or replace function public.handle_card_instance_ownership_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  affected_deck record;
+  remaining_main_count integer;
+  remaining_extra_count integer;
+  deck_main_min integer;
+  deck_main_max integer;
+  deck_extra_max integer;
+begin
+
+  for affected_deck in
+    select distinct dc.deck_id
+    from public.deck_cards dc
+    where dc.card_instance_id = new.id
+  loop
+
+    delete from public.deck_cards
+    where card_instance_id = new.id
+      and deck_id = affected_deck.deck_id;
+
+    select
+      count(*) filter (where dc.section = 'main'),
+      count(*) filter (where dc.section = 'extra')
+    into
+      remaining_main_count,
+      remaining_extra_count
+    from public.deck_cards dc
+    where dc.deck_id = affected_deck.deck_id;
+
+    select
+      public.get_deck_setting(d.league_id, 'deck.main_min', 40),
+      public.get_deck_setting(d.league_id, 'deck.main_max', 60),
+      public.get_deck_setting(d.league_id, 'deck.extra_max', 15)
+    into
+      deck_main_min,
+      deck_main_max,
+      deck_extra_max
+    from public.decks d
+    where d.id = affected_deck.deck_id;
+
+    update public.decks
+    set
+      status = 'draft',
+      is_active = false,
+      updated_at = now()
+    where id = affected_deck.deck_id
+      and status = 'ready'
+      and (
+        remaining_main_count < deck_main_min
+        or remaining_main_count > deck_main_max
+        or remaining_extra_count > deck_extra_max
+      );
+
+  end loop;
+
+  new.for_trade := false;
+
+  return new;
+end;
+$$;
+
+
+drop trigger if exists card_instance_ownership_change
+  on public.card_instances;
+
+create trigger card_instance_ownership_change
+before update of current_owner_id
+on public.card_instances
+for each row
+when (
+  new.current_owner_id is distinct from old.current_owner_id
+)
+execute function public.handle_card_instance_ownership_change();
+
+
+-- =========================================================
+-- PART 6. STALE LOCK CLEANUP
+--
+-- One-time, additive safety cleanup: clear any leftover
+-- lock_type = 'trade' state. Trading has never successfully
+-- locked a card in production (the CHECK constraint bug in
+-- Part 1b made every attempt fail before this migration), and
+-- as of Part 1a trading no longer locks cards at all going
+-- forward - so this should affect zero rows in the common
+-- case. It exists purely as a safety net for any leftover test
+-- state, and only ever touches the four lock/for_trade
+-- metadata columns. current_owner_id and every other ownership
+-- fact for every player - including gossie, fardin and
+-- samochamo - is left completely untouched.
+-- =========================================================
+
+update public.card_instances
+set
+  locked = false,
+  lock_type = null,
+  lock_reference_id = null,
+  locked_at = null
+where lock_type = 'trade';
 
 
 commit;

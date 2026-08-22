@@ -1140,7 +1140,7 @@ export default async function TradesPage() {
               </p>
 
               <p className="mt-2 text-sm leading-6 text-zinc-500">
-                Trade offers use specific physical card copies. Copies involved in an active trade stay locked until the trade is accepted, declined or cancelled.
+                Trade offers use specific physical card copies, but nothing gets reserved just by offering it - the same card can sit in a deck, be marked For Trade, and be offered in several pending trades at once. Ownership only actually changes hands the moment someone accepts, and it&apos;s re-checked live at that exact moment - so if a card was already traded away elsewhere, the accept fails cleanly instead of doing a partial trade.
               </p>
             </div>
           </div>

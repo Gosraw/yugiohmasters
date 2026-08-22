@@ -548,7 +548,7 @@ export default async function CollectionPage({
                       fullyLockedGroups
                     }
                   </span>{" "}
-                  fully unavailable card groups. Locked copies may be part of an active trade or Practice Duel wager.
+                  fully unavailable card groups. Locked copies are reserved by an active Practice Duel card wager - trades and deck use never lock a card.
                 </p>
               </div>
             </div>
@@ -973,6 +973,31 @@ export default async function CollectionPage({
                               size={8}
                             />
                             For Trade
+                          </span>
+                        )}
+
+                        {/* Informational only - never blocking. A
+                            card can be In Deck and In Offer and For
+                            Trade all at once; only an active wager
+                            lock (below) actually reserves anything. */}
+
+                        {group.inDeckCount >
+                          0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-cyan-200">
+                            <Layers3
+                              size={8}
+                            />
+                            In Deck
+                          </span>
+                        )}
+
+                        {group.inPendingOfferCount >
+                          0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-violet-300/30 bg-violet-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-violet-200">
+                            <Repeat2
+                              size={8}
+                            />
+                            In Offer
                           </span>
                         )}
 

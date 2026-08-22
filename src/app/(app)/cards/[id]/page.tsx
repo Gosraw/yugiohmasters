@@ -409,6 +409,61 @@ export default async function CardDetailPage({
       )
     );
 
+  // Informational, non-blocking signals - a copy can be In Deck
+  // and In Pending Offer and For Trade all at once. Only an
+  // active wager lock (copy.locked) actually reserves a copy.
+
+  const inDeckInstanceIds =
+    new Set(
+      deckCardRows.map(
+        (row) =>
+          row.card_instance_id
+      )
+    );
+
+  let inPendingOfferInstanceIds =
+    new Set<string>();
+
+  if (
+    ownedCopies.length >
+    0
+  ) {
+    const {
+      data:
+        pendingOfferData,
+    } = await supabase
+      .from(
+        "trade_items"
+      )
+      .select(
+        "card_instance_id,trades!inner(status)"
+      )
+      .in(
+        "card_instance_id",
+        ownedCopies.map(
+          (copy) =>
+            copy.id
+        )
+      )
+      .eq(
+        "trades.status",
+        "pending"
+      );
+
+    inPendingOfferInstanceIds =
+      new Set(
+        (
+          pendingOfferData ??
+          []
+        ).map(
+          (row: {
+            card_instance_id: string;
+          }) =>
+            row.card_instance_id
+        )
+      );
+  }
+
   const deckUsageCount =
     new Map<
       string,
@@ -1012,7 +1067,7 @@ export default async function CardDetailPage({
                 availableCopies.length ===
                   0 && (
                 <p className="mt-3 text-[10px] leading-5 text-red-300/70">
-                  You own this card, but every physical copy is currently locked.
+                  You own this card, but every physical copy is currently locked by an active Practice Duel wager.
                 </p>
               )}
 
@@ -1032,7 +1087,7 @@ export default async function CardDetailPage({
                     1
                       ? " is"
                       : "ies are"}{" "}
-                    currently free for trades or a Practice Duel card wager.
+                    not currently tied up in a Practice Duel wager - free to trade or wager next. Being in a deck or up for trade never blocks this.
                   </p>
                 </div>
               )}
@@ -1347,13 +1402,35 @@ export default async function CardDetailPage({
                               }
                             </span>
 
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex flex-wrap items-center justify-end gap-1.5">
                               {copy.for_trade && (
                                 <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/25 bg-violet-400/10 px-2 py-1 text-[9px] font-black uppercase text-violet-200">
                                   <Tag
                                     size={10}
                                   />
                                   For Trade
+                                </span>
+                              )}
+
+                              {inDeckInstanceIds.has(
+                                copy.id
+                              ) && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-2 py-1 text-[9px] font-black uppercase text-cyan-200">
+                                  <Layers3
+                                    size={10}
+                                  />
+                                  In Deck
+                                </span>
+                              )}
+
+                              {inPendingOfferInstanceIds.has(
+                                copy.id
+                              ) && (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/25 bg-amber-400/10 px-2 py-1 text-[9px] font-black uppercase text-amber-200">
+                                  <Repeat2
+                                    size={10}
+                                  />
+                                  In Offer
                                 </span>
                               )}
 
@@ -1440,8 +1517,12 @@ export default async function CardDetailPage({
                             View Card Legacy
                           </Link>
 
-                          {(!copy.locked ||
-                            copy.for_trade) && (
+                          {/* For Trade is a pure interest signal -
+                              it reserves nothing, so it can be set
+                              regardless of deck use, pending offers,
+                              or even an active wager lock. */}
+
+                          {
                             <form
                               action={
                                 setCardForTrade
@@ -1492,7 +1573,7 @@ export default async function CardDetailPage({
                                   : "Mark For Trade"}
                               </SubmitButton>
                             </form>
-                          )}
+                          }
                         </div>
                       );
                     }

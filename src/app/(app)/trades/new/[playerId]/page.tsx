@@ -252,7 +252,7 @@ export default async function NewTradeWithPlayerPage({
               </p>
 
               <p>
-                Pas wanneer je de trade verstuurt worden de betrokken kaarten gelockt.
+                Er wordt niets gereserveerd door alleen te versturen - dezelfde kaart mag in meerdere trades tegelijk zitten. Pas bij Accept wordt live gecontroleerd of de kaarten nog echt van de juiste speler zijn.
               </p>
             </div>
           </div>

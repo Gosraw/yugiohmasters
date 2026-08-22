@@ -1068,8 +1068,9 @@ export default async function TradeDetailPage({
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-zinc-500">
-                  Je moet minimaal één kaart aanbieden. Requested cards zijn optioneel.
-                  Zodra je verstuurt worden alle geselecteerde kaarten gelockt.
+                  Je moet minimaal één kaart of Duel Points aanbieden. Requested cards zijn optioneel.
+                  Kaarten worden niet gelockt - dezelfde fysieke kaart mag in meerdere pending trades tegelijk zitten.
+                  Bij Accept wordt live gecontroleerd of jullie de aangeboden en gevraagde kaarten nog echt bezitten.
                 </p>
 
                 <form
@@ -1347,11 +1348,11 @@ export default async function TradeDetailPage({
 
               <div>
                 <p className="font-black">
-                  Trade locked
+                  Offer sent
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-zinc-500">
-                  This offer has already been sent. Its card selection can no longer be changed.
+                  This offer has already been sent, so its card and Duel Point selection can no longer be edited. The cards themselves are not reserved though - they stay usable elsewhere (a deck, another trade) until someone actually accepts this offer.
                 </p>
               </div>
             </div>

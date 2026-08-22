@@ -414,12 +414,6 @@ export async function submitTrade(
     }
   );
 
-  if (error) {
-    throw new Error(
-      error.message
-    );
-  }
-
   revalidatePath(
     "/trades"
   );
@@ -427,6 +421,19 @@ export async function submitTrade(
   revalidatePath(
     `/trades/${tradeId}`
   );
+
+  if (error) {
+    // Cards are never locked, so a draft can go stale between when
+    // it was built and when it's sent (one of its cards moved on
+    // via another trade). Land back on the same page with a
+    // friendly banner instead of crashing to the error boundary -
+    // this is an expected, not exceptional, outcome.
+    redirect(
+      `/trades/${tradeId}?error=${encodeURIComponent(
+        error.message
+      )}`
+    );
+  }
 
   redirect(
     `/trades/${tradeId}?success=${encodeURIComponent("Trade sent!")}`
@@ -467,12 +474,6 @@ export async function acceptTrade(
     }
   );
 
-  if (error) {
-    throw new Error(
-      error.message
-    );
-  }
-
   revalidatePath(
     "/trades"
   );
@@ -484,6 +485,21 @@ export async function acceptTrade(
   revalidatePath(
     `/trades/${tradeId}`
   );
+
+  if (error) {
+    // Because cards are never locked, the same card can be offered
+    // in several pending trades at once - first valid accept wins,
+    // and every later accept for a trade touching that same card
+    // fails this live ownership re-check inside accept_trade().
+    // That is an expected outcome of the design, not a bug, so it
+    // gets a friendly banner instead of crashing to the error
+    // boundary.
+    redirect(
+      `/trades/${tradeId}?error=${encodeURIComponent(
+        error.message
+      )}`
+    );
+  }
 
   redirect(
     `/trades/${tradeId}?success=${encodeURIComponent("Trade accepted!")}`

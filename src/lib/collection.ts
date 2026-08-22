@@ -48,8 +48,17 @@ export type CollectionCardInstance = {
   card_catalog_id: string;
   copy_number: number;
   acquired_at: string;
+  // "locked" now ONLY ever means "reserved by an active Practice
+  // Duel card wager" - trading and deck membership never lock a
+  // card (see the 2026-08-22 "current ownership is the hard truth"
+  // migration). It is deliberately NOT a stand-in for "unavailable"
+  // in the general sense any more.
   locked: boolean;
   for_trade: boolean;
+  // Informational, non-blocking signals - a card can be true on
+  // any combination of these at once.
+  inDeck: boolean;
+  inPendingOffer: boolean;
 };
 
 export type GroupedOwnedCard = {
@@ -59,6 +68,8 @@ export type GroupedOwnedCard = {
   lockedCount: number;
   availableCount: number;
   forTradeCount: number;
+  inDeckCount: number;
+  inPendingOfferCount: number;
 };
 
 export type CollectionFilters = {
@@ -105,6 +116,52 @@ export async function fetchOwnedCollection(
   }
 
   const instances = (instanceData ?? []) as CollectionCardInstance[];
+
+  const instanceIds = instances.map((instance) => instance.id);
+
+  // "In Deck" and "In Pending Offer" are informational, non-blocking
+  // signals only (see requirement in the 2026-08-22 no-card-locks
+  // pass) - deck membership no longer prevents anything, and a card
+  // can be offered in several pending trades at once. Two lightweight
+  // lookups, scoped to just this player's instance ids.
+  const inDeckIds = new Set<string>();
+  const inPendingOfferIds = new Set<string>();
+
+  if (instanceIds.length > 0) {
+    const { data: deckCardData } = await supabase
+      .from("deck_cards")
+      .select("card_instance_id")
+      .in("card_instance_id", instanceIds);
+
+    for (const row of (deckCardData ?? []) as {
+      card_instance_id: string;
+    }[]) {
+      inDeckIds.add(row.card_instance_id);
+    }
+
+    // RLS on trade_items only surfaces trades the current viewer is
+    // a participant in, so when viewing another player's binder this
+    // will only reflect pending trades between the two of you - not
+    // every pending trade that player happens to be in. That's a
+    // reasonable default (not a bug): you shouldn't see the shape of
+    // someone else's unrelated trades.
+    const { data: tradeItemData } = await supabase
+      .from("trade_items")
+      .select("card_instance_id,trades!inner(status)")
+      .in("card_instance_id", instanceIds)
+      .eq("trades.status", "pending");
+
+    for (const row of (tradeItemData ?? []) as {
+      card_instance_id: string;
+    }[]) {
+      inPendingOfferIds.add(row.card_instance_id);
+    }
+  }
+
+  for (const instance of instances) {
+    instance.inDeck = inDeckIds.has(instance.id);
+    instance.inPendingOffer = inPendingOfferIds.has(instance.id);
+  }
 
   const catalogIds = [
     ...new Set(instances.map((instance) => instance.card_catalog_id)),
@@ -156,6 +213,14 @@ export async function fetchOwnedCollection(
         existing.forTradeCount += 1;
       }
 
+      if (instance.inDeck) {
+        existing.inDeckCount += 1;
+      }
+
+      if (instance.inPendingOffer) {
+        existing.inPendingOfferCount += 1;
+      }
+
       continue;
     }
 
@@ -166,6 +231,8 @@ export async function fetchOwnedCollection(
       lockedCount: instance.locked ? 1 : 0,
       availableCount: instance.locked ? 0 : 1,
       forTradeCount: instance.for_trade ? 1 : 0,
+      inDeckCount: instance.inDeck ? 1 : 0,
+      inPendingOfferCount: instance.inPendingOffer ? 1 : 0,
     });
   }
 

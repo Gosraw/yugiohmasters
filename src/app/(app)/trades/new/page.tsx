@@ -196,9 +196,11 @@ export default async function NewTradePage() {
             <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">
               Je kiest eerst een trade partner. Daarna selecteer je kaarten die
               jij aanbiedt en kaarten die je van de andere speler wilt
-              ontvangen. Zodra je de trade verstuurt, worden alle betrokken
-              kaarten tijdelijk gelockt totdat de trade wordt geaccepteerd,
-              geweigerd of geannuleerd.
+              ontvangen. Kaarten worden niet gereserveerd - dezelfde kaart mag
+              gewoon in een deck blijven zitten of in meerdere trades tegelijk
+              worden aangeboden. Pas op het moment dat iemand de trade
+              accepteert, wordt live gecontroleerd of de kaarten nog echt van
+              de juiste speler zijn en wisselt de eigendom daadwerkelijk.
             </p>
           </div>
         </div>

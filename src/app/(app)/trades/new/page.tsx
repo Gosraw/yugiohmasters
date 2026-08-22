@@ -17,14 +17,14 @@ type LeagueMember = {
 type Profile = {
   id: string;
   username: string | null;
-  display_name: string | null;
+  duelist_name: string | null;
 };
 
 function playerName(
   profile: Profile
 ) {
   return (
-    profile.display_name ??
+    profile.duelist_name ??
     profile.username ??
     "Unknown Player"
   );
@@ -112,7 +112,7 @@ export default async function NewTradePage() {
     } = await supabase
       .from("profiles")
       .select(
-        "id,username,display_name"
+        "id,username,duelist_name"
       )
       .in(
         "id",

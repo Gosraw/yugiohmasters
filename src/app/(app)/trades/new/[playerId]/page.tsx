@@ -28,7 +28,7 @@ type Profile = {
   username:
     | string
     | null;
-  display_name:
+  duelist_name:
     | string
     | null;
 };
@@ -37,7 +37,7 @@ function playerName(
   profile: Profile
 ) {
   return (
-    profile.display_name ??
+    profile.duelist_name ??
     profile.username ??
     "Unknown Player"
   );
@@ -130,7 +130,7 @@ export default async function NewTradeWithPlayerPage({
   } = await supabase
     .from("profiles")
     .select(
-      "id,username,display_name"
+      "id,username,duelist_name"
     )
     .eq(
       "id",

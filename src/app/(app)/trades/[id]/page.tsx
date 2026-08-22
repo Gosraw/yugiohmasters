@@ -6,11 +6,13 @@ import {
   ArrowLeft,
   CheckCircle2,
   Clock3,
+  Coins,
   Home,
   LockKeyhole,
   Minus,
   Repeat2,
   Send,
+  Shuffle,
   UserRound,
   XCircle,
 } from "lucide-react";
@@ -18,8 +20,10 @@ import {
 import {
   acceptTrade,
   cancelTrade,
+  counterTrade,
   declineTrade,
   removeTradeItem,
+  setTradeDp,
   submitTrade,
 } from "@/app/actions/trades";
 
@@ -60,6 +64,11 @@ type Trade = {
   created_at: string;
   submitted_at: string | null;
   completed_at: string | null;
+
+  dp_offered: number;
+  dp_requested: number;
+  parent_trade_id: string | null;
+  superseded_by: string | null;
 };
 
 type TradeItem = {
@@ -76,7 +85,8 @@ type TradeItem = {
 type Profile = {
   id: string;
   username: string | null;
-  display_name: string | null;
+  duelist_name: string | null;
+  duel_points: number;
 };
 
 type CardInstance = {
@@ -86,6 +96,7 @@ type CardInstance = {
   copy_number: number;
   locked: boolean;
   lock_type: string | null;
+  for_trade: boolean;
 };
 
 type CardCatalog = {
@@ -104,6 +115,7 @@ type CollectionGroup = {
   instances: CardInstance[];
   availableInstances: CardInstance[];
   selectedCount: number;
+  forTradeCount: number;
 };
 
 type SelectedTradeCard = {
@@ -116,7 +128,7 @@ function playerName(
   profile: Profile | undefined
 ) {
   return (
-    profile?.display_name ??
+    profile?.duelist_name ??
     profile?.username ??
     "Unknown Player"
   );
@@ -145,9 +157,23 @@ function formatDate(
 
 function TradeStatusBadge({
   status,
+  countered,
 }: {
   status: Trade["status"];
+  countered?: boolean;
 }) {
+  if (
+    status === "declined" &&
+    countered
+  ) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-violet-200">
+        <Shuffle size={12} />
+        Countered
+      </span>
+    );
+  }
+
   if (status === "pending") {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-amber-200">
@@ -286,7 +312,7 @@ export default async function TradeDetailPage({
   } = await supabase
     .from("trades")
     .select(
-      "id,league_id,created_by,sender_id,receiver_id,status,message,created_at,submitted_at,completed_at"
+      "id,league_id,created_by,sender_id,receiver_id,status,message,created_at,submitted_at,completed_at,dp_offered,dp_requested,parent_trade_id,superseded_by"
     )
     .eq("id", id)
     .maybeSingle();
@@ -324,7 +350,7 @@ export default async function TradeDetailPage({
   } = await supabase
     .from("profiles")
     .select(
-      "id,username,display_name"
+      "id,username,duelist_name,duel_points"
     )
     .in(
       "id",
@@ -399,7 +425,7 @@ export default async function TradeDetailPage({
   } = await supabase
     .from("card_instances")
     .select(
-      "id,card_catalog_id,current_owner_id,copy_number,locked,lock_type"
+      "id,card_catalog_id,current_owner_id,copy_number,locked,lock_type,for_trade"
     )
     .eq(
       "league_id",
@@ -595,6 +621,13 @@ export default async function TradeDetailPage({
           current.selectedCount += 1;
         }
 
+        if (
+          instance.for_trade &&
+          available
+        ) {
+          current.forTradeCount += 1;
+        }
+
         continue;
       }
 
@@ -611,6 +644,11 @@ export default async function TradeDetailPage({
               : [],
           selectedCount:
             selected
+              ? 1
+              : 0,
+          forTradeCount:
+            instance.for_trade &&
+            available
               ? 1
               : 0,
         }
@@ -650,6 +688,9 @@ export default async function TradeDetailPage({
         selectedCount:
           group.selectedCount,
 
+        forTradeCount:
+          group.forTradeCount,
+
         availableInstances:
           group.availableInstances.map(
             (instance) => ({
@@ -674,6 +715,9 @@ export default async function TradeDetailPage({
 
         selectedCount:
           group.selectedCount,
+
+        forTradeCount:
+          group.forTradeCount,
 
         availableInstances:
           group.availableInstances.map(
@@ -714,6 +758,9 @@ export default async function TradeDetailPage({
       <header className="mt-6">
         <TradeStatusBadge
           status={trade.status}
+          countered={Boolean(
+            trade.superseded_by
+          )}
         />
 
         <p className="mt-5 text-xs font-black tracking-[.28em] text-amber-300">
@@ -731,6 +778,86 @@ export default async function TradeDetailPage({
             trade.created_at
           )}
         </p>
+
+        {/* Human-readable summary - never raw field/status names,
+            always plain "who gives what to whom". */}
+
+        {(offeredCards.length >
+          0 ||
+          requestedCards.length >
+            0 ||
+          trade.dp_offered >
+            0 ||
+          trade.dp_requested >
+            0) && (
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+            <strong className="text-amber-200">
+              {playerName(
+                sender
+              )}
+            </strong>{" "}
+            offers{" "}
+            <strong className="text-zinc-200">
+              {offeredCards.length >
+              0
+                ? `${offeredCards.length} card${
+                    offeredCards.length ===
+                    1
+                      ? ""
+                      : "s"
+                  }`
+                : "nothing"}
+              {trade.dp_offered >
+                0 &&
+                ` + ${trade.dp_offered} DP`}
+            </strong>{" "}
+            in exchange for{" "}
+            <strong className="text-cyan-200">
+              {requestedCards.length >
+              0
+                ? `${requestedCards.length} card${
+                    requestedCards.length ===
+                    1
+                      ? ""
+                      : "s"
+                  }`
+                : "nothing"}
+              {trade.dp_requested >
+                0 &&
+                ` + ${trade.dp_requested} DP`}
+            </strong>{" "}
+            from{" "}
+            <strong className="text-cyan-200">
+              {playerName(
+                receiver
+              )}
+            </strong>
+            .
+          </p>
+        )}
+
+        {trade.status ===
+          "declined" &&
+          trade.superseded_by && (
+            <Link
+              href={`/trades/${trade.superseded_by}`}
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-violet-300 transition hover:text-violet-200"
+            >
+              <Shuffle
+                size={14}
+              />
+              View the counter-offer →
+            </Link>
+          )}
+
+        {trade.parent_trade_id && (
+          <Link
+            href={`/trades/${trade.parent_trade_id}`}
+            className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-zinc-500 transition hover:text-zinc-300"
+          >
+            ← This is a counter-offer to an earlier trade
+          </Link>
+        )}
       </header>
 
       {/* SUMMARY */}
@@ -748,6 +875,20 @@ export default async function TradeDetailPage({
               {playerName(sender)}
             </p>
           </div>
+
+          {trade.dp_offered >
+            0 && (
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-xs font-black text-amber-200">
+              <Coins
+                size={13}
+              />
+              +{" "}
+              {
+                trade.dp_offered
+              }{" "}
+              Duel Points
+            </span>
+          )}
 
           {offeredCards.length ===
           0 ? (
@@ -787,6 +928,20 @@ export default async function TradeDetailPage({
             </p>
           </div>
 
+          {trade.dp_requested >
+            0 && (
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-200">
+              <Coins
+                size={13}
+              />
+              +{" "}
+              {
+                trade.dp_requested
+              }{" "}
+              Duel Points
+            </span>
+          )}
+
           {requestedCards.length ===
           0 ? (
             <p className="mt-4 text-sm text-zinc-600">
@@ -812,6 +967,88 @@ export default async function TradeDetailPage({
           )}
         </div>
       </section>
+
+      {/* DP EDITOR */}
+
+      {editable && (
+        <section className="panel mt-4 p-5">
+          <div className="flex items-start gap-3">
+            <Coins
+              size={20}
+              className="mt-0.5 shrink-0 text-amber-300"
+            />
+
+            <div className="flex-1">
+              <p className="font-black">
+                Duel Points (optional)
+              </p>
+
+              <p className="mt-2 text-sm leading-6 text-zinc-500">
+                Sweeten the deal with Duel Points on either side. You have{" "}
+                <strong className="text-amber-200">
+                  {sender?.duel_points ??
+                    0}{" "}
+                  DP
+                </strong>
+                {" "}available.
+              </p>
+
+              <form
+                action={setTradeDp}
+                className="mt-4 flex flex-wrap items-end gap-4"
+              >
+                <input
+                  type="hidden"
+                  name="trade_id"
+                  value={trade.id}
+                />
+
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-black uppercase tracking-wider text-zinc-500">
+                    You offer
+                  </span>
+
+                  <input
+                    type="number"
+                    name="dp_offered"
+                    min={0}
+                    step={1}
+                    defaultValue={
+                      trade.dp_offered
+                    }
+                    className="field w-32"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-xs font-black uppercase tracking-wider text-zinc-500">
+                    You request
+                  </span>
+
+                  <input
+                    type="number"
+                    name="dp_requested"
+                    min={0}
+                    step={1}
+                    defaultValue={
+                      trade.dp_requested
+                    }
+                    className="field w-32"
+                  />
+                </label>
+
+                <SubmitButton
+                  pendingLabel="Saving..."
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-2.5 text-sm font-black text-amber-200 transition-all hover:-translate-y-0.5 hover:bg-amber-300/20 active:scale-[0.97]"
+                >
+                  <Coins size={16} />
+                  Update DP
+                </SubmitButton>
+              </form>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* DRAFT SEND */}
 
@@ -933,6 +1170,25 @@ export default async function TradeDetailPage({
                   <XCircle size={16} />
                   Decline
                 </ConfirmSubmitButton>
+              </form>
+
+              <form
+                action={counterTrade}
+              >
+                <input
+                  type="hidden"
+                  name="trade_id"
+                  value={trade.id}
+                />
+
+                <SubmitButton
+                  title="Decline this offer and start a new one in the opposite direction, pre-filled with the same cards and DP"
+                  pendingLabel="Preparing..."
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-violet-400/30 bg-violet-400/10 px-4 py-2.5 text-sm font-black text-violet-200 transition-all hover:-translate-y-0.5 hover:bg-violet-400/20 active:scale-[0.97]"
+                >
+                  <Shuffle size={16} />
+                  Counter Offer
+                </SubmitButton>
               </form>
             </div>
           </section>

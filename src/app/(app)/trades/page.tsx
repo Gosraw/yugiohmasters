@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import {
   ArrowLeft,
+  BookOpen,
   CheckCircle2,
   Clock3,
   Home,
@@ -11,6 +12,7 @@ import {
   Plus,
   Repeat2,
   Send,
+  Shuffle,
   Sparkles,
   UserRound,
   XCircle,
@@ -53,6 +55,14 @@ type Trade = {
     | null;
 
   completed_at:
+    | string
+    | null;
+
+  parent_trade_id:
+    | string
+    | null;
+
+  superseded_by:
     | string
     | null;
 };
@@ -137,9 +147,27 @@ function formatDate(
 
 function TradeStatusBadge({
   status,
+  countered,
 }: {
   status: TradeStatus;
+  countered?: boolean;
 }) {
+  if (
+    status ===
+      "declined" &&
+    countered
+  ) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-violet-200">
+        <Shuffle
+          size={10}
+        />
+
+        Countered
+      </span>
+    );
+  }
+
   if (
     status ===
     "pending"
@@ -283,6 +311,9 @@ function TradeCard({
             status={
               trade.status
             }
+            countered={Boolean(
+              trade.superseded_by
+            )}
           />
 
           <span
@@ -467,7 +498,9 @@ export default async function TradesPage() {
         message,
         created_at,
         submitted_at,
-        completed_at
+        completed_at,
+        parent_trade_id,
+        superseded_by
       `
     )
     .eq(
@@ -781,6 +814,17 @@ export default async function TradesPage() {
                   />
 
                   My Collection
+                </Link>
+
+                <Link
+                  href="/trades/binder"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-black text-zinc-300 transition hover:border-emerald-300/20 hover:text-emerald-200"
+                >
+                  <BookOpen
+                    size={16}
+                  />
+
+                  Trade Binders
                 </Link>
               </div>
             </div>

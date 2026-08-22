@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
+  Tag,
   X,
 } from "lucide-react";
 
@@ -60,6 +61,8 @@ export type TradeBrowserCard = {
 
   selectedCount: number;
 
+  forTradeCount: number;
+
   availableInstances: {
     id: string;
     copy_number: number;
@@ -75,7 +78,8 @@ type CardCategory =
 type Availability =
   | "all"
   | "available"
-  | "selected";
+  | "selected"
+  | "for-trade";
 
 type SortOption =
   | "name-asc"
@@ -343,6 +347,15 @@ export function TradeCollectionBrowser({
               availability ===
                 "selected" &&
               group.selectedCount ===
+                0
+            ) {
+              return false;
+            }
+
+            if (
+              availability ===
+                "for-trade" &&
+              group.forTradeCount ===
                 0
             ) {
               return false;
@@ -633,6 +646,20 @@ export function TradeCollectionBrowser({
             >
               Selected
             </FilterButton>
+
+            <FilterButton
+              active={
+                availability ===
+                "for-trade"
+              }
+              onClick={() =>
+                setAvailability(
+                  "for-trade"
+                )
+              }
+            >
+              Marked For Trade
+            </FilterButton>
           </div>
         </div>
 
@@ -872,6 +899,18 @@ export function TradeCollectionBrowser({
                           group.quantity
                         }
                       </span>
+
+                      {group.forTradeCount >
+                        0 && (
+                        <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full border border-violet-300/40 bg-violet-400/15 px-2 py-1 text-[8px] font-black uppercase text-violet-200 backdrop-blur-md">
+                          <Tag
+                            size={
+                              9
+                            }
+                          />
+                          For Trade
+                        </span>
+                      )}
                     </div>
                   </Link>
 

@@ -58,6 +58,19 @@ begin;
 --   transaction commits or rolls back - nothing persists on the
 --   row itself.
 --
+--   Two further hardening checks, both transaction-scoped only:
+--   (a) every card_instance in a trade must have league_id =
+--   the trade's own league_id, checked as a friendly early
+--   validation in submit_trade() and again authoritatively in
+--   accept_trade(), failing with "One or more cards do not
+--   belong to this league." (b) whenever a trade carries DP in
+--   either direction, accept_trade() locks both the sender's and
+--   receiver's profiles rows FOR UPDATE, in a deterministic order
+--   by profile id (not "sender then receiver"), before touching
+--   either balance - so two opposite-direction concurrent DP
+--   trades between the same two players can never lock those
+--   rows in reverse order and deadlock each other.
+--
 -- Part 1b: LOCK-CONSISTENCY BUG FIX, MATCH WAGERS ONLY.
 --   card_instances_lock_consistency requires lock_reference_id
 --   + locked_at whenever locked = true. The original
@@ -120,6 +133,7 @@ as $$
 declare
   current_user_id uuid;
 
+  trade_league_id uuid;
   trade_sender_id uuid;
   trade_receiver_id uuid;
   trade_status public.trade_status;
@@ -134,11 +148,13 @@ begin
 
 
   select
+    t.league_id,
     t.sender_id,
     t.receiver_id,
     t.status,
     t.dp_offered
   into
+    trade_league_id,
     trade_sender_id,
     trade_receiver_id,
     trade_status,
@@ -202,6 +218,31 @@ begin
         'You do not have enough Duel Points for this offer';
     end if;
 
+  end if;
+
+
+  -- -------------------------------------------------------
+  -- Cross-league safety, RIGHT NOW - not authoritative (see the
+  -- matching check in accept_trade, which is what actually
+  -- matters). A card_instance belongs to exactly one league and
+  -- must never be tradeable into a different league's trade -
+  -- this is a friendly early failure for an obviously invalid
+  -- draft.
+  -- -------------------------------------------------------
+
+  if exists (
+    select 1
+    from public.trade_items ti
+
+    join public.card_instances ci
+      on ci.id = ti.card_instance_id
+
+    where ti.trade_id = target_trade_id
+      and ci.league_id <> trade_league_id
+  )
+  then
+    raise exception
+      'One or more cards do not belong to this league.';
   end if;
 
 
@@ -387,6 +428,33 @@ begin
 
 
   -- -------------------------------------------------------
+  -- Cross-league safety - the one authoritative check. A
+  -- card_instance's league_id never changes, so this doesn't
+  -- strictly need the row lock above to be race-safe, but it
+  -- runs after it anyway for consistency with the ownership
+  -- check right below. Guards against a card_instance that
+  -- somehow ended up referenced by a trade_items row for a
+  -- trade in a different league (e.g. stale/bad data) ever
+  -- being tradeable across league boundaries.
+  -- -------------------------------------------------------
+
+  if exists (
+    select 1
+    from public.trade_items ti
+
+    join public.card_instances ci
+      on ci.id = ti.card_instance_id
+
+    where ti.trade_id = target_trade_id
+      and ci.league_id <> trade_league_id
+  )
+  then
+    raise exception
+      'One or more cards do not belong to this league.';
+  end if;
+
+
+  -- -------------------------------------------------------
   -- LIVE ownership - the one authoritative check. Because the
   -- card_instance rows above are now locked, this read is safe
   -- from the concurrent-accept race: a second accept on a
@@ -435,7 +503,32 @@ begin
   -- that together exceed their current balance; only the
   -- accepts for which they can still afford it at THIS
   -- moment succeed.
+  --
+  -- Before touching either balance, lock BOTH profile rows
+  -- (sender and receiver) FOR UPDATE, in a deterministic order
+  -- by id - not "sender then receiver", which would let two
+  -- opposite-direction concurrent trades (A->B and B->A) each
+  -- lock the two rows in reverse order and deadlock each other.
+  -- Ordering strictly by id means every accept trying to lock
+  -- this same pair of profiles always requests them in the same
+  -- order, so the second one simply waits instead of
+  -- deadlocking. This is a plain transaction-scoped row lock -
+  -- no new persistent lock state, released automatically on
+  -- commit or rollback.
   -- -------------------------------------------------------
+
+  if coalesce(trade_dp_offered, 0) > 0
+    or coalesce(trade_dp_requested, 0) > 0
+  then
+
+    perform p.id
+    from public.profiles p
+    where p.id in (trade_sender_id, trade_receiver_id)
+    order by p.id
+    for update;
+
+  end if;
+
 
   if coalesce(trade_dp_offered, 0) > 0 then
 

@@ -2,24 +2,43 @@ begin;
 
 -- =========================================================
 -- DUELIST CIRCLE
--- DEFINITIVE RARITY BALANCE PASS (2026-08-21)
+-- DEFINITIVE RARITY BALANCE PASS (2026-08-21, retuned 2026-08-22)
 --
 -- Replaces the launch-era draft weights and pack rarity
 -- tables with the values chosen after the rarity/economy
 -- simulation in scripts/analyze-rarity.mjs (100k packs/type,
 -- 20k drafts, current production vs. Conservative/Balanced/
--- Generous candidates). Values below are taken EXACTLY from
--- that analysis - no new percentages were invented here:
+-- Generous candidates). Values below are taken from that
+-- analysis - no new percentages were invented, only Legendary
+-- (and, correspondingly, Secret Rare, so each table keeps
+-- summing to 100) was retuned per-pack on 2026-08-22 after the
+-- first pass's simulated per-pack Legendary chance came in too
+-- high on Deluxe/Special (13.31% / 6.59%):
 --
---   Draft weights           -> BALANCED candidate
---   Normal Pack / Premium   -> BALANCED candidate
---   Deluxe Pack / Special   -> GENEROUS candidate
+--   Draft weights           -> BALANCED candidate (unchanged
+--                               by the 2026-08-22 retune)
+--   Normal Pack             -> BALANCED candidate (already
+--                               inside target, untouched)
+--   Premium Pack            -> BALANCED candidate's Normal/
+--                               Rare/Super Rare/Ultra Rare
+--                               tiers, Legendary/Secret Rare
+--                               retuned
+--   Deluxe Pack / Special   -> GENEROUS candidate's Normal/
+--                               Rare/Super Rare/Ultra Rare
+--                               tiers, Legendary/Secret Rare
+--                               retuned
+--
+-- See LIVE_PACK_TABLES / LIVE_DRAFT_WEIGHTS in
+-- scripts/analyze-rarity.mjs for the exact values and their
+-- simulated (pity-inclusive) per-pack Legendary result.
 --
 -- Pity/guaranteed-slot MECHANICS (thresholds, forced-rank
 -- tables, reset conditions) are UNCHANGED from production -
--- only the base rarity tables move. card_catalog rarity
--- assignments are untouched. format_eligible = true remains
--- a hard filter everywhere it already was.
+-- only the base rarity tables move, and were left untouched by
+-- the 2026-08-22 retune too (not strictly necessary to reach
+-- the new targets). card_catalog rarity assignments are
+-- untouched. format_eligible = true remains a hard filter
+-- everywhere it already was.
 --
 -- Every statement below is CREATE OR REPLACE / idempotent
 -- upsert, safe to re-run.
@@ -1285,23 +1304,29 @@ $$;
 -- ranks, reset conditions) are untouched - they call this
 -- function by name and need no changes themselves.
 --
--- New tables (Normal/Legendary %% first/last for reference):
---   Normal  (BALANCED) : 68 / 24 / 6.5 / 1.15 / 0.2 / ~0.15
---   Premium (BALANCED) : 30 / 38 / 22  / 8    / 1.65/ 0.35
---   Deluxe  (GENEROUS) : 11 / 20 / 31  / 26   / 10  / 2
---   Special (GENEROUS) : 18 / 29 / 29  / 17.3 / 5.5 / 1.2
+-- LIVE base tables (2026-08-22 retune - see LIVE_PACK_TABLES
+-- in scripts/analyze-rarity.mjs, the single source of truth
+-- these numbers are copied from):
+--   Normal  : 68 / 24 / 6.5 / 1.15 / 0.2  / 0.1   (unchanged)
+--   Premium : 30 / 38 / 22  / 8    / 1.9  / 0.1
+--   Deluxe  : 11 / 20 / 31  / 26   / 11.55/ 0.45
+--   Special : 18 / 29 / 29  / 17.3 / 6.45 / 0.25
 --
--- NOTE on Normal Pack: the six BALANCED percentages from
--- scripts/analyze-rarity.mjs sum to 99.95, not 100 (a 0.05pp
--- rounding gap already present in the analysis script itself -
--- see the simulation output, which already reflects it: base
--- Legendary comes out at ~0.15%, not the nominally-labeled
--- 0.10%). Per the instruction to use the analysis numbers
--- EXACTLY and invent nothing new, this migration reproduces
--- that same gap (Legendary is reached via the unconditional
--- "else", identical to how the JS simulator's fallback works),
--- so production matches the simulated numbers exactly. Flagged
--- in the session report rather than silently corrected.
+-- Simulated (pity-inclusive) PER-PACK P(>=1 Legendary), 100k
+-- packs/type, seed 20260821+4: Normal 0.52% - Premium 1.39% -
+-- Deluxe 4.63% - Special 3.00%. All four land inside their
+-- requested target ranges (0.4-0.6 / 1.2-1.8 / 4.0-5.0 /
+-- 2.5-3.5), and Deluxe remains clearly the strongest pack on
+-- every high-rarity metric (highest Legendary, Secret Rare+
+-- and Ultra Rare+ rate of the four).
+--
+-- NOTE on Normal Pack: its six percentages sum to 99.95, not
+-- 100 (a 0.05pp rounding gap already present in the original
+-- analysis - Legendary is reached via the unconditional
+-- "else", so it effectively gets 0.15%, not the nominally
+-- labeled 0.10%). Unchanged by the 2026-08-22 retune since
+-- Normal was already inside its target range; flagged here
+-- rather than silently corrected, same as before.
 -- ---------------------------------------------------------
 
 create or replace function public.roll_shop_pack_rarity(
@@ -1362,7 +1387,8 @@ begin
   end if;
 
   -- =======================================================
-  -- NORMAL PACK - BALANCED candidate
+  -- NORMAL PACK - LIVE (unchanged by 2026-08-22 retune,
+  -- already inside its target range)
   -- 68 / 24 / 6.5 / 1.15 / 0.2 / else Legendary
   -- =======================================================
   if target_pack_code = 'normal' then
@@ -1382,8 +1408,8 @@ begin
   end if;
 
   -- =======================================================
-  -- PREMIUM PACK - BALANCED candidate
-  -- 30 / 38 / 22 / 8 / 1.65 / else Legendary
+  -- PREMIUM PACK - LIVE (2026-08-22 retune)
+  -- 30 / 38 / 22 / 8 / 1.9 / else Legendary
   -- =======================================================
   if target_pack_code = 'premium' then
     if roll < 30 then
@@ -1394,7 +1420,7 @@ begin
       return 'Super Rare';
     elsif roll < 98 then
       return 'Ultra Rare';
-    elsif roll < 99.8 then
+    elsif roll < 99.9 then
       return 'Secret Rare';
     else
       return 'Legendary';
@@ -1402,8 +1428,8 @@ begin
   end if;
 
   -- =======================================================
-  -- DELUXE PACK - GENEROUS candidate
-  -- 11 / 20 / 31 / 26 / 10 / else Legendary
+  -- DELUXE PACK - LIVE (2026-08-22 retune)
+  -- 11 / 20 / 31 / 26 / 11.55 / else Legendary
   -- =======================================================
   if target_pack_code = 'deluxe' then
     if roll < 11 then
@@ -1414,7 +1440,7 @@ begin
       return 'Super Rare';
     elsif roll < 88 then
       return 'Ultra Rare';
-    elsif roll < 99.3 then
+    elsif roll < 99.55 then
       return 'Secret Rare';
     else
       return 'Legendary';
@@ -1422,8 +1448,8 @@ begin
   end if;
 
   -- =======================================================
-  -- SPECIAL PACK - GENEROUS candidate
-  -- 18 / 29 / 29 / 17.3 / 5.5 / else Legendary
+  -- SPECIAL PACK - LIVE (2026-08-22 retune)
+  -- 18 / 29 / 29 / 17.3 / 6.45 / else Legendary
   -- =======================================================
   if target_pack_code = 'special' then
     if roll < 18 then
@@ -1434,7 +1460,7 @@ begin
       return 'Super Rare';
     elsif roll < 93.3 then
       return 'Ultra Rare';
-    elsif roll < 99.45 then
+    elsif roll < 99.75 then
       return 'Secret Rare';
     else
       return 'Legendary';

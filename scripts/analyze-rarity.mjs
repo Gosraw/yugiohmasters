@@ -150,6 +150,12 @@ const CURRENT_PITY = {
 // thresholds still make sense once base rates move.
 const MODEL_PITY = CURRENT_PITY;
 
+// PRE-2026-08-21 production. Superseded twice since (first by
+// the BALANCED/GENEROUS blend shipped in
+// 202608210018_rarity_balance_definitive.sql, then by the
+// Legendary-only retune below) - kept only as the original
+// historical baseline for comparison. See LIVE_PACK_TABLES for
+// what is actually live now.
 const CURRENT_PACK_TABLES = {
   normal: [60, 28, 9, 2.5, 0.45, 0.05],
   premium: [25, 35, 25, 10, 4, 1],
@@ -180,6 +186,26 @@ const GENEROUS_PACK_TABLES = {
   premium: [26, 36, 24, 10.5, 2.9, 0.6],
   deluxe: [11, 20, 31, 26, 10, 2],
   special: [18, 29, 29, 17.3, 5.5, 1.2],
+};
+
+// LIVE (production) - what is actually shipped in
+// 202608210018_rarity_balance_definitive.sql as of the
+// 2026-08-22 Legendary-only retune. Normal is BALANCED
+// unchanged (already inside the 0.4-0.6% per-pack target).
+// Premium keeps BALANCED's Normal/Rare/SuperRare/Ultra tiers
+// unchanged; Deluxe/Special keep GENEROUS's Normal/Rare/
+// SuperRare/Ultra tiers unchanged. Only Legendary (and,
+// correspondingly, Secret Rare, to keep each table summing to
+// 100) were retuned on Premium/Deluxe/Special to bring the
+// simulated PER-PACK Legendary chance down out of Deluxe/
+// Special's too-high range - pity/floor/force mechanics were
+// deliberately left untouched. See the simulated per-pack
+// Legendary %s printed below for the actual (post-pity) result.
+const LIVE_PACK_TABLES = {
+  normal: [68, 24, 6.5, 1.15, 0.2, 0.1],
+  premium: [30, 38, 22, 8, 1.9, 0.1],
+  deluxe: [11, 20, 31, 26, 11.55, 0.45],
+  special: [18, 29, 29, 17.3, 6.45, 0.25],
 };
 
 // ---------------------------------------------------------
@@ -231,6 +257,11 @@ const GENEROUS_DRAFT_WEIGHTS = {
   "Secret Rare": 2.2,
   Legendary: 0.8,
 };
+
+// LIVE (production) draft weights - unchanged from BALANCED,
+// per the instruction to retune Legendary on PACKS only and
+// leave draft odds untouched.
+const LIVE_DRAFT_WEIGHTS = BALANCED_DRAFT_WEIGHTS;
 
 // ---------------------------------------------------------
 // PACK SIMULATION
@@ -551,8 +582,15 @@ async function main() {
   console.log(`Draft sims: ${DRAFT_SIM_COUNT.toLocaleString()} per model`);
   console.log("\nNO production data is read or written. NO live odds are changed by this script.");
 
+  const liveResult = runModel(
+    "LIVE (production, 2026-08-22 retune)",
+    LIVE_PACK_TABLES,
+    LIVE_DRAFT_WEIGHTS,
+    mulberry32(SEED + 4)
+  );
+
   const currentResult = runModel(
-    "CURRENT (production)",
+    "PRE-2026-08-21 (superseded, historical baseline)",
     CURRENT_PACK_TABLES,
     CURRENT_DRAFT_WEIGHTS,
     mulberry32(SEED)
@@ -582,10 +620,13 @@ async function main() {
   printDpEconomy();
 
   console.log(`\n${"=".repeat(70)}`);
-  console.log("NONE of these candidate percentages have been applied to production.");
-  console.log("draft.rarity_weights and the pack rarity tables in roll_shop_pack_rarity() are UNCHANGED.");
+  console.log("LIVE (production, 2026-08-22 retune) IS what is actually applied in");
+  console.log("202608210018_rarity_balance_definitive.sql. Every other block above");
+  console.log("(PRE-2026-08-21 baseline, CONSERVATIVE, BALANCED, GENEROUS) is a");
+  console.log("historical/reference candidate only and has NOT been applied.");
   console.log("=".repeat(70));
 
+  void liveResult;
   void currentResult;
   void conservativeResult;
   void balancedResult;

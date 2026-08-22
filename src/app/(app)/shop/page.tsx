@@ -37,6 +37,10 @@ import {
   PackArt,
 } from "@/components/pack-art";
 
+import {
+  ShopCountdown,
+} from "@/components/shop-countdown";
+
 export const dynamic =
   "force-dynamic";
 
@@ -189,6 +193,32 @@ type RotationCard = {
     | null;
 };
 
+type SpecialPackRotation = {
+  id: string;
+
+  theme_category:
+    | "attribute"
+    | "archetype";
+
+  theme_value:
+    string;
+
+  theme_label:
+    string;
+
+  price_dp:
+    number;
+
+  cards_per_pack:
+    number;
+
+  starts_at:
+    string;
+
+  ends_at:
+    string;
+};
+
 type Voucher = {
   id: string;
 
@@ -330,55 +360,6 @@ function bossPullReaction(
 // HELPERS
 // =========================================================
 
-function formatRemaining(
-  endsAt:
-    | string
-    | undefined
-) {
-  if (!endsAt) {
-    return "No rotation";
-  }
-
-  const difference =
-    new Date(
-      endsAt
-    ).getTime() -
-    Date.now();
-
-  if (difference <= 0) {
-    return "Rotation ended";
-  }
-
-  const hours =
-    Math.floor(
-      difference /
-        3_600_000
-    );
-
-  const minutes =
-    Math.floor(
-      (
-        difference %
-        3_600_000
-      ) /
-        60_000
-    );
-
-  if (hours >= 24) {
-    const days =
-      Math.floor(
-        hours / 24
-      );
-
-    const remainingHours =
-      hours % 24;
-
-    return `${days}d ${remainingHours}h`;
-  }
-
-  return `${hours}h ${minutes}m`;
-}
-
 function voucherTypeForPack(
   packCode: string
 ) {
@@ -449,7 +430,26 @@ function packAccent(
 
   if (
     code ===
-    "special"
+    "special_attribute"
+  ) {
+    return {
+      border:
+        "border-emerald-300/20",
+
+      background:
+        "from-emerald-400/[0.08] via-cyan-400/[0.03] to-black/20",
+
+      text:
+        "text-emerald-200",
+
+      icon:
+        Flame,
+    };
+  }
+
+  if (
+    code ===
+    "special_archetype"
   ) {
     return {
       border:
@@ -500,11 +500,39 @@ export default async function ShopPage({
   } = await requireUser();
 
   // ======================================================
+  // ENSURE ROTATIONS ARE CURRENT
+  //
+  // Lazy refresh on page load: no cron dependency. Safe under
+  // concurrent requests via per-rotation-type advisory locks
+  // inside the function itself. Errors here are non-fatal - a
+  // stale-but-still-valid rotation is far better than a broken
+  // shop page, and a genuinely expired rotation with nothing to
+  // show just renders the existing empty states below.
+  // ======================================================
+
+  const {
+    error:
+      ensureRotationsError,
+  } = await supabase.rpc(
+    "ensure_shop_rotations_current"
+  );
+
+  if (
+    ensureRotationsError
+  ) {
+    console.error(
+      "ensure_shop_rotations_current failed:",
+      ensureRotationsError.message
+    );
+  }
+
+  // ======================================================
   // PARALLEL READS
   //
-  // Profile, pack types, active rotation, vouchers and recent
-  // purchases are all independent of each other - fetch them
-  // together instead of waiting on each one in turn.
+  // Profile, pack types, active rotation, special rotations,
+  // vouchers and recent purchases are all independent of each
+  // other - fetch them together instead of waiting on each one
+  // in turn.
   // ======================================================
 
   const [
@@ -528,6 +556,13 @@ export default async function ShopPage({
 
       error:
         rotationError,
+    },
+    {
+      data:
+        specialRotationData,
+
+      error:
+        specialRotationError,
     },
     {
       data:
@@ -588,6 +623,25 @@ export default async function ShopPage({
       .select("*")
       .order(
         "slot_number",
+        {
+          ascending:
+            true,
+        }
+      ),
+
+    supabase
+      .from(
+        "shop_special_pack_rotations"
+      )
+      .select(
+        "id,theme_category,theme_value,theme_label,price_dp,cards_per_pack,starts_at,ends_at"
+      )
+      .eq(
+        "status",
+        "active"
+      )
+      .order(
+        "theme_category",
         {
           ascending:
             true,
@@ -669,6 +723,18 @@ export default async function ShopPage({
   const rotation =
     rotationCards[0] ??
     null;
+
+  if (
+    specialRotationError
+  ) {
+    throw new Error(
+      specialRotationError.message
+    );
+  }
+
+  const specialRotations =
+    (specialRotationData ??
+      []) as SpecialPackRotation[];
 
   if (voucherError) {
     throw new Error(
@@ -1200,13 +1266,15 @@ export default async function ShopPage({
 
           <div className="panel p-4">
             <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
-              Refreshes In
+              Singles Refresh
             </p>
 
             <p className="mt-1 text-xl font-black text-cyan-200">
-              {formatRemaining(
-                rotation?.ends_at
-              )}
+              <ShopCountdown
+                endsAt={
+                  rotation?.ends_at
+                }
+              />
             </p>
           </div>
 
@@ -1411,153 +1479,232 @@ export default async function ShopPage({
         </section>
 
         {/* ==================================================
-            SPECIAL PACK
+            SPECIAL PACKS — Attribute Spotlight + Archetype
+            Spotlight, side by side. Each rotates independently
+            on its own 48h clock and is driven by real catalog
+            data (see refresh_shop_special_pack_rotation_if_needed).
+            A category can be legitimately absent if the catalog
+            doesn't currently have enough eligible cards for any
+            theme in it - the section quietly shrinks to one
+            card rather than showing a broken placeholder.
         ================================================== */}
 
-        {rotation &&
-          rotation.special_pack_name &&
-          rotation.special_pack_price_dp &&
-          rotation.special_pack_cards_per_pack && (
-          <section className="relative mt-8 overflow-hidden rounded-[26px] border border-cyan-300/20 bg-gradient-to-br from-cyan-400/[0.07] via-violet-500/[0.05] to-black/60 p-6">
-            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-cyan-400/[0.08] blur-[90px]" />
+        {specialRotations.length >
+          0 && (
+          <section className="mt-8 grid gap-5 lg:grid-cols-2">
+            {specialRotations.map(
+              (special) => {
+                const isAttribute =
+                  special.theme_category ===
+                  "attribute";
 
-            <div className="relative grid gap-6 lg:grid-cols-[auto_1fr_auto] lg:items-end">
-              <div className="mx-auto w-32 sm:w-36 lg:mx-0">
-                <PackArt
-                  code="special"
-                  name={
-                    rotation.special_pack_name ??
-                    undefined
-                  }
-                />
-              </div>
+                const packCode =
+                  isAttribute
+                    ? "special_attribute"
+                    : "special_archetype";
 
-              <div>
-                <div className="flex items-center gap-2">
-                  <Sparkles
-                    size={18}
-                    className="text-cyan-300"
-                  />
-
-                  <p className="text-[9px] font-black uppercase tracking-[.2em] text-cyan-300">
-                    72-Hour Special
-                  </p>
-                </div>
-
-                <h2 className="mt-3 text-3xl font-black">
-                  {
-                    rotation.special_pack_name
-                  }
-                </h2>
-
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-                  {
-                    rotation.special_pack_description
-                  }
-                </p>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-cyan-300/15 bg-cyan-300/[0.05] px-3 py-1 text-[9px] font-black uppercase text-cyan-200">
-                    {
-                      rotation.special_pack_cards_per_pack
-                    }{" "}
-                    Cards
-                  </span>
-
-                  <span className="rounded-full border border-violet-300/15 bg-violet-300/[0.05] px-3 py-1 text-[9px] font-black uppercase text-violet-200">
-                    {
-                      rotation.special_pack_theme_label ??
-                      rotation.special_pack_theme_value
-                    }
-                  </span>
-                </div>
-              </div>
-
-              <div className="min-w-[190px]">
-                <p className="text-[8px] font-black uppercase tracking-wider text-zinc-600">
-                  Price
-                </p>
-
-                <p className="mt-1 text-3xl font-black text-cyan-100">
-                  {
-                    rotation.special_pack_price_dp
-                  }{" "}
-                  <span className="text-sm text-cyan-300">
-                    DP
-                  </span>
-                </p>
-
-                <form
-                  action={
-                    purchasePack
-                  }
-                  className="mt-3"
-                >
-                  <input
-                    type="hidden"
-                    name="pack_code"
-                    value="special"
-                  />
-
-                  <SubmitButton
-                    disabled={
-                      profile.duel_points <
-                      rotation.special_pack_price_dp
-                    }
-                    pendingLabel="Opening..."
-                    className="primary-button w-full disabled:cursor-not-allowed disabled:opacity-35"
-                  >
-                    Open Special Pack
-                  </SubmitButton>
-                </form>
-
-                {(() => {
-                  const voucher =
-                    vouchers.find(
-                      (item) =>
-                        item.voucher_type ===
-                        "special_pack"
-                    );
-
-                  if (!voucher) {
-                    return null;
-                  }
-
-                  return (
-                    <form
-                      action={
-                        redeemPackVoucher
+                const accent =
+                  isAttribute
+                    ? {
+                        border:
+                          "border-emerald-300/20",
+                        glow:
+                          "bg-emerald-400/[0.08]",
+                        chip:
+                          "border-emerald-300/15 bg-emerald-300/[0.05] text-emerald-200",
+                        text:
+                          "text-emerald-200",
+                        Icon:
+                          Flame,
+                        eyebrow:
+                          "Attribute Spotlight",
                       }
-                      className="mt-2"
-                    >
-                      <input
-                        type="hidden"
-                        name="pack_code"
-                        value="special"
-                      />
+                    : {
+                        border:
+                          "border-cyan-300/20",
+                        glow:
+                          "bg-cyan-400/[0.08]",
+                        chip:
+                          "border-cyan-300/15 bg-cyan-300/[0.05] text-cyan-200",
+                        text:
+                          "text-cyan-200",
+                        Icon:
+                          Sparkles,
+                        eyebrow:
+                          "Archetype Spotlight",
+                      };
 
-                      <input
-                        type="hidden"
-                        name="voucher_id"
-                        value={
-                          voucher.id
-                        }
-                      />
-
-                      <SubmitButton
-                        pendingLabel="Opening..."
-                        className="w-full rounded-xl border border-violet-300/20 bg-violet-300/[0.05] px-3 py-2 text-xs font-black text-violet-200"
-                      >
-                        Use Special Voucher · x
-                        {
-                          voucher.quantity
-                        }
-                      </SubmitButton>
-                    </form>
+                const voucher =
+                  vouchers.find(
+                    (item) =>
+                      item.voucher_type ===
+                      "special_pack"
                   );
-                })()}
-              </div>
-            </div>
+
+                return (
+                  <div
+                    key={
+                      special.id
+                    }
+                    className={`relative overflow-hidden rounded-[26px] border bg-gradient-to-br from-white/[0.03] to-black/60 p-6 ${accent.border}`}
+                  >
+                    <div
+                      className={`pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full blur-[90px] ${accent.glow}`}
+                    />
+
+                    <div className="relative flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <accent.Icon
+                          size={16}
+                          className={
+                            accent.text
+                          }
+                        />
+
+                        <p
+                          className={`text-[9px] font-black uppercase tracking-[.2em] ${accent.text}`}
+                        >
+                          {
+                            accent.eyebrow
+                          }
+                        </p>
+                      </div>
+
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tabular-nums ${accent.chip}`}
+                      >
+                        <Clock3
+                          size={11}
+                        />
+
+                        <ShopCountdown
+                          endsAt={
+                            special.ends_at
+                          }
+                        />
+                      </span>
+                    </div>
+
+                    <div className="relative mt-4 flex gap-4">
+                      <div className="w-20 shrink-0 sm:w-24">
+                        <PackArt
+                          code={
+                            packCode
+                          }
+                          name={
+                            special.theme_label
+                          }
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-2xl font-black leading-tight">
+                          {
+                            special.theme_label
+                          }
+                        </h2>
+
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {isAttribute
+                            ? `Every card in this pack is ${special.theme_value} attribute.`
+                            : `Every card in this pack belongs to ${special.theme_value}.`}
+                        </p>
+
+                        <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+                          <div>
+                            <p className="text-[8px] font-black uppercase tracking-wider text-zinc-600">
+                              Price
+                            </p>
+
+                            <p
+                              className={`mt-1 text-2xl font-black ${accent.text}`}
+                            >
+                              {
+                                special.price_dp
+                              }{" "}
+                              <span className="text-xs font-black text-zinc-500">
+                                DP
+                              </span>{" "}
+                              <span className="text-xs font-normal text-zinc-600">
+                                ·{" "}
+                                {
+                                  special.cards_per_pack
+                                }{" "}
+                                cards
+                              </span>
+                            </p>
+                          </div>
+
+                          <form
+                            action={
+                              purchasePack
+                            }
+                          >
+                            <input
+                              type="hidden"
+                              name="pack_code"
+                              value={
+                                packCode
+                              }
+                            />
+
+                            <SubmitButton
+                              disabled={
+                                profile.duel_points <
+                                special.price_dp
+                              }
+                              pendingLabel="Opening..."
+                              className="primary-button px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-35"
+                            >
+                              Open
+                            </SubmitButton>
+                          </form>
+                        </div>
+
+                        {voucher && (
+                          <form
+                            action={
+                              redeemPackVoucher
+                            }
+                            className="mt-3 border-t border-white/[0.06] pt-3"
+                          >
+                            <input
+                              type="hidden"
+                              name="pack_code"
+                              value={
+                                packCode
+                              }
+                            />
+
+                            <input
+                              type="hidden"
+                              name="voucher_id"
+                              value={
+                                voucher.id
+                              }
+                            />
+
+                            <SubmitButton
+                              pendingLabel="Opening..."
+                              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-violet-300/20 bg-violet-300/[0.05] px-3 py-2 text-xs font-black text-violet-200"
+                            >
+                              <Ticket
+                                size={13}
+                              />
+
+                              Use Voucher · x
+                              {
+                                voucher.quantity
+                              }
+                            </SubmitButton>
+                          </form>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+            )}
           </section>
         )}
 

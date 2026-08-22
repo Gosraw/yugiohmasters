@@ -1,8 +1,10 @@
 import {
   Crown,
+  Flame,
   Shield,
   Sparkles,
   Star,
+  Swords,
 } from "lucide-react";
 
 import type {
@@ -31,7 +33,9 @@ export type PackTierCode =
   | "normal"
   | "premium"
   | "deluxe"
-  | "special";
+  | "special"
+  | "special_attribute"
+  | "special_archetype";
 
 type PackTier = {
   gradient: string;
@@ -41,6 +45,7 @@ type PackTier = {
   tagline: string;
   ornate: boolean;
   dualTone: boolean;
+  ribbonLabel?: string;
 };
 
 const PACK_TIERS: Record<
@@ -126,6 +131,58 @@ const PACK_TIERS: Record<
 
     dualTone: true,
   },
+
+  // ATTRIBUTE SPOTLIGHT - an elemental-themed rotation (e.g.
+  // every card DARK, or every card FIRE). Teal/emerald reads
+  // as "element" without borrowing the archetype pack's cyan.
+  special_attribute: {
+    gradient:
+      "from-emerald-400 via-teal-800 to-black",
+
+    ring:
+      "border-emerald-300/45",
+
+    glowColor:
+      "rgba(110,231,183,.35)",
+
+    icon: Flame,
+
+    tagline:
+      "ATTRIBUTE SPOTLIGHT",
+
+    ornate: false,
+
+    dualTone: true,
+
+    ribbonLabel:
+      "SPOTLIGHT",
+  },
+
+  // ARCHETYPE SPOTLIGHT - a themed rotation built around one
+  // archetype (e.g. every card Blue-Eyes). Keeps the cyan/
+  // violet "event" identity the original special pack had.
+  special_archetype: {
+    gradient:
+      "from-cyan-400 via-violet-700 to-black",
+
+    ring:
+      "border-cyan-300/45",
+
+    glowColor:
+      "rgba(103,232,249,.35)",
+
+    icon: Swords,
+
+    tagline:
+      "ARCHETYPE SPOTLIGHT",
+
+    ornate: false,
+
+    dualTone: true,
+
+    ribbonLabel:
+      "SPOTLIGHT",
+  },
 };
 
 function resolveTier(
@@ -155,6 +212,20 @@ export function packDisplayName(
 
   if (code === "deluxe") {
     return "Deluxe Pack";
+  }
+
+  if (
+    code ===
+    "special_attribute"
+  ) {
+    return "Attribute Spotlight";
+  }
+
+  if (
+    code ===
+    "special_archetype"
+  ) {
+    return "Archetype Spotlight";
   }
 
   return "Special Pack";
@@ -245,7 +316,8 @@ export function PackArt({
       {/* Special event ribbon */}
       {tier.dualTone && (
         <div className="pointer-events-none absolute -right-8 top-3 w-28 rotate-45 bg-cyan-300/90 py-0.5 text-center text-[7px] font-black uppercase tracking-widest text-black shadow">
-          Event
+          {tier.ribbonLabel ??
+            "Event"}
         </div>
       )}
 

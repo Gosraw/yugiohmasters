@@ -249,13 +249,29 @@ function DeckCardTile({
 
 export default async function DeckBuilderPage({
   params,
+  searchParams,
 }: {
   params: Promise<{
     id: string;
   }>;
+
+  searchParams: Promise<{
+    view?: string;
+  }>;
 }) {
   const { id } =
     await params;
+
+  const {
+    view,
+  } =
+    await searchParams;
+
+  // Which mobile tab (Browse vs My Deck) was active - persisted in
+  // the URL so switching tabs, inspecting a card, and coming back
+  // lands on the same tab instead of always resetting to Browse.
+  const mobileViewIsDeck =
+    view === "deck";
 
   const {
     supabase,
@@ -1144,49 +1160,103 @@ export default async function DeckBuilderPage({
       {/* BUILDER */}
 
       <div className="mt-7 grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        {/* Mobile/tablet view toggle (below xl only). Pure CSS -
-            two visually-hidden radios drive which panel is shown
-            via peer-checked, so switching between "Browse" and
-            "My Deck" needs no client JS. At xl: and above both
-            panels always render side by side and this toggle
-            itself is hidden. */}
-        <input
-          type="radio"
-          name="mobile-deck-view"
-          id="mobile-view-browse"
-          defaultChecked
-          className="peer/browse sr-only"
-        />
-
-        <input
-          type="radio"
-          name="mobile-deck-view"
-          id="mobile-view-deck"
-          className="peer/deck sr-only"
-        />
+        {/* Mobile/tablet view toggle (below xl only). A real "view"
+            query param (not just CSS-only local state) drives which
+            panel shows, so the active tab survives navigating away
+            (inspecting a card, going Home) and back - see
+            mobileViewIsDeck above. At xl: and above both panels
+            always render side by side and this toggle is hidden. */}
 
         <div className="col-span-full flex gap-1.5 rounded-xl border border-white/10 bg-black/40 p-1.5 xl:hidden">
-          <label
-            htmlFor="mobile-view-browse"
-            className="flex-1 cursor-pointer rounded-lg px-3 py-2.5 text-center text-xs font-black uppercase tracking-wider text-zinc-500 transition-colors peer-checked/browse:bg-amber-300/15 peer-checked/browse:text-amber-200"
+          <Link
+            href={`/decks/${deck.id}?view=browse`}
+            replace
+            scroll={false}
+            className={`flex-1 rounded-lg px-3 py-2.5 text-center text-xs font-black uppercase tracking-wider transition-colors ${
+              mobileViewIsDeck
+                ? "text-zinc-500"
+                : "bg-amber-300/15 text-amber-200"
+            }`}
           >
             Browse ({
               collectionCards.length
             })
-          </label>
+          </Link>
 
-          <label
-            htmlFor="mobile-view-deck"
-            className="flex-1 cursor-pointer rounded-lg px-3 py-2.5 text-center text-xs font-black uppercase tracking-wider text-zinc-500 transition-colors peer-checked/deck:bg-amber-300/15 peer-checked/deck:text-amber-200"
+          <Link
+            href={`/decks/${deck.id}?view=deck`}
+            replace
+            scroll={false}
+            className={`flex-1 rounded-lg px-3 py-2.5 text-center text-xs font-black uppercase tracking-wider transition-colors ${
+              mobileViewIsDeck
+                ? "bg-amber-300/15 text-amber-200"
+                : "text-zinc-500"
+            }`}
           >
             My Deck ({
               mainCount +
               extraCount
             })
-          </label>
+          </Link>
         </div>
 
-        <section className="hidden peer-checked/browse:block xl:block">
+        {/* Sticky mobile deck-status summary - stays pinned while
+            scrolling a long Browse list so a player can always see
+            Main/Extra/Ready progress without switching to the My
+            Deck tab. Desktop already sees the full status panel
+            above at all times, so this is mobile-only. */}
+
+        {!mobileViewIsDeck && (
+          <div className="sticky top-0 z-30 -mx-4 flex items-center justify-between gap-3 border-b border-white/10 bg-black/85 px-4 py-2.5 backdrop-blur-xl sm:-mx-6 sm:px-6 xl:hidden">
+            <div className="flex items-center gap-3 text-xs font-black">
+              <span
+                className={
+                  mainCount >=
+                  mainMinimum
+                    ? "text-emerald-300"
+                    : "text-zinc-400"
+                }
+              >
+                Main {mainCount}/60
+              </span>
+
+              <span className="text-zinc-400">
+                Extra {extraCount}/15
+              </span>
+            </div>
+
+            {deck.status ===
+            "draft" ? (
+              canBeReady ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-200">
+                  <CheckCircle2
+                    size={11}
+                  />
+                  Ready
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/25 bg-amber-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-amber-200">
+                  Not Ready
+                </span>
+              )
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-200">
+                {deck.status ===
+                "ready"
+                  ? "Ready"
+                  : "Archived"}
+              </span>
+            )}
+          </div>
+        )}
+
+        <section
+          className={`${
+            mobileViewIsDeck
+              ? "hidden"
+              : ""
+          } xl:block`}
+        >
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-black tracking-[.2em] text-zinc-500">
@@ -1239,7 +1309,13 @@ export default async function DeckBuilderPage({
           )}
         </section>
 
-        <aside className="hidden space-y-4 peer-checked/deck:block xl:block xl:sticky xl:top-6 xl:self-start">
+        <aside
+          className={`${
+            mobileViewIsDeck
+              ? ""
+              : "hidden"
+          } space-y-4 xl:block xl:sticky xl:top-6 xl:self-start`}
+        >
           <section className="panel p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">

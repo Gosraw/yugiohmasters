@@ -9,10 +9,33 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import type {
+  ReadonlyURLSearchParams,
+} from "next/navigation";
 
 import { addCardToDeck } from "@/app/actions/decks";
 import { DeckActionButton } from "@/components/deck-action-button";
+
+// Query param keys this browser mirrors its filters into, so
+// leaving the page (e.g. tapping a card to inspect it, or
+// switching to the "My Deck" tab on mobile) and coming back
+// restores exactly what was being browsed instead of resetting to
+// an empty search. Namespaced with a "b" prefix so they never
+// collide with the page's own "view" tab param.
+const PARAM_KEYS = {
+  search: "bq",
+  category: "bcat",
+  section: "bsec",
+  rarity: "brar",
+  sort: "bsort",
+  onlyAvailable: "bavail",
+} as const;
 
 export type DeckBrowserCard = {
   card: {
@@ -158,6 +181,98 @@ function FilterButton({
   );
 }
 
+function useEffectSyncFiltersToUrl({
+  router,
+  pathname,
+  searchParams,
+  search,
+  category,
+  section,
+  rarity,
+  sort,
+  onlyAvailable,
+}: {
+  router: ReturnType<
+    typeof useRouter
+  >;
+  pathname: string;
+  searchParams: ReadonlyURLSearchParams;
+  search: string;
+  category: CardCategory;
+  section: DeckSection;
+  rarity: string;
+  sort: SortOption;
+  onlyAvailable: boolean;
+}) {
+  useEffect(() => {
+    const next = new URLSearchParams(
+      searchParams.toString()
+    );
+
+    const values: Record<
+      keyof typeof PARAM_KEYS,
+      string
+    > = {
+      search,
+      category,
+      section,
+      rarity,
+      sort,
+      onlyAvailable: onlyAvailable
+        ? "1"
+        : "",
+    };
+
+    for (const key of Object.keys(
+      PARAM_KEYS
+    ) as (keyof typeof PARAM_KEYS)[]) {
+      const value = values[key];
+      const paramKey =
+        PARAM_KEYS[key];
+
+      const isDefault =
+        value === "" ||
+        value === "all" ||
+        (key === "sort" &&
+          value === "name-asc");
+
+      if (isDefault) {
+        next.delete(paramKey);
+      } else {
+        next.set(
+          paramKey,
+          value
+        );
+      }
+    }
+
+    const query = next.toString();
+    const nextUrl = `${pathname}${
+      query ? `?${query}` : ""
+    }`;
+
+    // Avoid a redundant replace() when nothing actually changed -
+    // router.replace with an identical URL is harmless but there's
+    // no reason to call it every render.
+    const currentQuery =
+      searchParams.toString();
+
+    if (query !== currentQuery) {
+      router.replace(nextUrl, {
+        scroll: false,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    search,
+    category,
+    section,
+    rarity,
+    sort,
+    onlyAvailable,
+  ]);
+}
+
 export function DeckCollectionBrowser({
   deckId,
   cards,
@@ -165,15 +280,33 @@ export function DeckCollectionBrowser({
   deckId: string;
   cards: DeckBrowserCard[];
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Filters live in local state for instant, no-network filtering
+  // (as before) but are seeded from - and mirrored back into - the
+  // URL query string, so switching to the "My Deck" tab, inspecting
+  // a card, or navigating away and back all preserve exactly what
+  // was being browsed instead of resetting to an empty search.
   const [search, setSearch] =
-    useState("");
+    useState(
+      () =>
+        searchParams.get(
+          PARAM_KEYS.search
+        ) ?? ""
+    );
 
   const [
     category,
     setCategory,
   ] =
     useState<CardCategory>(
-      "all"
+      () =>
+        (searchParams.get(
+          PARAM_KEYS.category
+        ) as CardCategory | null) ??
+        "all"
     );
 
   const [
@@ -181,15 +314,28 @@ export function DeckCollectionBrowser({
     setSection,
   ] =
     useState<DeckSection>(
-      "all"
+      () =>
+        (searchParams.get(
+          PARAM_KEYS.section
+        ) as DeckSection | null) ??
+        "all"
     );
 
   const [rarity, setRarity] =
-    useState("all");
+    useState(
+      () =>
+        searchParams.get(
+          PARAM_KEYS.rarity
+        ) ?? "all"
+    );
 
   const [sort, setSort] =
     useState<SortOption>(
-      "name-asc"
+      () =>
+        (searchParams.get(
+          PARAM_KEYS.sort
+        ) as SortOption | null) ??
+        "name-asc"
     );
 
   const [
@@ -200,7 +346,32 @@ export function DeckCollectionBrowser({
   const [
     onlyAvailable,
     setOnlyAvailable,
-  ] = useState(false);
+  ] = useState(
+    () =>
+      searchParams.get(
+        PARAM_KEYS.onlyAvailable
+      ) === "1"
+  );
+
+  // Mirrors the current filter values into the URL (replacing, not
+  // pushing a new history entry - this re-runs on every keystroke/
+  // click, and a full undo-able history entry per keystroke would
+  // make the browser Back button useless). {scroll:false} keeps
+  // the player's scroll position while the sticky search bar above
+  // stays put anyway. Runs whenever a filter value changes, rather
+  // than being threaded through every individual onClick/onChange
+  // handler below - one place to keep in sync instead of a dozen.
+  useEffectSyncFiltersToUrl({
+    router,
+    pathname,
+    searchParams,
+    search,
+    category,
+    section,
+    rarity,
+    sort,
+    onlyAvailable,
+  });
 
   const rarities =
     useMemo(() => {

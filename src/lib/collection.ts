@@ -76,11 +76,37 @@ export type CollectionFilters = {
   q?: string;
   rarity?: string;
   type?: string;
+  // "" | "main" | "fusion" | "xyz" - independent of `type`, mirrors the
+  // Main/Extra split the deck builder already uses (see
+  // isExtraDeckCard in deck-collection-browser.tsx) so a player can
+  // narrow down to just their Extra Deck material while browsing.
+  section?: string;
   attribute?: string;
   availability?: string; // "" | "available" | "locked"
   forTrade?: boolean;
   sort?: string;
 };
+
+/**
+ * Same "fusion"/"xyz" substring check the deck builder uses
+ * (isExtraDeckCard in deck-collection-browser.tsx) - kept as its own
+ * small helper here so Collection's Main/Fusion/Xyz filter can never
+ * quietly drift out of sync with what actually counts as Extra Deck
+ * material in the deck builder.
+ */
+export function isExtraDeckCardType(cardType: string): "fusion" | "xyz" | null {
+  const normalized = cardType.toLowerCase();
+
+  if (normalized.includes("fusion")) {
+    return "fusion";
+  }
+
+  if (normalized.includes("xyz")) {
+    return "xyz";
+  }
+
+  return null;
+}
 
 /**
  * Fetches every card_instance this player owns (scoped to their
@@ -250,6 +276,7 @@ export function filterAndSortCollection(
   const q = filters.q?.trim().toLowerCase() ?? "";
   const rarity = filters.rarity ?? "";
   const type = filters.type ?? "";
+  const section = filters.section ?? "";
   const attribute = filters.attribute ?? "";
   const availability = filters.availability ?? "";
   const sort = filters.sort ?? "name";
@@ -281,6 +308,18 @@ export function filterAndSortCollection(
   if (type === "Trap") {
     result = result.filter((group) =>
       group.card.card_type.toLowerCase().includes("trap")
+    );
+  }
+
+  if (section === "main") {
+    result = result.filter(
+      (group) => isExtraDeckCardType(group.card.card_type) === null
+    );
+  }
+
+  if (section === "fusion" || section === "xyz") {
+    result = result.filter(
+      (group) => isExtraDeckCardType(group.card.card_type) === section
     );
   }
 
@@ -356,6 +395,7 @@ export function parseCollectionReturnTo(
     q: query.get("q") ?? undefined,
     rarity: query.get("rarity") ?? undefined,
     type: query.get("type") ?? undefined,
+    section: query.get("section") ?? undefined,
     attribute: query.get("attribute") ?? undefined,
     availability: query.get("availability") ?? undefined,
     forTrade: query.get("forTrade") === "1",

@@ -31,6 +31,10 @@ import {
   rarityStyles,
 } from "@/lib/collection";
 
+import {
+  ScrollPositionMemory,
+} from "@/components/scroll-position-memory";
+
 export const dynamic =
   "force-dynamic";
 
@@ -42,6 +46,7 @@ type SearchParams = Promise<{
   q?: string;
   rarity?: string;
   type?: string;
+  section?: string;
   attribute?: string;
   availability?: string;
   forTrade?: string;
@@ -70,6 +75,10 @@ export default async function CollectionPage({
 
   const type =
     params.type ??
+    "";
+
+  const section =
+    params.section ??
     "";
 
   const attribute =
@@ -226,6 +235,7 @@ export default async function CollectionPage({
         q,
         rarity,
         type,
+        section,
         attribute,
         availability,
         forTrade,
@@ -257,6 +267,11 @@ export default async function CollectionPage({
       "type",
       type
     );
+  if (section)
+    activeQuery.set(
+      "section",
+      section
+    );
   if (attribute)
     activeQuery.set(
       "attribute",
@@ -287,12 +302,39 @@ export default async function CollectionPage({
       : ""
   }`;
 
+  // Used for the mobile filter toggle's badge - how many distinct
+  // filters (beyond the default sort) are currently narrowing the
+  // view, so a player can tell at a glance whether anything is
+  // active without opening the sheet.
+  const activeFilterCount =
+    [
+      q,
+      rarity,
+      type,
+      section,
+      attribute,
+      availability,
+    ].filter(Boolean)
+      .length +
+    (forTrade ? 1 : 0);
+
   // ======================================================
   // UI
   // ======================================================
 
   return (
     <main className="relative min-h-screen overflow-hidden">
+      {/* Restores scroll position when returning to this exact
+          filtered view from Card Detail (Previous/Next/Back) -
+          see src/components/scroll-position-memory.tsx. */}
+
+      <ScrollPositionMemory
+        scrollKey={
+          activeQueryString ||
+          "default"
+        }
+      />
+
       {/* BACKGROUND */}
 
       <div className="pointer-events-none absolute inset-0">
@@ -557,18 +599,83 @@ export default async function CollectionPage({
 
         {/* ==================================================
             FILTERS
+
+            Mobile (<sm): a compact always-visible toolbar opens a
+            bottom sheet holding every field. Desktop (sm+): the
+            same fields render inline as a static panel, exactly
+            like before - the peer-checked/sm: combo below is the
+            same pattern already used for the Browse/My Deck tabs
+            in decks/[id]/page.tsx, just driving position/visibility
+            instead of which panel shows.
         ================================================== */}
+
+        <input
+          type="checkbox"
+          id="mobile-filters-toggle"
+          className="peer/filters sr-only"
+        />
+
+        {/* Mobile-only toolbar: open button + active-filter badge +
+            quick Clear, always reachable without opening the sheet. */}
+
+        <div className="mt-6 flex items-center gap-3 sm:hidden">
+          <label
+            htmlFor="mobile-filters-toggle"
+            className="primary-button flex flex-1 cursor-pointer items-center justify-center gap-2 text-center"
+          >
+            <SlidersHorizontal
+              size={16}
+            />
+            Search & Filters
+            {activeFilterCount >
+              0 && (
+              <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-black/25 px-1.5 text-[11px]">
+                {
+                  activeFilterCount
+                }
+              </span>
+            )}
+          </label>
+
+          {activeFilterCount >
+            0 && (
+            <Link
+              href="/cards/collection"
+              className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl border border-white/10 px-3 text-xs font-bold text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
+            >
+              Clear
+            </Link>
+          )}
+        </div>
+
+        {/* Backdrop - mobile only, tapping it closes the sheet
+            since it's just another label for the same checkbox. */}
+
+        <label
+          htmlFor="mobile-filters-toggle"
+          aria-hidden="true"
+          className="fixed inset-0 z-40 hidden bg-black/60 backdrop-blur-sm peer-checked/filters:block sm:hidden"
+        />
 
         <form
           method="get"
-          className="panel mt-6 p-4 sm:p-5"
+          className="panel fixed inset-x-0 bottom-0 z-50 hidden max-h-[85vh] flex-col overflow-y-auto rounded-t-3xl p-4 peer-checked/filters:flex sm:static sm:z-auto sm:mt-6 sm:flex sm:max-h-none sm:overflow-visible sm:rounded-2xl sm:p-5"
         >
-          <div className="flex items-center gap-2 text-sm font-black text-amber-300">
-            <SlidersHorizontal
-              size={17}
-            />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-black text-amber-300">
+              <SlidersHorizontal
+                size={17}
+              />
 
-            Search & Filters
+              Search & Filters
+            </div>
+
+            <label
+              htmlFor="mobile-filters-toggle"
+              className="cursor-pointer rounded-lg border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-400 sm:hidden"
+            >
+              Done
+            </label>
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
@@ -646,6 +753,30 @@ export default async function CollectionPage({
 
               <option value="Trap">
                 Trap
+              </option>
+            </select>
+
+            <select
+              name="section"
+              defaultValue={
+                section
+              }
+              className="field"
+            >
+              <option value="">
+                Main + Extra Deck
+              </option>
+
+              <option value="main">
+                Main Deck material
+              </option>
+
+              <option value="fusion">
+                Fusion only
+              </option>
+
+              <option value="xyz">
+                Xyz only
               </option>
             </select>
 

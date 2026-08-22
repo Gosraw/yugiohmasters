@@ -39,6 +39,10 @@ import {
 } from "@/components/card-detail-key-nav";
 
 import {
+  CardDetailSwipeNav,
+} from "@/components/card-detail-swipe-nav";
+
+import {
   SubmitButton,
 } from "@/components/submit-button";
 
@@ -843,7 +847,7 @@ export default async function CardDetailPage({
           ================================================= */}
 
           <section className="lg:sticky lg:top-6">
-            <div className="panel overflow-hidden p-3">
+            <div className="panel relative overflow-hidden p-3">
               {card.image_url ? (
                 <Image
                   src={
@@ -866,6 +870,19 @@ export default async function CardDetailPage({
                   No image
                 </div>
               )}
+
+              {/* Mobile-only swipe zone over the artwork - Previous/
+                  Next buttons below always work too, this is purely
+                  additive. See card-detail-swipe-nav.tsx. */}
+
+              <CardDetailSwipeNav
+                prevHref={
+                  prevHref
+                }
+                nextHref={
+                  nextHref
+                }
+              />
             </div>
 
             {/* ATK / DEF */}

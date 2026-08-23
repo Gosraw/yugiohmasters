@@ -1537,19 +1537,38 @@ begin
     -- taken above for this exact card_catalog_id - race-safe
     -- against concurrent purchases of the same card by design,
     -- not a client-side guess. Checked BEFORE the new instance
-    -- below is inserted, against original_owner_id (this
-    -- player's own historical acquisitions of this card, via any
-    -- source - shop, draft, trade-in).
+    -- below is inserted.
+    --
+    -- IMPORTANT: this is NOT "was this player the original_owner_id
+    -- of some existing instance" - that only reflects the very
+    -- first acquirer of a card_instance row and goes stale the
+    -- moment that instance changes hands (trade, wager, any other
+    -- ownership transfer). A player who received this exact
+    -- card_catalog_id via trade and later traded it away again
+    -- would wrongly read as "never owned" under that check.
+    --
+    -- public.ownership_history is the source of truth for every
+    -- acquisition of every card_instance, for both the initial
+    -- acquisition (INSERT trigger, to_owner_id = acquirer) and
+    -- every later transfer (UPDATE trigger, to_owner_id = new
+    -- owner) - see record_card_ownership_history() in
+    -- 202608190004_card_instances.sql. So "has this player ever
+    -- owned this card_catalog_id, via any route" is exactly
+    -- "does a row exist where to_owner_id = current_user_id for
+    -- any card_instance of this card_catalog_id", regardless of
+    -- whether that player still holds it today.
     -- =====================================================
     is_first_pull := null;
 
     if chosen_card_rarity = 'Legendary' then
       select not exists (
         select 1
-        from public.card_instances
+        from public.card_instances ci
+        join public.ownership_history oh
+          on oh.card_instance_id = ci.id
         where
-          card_catalog_id = chosen_card_id
-          and original_owner_id = current_user_id
+          ci.card_catalog_id = chosen_card_id
+          and oh.to_owner_id = current_user_id
       )
       into is_first_pull;
     end if;

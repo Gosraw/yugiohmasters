@@ -11,8 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:dev": "node scripts/seed-dev.mjs",
-    "audit:master-duel": "node scripts/audit-master-duel.mjs",
-    "audit:master-duel:apply": "node scripts/audit-master-duel.mjs --apply"
+    "season:reset": "node scripts/season-reset.mjs",
+    "season:reset:apply": "node scripts/season-reset.mjs --apply"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",

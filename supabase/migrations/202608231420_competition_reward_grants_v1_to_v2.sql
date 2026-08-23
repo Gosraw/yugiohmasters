@@ -86,9 +86,30 @@ alter table public.competition_reward_grants
 -- likewise never be NULL here (V2's own inserts always set this
 -- column explicitly), so this can never overwrite a genuine V2
 -- grant with a stale legacy value.
-update public.competition_reward_grants
-set duel_points_granted = duel_points
-where duel_points_granted is null;
+--
+-- Guarded by an information_schema check (rather than a bare
+-- UPDATE ... SET duel_points_granted = duel_points) so this
+-- migration is also safe to run against a FRESH install where
+-- 202608231100 already created competition_reward_grants directly
+-- in the V2 shape and the legacy `duel_points` column never
+-- existed at all - a bare reference to that column would fail to
+-- parse in that case. On real (V1-shaped) production, the column
+-- exists and this backfills exactly as before.
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'competition_reward_grants'
+      and column_name = 'duel_points'
+  ) then
+    update public.competition_reward_grants
+    set duel_points_granted = duel_points
+    where duel_points_granted is null;
+  end if;
+end;
+$$;
 
 alter table public.competition_reward_grants
   alter column duel_points_granted set default 0;
@@ -108,9 +129,25 @@ alter table public.competition_reward_grants
 alter table public.competition_reward_grants
   add column if not exists granted_at timestamptz;
 
-update public.competition_reward_grants
-set granted_at = created_at
-where granted_at is null;
+-- Guarded the same way as duel_points_granted above: a fresh
+-- install's V2-shaped competition_reward_grants (created directly
+-- by 202608231100) has no created_at column at all, only real V1
+-- production does.
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'competition_reward_grants'
+      and column_name = 'created_at'
+  ) then
+    update public.competition_reward_grants
+    set granted_at = created_at
+    where granted_at is null;
+  end if;
+end;
+$$;
 
 alter table public.competition_reward_grants
   alter column granted_at set default now();

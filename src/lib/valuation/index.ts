@@ -17,6 +17,7 @@
 export {
   extractValuationSignals,
   scoreCard,
+  proposeRarity,
   draftValueToRarity,
   recommendOppressiveness,
   VALUATION_ENGINE_VERSION,

@@ -56,7 +56,7 @@ import { readFileSync } from "node:fs";
 import {
   extractValuationSignals,
   scoreCard,
-  draftValueToRarity,
+  proposeRarity,
 } from "../lib/valuation-engine.mjs";
 
 const DEFAULT_RARITY_WEIGHTS = {
@@ -78,8 +78,28 @@ const RARITY_ORDER = [
 ];
 
 const OFFER_SIZE = 3; // matches create_next_draft_offer()'s 3-card offer shape
-const LOW_VALUE_THRESHOLD = 5.0;
-const STRONG_VALUE_THRESHOLD = 6.5;
+
+// RECALIBRATED 2026-08-23 (rarity calibration pass): the old
+// 5.0 / 6.5 constants were tuned against an EARLIER engine version
+// where the score scale's real achievable max was assumed to be
+// close to 10. Under the current v2 engine the real 13,931-card
+// catalog's draftValue max is only ~7.27 (see the calibration
+// session's percentile analysis), so 6.5 sat at roughly the 99.7th
+// percentile - a bar only Secret Rare/Legendary-caliber cards could
+// ever clear, which silently made "no UR+ offer has a strong pick"
+// report as ~93% even on a healthy distribution. These two
+// constants are now grounded in this session's own calibrated
+// rarity cut points instead of an arbitrary absolute number:
+//   LOW_VALUE_THRESHOLD = the Super Rare cut point (proposeRarity's
+//     draftValue >= 4.45 branch) - "low value" now means "did not
+//     even reach Super Rare quality".
+//   STRONG_VALUE_THRESHOLD = the Secret Rare draftValue-gate cut
+//     point (proposeRarity's draftValue >= 5.75 branch) - "strong"
+//     now means "Secret-Rare-caliber pick", not an arbitrary number.
+// If proposeRarity's cut points change again, these two constants
+// should be re-derived from it rather than hand-edited independently.
+const LOW_VALUE_THRESHOLD = 4.45;
+const STRONG_VALUE_THRESHOLD = 5.75;
 const UR_PLUS = new Set(["Ultra Rare", "Secret Rare", "Legendary"]);
 
 // A small, sourced fixture used only when no --proposal file is
@@ -161,7 +181,7 @@ const FIXTURE_CARDS = [
 ];
 
 function parseArgs(argv) {
-  const args = { proposalPath: null, rounds: 10000 };
+  const args = { proposalPath: null, rounds: 10000, season1Only: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--proposal") {
       args.proposalPath = argv[i + 1] ?? null;
@@ -169,6 +189,8 @@ function parseArgs(argv) {
     } else if (argv[i] === "--rounds") {
       args.rounds = Number(argv[i + 1] ?? 10000);
       i++;
+    } else if (argv[i] === "--season1-only") {
+      args.season1Only = true;
     }
   }
   return args;
@@ -190,17 +212,39 @@ function loadCatalog(proposalPath) {
 }
 
 // Scores every card once up front and buckets it by its PROPOSED
-// rarity (draftValueToRarity of its own score) - deliberately the
-// NEW proposed rarity, not whatever game_rarity/proposed_game_rarity
-// field the source file carries, so the simulator measures the
-// valuation engine's own output consistently regardless of which
-// stage of review produced the input file.
+// rarity (proposeRarity of its own full score object) -
+// deliberately the NEW proposed rarity, not whatever
+// game_rarity/proposed_game_rarity field the source file carries,
+// so the simulator measures the valuation engine's own output
+// consistently regardless of which stage of review produced the
+// input file.
+//
+// BUG FIX (found while running the 2026-08-23 rarity calibration's
+// required draft simulation): a real scripts/audit-card-valuation.mjs
+// full-proposal.json export does NOT carry the raw card fields
+// (description, card_type, atk/def, ...) extractValuationSignals()
+// needs - only the ALREADY-COMPUTED `scores` object. Calling
+// extractValuationSignals(card)/scoreCard(...) on such a row silently
+// produced the SAME near-empty-signals baseline score for every
+// single card (confirmed: all 13,931 real cards collapsed to one
+// identical draftValue and one Rare bucket) - a real bug in this
+// script, not a semantic engine bug, and not present when running
+// against the small built-in FIXTURE_CARDS (which DOES carry
+// description/card_type, so it happened to mask this). Fix: prefer
+// the row's own pre-computed `scores` when present; only fall back
+// to recomputing from raw signals for genuinely raw card input
+// (e.g. FIXTURE_CARDS, or a future export shape without `scores`).
 function buildRarityBuckets(cards) {
   const buckets = new Map(RARITY_ORDER.map((r) => [r, []]));
   for (const card of cards) {
-    const signals = extractValuationSignals(card);
-    const scores = scoreCard(signals, card, {});
-    const rarity = draftValueToRarity(scores.draftValue);
+    let scores;
+    if (card.scores && typeof card.scores.draftValue === "number") {
+      scores = card.scores;
+    } else {
+      const signals = extractValuationSignals(card);
+      scores = scoreCard(signals, card, {});
+    }
+    const rarity = proposeRarity(scores);
     buckets.get(rarity).push({
       name: card.name,
       draftValue: scores.draftValue,
@@ -311,10 +355,28 @@ function computeAdjacentOverlap(perRarityValues) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  const { cards, isFixture } = loadCatalog(args.proposalPath);
+  const { cards: allCards, isFixture } = loadCatalog(args.proposalPath);
+
+  let cards = allCards;
+  if (args.season1Only) {
+    const withField = allCards.filter((c) => c.season1_provisional_eligible !== undefined);
+    if (withField.length === 0) {
+      console.log(
+        "⚠️  --season1-only requested but no card in this file has a season1_provisional_eligible field " +
+          "(this file predates that field being added to the audit export - re-run scripts/audit-card-valuation.mjs " +
+          "to get it). Falling back to the FULL catalog - the numbers below are NOT the 2020 pool."
+      );
+    } else {
+      cards = allCards.filter((c) => c.season1_provisional_eligible === true);
+    }
+  }
   const buckets = buildRarityBuckets(cards);
 
-  console.log(`Loaded ${cards.length} card(s) ${isFixture ? "from the built-in sourced fixture" : `from ${args.proposalPath}`}.`);
+  console.log(
+    `Loaded ${cards.length} card(s) ${isFixture ? "from the built-in sourced fixture" : `from ${args.proposalPath}`}${
+      args.season1Only ? " (filtered to season1_provisional_eligible === true)" : ""
+    }.`
+  );
   console.log("\nRarity bucket sizes (by the valuation engine's OWN proposed rarity):");
   for (const rarity of RARITY_ORDER) {
     console.log(`  ${rarity.padEnd(12)} ${buckets.get(rarity).length}`);

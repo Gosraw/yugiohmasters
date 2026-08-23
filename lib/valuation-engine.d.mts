@@ -139,6 +139,9 @@ export function scoreCard(
   context?: { answerDensity?: number | null }
 ): ValuationScores;
 
+export function proposeRarity(scores: ValuationScores): GameRarity;
+
+// Deprecated alias - do not add new callers.
 export function draftValueToRarity(draftValue: number): GameRarity;
 
 export function recommendOppressiveness(

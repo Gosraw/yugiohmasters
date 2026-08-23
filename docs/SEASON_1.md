@@ -125,15 +125,42 @@ that's a decision for whenever you're ready (see the card audit in §7).
 The old rarity system was a one-shot, keyword-heuristic script with real,
 demonstrable mistakes (a few examples: **Fuh-Rin-Ka-Zan** and **Sekka's
 Light** were both misclassified as Legendary despite being narrow,
-heavily-conditional cards with modest standalone value). The new
-valuation engine (`lib/valuation-engine.mjs`) replaces that guesswork
-with seven explainable scores per card — Power, Usability, Versatility,
-Dependency, Consistency, Oppressiveness, and a combined Draft Value —
-each with a plain-language reason, not just a number. Draft Value
-deliberately weighs real-world usefulness (and penalizes narrow,
-hard-to-use cards) above raw theoretical power, which is what rarity is
-actually supposed to represent: how exciting is it to be offered this
-card, not how strong could it theoretically be in a perfect deck.
+heavily-conditional cards with modest standalone value). A first rebuild
+(engine version `2026-08-23.1`) replaced that with seven explainable
+scores, but a real run against the live catalog found it had its own
+real mistakes — it inferred "this card needs archetype X" too eagerly
+from a database archetype tag rather than what the card's own text
+actually requires, most visibly on **Forbidden Droplet** (a fully
+generic Spell, wrongly treated as needing "Forbidden" support) and
+**Baronne de Fleur** (a Fusion Monster with completely generic Fusion
+Materials, wrongly treated as needing "Fleur" support). It also let a
+handful of superficially-similar "negate" cards converge to nearly
+identical scores.
+
+The engine was rebuilt again (`lib/valuation-engine.mjs`, version
+`2026-08-23.2`) specifically to fix the ROOT CAUSE, not just those two
+cards: dependency is now built entirely from classifying what a card's
+own text actually requires (a real "mandatory requirement" clause vs. a
+"mandatory Fusion/Synchro/Xyz/Link material" vs. an "optional bonus" vs.
+a "search target" vs. just a thematic name/archetype tag with no
+functional link) — a database archetype tag is never, by itself, a
+reason to penalize a card. Eight explainable scores are now produced per
+card: **Power**, **Accessibility**, **Dependency**, **Generic Utility**,
+**Consistency**, **Floor** (guaranteed value with zero synergy), **Ceiling**
+(best-case value fully supported), and **Oppressiveness** — plus a
+combined **Draft Value**, each with a plain-language reason, never just a
+number. Archetype/build-around cards are explicitly allowed a high
+Ceiling even with real Dependency — dependency penalizes Draft Value, it
+is not a death sentence on how good a card can be in the right deck.
+Oppressiveness is deliberately kept OUT of Draft Value entirely: a card
+can be both highly desirable (a high rarity) and unsuitable for a small
+Season 1 pool (a high oppressiveness, handled via `release_stage`) at
+the same time — those are two separate questions.
+
+A regression suite (`lib/valuation-engine.regression.test.mjs`, 12 named
+cards including Forbidden Droplet and Baronne de Fleur) verifies the
+fix — see the session report for the full account, including what could
+and could not be verified without a live database in this sandbox.
 
 `scripts/audit-card-valuation.mjs` runs this engine against your real
 catalog and produces a full **proposal** — nothing is changed until you

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // =========================================================
-// DRAFT VALUE SIMULATOR
+// DRAFT VALUE SIMULATOR (v2)
 //
 // Proves (rather than asserts) that the draft's rarity odds
 // produce a real UR > SR > Rare > Normal PRACTICAL value
 // ordering, not just a label ordering - by rolling thousands of
-// synthetic draft offers using the exact same weighted-random
-// algorithm create_next_draft_offer() uses
+// synthetic 3-card draft OFFERS using the exact same weighted-
+// random algorithm create_next_draft_offer() uses
 // (supabase/migrations/202608220020_master_duel_compatibility.sql,
 // lines ~500-565: weighted roll against
 // settings.draft.rarity_weights, default
@@ -17,12 +17,18 @@
 // using the SAME deterministic valuation engine
 // (lib/valuation-engine.mjs) the rarity/audit proposal uses.
 //
+// v2 adds the Season 1 review's requested distribution-shape
+// metrics: median/p10/p90 per rarity, adjacent-tier overlap, the
+// percentage of 3-card offers that are entirely low-value, and the
+// percentage of Ultra Rare+ offers that contain no genuinely
+// strong practical choice.
+//
 // TWO THINGS THIS SCRIPT DOES NOT DO:
 //   1. It does not re-implement or guess at card SELECTION within
 //      a rolled rarity beyond a simple, clearly-labeled
-//      without-replacement sample from the given pool - the real
-//      create_next_draft_offer() also excludes cards already
-//      drafted this league, per-copy scarcity, and the
+//      without-replacement-per-draw sample from the given pool -
+//      the real create_next_draft_offer() also excludes cards
+//      already drafted this league, per-copy scarcity, and the
 //      format_eligible/master_duel gates. This script is a VALUE
 //      DISTRIBUTION proof (does rarity correlate with real
 //      value), not a byte-for-byte reproduction of the live offer
@@ -31,20 +37,19 @@
 //      card rows from a JSON file (the same shape
 //      scripts/audit-card-valuation.mjs writes to
 //      reports/card-valuation/<timestamp>/full-proposal.json), or
-//      falls back to a small fixture of real, verbatim-sourced
-//      cards for a smoke test when no file is given. A small
-//      fixture is honestly reported as too small to be
-//      statistically representative of the real ~13,931-card
-//      catalog - see the console output's own caveat.
+//      falls back to a small fixture of real, sourced cards for a
+//      smoke test when no file is given. A small fixture is
+//      honestly reported as too small to be statistically
+//      representative of the real ~13,931-card catalog - see the
+//      console output's own caveat.
 //
 // Usage:
 //   node scripts/simulate-draft-value.mjs [--proposal <path-to-full-proposal.json>] [--rounds 10000]
 //
 // Without --proposal, runs against the small built-in fixture
-// (the same sourced cards used to verify lib/valuation-engine.mjs
-// earlier this run) purely to prove the MECHANISM is correct -
-// NOT to claim real catalog numbers. Pass --proposal pointing at
-// a real audit-card-valuation.mjs JSON export to get real numbers.
+// purely to prove the MECHANISM is correct - NOT to claim real
+// catalog numbers. Pass --proposal pointing at a real
+// audit-card-valuation.mjs JSON export to get real numbers.
 // =========================================================
 
 import { readFileSync } from "node:fs";
@@ -72,65 +77,86 @@ const RARITY_ORDER = [
   "Legendary",
 ];
 
-// A small, REAL, verbatim-sourced fixture (same cards verified
-// against lib/valuation-engine.mjs earlier this session via
-// game8.co) - used only when no --proposal file is given, purely
-// to exercise the simulator's mechanics end to end. Too small to
-// be a statistically meaningful catalog - see the printed caveat.
+const OFFER_SIZE = 3; // matches create_next_draft_offer()'s 3-card offer shape
+const LOW_VALUE_THRESHOLD = 5.0;
+const STRONG_VALUE_THRESHOLD = 6.5;
+const UR_PLUS = new Set(["Ultra Rare", "Secret Rare", "Legendary"]);
+
+// A small, sourced fixture used only when no --proposal file is
+// given, purely to exercise the simulator's mechanics end to end.
+// Too small to be a statistically meaningful catalog - see the
+// printed caveat.
 const FIXTURE_CARDS = [
   {
     name: "Fuh-Rin-Ka-Zan",
     game_rarity: "Legendary",
     description:
-      "Cannot be Normal Summoned/Set. Must first be Special Summoned (from your hand) by revealing 4 Normal Monsters with different Attributes in your hand, then adding 1 of those Attributes to this card as material...",
-    card_type: "Effect Monster",
+      'If you control 4 or more monsters with different Attributes, including WIND, WATER, FIRE and EARTH monsters: Destroy all monsters your opponent controls. You can only activate 1 "Fuh-Rin-Ka-Zan" per turn.',
+    card_type: "Trap Card",
   },
   {
     name: "Sekka's Light",
     game_rarity: "Legendary",
     description:
-      "During your Main Phase: You can target 1 Warrior monster you control; Special Summon 1 Warrior monster from your Deck with a different name and a lower Level than that monster, but banish it when it leaves the field. You can only activate 1 \"Sekka's Light\" per turn.",
-    card_type: "Normal Spell",
-  },
-  {
-    name: "Noctovision Dragon",
-    game_rarity: "Ultra Rare",
-    description:
-      "If this card is Normal or Special Summoned: You can target 1 card on the field; destroy it. You can only use this effect of \"Noctovision Dragon\" once per turn.",
-    card_type: "Effect Monster",
+      "If this is the only card in your hand and you have no cards in your Graveyard: Special Summon as many Normal Monsters with different names as possible from your Deck.",
+    card_type: "Spell Card",
   },
   {
     name: "Magician of Faith",
     game_rarity: "Super Rare",
-    description:
-      "FLIP: Target 1 Spell in your GY; add it to your hand.",
-    card_type: "Flip Effect Monster",
+    description: "FLIP: Target 1 Spell Card in your Graveyard; add that target to your hand.",
+    card_type: "Effect Monster",
   },
   {
-    name: "Ash Blossom & Joyous Spring",
+    name: "Forbidden Droplet",
     game_rarity: "Ultra Rare",
+    archetype: "Forbidden",
     description:
-      "When a card or effect is activated that includes any of these effects (Quick Effect): You can discard this card; negate that effect. Special Summoning from the Deck, Adding from the Deck to the hand, Special Summoning from the Extra Deck, Adding from the Deck or GY to the hand. You can only use this effect of \"Ash Blossom & Joyous Spring\" once per turn.",
-    card_type: "Effect Monster",
+      "Target 2 face-up monsters on the field with different names; for the rest of this turn after this card resolves, change one monster's ATK to 1000 and the other monster's ATK to 0, also, for the rest of this turn after this card resolves, negate their effects.",
+    card_type: "Spell Card",
+  },
+  {
+    name: "Baronne de Fleur",
+    game_rarity: "Ultra Rare",
+    archetype: "Fleur",
+    atk: 1000,
+    def: 2500,
+    description:
+      "1 Fusion, Synchro, or Xyz Monster, plus 1 non-Tuner monster\nMust first be either Fusion, Synchro, or Xyz Summoned, and cannot be Special Summoned by other ways. Once per turn: You can target 1 monster your opponent controls; until the end of this turn, that target's original ATK and DEF become 0, also its effects are negated.",
+    card_type: "Fusion Monster",
+  },
+  {
+    name: "Harpie's Feather Duster",
+    game_rarity: "Ultra Rare",
+    archetype: "Harpie",
+    description: "Destroy all Spell and Trap Cards on the field.",
+    card_type: "Spell Card",
   },
   {
     name: "Pot of Greed",
     game_rarity: "Normal",
     description: "Draw 2 cards.",
-    card_type: "Normal Spell",
+    card_type: "Spell Card",
   },
   {
     name: "7 Colored Fish",
     game_rarity: "Normal",
     description: "A rainbow-colored fish that swims elegantly.",
     card_type: "Normal Monster",
+    atk: 1800,
+    def: 800,
+  },
+  {
+    name: "Negate Attack",
+    game_rarity: "Rare",
+    description: "When an opponent's monster declares an attack: Negate the attack, and if you do, end the Battle Phase.",
+    card_type: "Trap Card",
   },
   {
     name: "Skill Drain",
     game_rarity: "Secret Rare",
-    description:
-      "Activate this card by paying 1000 LP. All face-up monsters on the field have their effects negated.",
-    card_type: "Normal Trap",
+    description: "Activate this card by paying 1000 Life Points. All face-up monsters' effects on the field are negated.",
+    card_type: "Trap Card",
   },
 ];
 
@@ -164,12 +190,11 @@ function loadCatalog(proposalPath) {
 }
 
 // Scores every card once up front and buckets it by its PROPOSED
-// rarity (draftValueToRarity of its own score) - this is
-// deliberately the NEW proposed rarity, not whatever
-// game_rarity/proposed_game_rarity field the source file carries,
-// so the simulator measures the valuation engine's own output
-// consistently regardless of which stage of review produced the
-// input file.
+// rarity (draftValueToRarity of its own score) - deliberately the
+// NEW proposed rarity, not whatever game_rarity/proposed_game_rarity
+// field the source file carries, so the simulator measures the
+// valuation engine's own output consistently regardless of which
+// stage of review produced the input file.
 function buildRarityBuckets(cards) {
   const buckets = new Map(RARITY_ORDER.map((r) => [r, []]));
   for (const card of cards) {
@@ -184,31 +209,22 @@ function buildRarityBuckets(cards) {
   return buckets;
 }
 
-// Weighted rarity roll - reproduces
-// create_next_draft_offer()'s own algorithm: sum the weights of
-// rarities that currently have at least 1 available card, roll a
-// uniform number in [0, totalWeight), walk the cumulative weights
-// in RARITY_ORDER to find which band the roll landed in.
+// Weighted rarity roll - reproduces create_next_draft_offer()'s
+// own algorithm: sum the weights of rarities that currently have
+// at least 1 available card, roll a uniform number in
+// [0, totalWeight), walk the cumulative weights in RARITY_ORDER to
+// find which band the roll landed in.
 function rollRarity(weights, buckets) {
-  const available = RARITY_ORDER.filter(
-    (r) => (buckets.get(r) ?? []).length > 0
-  );
-  const totalWeight = available.reduce(
-    (sum, r) => sum + (weights[r] ?? 0),
-    0
-  );
+  const available = RARITY_ORDER.filter((r) => (buckets.get(r) ?? []).length > 0);
+  const totalWeight = available.reduce((sum, r) => sum + (weights[r] ?? 0), 0);
   if (totalWeight <= 0) {
-    throw new Error(
-      "No rarity has both a positive weight and at least one available card - cannot roll."
-    );
+    throw new Error("No rarity has both a positive weight and at least one available card - cannot roll.");
   }
   const roll = Math.random() * totalWeight;
   let running = 0;
   for (const rarity of available) {
     running += weights[rarity] ?? 0;
-    if (roll < running) {
-      return rarity;
-    }
+    if (roll < running) return rarity;
   }
   return available[available.length - 1];
 }
@@ -217,26 +233,80 @@ function pickCard(pool) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+function rollOneCard(weights, buckets) {
+  const rarity = rollRarity(weights, buckets);
+  const pool = buckets.get(rarity);
+  const drawn = pickCard(pool);
+  return { rarity, name: drawn.name, draftValue: drawn.draftValue };
+}
+
+function percentile(sortedValues, p) {
+  if (sortedValues.length === 0) return null;
+  const idx = Math.min(sortedValues.length - 1, Math.max(0, Math.floor((p / 100) * sortedValues.length)));
+  return sortedValues[idx];
+}
+
+function median(sortedValues) {
+  if (sortedValues.length === 0) return null;
+  const mid = Math.floor(sortedValues.length / 2);
+  return sortedValues.length % 2 === 0
+    ? (sortedValues[mid - 1] + sortedValues[mid]) / 2
+    : sortedValues[mid];
+}
+
+// Runs the simulation as a sequence of 3-card OFFERS (matching the
+// real UI's offer shape) rather than independent single draws, so
+// offer-level metrics (all-low-value offers, UR+ offers with no
+// strong choice) can be computed directly instead of approximated.
 function runSimulation(buckets, weights, rounds) {
-  const results = RARITY_ORDER.reduce((acc, r) => {
-    acc[r] = { offers: 0, draftValueSum: 0, lowValueOffers: 0 };
+  const perRarityValues = RARITY_ORDER.reduce((acc, r) => {
+    acc[r] = [];
     return acc;
   }, {});
-
-  const LOW_VALUE_THRESHOLD = 5.0;
+  let allLowValueOffers = 0;
+  let urPlusOffers = 0;
+  let urPlusOffersWithNoStrongChoice = 0;
 
   for (let i = 0; i < rounds; i++) {
-    const rarity = rollRarity(weights, buckets);
-    const pool = buckets.get(rarity);
-    const drawn = pickCard(pool);
-    results[rarity].offers += 1;
-    results[rarity].draftValueSum += drawn.draftValue;
-    if (drawn.draftValue < LOW_VALUE_THRESHOLD) {
-      results[rarity].lowValueOffers += 1;
+    const offer = Array.from({ length: OFFER_SIZE }, () => rollOneCard(weights, buckets));
+    for (const card of offer) {
+      perRarityValues[card.rarity].push(card.draftValue);
+    }
+    if (offer.every((c) => c.draftValue < LOW_VALUE_THRESHOLD)) {
+      allLowValueOffers += 1;
+    }
+    if (offer.some((c) => UR_PLUS.has(c.rarity))) {
+      urPlusOffers += 1;
+      if (!offer.some((c) => c.draftValue >= STRONG_VALUE_THRESHOLD)) {
+        urPlusOffersWithNoStrongChoice += 1;
+      }
     }
   }
 
-  return results;
+  return { perRarityValues, allLowValueOffers, urPlusOffers, urPlusOffersWithNoStrongChoice };
+}
+
+// Adjacent-tier overlap: what fraction of the LOWER tier's draws
+// already meet or beat the UPPER tier's 10th percentile (p10)? A
+// well-separated rarity ladder should show this shrinking toward 0
+// as tiers get further apart; a large number means the two tiers
+// are not meaningfully distinguishable in practice.
+function computeAdjacentOverlap(perRarityValues) {
+  const overlaps = [];
+  for (let i = 0; i < RARITY_ORDER.length - 1; i++) {
+    const lower = RARITY_ORDER[i];
+    const upper = RARITY_ORDER[i + 1];
+    const lowerValues = perRarityValues[lower];
+    const upperValues = perRarityValues[upper];
+    if (lowerValues.length === 0 || upperValues.length === 0) {
+      overlaps.push({ lower, upper, overlapPct: null });
+      continue;
+    }
+    const upperP10 = percentile([...upperValues].sort((a, b) => a - b), 10);
+    const overlapCount = lowerValues.filter((v) => v >= upperP10).length;
+    overlaps.push({ lower, upper, overlapPct: (overlapCount / lowerValues.length) * 100 });
+  }
+  return overlaps;
 }
 
 function main() {
@@ -257,39 +327,54 @@ function main() {
     );
   }
 
-  console.log(`\nRunning ${args.rounds} synthetic draft offers using the live default weights ${JSON.stringify(DEFAULT_RARITY_WEIGHTS)} ...\n`);
+  console.log(`\nRunning ${args.rounds} synthetic 3-card draft offers using the live default weights ${JSON.stringify(DEFAULT_RARITY_WEIGHTS)} ...\n`);
 
-  const results = runSimulation(buckets, DEFAULT_RARITY_WEIGHTS, args.rounds);
+  const { perRarityValues, allLowValueOffers, urPlusOffers, urPlusOffersWithNoStrongChoice } = runSimulation(
+    buckets,
+    DEFAULT_RARITY_WEIGHTS,
+    args.rounds
+  );
 
-  console.log("Rarity        Offers   % of total   Avg Draft Value   % below 5.0 draft value");
+  console.log("Rarity        Draws    Avg DV   Median   p10     p90     % below 5.0");
+  const orderedAverages = [];
   for (const rarity of RARITY_ORDER) {
-    const r = results[rarity];
-    if (r.offers === 0) continue;
-    const pct = ((r.offers / args.rounds) * 100).toFixed(2);
-    const avg = (r.draftValueSum / r.offers).toFixed(2);
-    const lowPct = ((r.lowValueOffers / r.offers) * 100).toFixed(1);
+    const values = perRarityValues[rarity];
+    if (values.length === 0) continue;
+    const sorted = [...values].sort((a, b) => a - b);
+    const avg = values.reduce((s, v) => s + v, 0) / values.length;
+    const med = median(sorted);
+    const p10 = percentile(sorted, 10);
+    const p90 = percentile(sorted, 90);
+    const lowPct = (values.filter((v) => v < LOW_VALUE_THRESHOLD).length / values.length) * 100;
+    orderedAverages.push(avg);
     console.log(
-      `${rarity.padEnd(14)} ${String(r.offers).padStart(6)}   ${pct.padStart(9)}%   ${avg.padStart(15)}   ${lowPct.padStart(6)}%`
+      `${rarity.padEnd(14)} ${String(values.length).padStart(6)}   ${avg.toFixed(2).padStart(6)}   ${med.toFixed(2).padStart(6)}   ${p10.toFixed(2).padStart(5)}   ${p90.toFixed(2).padStart(5)}   ${lowPct.toFixed(1).padStart(6)}%`
     );
   }
 
-  const orderedAverages = RARITY_ORDER.filter((r) => results[r].offers > 0).map(
-    (r) => results[r].draftValueSum / results[r].offers
-  );
-  const isMonotonic = orderedAverages.every(
-    (v, i) => i === 0 || v >= orderedAverages[i - 1]
-  );
+  const isMonotonic = orderedAverages.every((v, i) => i === 0 || v >= orderedAverages[i - 1]);
+  console.log(`\nAverage draft value strictly increases with rarity tier: ${isMonotonic ? "YES" : "NO"}`);
+
+  console.log("\nAdjacent-tier overlap (% of the LOWER tier's draws that already meet/beat the UPPER tier's p10 - lower is better separation):");
+  for (const { lower, upper, overlapPct } of computeAdjacentOverlap(perRarityValues)) {
+    console.log(`  ${lower.padEnd(12)} vs ${upper.padEnd(12)} ${overlapPct === null ? "n/a (empty bucket)" : overlapPct.toFixed(1) + "%"}`);
+  }
+
+  console.log(`\n% of 3-card offers where ALL THREE choices are below draftValue ${LOW_VALUE_THRESHOLD}: ${((allLowValueOffers / args.rounds) * 100).toFixed(2)}%`);
   console.log(
-    `\nAverage draft value strictly increases with rarity tier: ${isMonotonic ? "YES" : "NO"}`
+    `% of offers containing an Ultra Rare+ card where NONE of the 3 choices reaches draftValue ${STRONG_VALUE_THRESHOLD} (a "dead UR+ offer"): ${
+      urPlusOffers === 0 ? "n/a (no UR+ offers rolled)" : ((urPlusOffersWithNoStrongChoice / urPlusOffers) * 100).toFixed(2) + "%"
+    } (${urPlusOffers} UR+ offers out of ${args.rounds} total)`
   );
 
   if (isFixture) {
     console.log(
-      "\nCAVEAT: this run used the small built-in sourced fixture (8 cards), not the real ~13,931-card catalog. " +
-        "With that few cards per rarity bucket, this proves the SIMULATOR MECHANISM (weighted roll, bucketing, aggregation) " +
-        "is correct and unbiased - it does NOT yet prove the real catalog's value distribution. Re-run with " +
-        "--proposal pointing at a real scripts/audit-card-valuation.mjs full-proposal.json export (Phase C in the runbook) " +
-        "for real numbers."
+      "\nCAVEAT: this run used the small built-in sourced fixture (10 cards), not the real ~13,931-card catalog. " +
+        "With that few cards per rarity bucket, this proves the SIMULATOR MECHANISM (weighted roll, offer bucketing, " +
+        "percentile/overlap computation) is correct and unbiased - it does NOT yet prove the real catalog's value " +
+        "distribution, and the overlap/dead-offer percentages above are NOT meaningful with only a handful of cards " +
+        "per bucket. Re-run with --proposal pointing at a real scripts/audit-card-valuation.mjs full-proposal.json " +
+        "export (Phase C in the runbook) for real numbers."
     );
   }
 }

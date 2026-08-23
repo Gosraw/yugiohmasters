@@ -1,5 +1,5 @@
 // =========================================================
-// AUDIT CARD VALUATION - Season 1 rarity/valuation proposal
+// AUDIT CARD VALUATION - Season 1 rarity/valuation proposal (v2)
 //
 // PROPOSAL / AUDIT ONLY BY DEFAULT. Running this script with no
 // flags NEVER writes to the database - it only reads card_catalog
@@ -7,22 +7,42 @@
 // reports/card-valuation/<timestamp>/.
 //
 // Only with --write-scores does it write anything back, and even
-// then it writes ONLY to the new proposal columns added by
-// 202608231500_duelist_circle_format_engine.sql (power_score,
-// usability_score, versatility_score, dependency_score,
-// consistency_score, oppressiveness_score is not a column - see
-// note below -, oppressiveness_tier, oppressiveness_reason,
-// draft_value_score, proposed_game_rarity, valuation_reason,
-// valuation_engine_version, valuation_computed_at). It NEVER
-// writes to game_rarity, release_stage, or format_eligible - those
-// are separate, even more deliberate operator actions, documented
-// in the Season 1 runbook, never bundled into this script.
+// then it writes ONLY to the proposal columns added by
+// 202608231500_duelist_circle_format_engine.sql and
+// 202608231600_valuation_engine_v2_columns.sql (power_score,
+// accessibility_score, dependency_score, generic_utility_score,
+// consistency_score, floor_score, ceiling_score,
+// oppressiveness_tier, oppressiveness_reason, draft_value_score,
+// proposed_game_rarity, valuation_reason, valuation_engine_version,
+// valuation_computed_at). It NEVER writes to game_rarity,
+// release_stage, or format_eligible - those are separate, even
+// more deliberate operator actions, documented in the Season 1
+// runbook, never bundled into this script.
 //
 // A card with valuation_manually_overridden = true is always
 // skipped entirely (scored for the report so you can still see
 // what the engine WOULD have said, but never written), mirroring
 // the existing rarity_manually_overridden protection in
 // scripts/classify-rarities.mjs.
+//
+// v2 CHANGES vs. the version that produced the report which
+// triggered this rewrite (see lib/valuation-engine.mjs's own
+// header for the full account of what was wrong and why):
+//   - Every score section below now reports all EIGHT axes
+//     (power/accessibility/dependency/genericUtility/consistency/
+//     floor/ceiling/oppressiveness), not six.
+//   - REPORT.md now includes 50 RANDOM SAMPLES PER PROPOSED
+//     RARITY (not just the extremes), so a reviewer can sanity-
+//     check the "middle of the distribution", not only the
+//     upgrades/downgrades that were already flagged as interesting.
+//   - REPORT.md now includes an explicit FALSE-POSITIVE /
+//     FALSE-NEGATIVE ARCHETYPE DEPENDENCY section: every card whose
+//     archetype tag is thematic-only (no real functional
+//     requirement in its own text) vs. every card whose archetype
+//     tag IS load-bearing, so a reviewer can directly spot-check
+//     the exact failure mode the Season 1 review reported.
+//   - Top upgrades/downgrades sections now show up to 100 rows (not
+//     60) in REPORT.md itself, matching the requested audit scope.
 //
 // Usage:
 //   node scripts/audit-card-valuation.mjs                 (dry run, writes reports/ only)
@@ -39,6 +59,7 @@ import {
   draftValueToRarity,
   recommendOppressiveness,
   VALUATION_ENGINE_VERSION,
+  RARITY_ORDER,
 } from "../lib/valuation-engine.mjs";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -123,6 +144,20 @@ function csvEscape(value) {
     return `"${s.replace(/"/g, '""')}"`;
   }
   return s;
+}
+
+// Deterministic-enough sampling for a report (not cryptographic,
+// just needs to spread across the array without a Date.now()/
+// Math.random() dependency that would make two runs of the same
+// data disagree pointlessly) - simple stride sampling.
+function sampleEvenly(arr, n) {
+  if (arr.length <= n) return arr;
+  const stride = arr.length / n;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    out.push(arr[Math.floor(i * stride)]);
+  }
+  return out;
 }
 
 async function main() {
@@ -215,6 +250,41 @@ async function main() {
 
   const manuallyLocked = results.filter((r) => r.card.valuation_manually_overridden);
 
+  // ---- False-positive / false-negative archetype dependency
+  //      review - directly answers the exact failure mode the
+  //      Season 1 valuation review reported (Forbidden
+  //      Droplet/Baronne de Fleur). "False positive" here means:
+  //      the card HAS an archetype tag, but the engine correctly
+  //      found it thematic-only (no real functional requirement) -
+  //      i.e. cards where the OLD engine's tag-matching approach
+  //      would likely have over-penalized dependency. "False
+  //      negative" candidates are the inverse: no archetype tag
+  //      at all, but the engine still found a real functional
+  //      dependency in the text (worth a human sanity check, since
+  //      it means the DB's own archetype tagging missed something
+  //      the card's text actually requires). ----
+  const archetypeThematicOnly = results.filter(
+    (r) => r.card.archetype && r.signals.archetypeIsThematicOnly
+  );
+  const archetypeFunctionallyLoadBearing = results.filter(
+    (r) => r.card.archetype && !r.signals.archetypeIsThematicOnly
+  );
+  const noArchetypeTagButDependent = results.filter(
+    (r) => !r.card.archetype && r.scores.dependency >= 4
+  );
+  const ambiguousReferences = results.filter((r) =>
+    r.signals.classifiedRefs.some((ref) => ref.type === "ambiguous_reference")
+  );
+
+  // ---- 50 random(-ish, evenly-sampled) samples per proposed
+  //      rarity, so a reviewer can eyeball the MIDDLE of the
+  //      distribution, not just the flagged extremes. ----
+  const samplesByRarity = {};
+  for (const rarity of RARITY_ORDER) {
+    const inRarity = results.filter((r) => r.proposedRarity === rarity);
+    samplesByRarity[rarity] = sampleEvenly(inRarity, 50);
+  }
+
   // ---- Output files ----
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const outDir = join(process.cwd(), "reports", "card-valuation", timestamp);
@@ -226,15 +296,19 @@ async function main() {
     "current_rarity",
     "proposed_rarity",
     "power",
-    "usability",
-    "versatility",
+    "accessibility",
     "dependency",
+    "generic_utility",
     "consistency",
+    "floor",
+    "ceiling",
     "oppressiveness",
     "draft_value",
     "oppressiveness_tier",
     "suggested_stage",
     "master_duel_status",
+    "archetype",
+    "archetype_thematic_only",
     "reason",
   ];
   const fullCsvRows = results.map((r) =>
@@ -244,15 +318,19 @@ async function main() {
       r.card.game_rarity ?? "",
       r.proposedRarity,
       r.scores.power,
-      r.scores.usability,
-      r.scores.versatility,
+      r.scores.accessibility,
       r.scores.dependency,
+      r.scores.genericUtility,
       r.scores.consistency,
+      r.scores.floor,
+      r.scores.ceiling,
       r.scores.oppressiveness,
       r.scores.draftValue,
       r.opp.tier,
       r.opp.suggestedStage,
       r.card.master_duel_status,
+      r.card.archetype ?? "",
+      r.card.archetype ? String(r.signals.archetypeIsThematicOnly) : "",
       r.scores.reason,
     ]
       .map(csvEscape)
@@ -270,9 +348,13 @@ async function main() {
         card_catalog_id: r.card.id,
         external_card_id: r.card.external_card_id,
         name: r.card.name,
+        archetype: r.card.archetype,
+        archetype_thematic_only: r.card.archetype ? r.signals.archetypeIsThematicOnly : null,
         current_rarity: r.card.game_rarity,
         proposed_rarity: r.proposedRarity,
         scores: r.scores,
+        classified_references: r.signals.classifiedRefs,
+        materials: r.signals.materials,
         oppressiveness_tier: r.opp.tier,
         suggested_release_stage: r.opp.suggestedStage,
         oppressiveness_reason: r.opp.reason,
@@ -283,17 +365,18 @@ async function main() {
     )
   );
 
-  function shortlistMd(title, rows, mapper) {
-    const lines = [`## ${title} (${rows.length})`, ""];
-    if (rows.length === 0) {
+  function shortlistMd(title, rows, mapper, limit = 100) {
+    const shown = rows.slice(0, limit);
+    const lines = [`## ${title} (${rows.length}${rows.length > limit ? `, showing ${limit}` : ""})`, ""];
+    if (shown.length === 0) {
       lines.push("_none_", "");
       return lines.join("\n");
     }
     lines.push(
-      "| Card | Current | Proposed | Power | Dependency | Draft Value | Reason |",
-      "|---|---|---|---|---|---|---|"
+      "| Card | Current | Proposed | Power | Dependency | Floor | Ceiling | Draft Value | Reason |",
+      "|---|---|---|---|---|---|---|---|---|"
     );
-    for (const r of rows) {
+    for (const r of shown) {
       lines.push(mapper(r));
     }
     lines.push("");
@@ -301,10 +384,48 @@ async function main() {
   }
 
   const rowMd = (r) =>
-    `| ${r.card.name} | ${r.card.game_rarity ?? "-"} | ${r.proposedRarity} | ${r.scores.power} | ${r.scores.dependency} | ${r.scores.draftValue} | ${r.scores.reason.replace(/\|/g, "/")} |`;
+    `| ${r.card.name} | ${r.card.game_rarity ?? "-"} | ${r.proposedRarity} | ${r.scores.power} | ${r.scores.dependency} | ${r.scores.floor} | ${r.scores.ceiling} | ${r.scores.draftValue} | ${r.scores.reason.replace(/\|/g, "/")} |`;
+
+  const archetypeRowMd = (r) =>
+    `| ${r.card.name} | ${r.card.archetype} | ${r.scores.dependency} | ${r.signals.materials.specificity} | ${r.scores.reason.replace(/\|/g, "/")} |`;
+
+  function archetypeSectionMd(title, rows, limit = 60) {
+    const shown = rows.slice(0, limit);
+    const lines = [`## ${title} (${rows.length}${rows.length > limit ? `, showing ${limit}` : ""})`, ""];
+    if (shown.length === 0) {
+      lines.push("_none_", "");
+      return lines.join("\n");
+    }
+    lines.push(
+      "| Card | Archetype tag | Dependency | Materials | Reason |",
+      "|---|---|---|---|---|"
+    );
+    for (const r of shown) lines.push(archetypeRowMd(r));
+    lines.push("");
+    return lines.join("\n");
+  }
+
+  function sampleSectionMd(rarity, rows) {
+    const lines = [`### ${rarity} (${rows.length} sampled)`, ""];
+    if (rows.length === 0) {
+      lines.push("_no cards currently propose to this rarity_", "");
+      return lines.join("\n");
+    }
+    lines.push(
+      "| Card | Power | Accessibility | Dependency | Generic Utility | Consistency | Floor | Ceiling | Draft Value |",
+      "|---|---|---|---|---|---|---|---|---|"
+    );
+    for (const r of rows) {
+      lines.push(
+        `| ${r.card.name} | ${r.scores.power} | ${r.scores.accessibility} | ${r.scores.dependency} | ${r.scores.genericUtility} | ${r.scores.consistency} | ${r.scores.floor} | ${r.scores.ceiling} | ${r.scores.draftValue} |`
+      );
+    }
+    lines.push("");
+    return lines.join("\n");
+  }
 
   const mdSections = [
-    `# Duelist Circle Card Valuation Audit`,
+    `# Duelist Circle Card Valuation Audit (v2)`,
     ``,
     `Engine version: \`${VALUATION_ENGINE_VERSION}\``,
     `Generated: ${new Date().toISOString()}`,
@@ -333,32 +454,56 @@ async function main() {
           `| ${k} | ${v} | ${((v / results.length) * 100).toFixed(2)}% |`
       ),
     ``,
+    `Sanity reference only (per the Season 1 review, NOT a target to optimize toward - the new distribution is allowed to differ substantially if quality improved): Normal 4875, Rare 4180, Super Rare 2786, Ultra Rare 1393, Secret Rare 557, Legendary 140.`,
+    ``,
     `## Oppressiveness tier distribution`,
     ``,
     `Green (starting-pool safe): ${oppTiers.green} | Orange (manual review): ${oppTiers.orange} | Red (recommend later stage): ${oppTiers.red}`,
+    `Note: oppressiveness is NEVER a factor in draft_value_score/proposed_game_rarity - see valuation-engine.mjs. A card can be both highly desirable (rarity) and highly oppressive (release_stage) at the same time.`,
     ``,
+    `## FALSE-POSITIVE ARCHETYPE DEPENDENCY REVIEW`,
+    ``,
+    `Cards with an archetype tag that the engine determined is THEMATIC-ONLY (no real functional requirement was found anywhere in the card's own text) - this is the exact failure mode the Season 1 review reported for Forbidden Droplet and Baronne de Fleur. Spot-check a sample of these: if any of them genuinely DO need their archetype tag's support to function, that's a real false negative in the classifier and worth reporting back.`,
+    ``,
+    archetypeSectionMd("Archetype-tagged but thematic-only (dependency NOT penalized)", archetypeThematicOnly, 80),
+    `## FALSE-NEGATIVE ARCHETYPE DEPENDENCY REVIEW`,
+    ``,
+    `Cards with NO archetype tag at all, but which the engine still scored as meaningfully dependent (dependency >= 4) based on their own text (multi-Attribute requirements, named Extra Deck materials, mandatory_requirement/mandatory_target references). Worth checking whether the database's archetype tagging is simply incomplete for these.`,
+    ``,
+    archetypeSectionMd("No archetype tag, but dependency >= 4", noArchetypeTagButDependent, 80),
+    `## AMBIGUOUS REFERENCES (engine could not confidently classify)`,
+    ``,
+    `Cards containing a quoted reference the classifier could not confidently place into mandatory_requirement/mandatory_target/optional_bonus/search_target/alternative_effect - these got a small, deliberately-weak dependency penalty rather than a guess, and are the best candidates for a human to expand the classifier's pattern coverage next.`,
+    ``,
+    archetypeSectionMd("Ambiguous reference cards", ambiguousReferences, 80),
     shortlistMd(
       "TOP LEGENDARY DOWNGRADES (cards currently Legendary, proposed lower)",
       suspicious,
       rowMd
     ),
-    shortlistMd("TOP RARITY DOWNGRADES (any direction)", downgrades.slice(0, 60), rowMd),
-    shortlistMd("TOP RARITY UPGRADES", upgrades.slice(0, 60), rowMd),
+    shortlistMd("TOP RARITY DOWNGRADES (any direction, up to 100)", downgrades, rowMd, 100),
+    shortlistMd("TOP RARITY UPGRADES (up to 100)", upgrades, rowMd, 100),
     shortlistMd(
       "HIGH-OPPRESSIVENESS CARDS (orange/red - recommend review or later release stage)",
-      highOppressiveness.slice(0, 60),
-      rowMd
+      highOppressiveness,
+      rowMd,
+      60
     ),
     shortlistMd(
       "HIGH POWER + HIGH DEPENDENCY (power >= 6.5, dependency >= 5 - draft value should be much lower than raw power)",
-      highPowerHighDependency.slice(0, 60),
-      rowMd
+      highPowerHighDependency,
+      rowMd,
+      60
     ),
     shortlistMd(
       "MASTER DUEL EXCLUSIONS (forbidden/not_available/unknown - never offered regardless of format)",
-      masterDuelExclusions.slice(0, 60),
-      rowMd
+      masterDuelExclusions,
+      rowMd,
+      60
     ),
+    `## 50 SAMPLES PER PROPOSED RARITY (evenly sampled, not just extremes)`,
+    ``,
+    ...RARITY_ORDER.map((rarity) => sampleSectionMd(rarity, samplesByRarity[rarity])),
   ];
   writeFileSync(join(outDir, "REPORT.md"), mdSections.join("\n"));
 
@@ -369,6 +514,9 @@ async function main() {
   console.log(`\nBEFORE distribution:`, before);
   console.log(`PROPOSED distribution:`, after);
   console.log(`Oppressiveness tiers:`, oppTiers);
+  console.log(
+    `Archetype tags found thematic-only: ${archetypeThematicOnly.length} | functionally load-bearing: ${archetypeFunctionallyLoadBearing.length}`
+  );
 
   if (!WRITE_SCORES) {
     console.log(
@@ -388,10 +536,12 @@ async function main() {
     const batch = writable.slice(i, i + BATCH).map((r) => ({
       id: r.card.id,
       power_score: r.scores.power,
-      usability_score: r.scores.usability,
-      versatility_score: r.scores.versatility,
+      accessibility_score: r.scores.accessibility,
       dependency_score: r.scores.dependency,
+      generic_utility_score: r.scores.genericUtility,
       consistency_score: r.scores.consistency,
+      floor_score: r.scores.floor,
+      ceiling_score: r.scores.ceiling,
       draft_value_score: r.scores.draftValue,
       oppressiveness_tier: r.opp.tier,
       oppressiveness_reason: r.opp.reason,

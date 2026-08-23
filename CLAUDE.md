@@ -259,6 +259,31 @@ the owner's Mac (Cowork-style), some things to know:
   the device bridge; verify pure-logic changes some other way (e.g. a
   throwaway `node --experimental-strip-types` harness) and ask the owner
   to run `npm test` themselves when a real Vitest run is needed.
+- **`lib/valuation-engine.mjs` is on its second rewrite (v2, engine
+  version `2026-08-23.2`)** after a real run against the live catalog
+  found v1 was still inferring archetype dependency from a database
+  `archetype` tag too eagerly (Forbidden Droplet, Baronne de Fleur) and
+  let several "negate"-family cards converge to near-identical scores.
+  v2's dependency scoring is built entirely from classifying what a
+  card's own TEXT requires (`classifyReference()` /
+  `parseExtraDeckMaterials()`) — never from `card.archetype` directly.
+  If you touch this file again: (1) never reintroduce a bare
+  `archetype`-substring-in-text check as a dependency signal — that
+  regression is exactly what triggered the rewrite; (2) run
+  `node lib/valuation-engine.regression.test.mjs` before AND after any
+  change (it's a plain `node:assert` harness, not vitest, so it works
+  fine on the device bridge); (3) `usability_score`/`versatility_score`
+  columns still exist in `card_catalog` (kept for backwards
+  compatibility) but are superseded by `accessibility_score`/
+  `generic_utility_score`/`floor_score`/`ceiling_score` — the audit
+  script only writes the new columns now. This entire rewrite was
+  **not** run against the real ~13,931-card catalog (same no-network/
+  no-DB sandbox limitation as everything else in this file) — only
+  against a 12-card sourced regression suite and a 23-card synthetic
+  sanity fixture. Running the real Phase C audit and reviewing its
+  output (especially the new false-positive/false-negative archetype
+  dependency sections in `REPORT.md`) is still required before trusting
+  this for a real rarity pass.
 
 ## Talking to the owner
 

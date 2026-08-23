@@ -2,9 +2,12 @@
 // e.g. a future Duelist Coach V2 module) can import the SAME
 // deterministic scoring engine that scripts/audit-card-valuation.mjs
 // uses, without duplicating the logic. See valuation-engine.mjs's
-// header for why this is a plain .mjs file rather than .ts.
+// header for why this is a plain .mjs file rather than .ts, and for
+// why v2 reshaped the score axes (power/accessibility/dependency/
+// genericUtility/consistency/floor/ceiling/oppressiveness).
 
 export type ValuationCardInput = {
+  name?: string | null;
   card_type: string | null;
   frame_type?: string | null;
   race?: string | null;
@@ -16,6 +19,30 @@ export type ValuationCardInput = {
   def: number | null;
   archetype: string | null;
   description: string | null;
+};
+
+export type ReferenceType =
+  | "mandatory_requirement"
+  | "mandatory_target"
+  | "alternative_effect"
+  | "optional_bonus"
+  | "search_target"
+  | "self_reference"
+  | "ambiguous_reference";
+
+export type ClassifiedReference = {
+  term: string;
+  type: ReferenceType;
+  severity: number;
+  ambiguous?: boolean;
+};
+
+export type MaterialSpecificity = "n/a" | "generic" | "constrained" | "named";
+
+export type ExtraDeckMaterials = {
+  specificity: MaterialSpecificity;
+  materialText: string;
+  reason: string;
 };
 
 export type ValuationSignals = {
@@ -34,6 +61,7 @@ export type ValuationSignals = {
   isFlip: boolean;
   isQuickPlay: boolean;
   isQuickEffect: boolean;
+  isContinuous: boolean;
   atk: number | null;
   def: number | null;
   hasCost: boolean;
@@ -41,16 +69,23 @@ export type ValuationSignals = {
   costDiscard: boolean;
   costBanishSelf: boolean;
   costLifePoints: boolean;
+  usableFromGraveyard: boolean;
+  gainsLifePoints: boolean;
+  endsBattlePhase: boolean;
   hardOncePerTurn: boolean;
   softOncePerTurn: boolean;
   distinctAttributesRequired: number;
-  archetypeLocked: boolean;
-  namedCardDependency: boolean;
   boardStateRequirement: boolean;
+  classifiedRefs: ClassifiedReference[];
+  materials: ExtraDeckMaterials;
+  archetypeFunctionalRefs: ClassifiedReference[];
+  archetypeIsThematicOnly: boolean;
   removalDestroy: boolean;
   removalBounce: boolean;
   removalBanish: boolean;
   removalNegate: boolean;
+  negatesActivationOrEffect: boolean;
+  negatesAttack: boolean;
   nonTargeting: boolean;
   providesRemoval: boolean;
   battleProtection: boolean;
@@ -64,16 +99,17 @@ export type ValuationSignals = {
   searchNarrow: boolean;
   drawsCards: boolean;
   generatesAdvantage: boolean;
-  materialSpecificity: "n/a" | "generic" | "moderate" | "named";
   textLength: number;
 };
 
 export type ValuationScores = {
   power: number;
-  usability: number;
-  versatility: number;
+  accessibility: number;
   dependency: number;
+  genericUtility: number;
   consistency: number;
+  floor: number;
+  ceiling: number;
   oppressiveness: number;
   draftValue: number;
   reason: string;
@@ -110,6 +146,23 @@ export function recommendOppressiveness(
   power: number,
   dependency: number
 ): OppressivenessRecommendation;
+
+export function extractQuotedReferences(
+  text: string
+): Array<{ term: string; index: number }>;
+
+export function clauseAround(text: string, index: number): string;
+
+export function classifyReference(
+  term: string,
+  clause: string,
+  cardName: string | null
+): ClassifiedReference;
+
+export function parseExtraDeckMaterials(
+  text: string,
+  isExtraDeckCard: boolean
+): ExtraDeckMaterials;
 
 export const VALUATION_ENGINE_VERSION: string;
 export const RARITY_ORDER: GameRarity[];

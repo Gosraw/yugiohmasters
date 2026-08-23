@@ -202,6 +202,63 @@ the owner's Mac (Cowork-style), some things to know:
   bridge. If `.next` is ever suspected of being corrupted, `mv` it
   aside (the bridge can't delete) and tell the owner to run
   `rm -rf .next` themselves, then rebuild clean.
+- There is a nested, duplicate `supabase/migrations/supabase/migrations/`
+  directory containing at least one load-bearing file
+  (`202608190007_draft_rarity_roll.sql`, the original
+  `create_next_draft_offer()` with the draft rarity-roll logic). The
+  standard Supabase CLI only scans the top-level `supabase/migrations/`
+  folder, so this nested copy is almost certainly NOT applied by a real
+  deploy — the live behavior comes from whichever top-level migration
+  most recently did `create or replace function
+  public.create_next_draft_offer` (as of this session, that's
+  `202608220020_master_duel_compatibility.sql`). This was flagged in an
+  earlier session and is still unresolved — needs the owner to confirm
+  against their real project (does `supabase migration list` even see
+  the nested file?) before anyone deletes/moves it. A full local
+  migration-chain replay test only iterates `supabase/migrations/*.sql`
+  and will silently miss this nested folder too — don't assume a clean
+  replay proves this anomaly doesn't matter.
+- `public.card_instances` has a deliberate, hard `BEFORE DELETE` trigger
+  (`prevent_card_instance_delete_trigger`, from
+  `202608190004_card_instances.sql`) that unconditionally raises on any
+  `DELETE` — "Card instances cannot be deleted. Transfer ownership
+  instead," enforcing the full-scarcity ownership model. Any future
+  admin tooling that needs to actually remove card_instances rows (like
+  `season_reset_apply()` in `202608231520_season_reset.sql`) must
+  explicitly `alter table ... disable trigger
+  prevent_card_instance_delete_trigger` immediately before the delete
+  and `enable trigger` immediately after, inside the same transaction —
+  never drop or weaken the trigger itself.
+- `season_reset_apply()` deletes every `league_members` row, but keeps
+  `leagues` rows as structure. `bootstrap_private_league()` (in
+  `202608190001_phase1_foundation.sql`) only grants `role = 'admin'`
+  when it creates a brand-new league — re-joining an EXISTING (kept)
+  league always grants `role = 'player'`. That means after a season
+  reset, nobody has admin until someone calls the new
+  `claim_league_admin_if_none(<league_id>)` RPC (added in
+  `202608231520_season_reset.sql` specifically to solve this — it only
+  ever does anything when that league currently has zero admins, so
+  it's safe to leave broadly executable). `scripts/season-reset.mjs`
+  prints a reminder about this at the end of every real reset.
+- `season_reset_preview()` / `season_reset_apply()` /
+  `claim_league_admin_if_none()` are admin-gated via `auth.uid()` +
+  `league_members.role = 'admin'`, same as every other admin RPC in
+  this schema — which means a **service-role key cannot call them**
+  (a service-role JWT has no `sub` claim, so `auth.uid()` resolves to
+  null and they reject with "Not authenticated"). `scripts/season-reset.mjs`
+  therefore signs in as the real operator (email+password) for those
+  three calls, and only switches to the service-role client for the
+  final `auth.admin.deleteUser()` loop (Supabase's Admin API, a
+  completely different, unavoidably-service-role-only permission
+  model). Keep this split if this script is ever modified.
+- `npx vitest` (and therefore `npm test`) currently fails on the device
+  bridge with `Cannot find module @rollup/rollup-linux-arm64-gnu` even
+  though the device is `darwin/arm64` — the same npm optional-dependency
+  bug documented above for `npm run build`'s missing SWC binary, just
+  hitting Rollup's native binary instead. Don't attempt `npm test` from
+  the device bridge; verify pure-logic changes some other way (e.g. a
+  throwaway `node --experimental-strip-types` harness) and ask the owner
+  to run `npm test` themselves when a real Vitest run is needed.
 
 ## Talking to the owner
 

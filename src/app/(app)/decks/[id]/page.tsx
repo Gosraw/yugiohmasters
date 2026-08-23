@@ -47,11 +47,22 @@ import {
 
 import {
   evaluateMasterDuelDeckLegality,
+  getMasterDuelStatusMeta,
 } from "@/lib/master-duel";
 
 import {
   MasterDuelBadge,
 } from "@/components/master-duel-badge";
+
+import {
+  buildMasterDuelChecklist,
+  buildYdkExport,
+  EXPORT_DISCLAIMER,
+} from "@/lib/master-duel-export";
+
+import {
+  MasterDuelExportPanel,
+} from "@/components/master-duel-export-panel";
 
 export const dynamic =
   "force-dynamic";
@@ -108,6 +119,14 @@ type CardCatalogItem = {
 
   master_duel_status:
     | string
+    | null;
+
+  external_card_id:
+    | number
+    | null;
+
+  master_duel_card_id:
+    | number
     | null;
 };
 
@@ -525,7 +544,7 @@ export default async function DeckBuilderPage({
         "card_catalog"
       )
       .select(
-        "id,name,image_url,card_type,atk,def,game_rarity,rarity_score,format_eligible,master_duel_status"
+        "id,name,image_url,card_type,atk,def,game_rarity,rarity_score,format_eligible,master_duel_status,external_card_id,master_duel_card_id"
       )
       .in(
         "id",
@@ -763,6 +782,55 @@ export default async function DeckBuilderPage({
           item.card
             .master_duel_status,
       }))
+    );
+
+  // =======================================================
+  // MASTER DUEL EXPORT (researched workflow - see
+  // src/lib/master-duel-export.ts for why this is a checklist +
+  // .ydk file rather than a direct "import" button: Konami
+  // doesn't offer one).
+  // =======================================================
+
+  const exportCards =
+    [
+      ...mainDeckCards,
+      ...extraDeckCards,
+    ].map((item) => ({
+      cardCatalogId:
+        item.card.id,
+      name: item.card
+        .name,
+      externalCardId:
+        item.card
+          .external_card_id,
+      masterDuelCardId:
+        item.card
+          .master_duel_card_id,
+      masterDuelStatus:
+        item.card
+          .master_duel_status,
+      section: (item
+        .row
+        .section ===
+      "extra"
+        ? "extra"
+        : "main") as
+        | "main"
+        | "extra",
+    }));
+
+  const ydkExport =
+    buildYdkExport(
+      exportCards
+    );
+
+  const masterDuelChecklist =
+    buildMasterDuelChecklist(
+      exportCards,
+      (status) =>
+        getMasterDuelStatusMeta(
+          status
+        ).shortLabel
     );
 
   // =======================================================
@@ -1176,6 +1244,46 @@ export default async function DeckBuilderPage({
               )}
             </div>
           </div>
+        </section>
+      )}
+
+      {/* MASTER DUEL EXPORT */}
+
+      {mainDeckCards.length +
+        extraDeckCards.length >
+        0 && (
+        <section className="panel mt-4 p-4 sm:p-5">
+          <div className="flex items-center gap-2">
+            <Swords
+              size={18}
+              className="text-amber-300"
+            />
+
+            <h2 className="font-black">
+              Export for Master
+              Duel
+            </h2>
+          </div>
+
+          <MasterDuelExportPanel
+            deckName={
+              deck.name
+            }
+            disclaimer={
+              EXPORT_DISCLAIMER
+            }
+            ydkText={
+              ydkExport.ydkText
+            }
+            checklistText={
+              masterDuelChecklist.checklistText
+            }
+            missingPasscodeCount={
+              ydkExport
+                .missingPasscodeCards
+                .length
+            }
+          />
         </section>
       )}
 

@@ -68,6 +68,10 @@ import {
   MasterDuelBadge,
 } from "@/components/master-duel-badge";
 
+import {
+  CardSynergyInsight,
+} from "@/components/card-synergy-insight";
+
 export const dynamic =
   "force-dynamic";
 
@@ -1695,6 +1699,12 @@ export default async function CardDetailPage({
                 </div>
               )}
             </div>
+
+            {/* ===============================================
+                AI DUELIST INSIGHT
+            =============================================== */}
+
+            <CardSynergyInsight cardId={id} />
 
             {/* ===============================================
                 CARD TEXT

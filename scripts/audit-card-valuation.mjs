@@ -644,34 +644,50 @@ async function main() {
   skippedOverride = results.length - writable.length;
 
   for (let i = 0; i < writable.length; i += BATCH) {
-    const batch = writable.slice(i, i + BATCH).map((r) => ({
-      id: r.card.id,
-      power_score: r.scores.power,
-      accessibility_score: r.scores.accessibility,
-      dependency_score: r.scores.dependency,
-      generic_utility_score: r.scores.genericUtility,
-      consistency_score: r.scores.consistency,
-      floor_score: r.scores.floor,
-      ceiling_score: r.scores.ceiling,
-      draft_value_score: r.scores.draftValue,
-      oppressiveness_tier: r.opp.tier,
-      oppressiveness_reason: r.opp.reason,
-      proposed_game_rarity: r.proposedRarity,
-      valuation_reason: r.scores.reason,
-      valuation_engine_version: VALUATION_ENGINE_VERSION,
-      valuation_computed_at: new Date().toISOString(),
-    }));
+    const batch = writable.slice(i, i + BATCH);
 
-    const { error } = await supabase.from("card_catalog").upsert(batch, {
-      onConflict: "id",
-    });
+    for (const r of batch) {
+      const payload = {
+        power_score: r.scores.power,
+        accessibility_score: r.scores.accessibility,
+        dependency_score: r.scores.dependency,
+        generic_utility_score: r.scores.genericUtility,
+        consistency_score: r.scores.consistency,
+        floor_score: r.scores.floor,
+        ceiling_score: r.scores.ceiling,
+        draft_value_score: r.scores.draftValue,
+        oppressiveness_tier: r.opp.tier,
+        oppressiveness_reason: r.opp.reason,
+        proposed_game_rarity: r.proposedRarity,
+        valuation_reason: r.scores.reason,
+        valuation_engine_version: VALUATION_ENGINE_VERSION,
+        valuation_computed_at: new Date().toISOString(),
+      };
 
-    if (error) {
-      console.error(`❌ Batch write failed at offset ${i}: ${error.message}`);
-      process.exit(1);
+      const { data, error } = await supabase
+        .from("card_catalog")
+        .update(payload)
+        .eq("id", r.card.id)
+        .select("id");
+
+      if (error) {
+        throw new Error(
+          `Score update failed for card ${r.card.id}: ${error.message}`
+        );
+      }
+
+      if (!data || data.length !== 1) {
+        throw new Error(
+          `Expected exactly 1 card_catalog row for ${r.card.id}, got ${data?.length ?? 0}`
+        );
+      }
+
+      written += 1;
     }
-    written += batch.length;
-    process.stdout.write(`\r   ${written}/${writable.length} written...`);
+
+    process.stdout.write(
+      `\r   ${written}/${writable.length} written...`
+    );
   }
 
   console.log(

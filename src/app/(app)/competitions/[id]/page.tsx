@@ -25,10 +25,15 @@ import {
 
 import {
   addCompetitionPlayer,
+  addCompetitionPlayerV2,
   distributeCompetitionRewards,
+  distributeCompetitionRewardsV2,
+  finalizeCompetitionV2,
   finalizeRoundRobinCompetition,
   removeCompetitionPlayer,
+  removeCompetitionPlayerV2,
   startCompetition,
+  startCompetitionV2,
 } from "@/app/actions/competitions";
 
 import {
@@ -42,6 +47,10 @@ import {
 import {
   ConfirmSubmitButton,
 } from "@/components/confirm-submit-button";
+
+import {
+  CompetitionMatchResultFormV2,
+} from "@/components/competition-match-result-form-v2";
 
 export const dynamic =
   "force-dynamic";
@@ -76,6 +85,23 @@ type Competition = {
 
   rewards_distributed_at:
     | string
+    | null;
+
+  meetings_per_pairing:
+    | number
+    | null;
+
+  match_format:
+    | "single_duel"
+    | "best_of_3"
+    | null;
+
+  total_rounds:
+    | number
+    | null;
+
+  current_round:
+    | number
     | null;
 };
 
@@ -152,6 +178,21 @@ type CompetitionMatch = {
   completed_at:
     | string
     | null;
+
+  round_number:
+    | number
+    | null;
+
+  meeting_number:
+    | number
+    | null;
+
+  match_format:
+    | "single_duel"
+    | "best_of_3";
+
+  player_one_duel_wins: number;
+  player_two_duel_wins: number;
 };
 
 // =========================================================
@@ -283,7 +324,11 @@ export default async function CompetitionDetailPage({
         status,
         starts_at,
         completed_at,
-        rewards_distributed_at
+        rewards_distributed_at,
+        meetings_per_pairing,
+        match_format,
+        total_rounds,
+        current_round
       `
     )
     .eq(
@@ -302,6 +347,10 @@ export default async function CompetitionDetailPage({
   const competition =
     competitionData as Competition;
 
+  const isV2 =
+    competition.meetings_per_pairing !==
+    null;
+
   // ======================================================
   // PARALLEL READS
   //
@@ -317,8 +366,9 @@ export default async function CompetitionDetailPage({
   const wantsStandings =
     competition.status ===
       "active" &&
-    competition.competition_type ===
-      "round_robin";
+    (competition.competition_type ===
+      "round_robin" ||
+      isV2);
 
   const wantsFinalResults =
     competition.status ===
@@ -421,7 +471,9 @@ export default async function CompetitionDetailPage({
 
     wantsStandings
       ? supabase.rpc(
-          "get_competition_standings",
+          isV2
+            ? "get_competition_standings_v2"
+            : "get_competition_standings",
           {
             target_competition_id:
               competition.id,
@@ -473,7 +525,12 @@ export default async function CompetitionDetailPage({
           status,
           winner_id,
           result,
-          completed_at
+          completed_at,
+          round_number,
+          meeting_number,
+          match_format,
+          player_one_duel_wins,
+          player_two_duel_wins
         `
       )
       .eq(
@@ -481,10 +538,10 @@ export default async function CompetitionDetailPage({
         competition.id
       )
       .order(
-        "created_at",
+        "round_number",
         {
           ascending:
-            false,
+            true,
         }
       ),
   ]);
@@ -880,7 +937,9 @@ export default async function CompetitionDetailPage({
                       {isAdmin && (
                         <form
                           action={
-                            removeCompetitionPlayer
+                            isV2
+                              ? removeCompetitionPlayerV2
+                              : removeCompetitionPlayer
                           }
                         >
                           <input
@@ -946,7 +1005,9 @@ export default async function CompetitionDetailPage({
                           profile.id
                         }
                         action={
-                          addCompetitionPlayer
+                          isV2
+                            ? addCompetitionPlayerV2
+                            : addCompetitionPlayer
                         }
                         className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3"
                       >
@@ -988,7 +1049,9 @@ export default async function CompetitionDetailPage({
                 2 && (
                 <form
                   action={
-                    startCompetition
+                    isV2
+                      ? startCompetitionV2
+                      : startCompetition
                   }
                   className="mt-5 border-t border-white/[0.06] pt-5"
                 >
@@ -1001,7 +1064,11 @@ export default async function CompetitionDetailPage({
                   />
 
                   <ConfirmSubmitButton
-                    confirmMessage="Start the competition? Once started, no more duelists can be added."
+                    confirmMessage={
+                      isV2
+                        ? "Generate the round-robin schedule and start the competition? Once started, no more duelists can be added."
+                        : "Start the competition? Once started, no more duelists can be added."
+                    }
                     pendingLabel="Starting..."
                     className="primary-button inline-flex w-full items-center justify-center gap-2"
                   >
@@ -1009,7 +1076,9 @@ export default async function CompetitionDetailPage({
                       size={15}
                     />
 
-                    Start Competition
+                    {isV2
+                      ? "Generate Matches & Start"
+                      : "Start Competition"}
                   </ConfirmSubmitButton>
                 </form>
               )}
@@ -1022,23 +1091,37 @@ export default async function CompetitionDetailPage({
 
       {competition.status ===
         "active" &&
-        competition.competition_type ===
-          "round_robin" && (
+        (competition.competition_type ===
+          "round_robin" ||
+          isV2) && (
           <section className="panel mt-6 overflow-hidden">
             <div className="border-b border-white/[0.06] p-5">
-              <div className="flex items-center gap-2">
-                <Trophy
-                  size={18}
-                  className="text-amber-300"
-                />
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Trophy
+                    size={18}
+                    className="text-amber-300"
+                  />
 
-                <h2 className="text-xl font-black">
-                  Live Standings
-                </h2>
+                  <h2 className="text-xl font-black">
+                    Live Standings
+                  </h2>
+                </div>
+
+                {isV2 &&
+                  competition.total_rounds &&
+                  competition.current_round && (
+                    <span className="rounded-full border border-cyan-300/20 bg-cyan-300/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-200">
+                      Round {competition.current_round} of{" "}
+                      {competition.total_rounds}
+                    </span>
+                  )}
               </div>
 
               <p className="mt-1 text-xs text-zinc-600">
                 Win = 3 points · Draw = 1 · Loss = 0
+                {isV2 &&
+                  " · Ties: head-to-head, then duel differential, then duel wins"}
               </p>
             </div>
 
@@ -1140,10 +1223,11 @@ export default async function CompetitionDetailPage({
           </section>
         )}
 
-      {/* MATCHES */}
+      {/* MATCHES - V1 (flat list, unchanged) */}
 
       {competition.status !==
-        "draft" && (
+        "draft" &&
+        !isV2 && (
         <section className="mt-6">
           <div className="flex items-end justify-between gap-4">
             <div>
@@ -1235,6 +1319,174 @@ export default async function CompetitionDetailPage({
         </section>
       )}
 
+      {/* MATCHES - V2 (round-grouped, mobile-first cards, inline result entry) */}
+
+      {isV2 &&
+        competition.status !==
+          "draft" &&
+        (() => {
+          const roundGroups = new Map<
+            number,
+            CompetitionMatch[]
+          >();
+
+          for (const match of matches) {
+            const roundKey =
+              match.round_number ?? 0;
+
+            const existing =
+              roundGroups.get(roundKey) ?? [];
+
+            existing.push(match);
+            roundGroups.set(roundKey, existing);
+          }
+
+          const sortedRounds = Array.from(
+            roundGroups.keys()
+          ).sort((a, b) => a - b);
+
+          const currentRoundNumber =
+            competition.current_round;
+
+          function matchLabel(
+            match: CompetitionMatch
+          ) {
+            return `${playerName(
+              profileMap.get(match.player_one_id)
+            )} vs ${playerName(
+              profileMap.get(match.player_two_id)
+            )}`;
+          }
+
+          function MatchCard({
+            match,
+            allowCorrect,
+          }: {
+            match: CompetitionMatch;
+            allowCorrect: boolean;
+          }) {
+            return (
+              <div
+                key={match.id}
+                className="panel p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-black">
+                    {matchLabel(match)}
+                  </p>
+
+                  {match.status === "completed" ? (
+                    <CheckCircle2
+                      size={16}
+                      className="text-emerald-300"
+                    />
+                  ) : (
+                    <Clock3
+                      size={16}
+                      className="text-cyan-300"
+                    />
+                  )}
+                </div>
+
+                {match.status === "completed" && (
+                  <p className="mt-2 text-xs font-black text-zinc-400">
+                    {match.match_format === "best_of_3"
+                      ? `${match.player_one_duel_wins}-${match.player_two_duel_wins}`
+                      : match.winner_id ===
+                        match.player_one_id
+                      ? `${playerName(
+                          profileMap.get(match.player_one_id)
+                        )} won`
+                      : `${playerName(
+                          profileMap.get(match.player_two_id)
+                        )} won`}
+                  </p>
+                )}
+
+                {isAdmin &&
+                  match.status !== "completed" && (
+                    <CompetitionMatchResultFormV2
+                      matchId={match.id}
+                      competitionId={competition.id}
+                      matchFormat={match.match_format}
+                      playerOneLabel={playerName(
+                        profileMap.get(match.player_one_id)
+                      )}
+                      playerTwoLabel={playerName(
+                        profileMap.get(match.player_two_id)
+                      )}
+                      mode="submit"
+                    />
+                  )}
+
+                {isAdmin &&
+                  allowCorrect &&
+                  match.status === "completed" && (
+                    <div className="mt-3">
+                      <CompetitionMatchResultFormV2
+                        matchId={match.id}
+                        competitionId={competition.id}
+                        matchFormat={match.match_format}
+                        playerOneLabel={playerName(
+                          profileMap.get(match.player_one_id)
+                        )}
+                        playerTwoLabel={playerName(
+                          profileMap.get(match.player_two_id)
+                        )}
+                        mode="correct"
+                      />
+                    </div>
+                  )}
+              </div>
+            );
+          }
+
+          return (
+            <section className="mt-6 space-y-6">
+              {sortedRounds.map((roundNumber) => {
+                const roundMatches =
+                  roundGroups.get(roundNumber) ?? [];
+
+                const isCurrent =
+                  roundNumber === currentRoundNumber;
+
+                const isCompleted = roundMatches.every(
+                  (match) => match.status === "completed"
+                );
+
+                return (
+                  <div key={roundNumber}>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[9px] font-black uppercase tracking-[.2em] text-cyan-300">
+                        {isCurrent
+                          ? "Current Round"
+                          : isCompleted
+                          ? "Completed"
+                          : "Upcoming"}
+                      </p>
+
+                      <span className="text-xs font-black text-zinc-600">
+                        Round {roundNumber} of{" "}
+                        {competition.total_rounds}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                      {roundMatches.map((match) => (
+                        <MatchCard
+                          key={match.id}
+                          match={match}
+                          allowCorrect={isCompleted}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          );
+        })()}
+
       {/* FINAL RESULTS */}
 
       {competition.status ===
@@ -1321,8 +1573,9 @@ export default async function CompetitionDetailPage({
       {/* ADMIN COMPLETION */}
 
       {isAdmin &&
-        competition.competition_type ===
-          "round_robin" &&
+        (competition.competition_type ===
+          "round_robin" ||
+          isV2) &&
         competition.status ===
           "active" && (
           <section className="panel mt-6 p-6">
@@ -1336,7 +1589,9 @@ export default async function CompetitionDetailPage({
 
             <form
               action={
-                finalizeRoundRobinCompetition
+                isV2
+                  ? finalizeCompetitionV2
+                  : finalizeRoundRobinCompetition
               }
               className="mt-4"
             >
@@ -1381,7 +1636,9 @@ export default async function CompetitionDetailPage({
 
             <form
               action={
-                distributeCompetitionRewards
+                isV2
+                  ? distributeCompetitionRewardsV2
+                  : distributeCompetitionRewards
               }
               className="mt-4"
             >

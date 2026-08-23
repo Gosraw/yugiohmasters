@@ -16,16 +16,12 @@ import {
 } from "lucide-react";
 
 import {
-  createCompetition,
-} from "@/app/actions/competitions";
-
-import {
   requireUser,
 } from "@/lib/supabase/queries";
 
 import {
-  SubmitButton,
-} from "@/components/submit-button";
+  CompetitionCreateFormV2,
+} from "@/components/competition-create-form-v2";
 
 export const dynamic =
   "force-dynamic";
@@ -171,6 +167,51 @@ export default async function CompetitionsPage() {
     String(
       membership.role
     ) === "admin";
+
+  // ======================================================
+  // LEAGUE MEMBERS (for the V2 create form's player picker)
+  // ======================================================
+
+  let memberOptions: {
+    profileId: string;
+    label: string;
+  }[] = [];
+
+  if (isAdmin) {
+    const {
+      data: memberRows,
+    } = await supabase
+      .from("league_members")
+      .select("profile_id")
+      .eq("league_id", membership.league_id);
+
+    const memberIds = (
+      memberRows ?? []
+    ).map((row) => row.profile_id as string);
+
+    if (memberIds.length > 0) {
+      const {
+        data: memberProfiles,
+      } = await supabase
+        .from("profiles")
+        .select("id,username,duelist_name")
+        .in("id", memberIds);
+
+      memberOptions = (
+        memberProfiles ?? []
+      )
+        .map((profile) => ({
+          profileId: profile.id as string,
+          label:
+            (profile.duelist_name as string) ??
+            (profile.username as string) ??
+            "Duelist",
+        }))
+        .sort((a, b) =>
+          a.label.localeCompare(b.label)
+        );
+    }
+  }
 
   // ======================================================
   // COMPETITIONS
@@ -461,69 +502,13 @@ export default async function CompetitionsPage() {
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-zinc-500">
-              Start with a round-robin league competition or prepare a knockout tournament.
+              Configure the pairing schedule and match format, then preview the total matches before creating anything.
             </p>
 
-            <form
-              action={
-                createCompetition
-              }
-              className="mt-6 grid gap-4 lg:grid-cols-[1fr_240px_auto] lg:items-end"
-            >
-              <input
-                type="hidden"
-                name="league_id"
-                value={
-                  membership.league_id
-                }
-              />
-
-              <label>
-                <span className="mb-2 block text-xs font-black uppercase tracking-wider text-zinc-500">
-                  Name
-                </span>
-
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  maxLength={100}
-                  placeholder="Season 1 League"
-                  className="field w-full"
-                />
-              </label>
-
-              <label>
-                <span className="mb-2 block text-xs font-black uppercase tracking-wider text-zinc-500">
-                  Format
-                </span>
-
-                <select
-                  name="competition_type"
-                  defaultValue="round_robin"
-                  className="field w-full"
-                >
-                  <option value="round_robin">
-                    Round Robin
-                  </option>
-
-                  <option value="tournament">
-                    Tournament
-                  </option>
-                </select>
-              </label>
-
-              <SubmitButton
-                pendingLabel="Creating..."
-                className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-amber-300/25 bg-amber-300/10 px-5 py-3 text-sm font-black text-amber-200 transition hover:bg-amber-300/15 active:scale-[0.98]"
-              >
-                <Plus
-                  size={17}
-                />
-
-                Create
-              </SubmitButton>
-            </form>
+            <CompetitionCreateFormV2
+              leagueId={membership.league_id}
+              members={memberOptions}
+            />
           </div>
         </section>
       )}

@@ -21,6 +21,7 @@ import type {
 
 import { addCardToDeck } from "@/app/actions/decks";
 import { DeckActionButton } from "@/components/deck-action-button";
+import { MasterDuelBadge } from "@/components/master-duel-badge";
 
 // Query param keys this browser mirrors its filters into, so
 // leaving the page (e.g. tapping a card to inspect it, or
@@ -48,6 +49,7 @@ export type DeckBrowserCard = {
     game_rarity: string | null;
     rarity_score: number | null;
     format_eligible: boolean;
+    master_duel_status: string | null;
   };
 
   quantity: number;
@@ -1034,6 +1036,18 @@ export function DeckCollectionBrowser({
                           rarityName
                         }
                       </span>
+
+                      {(!card.master_duel_status ||
+                        card.master_duel_status !==
+                          "unlimited") && (
+                        <div className="absolute right-2 top-2">
+                          <MasterDuelBadge
+                            status={
+                              card.master_duel_status
+                            }
+                          />
+                        </div>
+                      )}
 
                       <span className="absolute bottom-2 right-2 rounded-full border border-white/10 bg-black/85 px-2 py-1 text-[10px] font-black">
                         x

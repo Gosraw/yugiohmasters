@@ -41,6 +41,7 @@ export type CollectionCardCatalogItem = {
   def: number | null;
   game_rarity: string | null;
   rarity_score: number | null;
+  master_duel_status: string | null;
 };
 
 export type CollectionCardInstance = {
@@ -199,7 +200,7 @@ export async function fetchOwnedCollection(
     const { data: catalogData, error: catalogError } = await supabase
       .from("card_catalog")
       .select(
-        "id,name,image_url,card_type,attribute,atk,def,game_rarity,rarity_score"
+        "id,name,image_url,card_type,attribute,atk,def,game_rarity,rarity_score,master_duel_status"
       )
       .in("id", catalogIds);
 

@@ -64,6 +64,10 @@ import {
   parseCollectionReturnTo,
 } from "@/lib/collection";
 
+import {
+  MasterDuelBadge,
+} from "@/components/master-duel-badge";
+
 export const dynamic =
   "force-dynamic";
 
@@ -1296,6 +1300,23 @@ export default async function CardDetailPage({
                     value={
                       card.game_rarity ??
                       "Not Rated"
+                    }
+                  />
+
+                  <InfoRow
+                    icon={
+                      <ShieldCheck
+                        size={18}
+                      />
+                    }
+                    label="Master Duel"
+                    value={
+                      <MasterDuelBadge
+                        status={
+                          card.master_duel_status
+                        }
+                        size="md"
+                      />
                     }
                   />
 

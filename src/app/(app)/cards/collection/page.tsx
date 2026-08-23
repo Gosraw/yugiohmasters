@@ -35,6 +35,10 @@ import {
   ScrollPositionMemory,
 } from "@/components/scroll-position-memory";
 
+import {
+  MasterDuelBadge,
+} from "@/components/master-duel-badge";
+
 export const dynamic =
   "force-dynamic";
 
@@ -1096,6 +1100,12 @@ export default async function CollectionPage({
                             group.quantity
                           }
                         </span>
+
+                        <MasterDuelBadge
+                          status={
+                            card.master_duel_status
+                          }
+                        />
 
                         {group.forTradeCount >
                           0 && (

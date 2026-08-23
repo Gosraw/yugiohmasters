@@ -45,6 +45,14 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  evaluateMasterDuelDeckLegality,
+} from "@/lib/master-duel";
+
+import {
+  MasterDuelBadge,
+} from "@/components/master-duel-badge";
+
 export const dynamic =
   "force-dynamic";
 
@@ -97,6 +105,10 @@ type CardCatalogItem = {
 
   format_eligible:
     boolean;
+
+  master_duel_status:
+    | string
+    | null;
 };
 
 type CardInstance = {
@@ -214,6 +226,18 @@ function DeckCardTile({
       <div className="pointer-events-none absolute left-1 top-1 rounded-md border border-white/10 bg-black/85 px-1.5 py-0.5 text-[8px] font-black text-zinc-200">
         #{instance.copy_number}
       </div>
+
+      {!card.master_duel_status ||
+      card.master_duel_status !==
+        "unlimited" ? (
+        <div className="pointer-events-none absolute right-1 top-1">
+          <MasterDuelBadge
+            status={
+              card.master_duel_status
+            }
+          />
+        </div>
+      ) : null}
 
       {editable && (
         <form
@@ -501,7 +525,7 @@ export default async function DeckBuilderPage({
         "card_catalog"
       )
       .select(
-        "id,name,image_url,card_type,atk,def,game_rarity,rarity_score,format_eligible"
+        "id,name,image_url,card_type,atk,def,game_rarity,rarity_score,format_eligible,master_duel_status"
       )
       .in(
         "id",
@@ -716,6 +740,30 @@ export default async function DeckBuilderPage({
       (item) =>
         !item.card.format_eligible
     ).length;
+
+  // =======================================================
+  // MASTER DUEL LEGALITY (Fase L)
+  //
+  // A separate, purely informational summary - unlike
+  // `canBeReady` above (which gates this LEAGUE's own Ready
+  // status), Master Duel legality never blocks anything here.
+  // It just tells the player whether this exact deck could
+  // also be played as-is in Master Duel.
+  // =======================================================
+
+  const masterDuelSummary =
+    evaluateMasterDuelDeckLegality(
+      [
+        ...mainDeckCards,
+        ...extraDeckCards,
+      ].map((item) => ({
+        id: item.card.id,
+        name: item.card.name,
+        master_duel_status:
+          item.card
+            .master_duel_status,
+      }))
+    );
 
   // =======================================================
   // CLIENT BROWSER DATA
@@ -1050,6 +1098,82 @@ export default async function DeckBuilderPage({
                 {ineligibleInDeckCount === 1 ? "it" : "them"} out before
                 your next league duel.
               </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* MASTER DUEL LEGALITY - purely informational, never
+          blocks this league's own Ready status above. */}
+
+      {mainDeckCards.length +
+        extraDeckCards.length >
+        0 && (
+        <section
+          className={`mt-4 rounded-2xl border p-4 ${
+            masterDuelSummary.ready
+              ? "border-emerald-300/15 bg-emerald-300/[0.03]"
+              : "border-amber-300/15 bg-amber-300/[0.03]"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            {masterDuelSummary.ready ? (
+              <ShieldCheck
+                size={17}
+                className="mt-0.5 shrink-0 text-emerald-300"
+              />
+            ) : (
+              <ShieldAlert
+                size={17}
+                className="mt-0.5 shrink-0 text-amber-300"
+              />
+            )}
+
+            <div className="flex-1">
+              <p
+                className={`text-sm font-black uppercase tracking-wide ${
+                  masterDuelSummary.ready
+                    ? "text-emerald-100"
+                    : "text-amber-100"
+                }`}
+              >
+                {masterDuelSummary.ready
+                  ? "Master Duel Ready"
+                  : `${masterDuelSummary.issues.length} Master Duel issue${
+                      masterDuelSummary
+                        .issues
+                        .length === 1
+                        ? ""
+                        : "s"
+                    }`}
+              </p>
+
+              {masterDuelSummary.ready ? (
+                <p className="mt-1 text-xs leading-5 text-zinc-600">
+                  Every card in this deck is Master Duel legal at
+                  its current copy count.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-1 text-xs leading-5 text-zinc-500">
+                  {masterDuelSummary.issues.map(
+                    (issue) => (
+                      <li
+                        key={
+                          issue.cardId
+                        }
+                        className="flex items-start gap-2"
+                      >
+                        <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-zinc-600" />
+                        <span>
+                          {
+                            issue.message
+                          }
+                        </span>
+                      </li>
+                    )
+                  )}
+                </ul>
+              )}
             </div>
           </div>
         </section>

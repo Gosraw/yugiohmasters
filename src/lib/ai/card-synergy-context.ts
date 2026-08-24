@@ -5,6 +5,7 @@ import type {
 import {
   generateSynergyCandidates,
   groupSynergyCandidatesByOwnership,
+  type PrecomputedEdgeReason,
   type SynergyCatalogCard,
 } from "@/lib/ai/card-synergy-candidates";
 
@@ -18,10 +19,37 @@ import {
 //
 // Wires the pure card-synergy-candidates.ts / card-synergy.ts
 // modules to real Supabase data: fetches the target card, a
-// candidate pool from card_catalog (lean columns only - never
-// `select *`, never the whole catalog shipped to the browser, this
-// stays entirely server-side), and the viewing player's owned-copy
-// counts for collection-aware ranking.
+// candidate pool, and the viewing player's owned-copy counts for
+// collection-aware ranking.
+//
+// FIXED (2026-08-24): the candidate pool used to be `.neq("id",
+// cardId)` against the FULL card_catalog table (~14k rows, every
+// uncached request) - a direct violation of the "no request-time
+// scan of the full catalog" rule, found and documented in
+// supabase/migrations/202608241000_card_synergy_graph.sql's header.
+// The pool is now the small, precomputed, INDEXED set of cards
+// card_synergy_edges already says are actually related to this one
+// (source_card_id = cardId OR target_card_id = cardId, ordered by
+// score, capped) - typically a few dozen rows, never the whole
+// catalog. Each edge's own deterministic_reason/confidence is passed
+// through as a `deep_relation` reason (see PrecomputedEdgeReason in
+// card-synergy-candidates.ts) so real evidence from the deep engine
+// (lib/synergy-engine.mjs) is never lost even when the shallower
+// card-mechanics.ts tagger doesn't independently rediscover it.
+// generateSynergyCandidates() itself is UNCHANGED and still applies
+// every existing rule (Master Duel eligibility, archetype-alone
+// exclusion, ownership-aware sorting) - only the size and source of
+// the pool fed into it changed.
+//
+// GRAPH-NOT-YET-COMPUTED: card_mechanics/card_synergy_edges start
+// EMPTY until an operator runs `node scripts/compute-synergy-graph.mjs
+// --write` (see that script's header - it has not been run against
+// the real catalog from this sandbox, no network access here). Until
+// then this function returns an insight with zero suggestions and
+// `graphComputed: false` for every card, which the UI shows as an
+// honest "not yet analyzed" state rather than a false "no synergies
+// found" - this is a disclosed, non-broken degraded state, the same
+// pattern already used for the valuation engine's proposal columns.
 //
 // CACHING: a small in-memory, best-effort, per-server-instance
 // cache keyed on card_catalog_id (+ owner, since "owned" framing is
@@ -41,6 +69,13 @@ export type CardSynergyInsight = {
   cardName: string;
   ownedSuggestions: SynergyInsightSuggestion[];
   otherSuggestions: SynergyInsightSuggestion[];
+  // false only when the precomputed synergy graph has literally no
+  // card_synergy_edges rows touching this card at all - i.e. the
+  // precompute script has not been run yet (or this specific card
+  // hasn't been picked up by it), NOT "the engine looked and found
+  // nothing". The UI uses this to show an honest "not yet analyzed"
+  // message instead of implying a real negative result.
+  graphComputed: boolean;
 };
 
 export type SynergyInsightSuggestion = SynergyExplanation & {
@@ -113,16 +148,76 @@ export async function getCardSynergyInsight(
 
   const target = targetRow as SynergyCatalogCard;
 
-  // Candidate pool: the rest of the catalog, lean columns only.
-  // Computation (mechanic-tag extraction + scoring) is pure,
-  // synchronous, and happens entirely server-side - nothing here
-  // reaches the browser except the final top-3 suggestions.
-  const { data: poolRows, error: poolError } = await supabase
-    .from("card_catalog")
-    .select(CATALOG_COLUMNS)
-    .neq("id", cardId);
+  // Candidate pool: ONLY the cards the precomputed card_synergy_edges
+  // table says actually relate to this one - an indexed lookup by
+  // source_card_id/target_card_id (see card_synergy_edges_source_idx/
+  // card_synergy_edges_target_idx in the migration), never a full-
+  // catalog scan. Edges are directional (either this card is the
+  // source or the target of a real relation), so both columns are
+  // checked. Capped generously above generateSynergyCandidates' own
+  // limit so ranking still has real choices to sort between.
+  const EDGE_QUERY_CAP = 60;
 
-  const pool = poolError ? [] : ((poolRows ?? []) as SynergyCatalogCard[]);
+  const [{ data: outgoingEdges, error: outgoingError }, { data: incomingEdges, error: incomingError }] =
+    await Promise.all([
+      supabase
+        .from("card_synergy_edges")
+        .select("target_card_id,edge_type,score,confidence,deterministic_reason")
+        .eq("source_card_id", cardId)
+        .order("score", { ascending: false })
+        .limit(EDGE_QUERY_CAP),
+      supabase
+        .from("card_synergy_edges")
+        .select("source_card_id,edge_type,score,confidence,deterministic_reason")
+        .eq("target_card_id", cardId)
+        .order("score", { ascending: false })
+        .limit(EDGE_QUERY_CAP),
+    ]);
+
+  type EdgeRow = {
+    edge_type: string;
+    score: number;
+    confidence: "high" | "medium" | "low";
+    deterministic_reason: string;
+  };
+
+  const edgesByCandidateId = new Map<string, PrecomputedEdgeReason[]>();
+
+  const addEdge = (otherCardId: string, row: EdgeRow) => {
+    const list = edgesByCandidateId.get(otherCardId) ?? [];
+    list.push({
+      edgeType: row.edge_type,
+      score: row.score,
+      confidence: row.confidence,
+      deterministicReason: row.deterministic_reason,
+    });
+    edgesByCandidateId.set(otherCardId, list);
+  };
+
+  if (!outgoingError) {
+    for (const row of (outgoingEdges ?? []) as (EdgeRow & { target_card_id: string })[]) {
+      addEdge(row.target_card_id, row);
+    }
+  }
+  if (!incomingError) {
+    for (const row of (incomingEdges ?? []) as (EdgeRow & { source_card_id: string })[]) {
+      addEdge(row.source_card_id, row);
+    }
+  }
+
+  const graphComputed = edgesByCandidateId.size > 0;
+
+  const candidateIds = Array.from(edgesByCandidateId.keys());
+
+  let pool: SynergyCatalogCard[] = [];
+  if (candidateIds.length > 0) {
+    const { data: poolRows, error: poolError } = await supabase
+      .from("card_catalog")
+      .select(CATALOG_COLUMNS)
+      .in("id", candidateIds);
+
+    pool = poolError ? [] : ((poolRows ?? []) as SynergyCatalogCard[]);
+  }
 
   // Owned-copy counts for this player, for collection-aware
   // ranking - never another player's collection data.
@@ -142,6 +237,7 @@ export async function getCardSynergyInsight(
   const candidates = generateSynergyCandidates(target, pool, {
     ownedCounts,
     limit: 20,
+    precomputedEdges: edgesByCandidateId,
   });
 
   const { owned, other } = groupSynergyCandidatesByOwnership(candidates);
@@ -176,6 +272,7 @@ export async function getCardSynergyInsight(
     cardName: target.name,
     ownedSuggestions: toSuggestion(ownedExplanations, topOwned),
     otherSuggestions: toSuggestion(otherExplanations, topOther),
+    graphComputed,
   };
 
   writeCache(key, insight);

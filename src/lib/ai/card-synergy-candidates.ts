@@ -47,7 +47,28 @@ export type SynergyReasonKind =
   | "spell_trap_support"
   | "shared_attribute"
   | "shared_monster_type"
-  | "shared_archetype";
+  | "shared_archetype"
+  // Produced from a precomputed lib/synergy-engine.mjs edge (see
+  // PrecomputedEdgeReason below) - a real, typed, evidence-backed
+  // relation the deep engine found (named search, named/constrained
+  // Extra Deck material, a hard named requirement, or a directional
+  // GY/discard/banish tag-pair) that the shallower tagger in
+  // card-mechanics.ts may not independently rediscover. Kept as its
+  // own kind rather than remapped onto the kinds above so the UI/
+  // evidence trail can always show exactly which engine found it.
+  | "deep_relation";
+
+// One edge from card_synergy_edges (see supabase/migrations/
+// 202608241000_card_synergy_graph.sql and lib/synergy-engine.mjs)
+// connecting `target` to a specific candidate card, already resolved
+// to face the candidate (i.e. "this is true ABOUT the candidate's
+// relationship to the target", direction-normalized by the caller).
+export type PrecomputedEdgeReason = {
+  edgeType: string;
+  score: number;
+  confidence: "high" | "medium" | "low";
+  deterministicReason: string;
+};
 
 export type SynergyReason = {
   kind: SynergyReasonKind;
@@ -77,6 +98,21 @@ export type CandidateGenerationOptions = {
   // Max candidates returned after ranking. UI trims further (max 3
   // shown), this just bounds the work done/returned upstream of that.
   limit?: number;
+  // candidate card_catalog id -> the precomputed card_synergy_edges
+  // rows connecting it to `target` (see card-synergy-context.ts,
+  // which queries card_synergy_edges instead of scanning the full
+  // catalog and passes only the resulting small, already-related
+  // pool through this same function). Optional and purely additive:
+  // omitting it reproduces the exact prior behavior, so this does
+  // not change how any existing caller/test that doesn't pass it
+  // behaves.
+  precomputedEdges?: Map<string, PrecomputedEdgeReason[]>;
+};
+
+const CONFIDENCE_WEIGHT: Record<PrecomputedEdgeReason["confidence"], number> = {
+  high: 45,
+  medium: 25,
+  low: 10,
 };
 
 const WEIGHT = {
@@ -355,7 +391,15 @@ export function generateSynergyCandidates(
 
     const candidateTags = new Set<string>(extractMechanicTags(candidate));
 
+    const deepEdges = options.precomputedEdges?.get(candidate.id) ?? [];
+    const deepReasons: SynergyReason[] = deepEdges.map((edge) => ({
+      kind: "deep_relation",
+      detail: edge.deterministicReason,
+      weight: CONFIDENCE_WEIGHT[edge.confidence],
+    }));
+
     const reasons: SynergyReason[] = [
+      ...deepReasons,
       ...directionalReasons(target, candidate, targetTags, candidateTags),
       ...materialReasons(target, candidate),
       ...spellTrapSupportReasons(target, candidate),

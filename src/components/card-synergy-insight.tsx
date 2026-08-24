@@ -40,6 +40,12 @@ type InsightResponse = {
   cardName: string;
   ownedSuggestions: Suggestion[];
   otherSuggestions: Suggestion[];
+  // false only when the precomputed synergy graph hasn't been
+  // computed for this card yet (an operator hasn't run the
+  // synergy-graph precompute script) - distinct from "the engine
+  // looked and genuinely found nothing", so the message shown below
+  // doesn't overclaim.
+  graphComputed: boolean;
 };
 
 function SuggestionRow({
@@ -154,11 +160,22 @@ export function CardSynergyInsight({
         </p>
       )}
 
-      {state.status === "ready" && totalSuggestions === 0 && (
-        <p className="mt-4 text-sm text-zinc-500">
-          No strong mechanical synergies found for this card yet.
-        </p>
-      )}
+      {state.status === "ready" &&
+        totalSuggestions === 0 &&
+        state.data.graphComputed && (
+          <p className="mt-4 text-sm text-zinc-500">
+            No strong mechanical synergies found for this card yet.
+          </p>
+        )}
+
+      {state.status === "ready" &&
+        totalSuggestions === 0 &&
+        !state.data.graphComputed && (
+          <p className="mt-4 text-sm text-zinc-500">
+            This card hasn&apos;t been analyzed yet - check back after the
+            next Duelist Coach update.
+          </p>
+        )}
 
       {state.status === "ready" && totalSuggestions > 0 && (
         <div className="mt-4 space-y-4">

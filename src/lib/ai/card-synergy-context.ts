@@ -3,16 +3,28 @@ import type {
 } from "@supabase/supabase-js";
 
 import {
+  deriveConfidence,
   generateSynergyCandidates,
-  groupSynergyCandidatesByOwnership,
   type PrecomputedEdgeReason,
+  type SynergyCandidate,
   type SynergyCatalogCard,
+  type SynergyConfidence,
 } from "@/lib/ai/card-synergy-candidates";
 
 import {
   explainSynergyCandidates,
   type SynergyExplanation,
 } from "@/lib/ai/card-synergy";
+
+import {
+  getLeagueIdForUser,
+} from "@/lib/league-stats";
+
+import {
+  batchGetCardAvailability,
+  splitCandidatesByAvailability,
+  type CardAvailability,
+} from "@/lib/ai/ownership-intelligence";
 
 // =========================================================
 // CARD SYNERGY CONTEXT - server-side orchestration
@@ -64,11 +76,39 @@ import {
 // documented follow-up, not built this session.
 // =========================================================
 
+// =========================================================
+// PHASE 3 - COACH MODES
+//
+// The single "owned vs other" split from Phase 1/2 is now three
+// explicitly separate modes, per the product spec:
+//   - myCards: candidates the viewer actually owns. NEVER contains a
+//     card the viewer doesn't own - this is a hard invariant, tested
+//     in card-synergy-context.test.ts.
+//   - discover: candidates nobody in the viewer's league owns yet.
+//   - tradeTargets: candidates another league member owns (annotated
+//     with who, via the Phase 2 ownership-intelligence module) -
+//     never mixed into myCards or discover.
+// Ownership is now resolved through the same batched, league-scoped
+// classifyCardAvailability/batchGetCardAvailability used by Phase 2's
+// ownership-intelligence.ts (ONE extra card_instances query + ONE
+// reused profile lookup for the whole candidate pool, never N+1),
+// rather than the flatter unscoped ownedCounts map alone - that map
+// is kept ONLY for the "Owned x3" copy-count badge, ownership
+// classification itself is now league-aware and authoritative.
+// =========================================================
+
 export type CardSynergyInsight = {
   cardId: string;
   cardName: string;
-  ownedSuggestions: SynergyInsightSuggestion[];
-  otherSuggestions: SynergyInsightSuggestion[];
+  myCards: SynergyInsightSuggestion[];
+  discover: SynergyInsightSuggestion[];
+  tradeTargets: SynergyInsightSuggestion[];
+  // Owned 2/3-card packages: this card plus two candidates from
+  // myCards that ALSO relate to each other (a real triangle in the
+  // precomputed synergy graph, not just two cards that each happen
+  // to relate to the target). Empty when the graph hasn't surfaced
+  // one - never fabricated.
+  packages: SynergyPackage[];
   // false only when the precomputed synergy graph has literally no
   // card_synergy_edges rows touching this card at all - i.e. the
   // precompute script has not been run yet (or this specific card
@@ -78,9 +118,23 @@ export type CardSynergyInsight = {
   graphComputed: boolean;
 };
 
+export type SynergyPackage = {
+  cardIds: string[];
+  cardNames: string[];
+  reason: string;
+};
+
 export type SynergyInsightSuggestion = SynergyExplanation & {
   ownedCount: number;
   masterDuelNote: string | null;
+  confidence: SynergyConfidence;
+  // Structured evidence backing this suggestion - the deterministic
+  // reasons the AI explanation (if any) was allowed to paraphrase.
+  // The UI shows these behind an expandable "evidence" disclosure,
+  // never as the primary copy.
+  evidence: string[];
+  // Present only for tradeTargets: who in the league owns it.
+  owners?: { profileId: string; name: string; count: number }[];
 };
 
 const CACHE_TTL_MS = 30 * 60 * 1000;
@@ -118,6 +172,65 @@ function writeCache(key: string, data: CardSynergyInsight): void {
 
 const CATALOG_COLUMNS =
   "id,name,card_type,monster_type,attribute,archetype,level,rank,link_rating,atk,def,description,master_duel_status,image_url,game_rarity";
+
+/**
+ * Looks for a real triangle in the precomputed synergy graph among a
+ * small set of owned candidates: does candidate A also relate to
+ * candidate B (not just each separately relating to `target`)? One
+ * bounded query - `ownedIds` is capped by the caller to a handful of
+ * ids, so this is never a scan, and the IN/IN filter means the result
+ * set itself is naturally small too. Returns at most 2 packages (more
+ * would be noise on a card detail panel, not a useful "package" call-
+ * out).
+ */
+async function findOwnedPackages(
+  supabase: SupabaseClient,
+  target: SynergyCatalogCard,
+  ownedCandidates: SynergyCandidate[]
+): Promise<SynergyPackage[]> {
+  if (ownedCandidates.length < 2) return [];
+
+  const ownedIds = ownedCandidates.map((c) => c.card.id);
+  const nameById = new Map(ownedCandidates.map((c) => [c.card.id, c.card.name]));
+
+  const { data, error } = await supabase
+    .from("card_synergy_edges")
+    .select("source_card_id,target_card_id,deterministic_reason")
+    .in("source_card_id", ownedIds)
+    .in("target_card_id", ownedIds)
+    .limit(10);
+
+  if (error || !data || data.length === 0) return [];
+
+  const seen = new Set<string>();
+  const packages: SynergyPackage[] = [];
+
+  for (const row of data as {
+    source_card_id: string;
+    target_card_id: string;
+    deterministic_reason: string;
+  }[]) {
+    if (row.source_card_id === row.target_card_id) continue;
+
+    const pairKey = [row.source_card_id, row.target_card_id].sort().join("|");
+    if (seen.has(pairKey)) continue;
+    seen.add(pairKey);
+
+    const aName = nameById.get(row.source_card_id);
+    const bName = nameById.get(row.target_card_id);
+    if (!aName || !bName) continue;
+
+    packages.push({
+      cardIds: [target.id, row.source_card_id, row.target_card_id],
+      cardNames: [target.name, aName, bName],
+      reason: row.deterministic_reason,
+    });
+
+    if (packages.length >= 2) break;
+  }
+
+  return packages;
+}
 
 /**
  * Builds (or returns the cached) synergy insight for one card, for
@@ -219,8 +332,11 @@ export async function getCardSynergyInsight(
     pool = poolError ? [] : ((poolRows ?? []) as SynergyCatalogCard[]);
   }
 
-  // Owned-copy counts for this player, for collection-aware
-  // ranking - never another player's collection data.
+  // Owned-copy counts for this player (ANY league, purely for the
+  // "Owned x3" copy-count badge) - never another player's collection
+  // data. This is deliberately separate from the league-scoped
+  // ownership CLASSIFICATION below, which decides myCards/discover/
+  // tradeTargets membership.
   const { data: ownedRows } = await supabase
     .from("card_instances")
     .select("card_catalog_id")
@@ -240,38 +356,93 @@ export async function getCardSynergyInsight(
     precomputedEdges: edgesByCandidateId,
   });
 
-  const { owned, other } = groupSynergyCandidatesByOwnership(candidates);
+  // ---- Ownership-aware classification (Section 1/2 of the Phase 3
+  // spec) - ONE batched card_instances query + ONE reused league-
+  // profile lookup for the ENTIRE candidate pool (batchGetCardAvailability,
+  // see ownership-intelligence.ts), never one query per candidate. A
+  // candidate already passed generateSynergyCandidates' own Master
+  // Duel eligibility filter, so `formatEligible` is always true here -
+  // format exclusion for THIS feature already happened upstream; this
+  // call's real job is the owned/league-member/nobody split, not
+  // re-deciding eligibility. ----
+  const leagueId = await getLeagueIdForUser(supabase, userId);
 
-  // Collection-aware priority: "BEST SYNERGY YOU OWN" first, then
-  // "OTHER GOOD SYNERGIES" - only the combined top 3 ever reach the
-  // AI explanation layer, owned candidates preferred.
-  const topOwned = owned.slice(0, 3);
-  const remainingSlots = Math.max(0, 3 - topOwned.length);
-  const topOther = other.slice(0, remainingSlots);
+  let availabilityByCardId = new Map<string, CardAvailability>();
+  if (leagueId && candidates.length > 0) {
+    availabilityByCardId = await batchGetCardAvailability(
+      supabase,
+      leagueId,
+      userId,
+      candidates.map((c) => ({ id: c.card.id, formatEligible: true }))
+    );
+  }
 
-  const [ownedExplanations, otherExplanations] = await Promise.all([
-    explainSynergyCandidates(target, topOwned, topOwned.length),
-    explainSynergyCandidates(target, topOther, topOther.length),
-  ]);
+  const { owned, tradeTargets, discovery } = splitCandidatesByAvailability(
+    candidates,
+    availabilityByCardId
+  );
+
+  // No league yet (a brand-new profile) - fall back to the simple
+  // owned/unowned split from ownedCounts alone, since there is no
+  // league to classify trade targets within. myCards must still never
+  // contain an unowned card in this fallback.
+  const myCardsSource =
+    leagueId != null ? owned : candidates.filter((c) => c.ownedCount > 0);
+  const discoverSource =
+    leagueId != null ? discovery : candidates.filter((c) => c.ownedCount === 0);
+  const tradeTargetsSource = leagueId != null ? tradeTargets : [];
+
+  // Collection-aware priority, bounded per mode so the AI layer only
+  // ever sees a small top-N (Section 10 performance requirement) -
+  // myCards gets the largest allotment since "what can I already do"
+  // is the highest-value mode.
+  const topMyCards = myCardsSource.slice(0, 3);
+  const topDiscover = discoverSource.slice(0, 2);
+  const topTradeTargets = tradeTargetsSource.slice(0, 2);
+
+  const [myCardsExplanations, discoverExplanations, tradeExplanations] =
+    await Promise.all([
+      explainSynergyCandidates(target, topMyCards, topMyCards.length),
+      explainSynergyCandidates(target, topDiscover, topDiscover.length),
+      explainSynergyCandidates(target, topTradeTargets, topTradeTargets.length),
+    ]);
 
   const toSuggestion = (
     explanations: SynergyExplanation[],
-    source: typeof candidates
+    source: SynergyCandidate[]
   ): SynergyInsightSuggestion[] =>
     explanations.map((explanation) => {
       const match = source.find((c) => c.card.id === explanation.cardId);
+      const availability = availabilityByCardId.get(explanation.cardId);
       return {
         ...explanation,
         ownedCount: match?.ownedCount ?? 0,
         masterDuelNote: match?.masterDuelNote ?? null,
+        confidence: match ? deriveConfidence(match) : "low",
+        evidence: match?.reasons.map((r) => r.detail) ?? [],
+        owners: availability?.owners,
       };
     });
+
+  // ---- Owned 2/3-card packages ----
+  // Among the (small, already-ranked) myCards pool, check whether any
+  // TWO of them also relate to each other in the precomputed synergy
+  // graph - a real triangle (target + A + B), not a coincidence of
+  // each separately relating to the target. One small, bounded,
+  // indexed query (never more than ~6 candidate ids on either side).
+  const packages = await findOwnedPackages(
+    supabase,
+    target,
+    myCardsSource.slice(0, 6)
+  );
 
   const insight: CardSynergyInsight = {
     cardId: target.id,
     cardName: target.name,
-    ownedSuggestions: toSuggestion(ownedExplanations, topOwned),
-    otherSuggestions: toSuggestion(otherExplanations, topOther),
+    myCards: toSuggestion(myCardsExplanations, topMyCards),
+    discover: toSuggestion(discoverExplanations, topDiscover),
+    tradeTargets: toSuggestion(tradeExplanations, topTradeTargets),
+    packages,
     graphComputed,
   };
 

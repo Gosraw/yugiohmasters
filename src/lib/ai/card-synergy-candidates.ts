@@ -456,3 +456,48 @@ export function groupSynergyCandidatesByOwnership(
     other: candidates.filter((c) => c.ownedCount === 0),
   };
 }
+
+export type SynergyConfidence = "high" | "medium" | "low";
+
+// Weak, purely-supplementary signals - never enough on their own to
+// justify "high" confidence, mirrors generateSynergyCandidates()'s
+// own rule that these can't be the SOLE reason a card is suggested.
+const WEAK_REASON_KINDS: SynergyReasonKind[] = [
+  "shared_attribute",
+  "shared_monster_type",
+  "shared_archetype",
+];
+
+/**
+ * Understandable confidence tier for UI display (Section 9 of the
+ * Duelist Coach spec: "High confidence" / "Medium confidence", never
+ * a raw decimal). Derived from evidence QUALITY, not an LLM's
+ * self-reported certainty: the strength of the single best reason
+ * (its weight - itself derived from real structural facts, see
+ * WEIGHT/CONFIDENCE_WEIGHT above) plus how many independent
+ * meaningful (non-weak) reasons corroborate it. Two weak signals
+ * stacking up never promotes a candidate past "low" - only a real
+ * mechanical/deep-engine reason can.
+ */
+export function deriveConfidence(
+  candidate: SynergyCandidate
+): SynergyConfidence {
+  const meaningfulReasons = candidate.reasons.filter(
+    (r) => !WEAK_REASON_KINDS.includes(r.kind)
+  );
+  const topWeight = meaningfulReasons[0]?.weight ?? 0;
+
+  if (topWeight >= 40 || meaningfulReasons.length >= 2) {
+    return "high";
+  }
+  // Any single genuine mechanical reason - even a modest-weight one like
+  // "material_type" (weight 15, e.g. "this is a valid Xyz material type")
+  // - is real evidence of an actual interaction, not a coin flip. It
+  // should never grade the same as zero evidence. Only the truly weak,
+  // filtered-out signals (shared attribute/monster-type/archetype alone)
+  // fall through to "low".
+  if (meaningfulReasons.length >= 1) {
+    return "medium";
+  }
+  return "low";
+}

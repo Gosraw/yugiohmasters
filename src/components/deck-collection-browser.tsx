@@ -34,6 +34,7 @@ const PARAM_KEYS = {
   category: "bcat",
   section: "bsec",
   rarity: "brar",
+  archetype: "barc",
   sort: "bsort",
   onlyAvailable: "bavail",
 } as const;
@@ -50,6 +51,16 @@ export type DeckBrowserCard = {
     rarity_score: number | null;
     format_eligible: boolean;
     master_duel_status: string | null;
+    // Deck Builder 2.0 additions - real card_catalog fields, used
+    // for the Archetype filter and (in decks/[id]/page.tsx, not
+    // here) the live composition summary. See CardCatalogItem in
+    // decks/[id]/page.tsx for where these are fetched.
+    archetype: string | null;
+    monster_type: string | null;
+    attribute: string | null;
+    level: number | null;
+    rank: number | null;
+    link_rating: number | null;
   };
 
   quantity: number;
@@ -191,6 +202,7 @@ function useEffectSyncFiltersToUrl({
   category,
   section,
   rarity,
+  archetype,
   sort,
   onlyAvailable,
 }: {
@@ -203,6 +215,7 @@ function useEffectSyncFiltersToUrl({
   category: CardCategory;
   section: DeckSection;
   rarity: string;
+  archetype: string;
   sort: SortOption;
   onlyAvailable: boolean;
 }) {
@@ -219,6 +232,7 @@ function useEffectSyncFiltersToUrl({
       category,
       section,
       rarity,
+      archetype,
       sort,
       onlyAvailable: onlyAvailable
         ? "1"
@@ -270,6 +284,7 @@ function useEffectSyncFiltersToUrl({
     category,
     section,
     rarity,
+    archetype,
     sort,
     onlyAvailable,
   ]);
@@ -331,6 +346,14 @@ export function DeckCollectionBrowser({
         ) ?? "all"
     );
 
+  const [archetype, setArchetype] =
+    useState(
+      () =>
+        searchParams.get(
+          PARAM_KEYS.archetype
+        ) ?? "all"
+    );
+
   const [sort, setSort] =
     useState<SortOption>(
       () =>
@@ -371,6 +394,7 @@ export function DeckCollectionBrowser({
     category,
     section,
     rarity,
+    archetype,
     sort,
     onlyAvailable,
   });
@@ -394,6 +418,31 @@ export function DeckCollectionBrowser({
             0) -
           (rarityOrder[a] ??
             0)
+      );
+    }, [cards]);
+
+  // Real archetype metadata only (card_catalog.archetype) - never a
+  // name-substring guess, mirroring Collection 2.0's same rule (see
+  // groupCollectionByArchetype in src/lib/collection.ts). Cards with
+  // no archetype simply don't add an entry here; they still show up
+  // normally under "All archetypes".
+  const archetypes =
+    useMemo(() => {
+      return [
+        ...new Set(
+          cards
+            .map(
+              (group) =>
+                group.card
+                  .archetype
+            )
+            .filter(
+              (value): value is string =>
+                Boolean(value)
+            )
+        ),
+      ].sort((a, b) =>
+        a.localeCompare(b)
       );
     }, [cards]);
 
@@ -458,6 +507,15 @@ export function DeckCollectionBrowser({
               (card.game_rarity ??
                 "Not Rated") !==
                 rarity
+            ) {
+              return false;
+            }
+
+            if (
+              archetype !==
+                "all" &&
+              card.archetype !==
+                archetype
             ) {
               return false;
             }
@@ -540,6 +598,7 @@ export function DeckCollectionBrowser({
       category,
       onlyAvailable,
       rarity,
+      archetype,
       search,
       section,
       sort,
@@ -550,6 +609,7 @@ export function DeckCollectionBrowser({
     category !== "all" ||
     section !== "all" ||
     rarity !== "all" ||
+    archetype !== "all" ||
     sort !== "name-asc" ||
     onlyAvailable;
 
@@ -557,6 +617,7 @@ export function DeckCollectionBrowser({
     category !== "all" ||
     section !== "all" ||
     rarity !== "all" ||
+    archetype !== "all" ||
     sort !== "name-asc" ||
     onlyAvailable;
 
@@ -565,6 +626,7 @@ export function DeckCollectionBrowser({
     setCategory("all");
     setSection("all");
     setRarity("all");
+    setArchetype("all");
     setSort("name-asc");
     setOnlyAvailable(false);
   }
@@ -797,9 +859,9 @@ export function DeckCollectionBrowser({
             </div>
           </div>
 
-          {/* RARITY + SORT */}
+          {/* RARITY + ARCHETYPE + SORT */}
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <label>
               <span className="mb-2 block text-[10px] font-black uppercase tracking-[.18em] text-zinc-600">
                 Rarity
@@ -822,6 +884,46 @@ export function DeckCollectionBrowser({
                 </option>
 
                 {rarities.map(
+                  (value) => (
+                    <option
+                      key={
+                        value
+                      }
+                      value={
+                        value
+                      }
+                    >
+                      {
+                        value
+                      }
+                    </option>
+                  )
+                )}
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-[10px] font-black uppercase tracking-[.18em] text-zinc-600">
+                Archetype
+              </span>
+
+              <select
+                value={archetype}
+                onChange={(
+                  event
+                ) =>
+                  setArchetype(
+                    event.target
+                      .value
+                  )
+                }
+                className="field w-full cursor-pointer"
+              >
+                <option value="all">
+                  All archetypes
+                </option>
+
+                {archetypes.map(
                   (value) => (
                     <option
                       key={

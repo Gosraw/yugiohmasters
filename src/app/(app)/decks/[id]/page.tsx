@@ -12,6 +12,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  Stethoscope,
   Swords,
 } from "lucide-react";
 
@@ -21,6 +22,14 @@ import {
   type DeckComposition,
   type OwnedVsUsedEntry,
 } from "@/lib/deck-composition";
+
+import {
+  analyzeDeck,
+  type DeckDoctorCard,
+  type DeckDoctorFinding,
+  type DeckDoctorMechanics,
+  type DeckDoctorReport,
+} from "@/lib/deck-doctor";
 
 import {
   TestHandButton,
@@ -509,6 +518,227 @@ function DeckCompositionSummary({
             </div>
           </div>
         )}
+      </div>
+    </details>
+  );
+}
+
+// =========================================================
+// DECK DOCTOR PANEL (Phase 3)
+//
+// Renders the deterministic Deck Doctor report computed server-side
+// (see the analyzeDeck() call in the page body below) - no AI call
+// here, this panel only formats already-computed structured findings
+// into plain, non-technical language, per the product spec's "should
+// look like a polished Duelist Circle feature, not an admin/debug
+// screen" requirement. Collapsed by default, same pattern as the
+// composition summary above.
+// =========================================================
+
+const CONFIDENCE_LABEL: Record<
+  DeckDoctorFinding["confidence"],
+  string
+> = {
+  high: "High confidence",
+  medium: "Medium confidence",
+  low: "Low confidence",
+};
+
+const SEVERITY_STYLE: Record<
+  DeckDoctorFinding["severity"],
+  string
+> = {
+  warning: "border-amber-300/20 bg-amber-300/[0.05]",
+  notice: "border-cyan-300/15 bg-cyan-300/[0.04]",
+  info: "border-emerald-300/15 bg-emerald-300/[0.04]",
+};
+
+function FindingRow({
+  finding,
+}: {
+  finding: DeckDoctorFinding;
+}) {
+  const evidenceEntries = Object.entries(finding.evidence);
+
+  return (
+    <div
+      className={`rounded-lg border p-3 ${SEVERITY_STYLE[finding.severity]}`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs leading-5 font-bold text-zinc-200">
+          {finding.summary}
+        </p>
+
+        <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] font-black uppercase text-zinc-500">
+          {CONFIDENCE_LABEL[finding.confidence]}
+        </span>
+      </div>
+
+      {evidenceEntries.length > 0 && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-wider text-zinc-600 transition hover:text-zinc-400">
+            Evidence
+          </summary>
+          <ul className="mt-1.5 space-y-1 border-l border-white/[0.06] pl-3">
+            {evidenceEntries.map(([key, value]) => (
+              <li key={key} className="text-[11px] text-zinc-500">
+                {key}: {String(value)}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function DeckDoctorPanel({
+  report,
+  mechanicsComputed,
+}: {
+  report: DeckDoctorReport;
+  mechanicsComputed: boolean;
+}) {
+  if (!mechanicsComputed) {
+    return (
+      <div className="panel mt-6 p-4 sm:p-5">
+        <div className="flex items-center gap-2">
+          <Stethoscope size={16} className="text-cyan-300" />
+          <p className="text-sm font-black text-zinc-200">Deck Doctor</p>
+        </div>
+        <p className="mt-2 text-xs leading-5 text-zinc-500">
+          This deck hasn&apos;t been analyzed yet - the card mechanics
+          engine still needs to run. Check back later for a health
+          check.
+        </p>
+      </div>
+    );
+  }
+
+  const attention = report.findings.filter(
+    (f) => f.severity === "warning" || f.severity === "notice"
+  );
+  const ownedImprovements = report.findings.filter(
+    (f) => f.type === "OWNED_IMPROVEMENT"
+  );
+  const otherNotes = report.findings.filter(
+    (f) =>
+      f.severity === "info" && f.type !== "OWNED_IMPROVEMENT"
+  );
+
+  const { summary } = report;
+  const strengths: string[] = [];
+  if (summary.starterCount > 0) {
+    strengths.push(`${summary.starterCount} starters`);
+  }
+  if (summary.extenderCount > 0) {
+    strengths.push(`${summary.extenderCount} extenders`);
+  }
+  if (
+    summary.gySetupCount > 0 &&
+    summary.gyPayoffCount > 0 &&
+    !report.findings.some(
+      (f) =>
+        f.type === "GY_PAYOFF_WITHOUT_SETUP" ||
+        f.type === "GY_SETUP_WITHOUT_PAYOFF"
+    )
+  ) {
+    strengths.push("healthy GY setup/payoff relationship");
+  }
+  if (summary.removalCount > 0) {
+    strengths.push(`${summary.removalCount} removal effects`);
+  }
+
+  return (
+    <details className="panel group/doctor mt-6 overflow-hidden p-0">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 select-none sm:p-5">
+        <div className="flex items-center gap-2">
+          <Stethoscope size={16} className="text-cyan-300" />
+          <span className="text-sm font-black text-zinc-100">
+            Deck Doctor
+            {attention.length > 0 && (
+              <span className="ml-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-2 py-0.5 text-[9px] font-black uppercase text-amber-200">
+                {attention.length} item
+                {attention.length === 1 ? "" : "s"} need attention
+              </span>
+            )}
+          </span>
+        </div>
+
+        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500">
+          Full analysis
+          <ChevronDown
+            size={14}
+            className="transition-transform group-open/doctor:rotate-180"
+          />
+        </span>
+      </summary>
+
+      <div className="space-y-4 border-t border-white/5 p-4 sm:p-5">
+        {strengths.length > 0 && (
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[.16em] text-emerald-300/80">
+              Strengths
+            </p>
+            <p className="mt-1.5 text-xs leading-5 text-zinc-400">
+              {strengths.join(" · ")}
+            </p>
+          </div>
+        )}
+
+        {attention.length > 0 && (
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[.16em] text-amber-300/80">
+              Attention
+            </p>
+            <div className="mt-2 space-y-2">
+              {attention.map((f, i) => (
+                <FindingRow key={i} finding={f} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {ownedImprovements.length > 0 && (
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[.16em] text-cyan-300/80">
+              From Your Collection
+            </p>
+            <div className="mt-2 space-y-2">
+              {ownedImprovements.map((f, i) => (
+                <FindingRow key={i} finding={f} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {otherNotes.length > 0 && (
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[.16em] text-zinc-500">
+              Other
+            </p>
+            <div className="mt-2 space-y-2">
+              {otherNotes.map((f, i) => (
+                <FindingRow key={i} finding={f} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {attention.length === 0 &&
+          ownedImprovements.length === 0 &&
+          otherNotes.length === 0 && (
+            <p className="text-xs text-zinc-500">
+              No issues found - this deck looks healthy on the checks
+              Deck Doctor can run.
+            </p>
+          )}
+
+        <p className="text-[10px] text-zinc-600">
+          Deterministic analysis - no AI. For cards you don&apos;t own
+          yet, see Duelist Insight on the card pages themselves
+          (Discover / Trade Targets).
+        </p>
       </div>
     </details>
   );
@@ -1070,6 +1300,98 @@ export default async function DeckBuilderPage({
     );
 
   // =======================================================
+  // DECK DOCTOR (Phase 3) - two new batched, indexed queries, never
+  // per-card:
+  //   1. card_mechanics for THIS deck's cards only (bounded by deck
+  //      size, ~≤50 unique ids).
+  //   2. card_mechanics for the player's OWNED-BUT-NOT-IN-DECK cards
+  //      that carry at least one of the specific tags Deck Doctor can
+  //      actually suggest as a fix (gy_setup/fusion_enabler/
+  //      xyz_enabler) - `.overlaps("tags", ...)` against the existing
+  //      GIN index, further filtered to this player's own collection
+  //      ids, never the full catalog and never every owned card's
+  //      full mechanics payload.
+  // =======================================================
+
+  const deckCardIdSet = new Set(
+    [...mainDeckCards, ...extraDeckCards].map((item) => item.card.id)
+  );
+  const deckCardIds = [...deckCardIdSet];
+
+  const DECK_DOCTOR_OWNED_TAGS = [
+    "gy_setup",
+    "fusion_enabler",
+    "xyz_enabler",
+  ];
+  const ownedNotInDeckIds = collectionCards
+    .filter((group) => !deckCardIdSet.has(group.card.id))
+    .map((group) => group.card.id);
+
+  const [{ data: deckMechRows }, { data: ownedMechRows }] = await Promise.all([
+    deckCardIds.length > 0
+      ? supabase
+          .from("card_mechanics")
+          .select("card_catalog_id,tags")
+          .in("card_catalog_id", deckCardIds)
+      : Promise.resolve({ data: [] as { card_catalog_id: string; tags: string[] }[] }),
+    ownedNotInDeckIds.length > 0
+      ? supabase
+          .from("card_mechanics")
+          .select("card_catalog_id,tags")
+          .in("card_catalog_id", ownedNotInDeckIds)
+          .overlaps("tags", DECK_DOCTOR_OWNED_TAGS)
+      : Promise.resolve({ data: [] as { card_catalog_id: string; tags: string[] }[] }),
+  ]);
+
+  const deckMechanicsByCardId = new Map<string, DeckDoctorMechanics>();
+  for (const row of (deckMechRows ?? []) as {
+    card_catalog_id: string;
+    tags: string[];
+  }[]) {
+    deckMechanicsByCardId.set(row.card_catalog_id, { tags: row.tags });
+  }
+
+  // Honest "not yet analyzed" state, same pattern as Duelist Insight's
+  // graphComputed - distinct from "the engine looked and this deck is
+  // just fine".
+  const deckDoctorMechanicsComputed = deckMechanicsByCardId.size > 0;
+
+  const cardNameById = new Map(
+    collectionCards.map((group) => [group.card.id, group.card.name])
+  );
+  const cardTypeById = new Map(
+    collectionCards.map((group) => [group.card.id, group.card.card_type])
+  );
+
+  const ownedPool = ((ownedMechRows ?? []) as {
+    card_catalog_id: string;
+    tags: string[];
+  }[]).map((row) => ({
+    cardCatalogId: row.card_catalog_id,
+    name: cardNameById.get(row.card_catalog_id) ?? "Unknown card",
+    cardType: cardTypeById.get(row.card_catalog_id) ?? "",
+    tags: row.tags,
+  }));
+
+  const deckDoctorMainCards: DeckDoctorCard[] = mainDeckCards.map((item) => ({
+    cardCatalogId: item.card.id,
+    name: item.card.name,
+    cardType: item.card.card_type,
+  }));
+  const deckDoctorExtraCards: DeckDoctorCard[] = extraDeckCards.map((item) => ({
+    cardCatalogId: item.card.id,
+    name: item.card.name,
+    cardType: item.card.card_type,
+  }));
+
+  const deckDoctorReport = analyzeDeck(
+    deckDoctorMainCards,
+    deckDoctorExtraCards,
+    deckMechanicsByCardId,
+    ownedPool
+  );
+
+  // =======================================================
   // MASTER DUEL LEGALITY (Fase L)
   //
   // A separate, purely informational summary - unlike
@@ -1324,6 +1646,13 @@ export default async function DeckBuilderPage({
           )}
         />
       </div>
+
+      {/* DECK DOCTOR (Phase 3) */}
+
+      <DeckDoctorPanel
+        report={deckDoctorReport}
+        mechanicsComputed={deckDoctorMechanicsComputed}
+      />
 
       {/* STATUS PANEL */}
 

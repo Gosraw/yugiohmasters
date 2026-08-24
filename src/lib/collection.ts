@@ -42,6 +42,12 @@ export type CollectionCardCatalogItem = {
   game_rarity: string | null;
   rarity_score: number | null;
   master_duel_status: string | null;
+  // Real archetype metadata from card_catalog (indexed - see
+  // card_catalog_archetype_idx) - null for cards with no archetype.
+  // Collection 2.0's "Group by Archetype" reads this directly and
+  // NEVER infers an archetype from a name substring (the product
+  // spec explicitly forbids that - see groupCollectionByArchetype).
+  archetype: string | null;
 };
 
 export type CollectionCardInstance = {
@@ -200,7 +206,7 @@ export async function fetchOwnedCollection(
     const { data: catalogData, error: catalogError } = await supabase
       .from("card_catalog")
       .select(
-        "id,name,image_url,card_type,attribute,atk,def,game_rarity,rarity_score,master_duel_status"
+        "id,name,image_url,card_type,attribute,atk,def,game_rarity,rarity_score,master_duel_status,archetype"
       )
       .in("id", catalogIds);
 
@@ -368,6 +374,18 @@ export function filterAndSortCollection(
       return b.availableCount - a.availableCount;
     }
 
+    if (sort === "recent") {
+      // instances are already ordered acquired_at DESC by
+      // fetchOwnedCollection's own query, so instances[0] is always
+      // this group's most recently acquired copy - no extra sort
+      // work or extra query needed here.
+      const aRecent = a.instances[0]?.acquired_at ?? "";
+      const bRecent = b.instances[0]?.acquired_at ?? "";
+      if (bRecent !== aRecent) {
+        return bRecent.localeCompare(aRecent);
+      }
+    }
+
     return a.card.name.localeCompare(b.card.name);
   });
 
@@ -402,4 +420,139 @@ export function parseCollectionReturnTo(
     forTrade: query.get("forTrade") === "1",
     sort: query.get("sort") ?? undefined,
   };
+}
+
+// =========================================================
+// COLLECTION 2.0 - grouping (Archetype / Type / Rarity)
+//
+// Pure, synchronous, operates on an already-fetched (and already
+// filtered/sorted) GroupedOwnedCard[] - a player's own unique-owned-
+// card list, bounded by their real collection size, never the full
+// catalog. No extra query: archetype/card_type/game_rarity are
+// already present on every card from fetchOwnedCollection's single
+// batched card_catalog fetch.
+// =========================================================
+
+export type CollectionGroupBy = "" | "archetype" | "type" | "rarity";
+
+export type CollectionGroupBucket = {
+  key: string;
+  label: string;
+  cards: GroupedOwnedCard[];
+  ownedTotal: number;
+  distinctCount: number;
+};
+
+const GENERIC_OTHER_KEY = "__generic_other__";
+const GENERIC_OTHER_LABEL = "Generic / Other";
+
+/**
+ * Groups by REAL archetype metadata only (card_catalog.archetype) -
+ * deliberately never a name-substring guess, per the explicit product
+ * requirement. Cards with no archetype land in a single, clearly
+ * labeled "Generic / Other" bucket rather than being scattered or
+ * dropped. Buckets are sorted by total owned copies desc (the biggest
+ * part of a player's collection first), with Generic / Other always
+ * last regardless of size, since it's a catch-all rather than a real
+ * archetype a player is "collecting".
+ */
+function groupByArchetype(cards: GroupedOwnedCard[]): CollectionGroupBucket[] {
+  const buckets = new Map<string, CollectionGroupBucket>();
+
+  for (const group of cards) {
+    const archetype = group.card.archetype?.trim();
+    const key = archetype ? archetype : GENERIC_OTHER_KEY;
+    const label = archetype ? archetype : GENERIC_OTHER_LABEL;
+
+    const bucket = buckets.get(key) ?? {
+      key,
+      label,
+      cards: [],
+      ownedTotal: 0,
+      distinctCount: 0,
+    };
+
+    bucket.cards.push(group);
+    bucket.ownedTotal += group.quantity;
+    bucket.distinctCount += 1;
+    buckets.set(key, bucket);
+  }
+
+  const result = Array.from(buckets.values());
+  result.sort((a, b) => {
+    if (a.key === GENERIC_OTHER_KEY) return 1;
+    if (b.key === GENERIC_OTHER_KEY) return -1;
+    if (b.ownedTotal !== a.ownedTotal) return b.ownedTotal - a.ownedTotal;
+    return a.label.localeCompare(b.label);
+  });
+
+  return result;
+}
+
+function groupByType(cards: GroupedOwnedCard[]): CollectionGroupBucket[] {
+  const order = ["Monster", "Spell", "Trap", "Other"];
+  const buckets = new Map<string, CollectionGroupBucket>();
+
+  for (const group of cards) {
+    const normalized = group.card.card_type.toLowerCase();
+    const label = normalized.includes("monster")
+      ? "Monster"
+      : normalized.includes("spell")
+        ? "Spell"
+        : normalized.includes("trap")
+          ? "Trap"
+          : "Other";
+
+    const bucket = buckets.get(label) ?? {
+      key: label,
+      label,
+      cards: [],
+      ownedTotal: 0,
+      distinctCount: 0,
+    };
+
+    bucket.cards.push(group);
+    bucket.ownedTotal += group.quantity;
+    bucket.distinctCount += 1;
+    buckets.set(label, bucket);
+  }
+
+  return Array.from(buckets.values()).sort(
+    (a, b) => order.indexOf(a.key) - order.indexOf(b.key)
+  );
+}
+
+function groupByRarity(cards: GroupedOwnedCard[]): CollectionGroupBucket[] {
+  const buckets = new Map<string, CollectionGroupBucket>();
+
+  for (const group of cards) {
+    const label = group.card.game_rarity ?? "Not Rated";
+
+    const bucket = buckets.get(label) ?? {
+      key: label,
+      label,
+      cards: [],
+      ownedTotal: 0,
+      distinctCount: 0,
+    };
+
+    bucket.cards.push(group);
+    bucket.ownedTotal += group.quantity;
+    bucket.distinctCount += 1;
+    buckets.set(label, bucket);
+  }
+
+  return Array.from(buckets.values()).sort(
+    (a, b) => (rarityOrder[b.key] ?? -1) - (rarityOrder[a.key] ?? -1)
+  );
+}
+
+export function groupCollection(
+  cards: GroupedOwnedCard[],
+  groupBy: CollectionGroupBy
+): CollectionGroupBucket[] | null {
+  if (groupBy === "archetype") return groupByArchetype(cards);
+  if (groupBy === "type") return groupByType(cards);
+  if (groupBy === "rarity") return groupByRarity(cards);
+  return null;
 }

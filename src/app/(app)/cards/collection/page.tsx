@@ -28,7 +28,10 @@ import {
 import {
   fetchOwnedCollection,
   filterAndSortCollection,
+  groupCollection,
   rarityStyles,
+  type CollectionGroupBy,
+  type GroupedOwnedCard,
 } from "@/lib/collection";
 
 import {
@@ -55,7 +58,213 @@ type SearchParams = Promise<{
   availability?: string;
   forTrade?: string;
   sort?: string;
+  groupBy?: string;
 }>;
+
+// =========================================================
+// CARD TILE - one entry, shared by both the flat grid and every
+// grouped-view bucket (Collection 2.0) so the two render paths can
+// never visually drift apart.
+// =========================================================
+
+function CollectionCardTile({
+  group,
+  collectionReturnTo,
+}: {
+  group: GroupedOwnedCard;
+  collectionReturnTo: string;
+}) {
+  const { card } = group;
+
+  const rarityName =
+    card.game_rarity ??
+    "Not Rated";
+
+  const rarityStyle =
+    rarityStyles[
+      rarityName
+    ] ??
+    "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+
+  const fullyLocked =
+    group.availableCount ===
+      0 &&
+    group.quantity >
+      0;
+
+  return (
+    <Link
+      key={
+        card.id
+      }
+      href={`/cards/${card.id}?returnTo=${encodeURIComponent(
+        collectionReturnTo
+      )}`}
+      className={`panel group relative block transition-all duration-200 hover:-translate-y-1 hover:z-10 ${
+        fullyLocked
+          ? "border-red-300/15 hover:border-red-300/30"
+          : "hover:border-amber-300/25"
+      }`}
+    >
+      {/* CARD IMAGE - nothing is ever overlaid on top of
+          this: name/artwork/ATK/DEF stay fully visible.
+          All rarity/quantity/lock/for-trade metadata is
+          below the image instead (see CARD INFO). On
+          lg+ screens, hovering scales the same image
+          element up in place (no second image request,
+          no layout shift - it's a CSS transform) as a
+          lightweight desktop preview. */}
+
+      <div className="relative">
+        {card.image_url ? (
+          <Image
+            src={
+              card.image_url
+            }
+            alt={
+              card.name
+            }
+            width={
+              421
+            }
+            height={
+              614
+            }
+            className={`aspect-[421/614] h-auto w-full rounded-t-2xl object-cover transition-transform duration-200 ease-out lg:group-hover:z-20 lg:group-hover:scale-[1.7] lg:group-hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)] ${
+              fullyLocked
+                ? "opacity-75"
+                : ""
+            }`}
+            unoptimized
+          />
+        ) : (
+          <div className="flex aspect-[421/614] items-center justify-center rounded-t-2xl bg-zinc-900 text-xs text-zinc-600">
+            No image
+          </div>
+        )}
+      </div>
+
+      {/* CARD INFO - priority order: name, gameplay
+          info, then status/inventory metadata last. */}
+
+      <div className="p-3">
+        <p className="line-clamp-2 min-h-10 text-sm font-black leading-5 text-zinc-100">
+          {
+            card.name
+          }
+        </p>
+
+        <div className="mt-1 flex items-center justify-between gap-2 text-xs text-zinc-500">
+          <span className="truncate">
+            {
+              card.card_type
+            }
+          </span>
+
+          {card.atk !=
+            null && (
+            <span className="shrink-0 text-zinc-500">
+              ATK{" "}
+              {
+                card.atk
+              }
+            </span>
+          )}
+        </div>
+
+        {/* METADATA */}
+
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-white/5 pt-2.5">
+          <span
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${rarityStyle}`}
+          >
+            <Sparkles
+              size={8}
+            />
+            {
+              rarityName
+            }
+          </span>
+
+          <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[8px] font-black text-zinc-300">
+            x
+            {
+              group.quantity
+            }
+          </span>
+
+          <MasterDuelBadge
+            status={
+              card.master_duel_status
+            }
+          />
+
+          {group.forTradeCount >
+            0 && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-200">
+              <Tag
+                size={8}
+              />
+              For Trade
+            </span>
+          )}
+
+          {/* Informational only - never blocking. A
+              card can be In Deck and In Offer and For
+              Trade all at once; only an active wager
+              lock (below) actually reserves anything. */}
+
+          {group.inDeckCount >
+            0 && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-cyan-200">
+              <Layers3
+                size={8}
+              />
+              In Deck
+            </span>
+          )}
+
+          {group.inPendingOfferCount >
+            0 && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-violet-300/30 bg-violet-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-violet-200">
+              <Repeat2
+                size={8}
+              />
+              In Offer
+            </span>
+          )}
+
+          {fullyLocked ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-red-300/30 bg-red-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-red-300">
+              <LockKeyhole
+                size={8}
+              />
+              All Locked
+            </span>
+          ) : group.lockedCount >
+            0 ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-300">
+              <ShieldCheck
+                size={8}
+              />
+              {
+                group.availableCount
+              }{" "}
+              free
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-cyan-300">
+              <UnlockKeyhole
+                size={8}
+              />
+              Free to use
+            </span>
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 // =========================================================
 // PAGE
@@ -100,6 +309,10 @@ export default async function CollectionPage({
   const sort =
     params.sort ??
     "name";
+
+  const groupBy =
+    (params.groupBy as CollectionGroupBy | undefined) ??
+    "";
 
   const {
     supabase,
@@ -247,6 +460,16 @@ export default async function CollectionPage({
       }
     );
 
+  // Collection 2.0 grouping - pure, in-memory, on the already
+  // filtered+sorted list above (no extra query - see groupCollection
+  // in src/lib/collection.ts). null when groupBy is "" (default flat
+  // grid, unchanged behavior).
+  const groupBuckets =
+    groupCollection(
+      groupedCards,
+      groupBy
+    );
+
   // Query string this exact filtered view corresponds to - used
   // both to keep "Apply/Reset" reflecting the active filters and
   // to pass along as returnTo context so Card Detail's
@@ -296,6 +519,11 @@ export default async function CollectionPage({
       "sort",
       sort
     );
+  if (groupBy)
+    activeQuery.set(
+      "groupBy",
+      groupBy
+    );
 
   const activeQueryString =
     activeQuery.toString();
@@ -318,6 +546,7 @@ export default async function CollectionPage({
       section,
       attribute,
       availability,
+      groupBy,
     ].filter(Boolean)
       .length +
     (forTrade ? 1 : 0);
@@ -874,6 +1103,34 @@ export default async function CollectionPage({
               <option value="available">
                 Sort: Available copies
               </option>
+
+              <option value="recent">
+                Sort: Recently acquired
+              </option>
+            </select>
+
+            <select
+              name="groupBy"
+              defaultValue={
+                groupBy
+              }
+              className="field"
+            >
+              <option value="">
+                No grouping
+              </option>
+
+              <option value="archetype">
+                Group by Archetype
+              </option>
+
+              <option value="type">
+                Group by Card Type
+              </option>
+
+              <option value="rarity">
+                Group by Rarity
+              </option>
             </select>
           </div>
 
@@ -972,207 +1229,95 @@ export default async function CollectionPage({
               </Link>
             )}
           </section>
+        ) : groupBuckets ? (
+          /* ==================================================
+              GROUPED VIEW (Collection 2.0) - one collapsible
+              <details> section per bucket (Archetype/Type/Rarity),
+              open by default. Native <details>/<summary> keeps this
+              zero-JS - server-rendered like the rest of this page,
+              no client component needed just to collapse a section,
+              and it stays fully keyboard/mobile friendly for free.
+          ================================================== */
+
+          <div className="mt-5 space-y-3">
+            {groupBuckets.map(
+              (bucket) => (
+                <details
+                  key={
+                    bucket.key
+                  }
+                  open
+                  className="panel group/details overflow-hidden p-0"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 select-none">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-black text-zinc-100">
+                        {
+                          bucket.label
+                        }
+                      </span>
+
+                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-black text-zinc-400">
+                        {
+                          bucket.distinctCount
+                        }{" "}
+                        distinct
+                      </span>
+
+                      <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-2 py-0.5 text-[10px] font-black text-amber-200">
+                        {
+                          bucket.ownedTotal
+                        }{" "}
+                        owned
+                      </span>
+                    </div>
+
+                    <span className="text-xs font-bold text-zinc-600 transition-transform group-open/details:rotate-180">
+                      ▾
+                    </span>
+                  </summary>
+
+                  <div className="grid grid-cols-2 gap-4 border-t border-white/5 p-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                    {bucket.cards.map(
+                      (group) => (
+                        <CollectionCardTile
+                          key={
+                            group.card.id
+                          }
+                          group={
+                            group
+                          }
+                          collectionReturnTo={
+                            collectionReturnTo
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                </details>
+              )
+            )}
+          </div>
         ) : (
           /* ==================================================
-              CARD GRID
+              CARD GRID (flat, ungrouped - default)
           ================================================== */
 
           <section className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {groupedCards.map(
-              (group) => {
-                const {
-                  card,
-                } = group;
-
-                const rarityName =
-                  card.game_rarity ??
-                  "Not Rated";
-
-                const rarityStyle =
-                  rarityStyles[
-                    rarityName
-                  ] ??
-                  "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
-
-                const fullyLocked =
-                  group.availableCount ===
-                    0 &&
-                  group.quantity >
-                    0;
-
-                return (
-                  <Link
-                    key={
-                      card.id
-                    }
-                    href={`/cards/${card.id}?returnTo=${encodeURIComponent(
-                      collectionReturnTo
-                    )}`}
-                    className={`panel group relative block transition-all duration-200 hover:-translate-y-1 hover:z-10 ${
-                      fullyLocked
-                        ? "border-red-300/15 hover:border-red-300/30"
-                        : "hover:border-amber-300/25"
-                    }`}
-                  >
-                    {/* CARD IMAGE - nothing is ever overlaid on top of
-                        this: name/artwork/ATK/DEF stay fully visible.
-                        All rarity/quantity/lock/for-trade metadata is
-                        below the image instead (see CARD INFO). On
-                        lg+ screens, hovering scales the same image
-                        element up in place (no second image request,
-                        no layout shift - it's a CSS transform) as a
-                        lightweight desktop preview. */}
-
-                    <div className="relative">
-                      {card.image_url ? (
-                        <Image
-                          src={
-                            card.image_url
-                          }
-                          alt={
-                            card.name
-                          }
-                          width={
-                            421
-                          }
-                          height={
-                            614
-                          }
-                          className={`aspect-[421/614] h-auto w-full rounded-t-2xl object-cover transition-transform duration-200 ease-out lg:group-hover:z-20 lg:group-hover:scale-[1.7] lg:group-hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)] ${
-                            fullyLocked
-                              ? "opacity-75"
-                              : ""
-                          }`}
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="flex aspect-[421/614] items-center justify-center rounded-t-2xl bg-zinc-900 text-xs text-zinc-600">
-                          No image
-                        </div>
-                      )}
-                    </div>
-
-                    {/* CARD INFO - priority order: name, gameplay
-                        info, then status/inventory metadata last. */}
-
-                    <div className="p-3">
-                      <p className="line-clamp-2 min-h-10 text-sm font-black leading-5 text-zinc-100">
-                        {
-                          card.name
-                        }
-                      </p>
-
-                      <div className="mt-1 flex items-center justify-between gap-2 text-xs text-zinc-500">
-                        <span className="truncate">
-                          {
-                            card.card_type
-                          }
-                        </span>
-
-                        {card.atk !=
-                          null && (
-                          <span className="shrink-0 text-zinc-500">
-                            ATK{" "}
-                            {
-                              card.atk
-                            }
-                          </span>
-                        )}
-                      </div>
-
-                      {/* METADATA */}
-
-                      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-white/5 pt-2.5">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${rarityStyle}`}
-                        >
-                          <Sparkles
-                            size={8}
-                          />
-                          {
-                            rarityName
-                          }
-                        </span>
-
-                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[8px] font-black text-zinc-300">
-                          x
-                          {
-                            group.quantity
-                          }
-                        </span>
-
-                        <MasterDuelBadge
-                          status={
-                            card.master_duel_status
-                          }
-                        />
-
-                        {group.forTradeCount >
-                          0 && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-200">
-                            <Tag
-                              size={8}
-                            />
-                            For Trade
-                          </span>
-                        )}
-
-                        {/* Informational only - never blocking. A
-                            card can be In Deck and In Offer and For
-                            Trade all at once; only an active wager
-                            lock (below) actually reserves anything. */}
-
-                        {group.inDeckCount >
-                          0 && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-cyan-200">
-                            <Layers3
-                              size={8}
-                            />
-                            In Deck
-                          </span>
-                        )}
-
-                        {group.inPendingOfferCount >
-                          0 && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-violet-300/30 bg-violet-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-violet-200">
-                            <Repeat2
-                              size={8}
-                            />
-                            In Offer
-                          </span>
-                        )}
-
-                        {fullyLocked ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-red-300/30 bg-red-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-red-300">
-                            <LockKeyhole
-                              size={8}
-                            />
-                            All Locked
-                          </span>
-                        ) : group.lockedCount >
-                          0 ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-amber-300">
-                            <ShieldCheck
-                              size={8}
-                            />
-                            {
-                              group.availableCount
-                            }{" "}
-                            free
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-cyan-300">
-                            <UnlockKeyhole
-                              size={8}
-                            />
-                            Free to use
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              }
+              (group) => (
+                <CollectionCardTile
+                  key={
+                    group.card.id
+                  }
+                  group={
+                    group
+                  }
+                  collectionReturnTo={
+                    collectionReturnTo
+                  }
+                />
+              )
             )}
           </section>
         )}

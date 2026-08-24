@@ -12,9 +12,11 @@ import {
   Flame,
   Layers3,
   LibraryBig,
+  RefreshCw,
   Repeat2,
   ShieldCheck,
   Sparkles,
+  Stethoscope,
   Swords,
   Trophy,
   UserRound,
@@ -41,6 +43,15 @@ import {
 import {
   computeAttentionItems,
 } from "@/lib/attention-items";
+
+import {
+  getOrRefreshDashboardCoachInsights,
+  type DashboardInsight,
+} from "@/lib/ai/dashboard-coach";
+
+import {
+  refreshDashboardCoach,
+} from "@/app/actions/dashboard-coach";
 
 export const dynamic =
   "force-dynamic";
@@ -125,6 +136,97 @@ function displayName(
     profile.duelist_name ??
     profile.username ??
     "Duelist"
+  );
+}
+
+// =========================================================
+// DASHBOARD DUELIST COACH PANEL (Phase 3)
+//
+// Purely a renderer for already-computed, already-cached insights -
+// see the getOrRefreshDashboardCoachInsights() call above. No
+// fetch, no AI, no loading state: this is server-rendered from data
+// the page already has by the time this component runs.
+// =========================================================
+
+const COACH_CONFIDENCE_LABEL: Record<
+  DashboardInsight["confidence"],
+  string
+> = {
+  high: "High confidence",
+  medium: "Medium confidence",
+  low: "Low confidence",
+};
+
+function DashboardCoachPanel({
+  insights,
+  hasActiveDeck,
+}: {
+  insights: DashboardInsight[];
+  hasActiveDeck: boolean;
+}) {
+  return (
+    <div className="panel relative overflow-hidden p-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Stethoscope
+            size={17}
+            className="text-cyan-300"
+          />
+          <p className="text-xs font-black tracking-[.2em] text-cyan-300">
+            DUELIST COACH
+          </p>
+        </div>
+
+        {hasActiveDeck && (
+          <form action={refreshDashboardCoach}>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-zinc-400 transition hover:border-cyan-300/30 hover:text-cyan-200"
+            >
+              <RefreshCw size={11} />
+              Refresh
+            </button>
+          </form>
+        )}
+      </div>
+
+      {!hasActiveDeck && (
+        <p className="mt-3 text-sm leading-6 text-zinc-500">
+          Set an active deck to get deterministic health insights here -
+          Normal Summon competition, Graveyard balance, and improvements
+          from your own collection.
+        </p>
+      )}
+
+      {hasActiveDeck && insights.length === 0 && (
+        <p className="mt-3 text-sm leading-6 text-zinc-500">
+          Your active deck hasn&apos;t been analyzed yet, or looks
+          healthy on every check Duelist Coach can currently run. Open
+          it in the Deck Builder for the full Deck Doctor report.
+        </p>
+      )}
+
+      {insights.length > 0 && (
+        <div className="mt-4 space-y-2.5">
+          {insights.map((insight) => (
+            <div
+              key={insight.insightType}
+              className="rounded-xl border border-cyan-300/10 bg-cyan-300/[0.03] p-3.5"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm leading-5 text-zinc-200">
+                  {insight.deterministicSummary}
+                </p>
+
+                <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] font-black uppercase text-zinc-500">
+                  {COACH_CONFIDENCE_LABEL[insight.confidence]}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -232,6 +334,26 @@ export default async function DashboardPage() {
     activeDeck =
       deckData as Deck | null;
   }
+
+  // ======================================================
+  // DUELIST COACH (Phase 3)
+  //
+  // NO AI call here - getOrRefreshDashboardCoachInsights only
+  // recomputes the deterministic Deck Doctor analysis when the
+  // active deck's card-id fingerprint has actually changed since
+  // the last cached row; otherwise it's a single indexed SELECT.
+  // See src/lib/ai/dashboard-coach.ts.
+  // ======================================================
+
+  const coachInsights: DashboardInsight[] =
+    leagueId
+      ? await getOrRefreshDashboardCoachInsights(
+          supabase,
+          userId,
+          leagueId,
+          activeDeck?.id ?? null
+        )
+      : [];
 
   // ======================================================
   // MATCHES
@@ -747,6 +869,13 @@ export default async function DashboardPage() {
       )}
     </div>
   </div>
+
+  {/* DUELIST COACH (Phase 3) */}
+
+  <DashboardCoachPanel
+    insights={coachInsights}
+    hasActiveDeck={Boolean(activeDeck)}
+  />
 
   {/* DUELIST PROGRESSION */}
 

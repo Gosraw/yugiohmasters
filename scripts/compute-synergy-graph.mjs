@@ -40,6 +40,41 @@
 //   node scripts/compute-synergy-graph.mjs                (dry run, writes reports/ only)
 //   node scripts/compute-synergy-graph.mjs --write         (also upserts card_mechanics + card_synergy_edges)
 //   node scripts/compute-synergy-graph.mjs --limit 500     (score only the first 500 rows, for a fast smoke test)
+//   node scripts/compute-synergy-graph.mjs --incremental --write
+//                                                          (only upsert cards whose card_mechanics row is
+//                                                           missing or stamped with an older engine_version -
+//                                                           see INCREMENTAL MODE below)
+//
+// IDEMPOTENCY / RESUMABILITY
+// Every write is an upsert keyed on a stable natural key
+// (card_mechanics.card_catalog_id; card_synergy_edges' unique
+// (source_card_id, target_card_id, edge_type)), so re-running this
+// script - including re-running it after it crashed or was killed
+// mid-batch - is always safe: already-written rows are simply
+// overwritten with the same (or newer-engine-version) values, never
+// duplicated. There is no separate "resume" flag needed for a crash
+// mid-run: just re-run the same command. --incremental (below) is a
+// distinct, additional optimization for the common case of a small
+// card_catalog update, not a crash-recovery mechanism.
+//
+// INCREMENTAL MODE (--incremental)
+// A full run recomputes every card's mechanic profile in memory
+// regardless (that part is already cheap - O(n) over ~14k rows, not
+// the expensive part). What --incremental changes is which rows are
+// actually WRITTEN: it first reads the existing
+// card_mechanics(card_catalog_id, engine_version) rows (a single
+// query, id+version only) and treats a card as "stale" only if it has
+// no card_mechanics row yet, or its stored engine_version does not
+// match the current SYNERGY_ENGINE_VERSION. Only stale cards' mechanic
+// rows are upserted, and only edges touching at least one stale card
+// are upserted (an edge between two already-current cards cannot have
+// changed, since both endpoints' source text and the engine version
+// are unchanged). This keeps a routine "the catalog gained 40 new
+// cards" or "the engine got a small fix and its version was bumped"
+// re-run cheap and low-write, without ever skipping a card that
+// actually needs recomputing. Omit --incremental for a full rebuild
+// (e.g. after a synergy-engine.mjs change you want applied to every
+// row regardless of version, or the very first population run).
 //
 // HONESTY NOTE: this sandbox has no network access to the real
 // Supabase project, so this script has been syntax-checked and unit-
@@ -66,6 +101,7 @@ const SUPABASE_SECRET_KEY =
 
 const args = process.argv.slice(2);
 const WRITE = args.includes("--write");
+const INCREMENTAL = args.includes("--incremental");
 const limitArgIndex = args.indexOf("--limit");
 const ROW_LIMIT = limitArgIndex >= 0 ? parseInt(args[limitArgIndex + 1], 10) : null;
 
@@ -114,6 +150,38 @@ async function fetchAllCards() {
 
 function isMonster(card) {
   return Boolean(card.card_type && card.card_type.toLowerCase().includes("monster"));
+}
+
+/**
+ * Single, id+version-only query (never the full mechanics payload) -
+ * the one piece of state --incremental needs to decide staleness.
+ * Paged the same way fetchAllCards() is, since this table can also
+ * grow past 1000 rows.
+ */
+async function fetchExistingEngineVersions() {
+  const pageSize = 1000;
+  let from = 0;
+  const versionByCardId = new Map();
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("card_mechanics")
+      .select("card_catalog_id, engine_version")
+      .order("card_catalog_id", { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      throw new Error(`card_mechanics engine-version fetch failed: ${error.message}`);
+    }
+    if (!data || data.length === 0) break;
+
+    for (const row of data) versionByCardId.set(row.card_catalog_id, row.engine_version);
+
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return versionByCardId;
 }
 
 async function main() {
@@ -377,9 +445,30 @@ async function main() {
     return;
   }
 
-  console.log(`\n✍️  Writing card_mechanics (--write)...`);
+  // ---- Incremental staleness check ----
+  // Only matters for WHICH rows get upserted below - every card's
+  // mechanic profile above was already computed in memory regardless
+  // (needed for the edge indices either way), so --incremental never
+  // changes the analysis, only the write volume.
+  let staleCardIds = null; // null = "everything is stale" (full run)
+  if (INCREMENTAL) {
+    const existingVersions = await fetchExistingEngineVersions();
+    staleCardIds = new Set();
+    for (const card of cards) {
+      const existing = existingVersions.get(card.id);
+      if (!existing || existing !== SYNERGY_ENGINE_VERSION) {
+        staleCardIds.add(card.id);
+      }
+    }
+    console.log(
+      `\n♻️  Incremental mode: ${staleCardIds.size}/${cards.length} cards are new or stamped with an older engine version - only those (and edges touching them) will be upserted.`
+    );
+  }
+
+  console.log(`\n✍️  Writing card_mechanics (--write${INCREMENTAL ? " --incremental" : ""})...`);
   const BATCH = 500;
-  const mechRows = cards.map((card) => {
+  const cardsToWrite = staleCardIds ? cards.filter((c) => staleCardIds.has(c.id)) : cards;
+  const mechRows = cardsToWrite.map((card) => {
     const mech = mechByCardId.get(card.id);
     return {
       card_catalog_id: card.id,
@@ -394,6 +483,10 @@ async function main() {
       computed_at: new Date().toISOString(),
     };
   });
+
+  if (mechRows.length === 0) {
+    console.log(`   Nothing stale - all card_mechanics rows already current for ${SYNERGY_ENGINE_VERSION}.`);
+  }
 
   let mechWritten = 0;
   for (let i = 0; i < mechRows.length; i += BATCH) {
@@ -410,8 +503,16 @@ async function main() {
   }
   console.log(`\n✅ Wrote ${mechWritten} card_mechanics rows.`);
 
-  console.log(`\n✍️  Writing card_synergy_edges (--write)...`);
-  const edgeRows = edges.map((e) => ({
+  console.log(`\n✍️  Writing card_synergy_edges (--write${INCREMENTAL ? " --incremental" : ""})...`);
+  // An edge between two cards that are BOTH already current cannot
+  // itself have changed (same engine version, same source text on
+  // both sides) - so incremental mode only re-upserts edges that
+  // touch at least one stale card, exactly mirroring the mechRows
+  // filter above.
+  const edgesToWrite = staleCardIds
+    ? edges.filter((e) => staleCardIds.has(e.sourceCardId) || staleCardIds.has(e.targetCardId))
+    : edges;
+  const edgeRows = edgesToWrite.map((e) => ({
     source_card_id: e.sourceCardId,
     target_card_id: e.targetCardId,
     edge_type: e.edgeType,
@@ -422,6 +523,10 @@ async function main() {
     engine_version: e.engineVersion,
     computed_at: new Date().toISOString(),
   }));
+
+  if (INCREMENTAL) {
+    console.log(`   ${edgeRows.length}/${edges.length} edges touch a stale card and will be upserted.`);
+  }
 
   let edgeWritten = 0;
   for (let i = 0; i < edgeRows.length; i += BATCH) {
@@ -438,13 +543,22 @@ async function main() {
   }
   console.log(`\n✅ Wrote ${edgeWritten} card_synergy_edges rows.`);
 
+  const runNotes = [
+    ROW_LIMIT ? `--limit ${ROW_LIMIT}` : null,
+    INCREMENTAL
+      ? `--incremental (${mechRows.length}/${cards.length} cards, ${edgeRows.length}/${edges.length} edges written)`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(", ") || null;
+
   const { error: runError } = await supabase.from("card_synergy_engine_runs").insert({
     engine_version: SYNERGY_ENGINE_VERSION,
-    cards_processed: cards.length,
-    edges_generated: edges.length,
+    cards_processed: cardsToWrite.length,
+    edges_generated: edgeRows.length,
     started_at: startedAt,
     finished_at: new Date().toISOString(),
-    notes: ROW_LIMIT ? `--limit ${ROW_LIMIT}` : null,
+    notes: runNotes,
   });
   if (runError) {
     console.error(`⚠️  card_synergy_engine_runs audit insert failed (data already written, non-fatal): ${runError.message}`);

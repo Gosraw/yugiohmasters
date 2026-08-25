@@ -1,4 +1,81 @@
+// =========================================================
+// ⚠️  DEPRECATED - DO NOT USE (as of 2026-08-25) ⚠️
+//
+// This is the LEGACY rarity classifier. It is superseded by the
+// deterministic 8-axis valuation engine in lib/valuation-engine.mjs
+// (extractValuationSignals / scoreCard / proposeRarity, currently
+// VALUATION_ENGINE_VERSION "2026-08-25.1"), driven via
+// scripts/audit-card-valuation.mjs. That is the ONLY current source
+// of truth for card_catalog.game_rarity / proposed_game_rarity.
+//
+// Why this script must not be run against production:
+//   - It classifies by BLIND TOP-PERCENTILE rank (RARITY_BANDS /
+//     rarityForPercentile below) - exactly the "just take the top N%
+//     as Legendary" approach the 2026-08-25 Legendary rarity
+//     calibration explicitly identified as NOT semantically
+//     meaningful and rejected in favor of the engine's multi-axis,
+//     multi-path gates in proposeRarity().
+//   - Its heuristics (getImpactScore/getPlayabilityScore/
+//     getRestrictionPenalty/getGenericUtilityScore below) are a
+//     much cruder, unversioned predecessor of what
+//     extractValuationSignals()/scoreCard() now do far more
+//     rigorously (real reference classification, dependency/floor/
+//     ceiling separation, format-aware calibration).
+//   - saveClassifications() below WRITES DIRECTLY to
+//     card_catalog.game_rarity (the live, player-facing rarity) via
+//     upsert, with NO dry-run mode and no confirmation step - unlike
+//     scripts/audit-card-valuation.mjs, which only writes proposal
+//     columns and never game_rarity itself. Running this script
+//     un-gated against production would silently overwrite every
+//     non-manually-overridden card's rarity with the old, rejected
+//     methodology.
+//   - It only respects rarity_manually_overridden, not the newer
+//     valuation_manually_overridden / format_card_overrides
+//     protections the current pipeline also honors.
+//
+// Having two competing rarity sources of truth is exactly what the
+// 2026-08-25 recalibration was told to resolve. Since nothing else in
+// this repository imports or invokes this file (verified: no
+// package.json script entry, no other .mjs/.ts/.tsx importer), it has
+// been left in place for historical reference rather than deleted,
+// but is now HARD-GATED below: running it does nothing unless you
+// explicitly pass --i-understand-this-is-deprecated, so it can no
+// longer be run by accident (e.g. muscle memory from before the
+// rewrite, or a stale README/runbook step).
+//
+// If you need to re-classify rarities, use instead:
+//   node scripts/audit-card-valuation.mjs              (dry run)
+//   node scripts/audit-card-valuation.mjs --write-scores (writes proposal columns only, never game_rarity)
+// =========================================================
+
 import { createClient } from "@supabase/supabase-js";
+
+// HARD GATE - see the deprecation notice above. Running this script
+// does nothing unless the operator explicitly acknowledges the
+// deprecation. This check runs before any Supabase env var is even
+// read, so it fails closed regardless of environment.
+const FORCE_FLAG = "--i-understand-this-is-deprecated";
+if (!process.argv.includes(FORCE_FLAG)) {
+  console.error(
+    [
+      "",
+      "❌ scripts/classify-rarities.mjs is DEPRECATED and disabled.",
+      "",
+      "   This legacy blind-percentile classifier has been superseded by",
+      "   lib/valuation-engine.mjs + scripts/audit-card-valuation.mjs.",
+      "   It writes directly to game_rarity with no dry-run mode, using a",
+      "   methodology the 2026-08-25 Legendary rarity calibration",
+      "   explicitly rejected (top-N% percentile cuts).",
+      "",
+      "   Use `node scripts/audit-card-valuation.mjs` instead.",
+      "",
+      `   If you have a specific, reviewed reason to run this legacy`,
+      `   script anyway, re-run with the ${FORCE_FLAG} flag.`,
+      "",
+    ].join("\n")
+  );
+  process.exit(1);
+}
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 

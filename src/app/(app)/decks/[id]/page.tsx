@@ -17,10 +17,7 @@ import {
 } from "lucide-react";
 
 import {
-  computeDeckComposition,
   computeOwnedVsUsed,
-  type DeckComposition,
-  type OwnedVsUsedEntry,
 } from "@/lib/deck-composition";
 
 import {
@@ -39,19 +36,26 @@ import {
   archiveDeck,
   markDeckDraft,
   markDeckReady,
-  removeCardFromDeck,
   renameDeck,
   setActiveDeck,
 } from "@/app/actions/decks";
 
 import {
-  DeckActionButton,
-} from "@/components/deck-action-button";
-
-import {
   DeckCollectionBrowser,
   type DeckBrowserCard,
 } from "@/components/deck-collection-browser";
+
+import {
+  DeckCompositionSummary,
+} from "@/components/deck-composition-summary";
+
+import {
+  DeckLiveCompositionProvider,
+  DeckRemoveCardForm,
+  DeckSectionThresholdText,
+  DeckSectionTotal,
+  type LiveDeckCard,
+} from "@/components/deck-live-composition";
 
 import {
   ArchiveDeckButton,
@@ -151,9 +155,9 @@ type CardCatalogItem = {
     | null;
 
   // Added for Deck Builder 2.0's live composition summary (see
-  // DeckCompositionSummary below) - purely additive fields, never
-  // fetched before this. Nothing about the existing add/remove/
-  // legality logic reads these.
+  // components/deck-composition-summary.tsx) - purely additive
+  // fields, never fetched before this. Nothing about the existing
+  // add/remove/legality logic reads these.
   archetype:
     | string
     | null;
@@ -319,219 +323,16 @@ function DeckCardTile({
           )}
 
           {editable && (
-            <form
-              action={
-                removeCardFromDeck
+            <DeckRemoveCardForm
+              deckId={deckId}
+              deckCardId={
+                row.id
               }
-            >
-              <input
-                type="hidden"
-                name="deck_id"
-                value={deckId}
-              />
-
-              <input
-                type="hidden"
-                name="deck_card_id"
-                value={row.id}
-              />
-
-              <DeckActionButton
-                type="remove"
-              />
-            </form>
+            />
           )}
         </div>
       </div>
     </div>
-  );
-}
-
-// =========================================================
-// DECK COMPOSITION SUMMARY (Deck Builder 2.0)
-//
-// Always-visible headline row ("Monsters 22 · Spells 11 · Traps 7"),
-// with the deeper breakdown (Normal/Effect split, Level/Rank curve,
-// Attributes, Types, Archetypes, spare owned copies) tucked behind a
-// native <details> so it never overwhelms the page by default. Plain
-// English throughout - no engine terminology, no raw scores (see the
-// product spec's explicit "good: Monsters 22 · Spells 11 · Traps 7 /
-// bad: NORMAL_SUMMON_COMPETITION score=0.823" example).
-// =========================================================
-
-function DistributionRow({
-  label,
-  entries,
-}: {
-  label: string;
-  entries: [string, number][];
-}) {
-  if (entries.length === 0) return null;
-
-  return (
-    <div>
-      <p className="text-[10px] font-black uppercase tracking-[.18em] text-zinc-600">
-        {label}
-      </p>
-
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {entries.map(
-          ([key, count]) => (
-            <span
-              key={key}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-bold text-zinc-300"
-            >
-              {key}
-              <span className="text-zinc-500">
-                {count}
-              </span>
-            </span>
-          )
-        )}
-      </div>
-    </div>
-  );
-}
-
-function DeckCompositionSummary({
-  composition,
-  ownedVsUsed,
-}: {
-  composition: DeckComposition;
-  ownedVsUsed: OwnedVsUsedEntry[];
-}) {
-  const { main, extra } = composition;
-
-  const levelEntries = Object.entries(
-    composition.levelDistribution
-  )
-    .map(([level, count]): [string, number] => [
-      `Lv ${level}`,
-      count,
-    ])
-    .sort(
-      (a, b) =>
-        Number(a[0].replace("Lv ", "")) -
-        Number(b[0].replace("Lv ", ""))
-    );
-
-  const rankEntries = Object.entries(
-    composition.rankDistribution
-  )
-    .map(([rank, count]): [string, number] => [
-      `Rank ${rank}`,
-      count,
-    ])
-    .sort(
-      (a, b) =>
-        Number(a[0].replace("Rank ", "")) -
-        Number(b[0].replace("Rank ", ""))
-    );
-
-  const attributeEntries = Object.entries(
-    composition.attributeDistribution
-  ).sort((a, b) => b[1] - a[1]);
-
-  const typeEntries = Object.entries(
-    composition.monsterTypeDistribution
-  ).sort((a, b) => b[1] - a[1]);
-
-  const archetypeEntries = Object.entries(
-    composition.archetypeDistribution
-  ).sort((a, b) => b[1] - a[1]);
-
-  return (
-    <details className="panel group/comp mt-6 overflow-hidden p-0">
-      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 p-4 select-none sm:p-5">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <span className="text-sm font-black text-zinc-100">
-            Monsters {main.monsters} · Spells {main.spells} · Traps{" "}
-            {main.traps}
-          </span>
-
-          {extra.total > 0 && (
-            <span className="text-sm text-zinc-500">
-              Extra: {extra.fusion > 0 && `Fusion ${extra.fusion}`}
-              {extra.fusion > 0 && extra.xyz > 0 && " · "}
-              {extra.xyz > 0 && `Xyz ${extra.xyz}`}
-              {(extra.synchro > 0 || extra.link > 0) &&
-                (extra.fusion > 0 || extra.xyz > 0) &&
-                " · "}
-              {extra.synchro > 0 && `Synchro ${extra.synchro}`}
-              {extra.synchro > 0 && extra.link > 0 && " · "}
-              {extra.link > 0 && `Link ${extra.link}`}
-            </span>
-          )}
-        </div>
-
-        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500">
-          Full breakdown
-          <ChevronDown
-            size={14}
-            className="transition-transform group-open/comp:rotate-180"
-          />
-        </span>
-      </summary>
-
-      <div className="grid gap-4 border-t border-white/5 p-4 sm:grid-cols-2 sm:p-5">
-        <DistributionRow
-          label="Monster Level (Main Deck)"
-          entries={levelEntries}
-        />
-
-        <DistributionRow
-          label="Xyz Rank (Extra Deck)"
-          entries={rankEntries}
-        />
-
-        <DistributionRow
-          label="Attributes"
-          entries={attributeEntries}
-        />
-
-        <DistributionRow
-          label="Monster Types"
-          entries={typeEntries}
-        />
-
-        <div className="sm:col-span-2">
-          <DistributionRow
-            label="Archetypes / Packages"
-            entries={archetypeEntries}
-          />
-        </div>
-
-        {ownedVsUsed.length > 0 && (
-          <div className="sm:col-span-2">
-            <p className="text-[10px] font-black uppercase tracking-[.18em] text-zinc-600">
-              You own more copies than you&apos;re using
-            </p>
-
-            <div className="mt-2 space-y-1.5">
-              {ownedVsUsed
-                .slice(0, 8)
-                .map((entry) => (
-                  <div
-                    key={
-                      entry.cardCatalogId
-                    }
-                    className="flex items-center justify-between gap-3 rounded-lg border border-emerald-300/15 bg-emerald-300/[0.04] px-3 py-2 text-xs"
-                  >
-                    <span className="font-bold text-zinc-200">
-                      {entry.name}
-                    </span>
-
-                    <span className="shrink-0 font-black text-emerald-300">
-                      +{entry.spareCopies}{" "}
-                      spare
-                    </span>
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </details>
   );
 }
 
@@ -544,7 +345,7 @@ function DeckCompositionSummary({
 // into plain, non-technical language, per the product spec's "should
 // look like a polished Duelist Circle feature, not an admin/debug
 // screen" requirement. Collapsed by default, same pattern as the
-// composition summary above.
+// composition summary (components/deck-composition-summary.tsx).
 // =========================================================
 
 const CONFIDENCE_LABEL: Record<
@@ -1233,60 +1034,67 @@ export default async function DeckBuilderPage({
   // =======================================================
   // DECK BUILDER 2.0 - LIVE COMPOSITION SUMMARY
   //
-  // Computed directly from mainDeckCards/extraDeckCards above - the
-  // exact same data already fetched for this render, nothing extra
-  // queried. "Live" here means what it already means throughout this
-  // page: every add/remove round-trips through a server action and
-  // re-renders this page from scratch (see decks.ts), so this summary
-  // is always in sync with the deck's real contents without any
-  // client-side state of its own.
+  // Built directly from mainDeckCards/extraDeckCards above - the exact
+  // same data already fetched for this render, nothing extra queried.
+  // These two lists are the *starting point* handed to
+  // DeckLiveCompositionProvider (see deck-live-composition.tsx), which
+  // keeps them up to date in the browser: adding or removing a card
+  // updates every count on this page immediately, in the same tick as
+  // the click, while the server action still runs in the background as
+  // the source of truth and re-renders this page with the real numbers
+  // when it is done (or rolls the change back if it was refused).
+  // computeDeckComposition() itself is pure and synchronous, so no
+  // Supabase round trip is involved in any of it.
   // =======================================================
 
-  const composition =
-    computeDeckComposition(
-      mainDeckCards.map(
-        (item) => ({
-          card_catalog_id:
-            item.card.id,
-          name: item.card.name,
-          card_type:
-            item.card.card_type,
-          monster_type:
-            item.card.monster_type,
-          attribute:
-            item.card.attribute,
-          level:
-            item.card.level,
-          rank:
-            item.card.rank,
-          link_rating:
-            item.card.link_rating,
-          archetype:
-            item.card.archetype,
-        })
-      ),
-      extraDeckCards.map(
-        (item) => ({
-          card_catalog_id:
-            item.card.id,
-          name: item.card.name,
-          card_type:
-            item.card.card_type,
-          monster_type:
-            item.card.monster_type,
-          attribute:
-            item.card.attribute,
-          level:
-            item.card.level,
-          rank:
-            item.card.rank,
-          link_rating:
-            item.card.link_rating,
-          archetype:
-            item.card.archetype,
-        })
-      )
+  const toLiveDeckCard = (
+    item: DeckDisplayCard
+  ): LiveDeckCard => ({
+    deckCardId: item.row.id,
+    card_catalog_id:
+      item.card.id,
+    name: item.card.name,
+    card_type:
+      item.card.card_type,
+    monster_type:
+      item.card.monster_type,
+    attribute:
+      item.card.attribute,
+    level:
+      item.card.level,
+    rank:
+      item.card.rank,
+    link_rating:
+      item.card.link_rating,
+    archetype:
+      item.card.archetype,
+  });
+
+  const liveMainCards =
+    mainDeckCards.map(
+      toLiveDeckCard
     );
+
+  const liveExtraCards =
+    extraDeckCards.map(
+      toLiveDeckCard
+    );
+
+  // Changes on every server render of this page (it is
+  // force-dynamic, so that is exactly once per real request). The
+  // live composition provider watches this value to know the server
+  // has answered and its own pending add/remove can be dropped -
+  // which is what makes a refused add roll back on screen instead of
+  // lingering as a phantom card.
+  //
+  // react-hooks/purity is switched off for this single line on
+  // purpose. That rule protects against values that change between
+  // *client* re-renders of the same component; this is an async
+  // Server Component that runs once per request and is never
+  // re-rendered in the browser, and a value that differs per server
+  // render is exactly what is needed here.
+  // eslint-disable-next-line react-hooks/purity
+  const serverRenderToken = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
   const ownedQuantityByCard =
     new Map(
@@ -1511,7 +1319,26 @@ export default async function DeckBuilderPage({
   // =======================================================
 
   return (
-    <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+    // Renders this page's <main> element and, around it, the shared
+    // live-composition context: the header counters, the composition
+    // summary, the sticky mobile bar, the deck panels' counters, the
+    // collection browser's Add buttons and the deck tiles' Remove
+    // buttons all read from (and write to) the same client-side card
+    // list, so a click moves every number instantly. Everything below
+    // stays a Server Component - passing it through as children keeps
+    // it out of the client bundle.
+    <DeckLiveCompositionProvider
+      mainCards={
+        liveMainCards
+      }
+      extraCards={
+        liveExtraCards
+      }
+      serverToken={
+        serverRenderToken
+      }
+      className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8"
+    >
       {/* NAV */}
 
       <nav className="flex flex-wrap items-center gap-3">
@@ -1588,23 +1415,25 @@ export default async function DeckBuilderPage({
             </div>
 
             <p className="mt-1 text-2xl font-black">
-              {mainCount}
+              <DeckSectionTotal
+                section="main"
+              />
               <span className="text-sm text-zinc-600">
                 {" "}
                 / 60
               </span>
             </p>
 
-            <p
-              className={`mt-1 text-[10px] font-bold ${
-                mainCount >=
-                40
-                  ? "text-emerald-300"
-                  : "text-zinc-600"
-              }`}
+            <DeckSectionThresholdText
+              section="main"
+              minimum={40}
+              element="p"
+              baseClassName="mt-1 text-[10px] font-bold"
+              metClassName="text-emerald-300"
+              unmetClassName="text-zinc-600"
             >
               Minimum 40
-            </p>
+            </DeckSectionThresholdText>
           </div>
 
           <div className="panel min-w-32 p-4">
@@ -1619,7 +1448,9 @@ export default async function DeckBuilderPage({
             </div>
 
             <p className="mt-1 text-2xl font-black">
-              {extraCount}
+              <DeckSectionTotal
+                section="extra"
+              />
               <span className="text-sm text-zinc-600">
                 {" "}
                 / 15
@@ -1638,9 +1469,6 @@ export default async function DeckBuilderPage({
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-start">
         <div className="flex-1">
           <DeckCompositionSummary
-            composition={
-              composition
-            }
             ownedVsUsed={
               ownedVsUsed
             }
@@ -2101,10 +1929,11 @@ export default async function DeckBuilderPage({
                 : "text-zinc-500"
             }`}
           >
-            My Deck ({
-              mainCount +
-              extraCount
-            })
+            My Deck (
+            <DeckSectionTotal
+              section="all"
+            />
+            )
           </Link>
         </div>
 
@@ -2117,19 +1946,27 @@ export default async function DeckBuilderPage({
         {!mobileViewIsDeck && (
           <div className="sticky top-0 z-30 -mx-4 flex items-center justify-between gap-3 border-b border-white/10 bg-black/85 px-4 py-2.5 backdrop-blur-xl sm:-mx-6 sm:px-6 xl:hidden">
             <div className="flex items-center gap-3 text-xs font-black">
-              <span
-                className={
-                  mainCount >=
+              <DeckSectionThresholdText
+                section="main"
+                minimum={
                   mainMinimum
-                    ? "text-emerald-300"
-                    : "text-zinc-400"
                 }
+                metClassName="text-emerald-300"
+                unmetClassName="text-zinc-400"
               >
-                Main {mainCount}/60
-              </span>
+                Main{" "}
+                <DeckSectionTotal
+                  section="main"
+                />
+                /60
+              </DeckSectionThresholdText>
 
               <span className="text-zinc-400">
-                Extra {extraCount}/15
+                Extra{" "}
+                <DeckSectionTotal
+                  section="extra"
+                />
+                /15
               </span>
             </div>
 
@@ -2237,16 +2074,18 @@ export default async function DeckBuilderPage({
                 </h2>
               </div>
 
-              <span
-                className={`text-sm font-black ${
-                  mainCount >=
-                  40
-                    ? "text-emerald-300"
-                    : "text-zinc-500"
-                }`}
+              <DeckSectionThresholdText
+                section="main"
+                minimum={40}
+                baseClassName="text-sm font-black"
+                metClassName="text-emerald-300"
+                unmetClassName="text-zinc-500"
               >
-                {mainCount} / 60
-              </span>
+                <DeckSectionTotal
+                  section="main"
+                />{" "}
+                / 60
+              </DeckSectionThresholdText>
             </div>
 
             <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-600">
@@ -2296,7 +2135,10 @@ export default async function DeckBuilderPage({
               </div>
 
               <span className="text-sm font-black text-zinc-500">
-                {extraCount} / 15
+                <DeckSectionTotal
+                  section="extra"
+                />{" "}
+                / 15
               </span>
             </div>
 
@@ -2369,6 +2211,6 @@ export default async function DeckBuilderPage({
           </section>
         </aside>
       </div>
-    </main>
+    </DeckLiveCompositionProvider>
   );
 }

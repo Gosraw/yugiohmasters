@@ -21,6 +21,7 @@ import type {
 
 import { addCardToDeck } from "@/app/actions/decks";
 import { DeckActionButton } from "@/components/deck-action-button";
+import { useDeckLiveComposition } from "@/components/deck-live-composition";
 import { MasterDuelBadge } from "@/components/master-duel-badge";
 
 // Query param keys this browser mirrors its filters into, so
@@ -300,6 +301,13 @@ export function DeckCollectionBrowser({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // Shared with the deck panels and the composition summary on the
+  // deck page: adding a card here updates every count there in the
+  // same tick as the click, instead of after the server action's
+  // full page round trip. See deck-live-composition.tsx.
+  const { addCard } =
+    useDeckLiveComposition();
 
   // Filters live in local state for instant, no-network filtering
   // (as before) but are seeded from - and mirrored back into - the
@@ -1290,6 +1298,40 @@ export function DeckCollectionBrowser({
                         action={
                           addCardToDeck
                         }
+                        onSubmit={() => {
+                          // Instant, local composition update - the
+                          // server action on `action` above still
+                          // runs and stays the source of truth (and
+                          // still submits natively without
+                          // JavaScript); this only stops the counts
+                          // from waiting for its round trip. Rolled
+                          // back automatically if the add is
+                          // refused - see deck-live-composition.tsx.
+                          addCard(
+                            {
+                              deckCardId: `optimistic:${nextInstance.id}`,
+                              card_catalog_id:
+                                card.id,
+                              name: card.name,
+                              card_type:
+                                card.card_type,
+                              monster_type:
+                                card.monster_type,
+                              attribute:
+                                card.attribute,
+                              level:
+                                card.level,
+                              rank: card.rank,
+                              link_rating:
+                                card.link_rating,
+                              archetype:
+                                card.archetype,
+                            },
+                            extra
+                              ? "extra"
+                              : "main"
+                          );
+                        }}
                         className="mt-3"
                       >
                         <input

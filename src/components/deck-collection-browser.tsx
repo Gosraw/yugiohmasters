@@ -1103,6 +1103,12 @@ export function DeckCollectionBrowser({
                     )}`}
                     className="block cursor-pointer"
                   >
+                    {/* CARD IMAGE - nothing is ever overlaid on top
+                        of this: name/artwork/ATK/DEF stay fully
+                        visible. Rarity/quantity/legality/Master
+                        Duel status all live below the image instead
+                        (see CARD INFO). */}
+
                     <div className="relative overflow-hidden">
                       {card.image_url ? (
                         <Image
@@ -1130,44 +1136,6 @@ export function DeckCollectionBrowser({
                           No image
                         </div>
                       )}
-
-                      <span
-                        className={`absolute left-2 top-2 rounded-full border px-2 py-1 text-[8px] font-black uppercase backdrop-blur-md ${rarityStyle}`}
-                      >
-                        {
-                          rarityName
-                        }
-                      </span>
-
-                      {(!card.master_duel_status ||
-                        card.master_duel_status !==
-                          "unlimited") && (
-                        <div className="absolute right-2 top-2">
-                          <MasterDuelBadge
-                            status={
-                              card.master_duel_status
-                            }
-                          />
-                        </div>
-                      )}
-
-                      <span className="absolute bottom-2 right-2 rounded-full border border-white/10 bg-black/85 px-2 py-1 text-[10px] font-black">
-                        x
-                        {
-                          group.quantity
-                        }
-                      </span>
-
-                      {ineligible && (
-                        <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-950/90 px-2 py-1 text-[8px] font-black uppercase text-red-200">
-                          <Ban
-                            size={
-                              9
-                            }
-                          />
-                          Not legal
-                        </span>
-                      )}
                     </div>
                   </Link>
 
@@ -1184,6 +1152,49 @@ export function DeckCollectionBrowser({
                         }
                       </p>
                     </Link>
+
+                    {/* METADATA - previously overlaid on the card
+                        image (rarity/quantity/legality/Master Duel
+                        status); moved below so nothing ever blocks
+                        the printed name or ATK/DEF. */}
+
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-wider ${rarityStyle}`}
+                      >
+                        {
+                          rarityName
+                        }
+                      </span>
+
+                      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[8px] font-black text-zinc-300">
+                        x
+                        {
+                          group.quantity
+                        }
+                      </span>
+
+                      {(!card.master_duel_status ||
+                        card.master_duel_status !==
+                          "unlimited") && (
+                        <MasterDuelBadge
+                          status={
+                            card.master_duel_status
+                          }
+                        />
+                      )}
+
+                      {ineligible && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-950/90 px-2 py-0.5 text-[8px] font-black uppercase text-red-200">
+                          <Ban
+                            size={
+                              9
+                            }
+                          />
+                          Not legal
+                        </span>
+                      )}
+                    </div>
 
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <span className="text-[10px] font-bold uppercase text-zinc-500">

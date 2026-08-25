@@ -121,8 +121,13 @@ export function DraftChoiceGrid({
                   </div>
                 )}
 
-                <span className="absolute bottom-4 right-4 hidden rounded-full border border-white/10 bg-black/80 p-2 text-white sm:block">
-                  <Eye size={15} />
+                {/* Preview affordance only - kept out of the
+                    bottom-right corner (where a monster's printed
+                    ATK/DEF sits) and out of the top-left (where the
+                    name starts); top-right is clear on these card
+                    assets. Desktop-only hint, same as before. */}
+                <span className="pointer-events-none absolute right-2 top-2 hidden rounded-full border border-white/10 bg-black/80 p-1.5 text-white sm:block">
+                  <Eye size={13} />
                 </span>
               </button>
 

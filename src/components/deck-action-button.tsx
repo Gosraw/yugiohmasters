@@ -51,9 +51,9 @@ export function DeckActionButton({
             disabled:cursor-wait disabled:opacity-50
           `
           : `
-            inline-flex h-11 w-11 cursor-pointer items-center justify-center
-            rounded-lg border border-red-400/30 bg-black/90
-            text-red-300 shadow-lg
+            inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center
+            rounded-md border border-red-400/30 bg-black/90
+            text-red-300
             transition-all duration-150
             hover:scale-110 hover:border-red-300/50 hover:bg-red-400/20
             active:scale-90
@@ -67,7 +67,7 @@ export function DeckActionButton({
             size={
               isAdd
                 ? 14
-                : 15
+                : 12
             }
             className="animate-spin"
           />
@@ -89,7 +89,7 @@ export function DeckActionButton({
         </>
       ) : (
         <Minus
-          size={15}
+          size={12}
         />
       )}
     </button>

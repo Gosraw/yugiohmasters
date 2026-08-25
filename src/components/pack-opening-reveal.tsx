@@ -1433,6 +1433,11 @@ export function PackOpeningReveal({
                         </div>
                       )}
 
+                      {/* CARD IMAGE - nothing overlaid: name and
+                          ATK/DEF stay fully readable. Rarity and
+                          the Legendary crown both live below the
+                          image instead (see next block). */}
+
                       <div className="relative">
                         {card.image_url ? (
                           <Image
@@ -1452,24 +1457,26 @@ export function PackOpeningReveal({
                             No image
                           </div>
                         )}
-
-                        <span
-                          className={`absolute left-2 top-2 rounded-full border px-2 py-1 text-[7px] font-black uppercase backdrop-blur-md ${rarityStyle}`}
-                        >
-                          {rarity}
-                        </span>
-
-                        {rarity ===
-                          "Legendary" && (
-                          <Crown
-                            size={18}
-                            className="absolute right-2 top-2 text-yellow-200"
-                          />
-                        )}
                       </div>
 
                       <div className="relative p-3">
-                        <p className="line-clamp-2 min-h-9 text-xs font-black text-zinc-100">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[7px] font-black uppercase ${rarityStyle}`}
+                          >
+                            {rarity}
+                          </span>
+
+                          {rarity ===
+                            "Legendary" && (
+                            <Crown
+                              size={11}
+                              className="text-yellow-200"
+                            />
+                          )}
+                        </div>
+
+                        <p className="mt-1.5 line-clamp-2 min-h-9 text-xs font-black text-zinc-100">
                           {card.name}
                         </p>
 

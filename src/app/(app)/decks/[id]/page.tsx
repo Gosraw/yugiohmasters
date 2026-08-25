@@ -266,6 +266,10 @@ function DeckCardTile({
           : "border-red-400/40 hover:border-red-300/60"
       }`}
     >
+      {/* CARD IMAGE - nothing overlaid: name and ATK/DEF stay
+          fully readable. Copy number/Master Duel status/remove
+          all live in the thin strip below the image instead. */}
+
       <Link
         href={`/cards/${card.id}?returnTo=${encodeURIComponent(
           returnTo
@@ -291,46 +295,54 @@ function DeckCardTile({
         )}
       </Link>
 
-      <div className="pointer-events-none absolute left-1 top-1 rounded-md border border-white/10 bg-black/85 px-1.5 py-0.5 text-[8px] font-black text-zinc-200">
-        #{instance.copy_number}
-      </div>
+      {/* THIN INFO STRIP - previously all three of these were
+          overlaid on the card art (copy number over the name,
+          Master Duel status over the name, Remove over the
+          printed ATK/DEF). Kept compact (p-1, 8px text) so the
+          already-dense 3-5 column grid doesn't grow noticeably
+          taller. */}
 
-      {!card.master_duel_status ||
-      card.master_duel_status !==
-        "unlimited" ? (
-        <div className="pointer-events-none absolute right-1 top-1">
-          <MasterDuelBadge
-            status={
-              card.master_duel_status
-            }
-          />
+      <div className="flex items-center justify-between gap-1 p-1">
+        <span className="rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[8px] font-black text-zinc-200">
+          #{instance.copy_number}
+        </span>
+
+        <div className="flex items-center gap-1">
+          {(!card.master_duel_status ||
+            card.master_duel_status !==
+              "unlimited") && (
+            <MasterDuelBadge
+              status={
+                card.master_duel_status
+              }
+            />
+          )}
+
+          {editable && (
+            <form
+              action={
+                removeCardFromDeck
+              }
+            >
+              <input
+                type="hidden"
+                name="deck_id"
+                value={deckId}
+              />
+
+              <input
+                type="hidden"
+                name="deck_card_id"
+                value={row.id}
+              />
+
+              <DeckActionButton
+                type="remove"
+              />
+            </form>
+          )}
         </div>
-      ) : null}
-
-      {editable && (
-        <form
-          action={
-            removeCardFromDeck
-          }
-          className="absolute bottom-1 right-1 z-10"
-        >
-          <input
-            type="hidden"
-            name="deck_id"
-            value={deckId}
-          />
-
-          <input
-            type="hidden"
-            name="deck_card_id"
-            value={row.id}
-          />
-
-          <DeckActionButton
-            type="remove"
-          />
-        </form>
-      )}
+      </div>
     </div>
   );
 }

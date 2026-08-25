@@ -172,6 +172,7 @@ describe("findingToDashboardInsight", () => {
       type: "NORMAL_SUMMON_COMPETITION",
       severity: "notice",
       confidence: "medium",
+      kind: "heuristic",
       summary: "placeholder",
       involvedCardIds: [],
       evidence: {},

@@ -242,4 +242,125 @@ describe("analyzeDeck", () => {
       expect(["high", "medium", "low"]).toContain(finding.confidence);
     }
   });
+
+  it("10. every finding discloses a structural/heuristic kind, never leaving it implicit", () => {
+    const main = [card("payoff-1", "GY Payoff Card")];
+    const extra = [card("fusion-1", "Fusion Beast", "Fusion Monster")];
+    const mechanics = mechMap([["payoff-1", ["gy_payoff"]]]);
+
+    const report = analyzeDeck(main, extra, mechanics);
+    expect(report.findings.length).toBeGreaterThan(0);
+    for (const finding of report.findings) {
+      expect(["structural", "heuristic"]).toContain(finding.kind);
+    }
+  });
+
+  it("11. flags BRICK_RISK when brick_risk-tagged cards exceed the threshold", () => {
+    const main = Array.from({ length: 9 }, (_, i) =>
+      card(`brick-${i}`, `Situational Card ${i}`)
+    );
+    const mechanics = mechMap(main.map((c) => [c.cardCatalogId, ["brick_risk"]]));
+
+    const report = analyzeDeck(main, [], mechanics);
+    const finding = report.findings.find((f) => f.type === "BRICK_RISK");
+    expect(finding).toBeDefined();
+    expect(finding?.kind).toBe("heuristic");
+  });
+
+  it("11b. does NOT flag BRICK_RISK at or below the threshold (false-positive protection)", () => {
+    const main = Array.from({ length: 8 }, (_, i) =>
+      card(`brick-${i}`, `Situational Card ${i}`)
+    );
+    const mechanics = mechMap(main.map((c) => [c.cardCatalogId, ["brick_risk"]]));
+
+    const report = analyzeDeck(main, [], mechanics);
+    expect(report.findings.some((f) => f.type === "BRICK_RISK")).toBe(false);
+  });
+
+  it("12. flags INSUFFICIENT_INTERACTION when interaction+negate cards fall below the threshold", () => {
+    const main = [card("filler-1", "Filler")];
+    const mechanics = mechMap([["filler-1", []]]);
+
+    const report = analyzeDeck(main, [], mechanics);
+    const finding = report.findings.find(
+      (f) => f.type === "INSUFFICIENT_INTERACTION"
+    );
+    expect(finding).toBeDefined();
+    expect(finding?.kind).toBe("heuristic");
+  });
+
+  it("12b. does NOT flag INSUFFICIENT_INTERACTION once enough interaction/negate cards are present", () => {
+    const main = Array.from({ length: 4 }, (_, i) =>
+      card(`int-${i}`, `Interaction ${i}`)
+    );
+    const mechanics = mechMap(main.map((c) => [c.cardCatalogId, ["interaction"]]));
+
+    const report = analyzeDeck(main, [], mechanics);
+    expect(
+      report.findings.some((f) => f.type === "INSUFFICIENT_INTERACTION")
+    ).toBe(false);
+  });
+
+  it("13. flags TOO_FEW_SEARCH_TARGETS when searcher/tutor/draw cards fall below the threshold", () => {
+    const main = [card("filler-1", "Filler")];
+    const mechanics = mechMap([["filler-1", []]]);
+
+    const report = analyzeDeck(main, [], mechanics);
+    const finding = report.findings.find(
+      (f) => f.type === "TOO_FEW_SEARCH_TARGETS"
+    );
+    expect(finding).toBeDefined();
+    expect(finding?.kind).toBe("heuristic");
+  });
+
+  it("14. flags SPELL_TRAP_BALANCE when the Main Deck runs too few Spells/Traps", () => {
+    const main = Array.from({ length: 20 }, (_, i) =>
+      card(`mon-${i}`, `Monster ${i}`, "Effect Monster")
+    );
+    const mechanics = mechMap([]);
+
+    const report = analyzeDeck(main, [], mechanics);
+    const finding = report.findings.find((f) => f.type === "SPELL_TRAP_BALANCE");
+    expect(finding).toBeDefined();
+    expect(finding?.kind).toBe("heuristic");
+  });
+
+  it("14b. does NOT flag SPELL_TRAP_BALANCE once enough Spells/Traps are present (false-positive protection)", () => {
+    const main = [
+      ...Array.from({ length: 12 }, (_, i) => card(`mon-${i}`, `Monster ${i}`, "Effect Monster")),
+      ...Array.from({ length: 9 }, (_, i) => card(`st-${i}`, `Support ${i}`, "Spell Card")),
+    ];
+    const mechanics = mechMap([]);
+
+    const report = analyzeDeck(main, [], mechanics);
+    expect(report.findings.some((f) => f.type === "SPELL_TRAP_BALANCE")).toBe(false);
+  });
+
+  it("15. flags UNSUPPORTED_EXTRA_DECK_CARD for a Synchro monster with no identified enabler", () => {
+    const extra = [card("synchro-1", "Synchro Beast", "Synchro Monster")];
+    const mechanics = mechMap([]);
+
+    const report = analyzeDeck([], extra, mechanics);
+    const finding = report.findings.find(
+      (f) =>
+        f.type === "UNSUPPORTED_EXTRA_DECK_CARD" &&
+        f.involvedCardIds.includes("synchro-1")
+    );
+    expect(finding).toBeDefined();
+    expect(finding?.evidence).toMatchObject({ kind: "synchro" });
+  });
+
+  it("16. flags UNSUPPORTED_EXTRA_DECK_CARD for a Link monster with no identified enabler", () => {
+    const extra = [card("link-1", "Link Beast", "Link Monster")];
+    const mechanics = mechMap([]);
+
+    const report = analyzeDeck([], extra, mechanics);
+    const finding = report.findings.find(
+      (f) =>
+        f.type === "UNSUPPORTED_EXTRA_DECK_CARD" &&
+        f.involvedCardIds.includes("link-1")
+    );
+    expect(finding).toBeDefined();
+    expect(finding?.evidence).toMatchObject({ kind: "link" });
+  });
 });

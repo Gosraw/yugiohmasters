@@ -17,6 +17,11 @@ import {
 } from "@/lib/ai/card-synergy";
 
 import {
+  computeSynergyEdges,
+  type CardMechanicsProfile,
+} from "@/lib/synergy";
+
+import {
   getLeagueIdForUser,
 } from "@/lib/league-stats";
 
@@ -62,6 +67,38 @@ import {
 // honest "not yet analyzed" state rather than a false "no synergies
 // found" - this is a disclosed, non-broken degraded state, the same
 // pattern already used for the valuation engine's proposal columns.
+//
+// OWNED_CANDIDATE_SUPPLEMENT (2026-08-25, Track B redesign): GY
+// setup/payoff, discard outlet/payoff, and banish setup/payoff
+// relationships (edge types gy_setup_for/discard_payoff_for/
+// banish_payoff_for) are NO LONGER precomputed catalog-wide by
+// scripts/compute-synergy-graph.mjs - materializing those as a full
+// (tag-bucket x tag-bucket) cross product is the confirmed root
+// cause of the earlier 1,461,604-row card_synergy_edges incident
+// (see that script's header). They are still real, still useful, and
+// still fully deterministic - they are just no longer persisted for
+// every card in the catalog against every other card.
+//
+// Instead, getCardSynergyInsight() below evaluates them CONTEXTUALLY,
+// on demand, against ONLY the small set of cards the viewing player
+// actually owns (never the full ~14k-row catalog): it fetches this
+// player's owned card ids (a query already needed for the "Owned x3"
+// badge - see ownedCardIds below), reads their card_mechanics rows
+// (one bounded IN-clause query, capped at
+// OWNED_CANDIDATE_SUPPLEMENT_CAP ids) plus the target card's own
+// card_mechanics row, and calls the exact same computeSynergyEdges()
+// the precompute script uses (via src/lib/synergy/index.ts, re-
+// exporting lib/synergy-engine.mjs - one source of truth for the
+// actual edge logic). Only the three edge types above are merged in
+// this way; named-reference types (searches/material_supply_named/
+// requirement_satisfies) are already exhaustively and cheaply
+// persisted by Pass A of the precompute script, so recomputing them
+// live would be redundant.
+//
+// This keeps the "never scan the catalog" and "no huge materialized
+// graph" requirements intact while restoring exactly the detection
+// power the removed passes provided, scoped to what actually matters
+// for THIS player's card coach - their own collection.
 //
 // CACHING: a small in-memory, best-effort, per-server-instance
 // cache keyed on card_catalog_id (+ owner, since "owned" framing is
@@ -232,6 +269,139 @@ async function findOwnedPackages(
   return packages;
 }
 
+// Hard cap on how many of the player's own owned card ids are ever
+// fed into the contextual supplement below - defensive, in case a
+// single player's collection somehow grows very large. A friends-
+// league collection is nowhere near this in practice, but the cap
+// keeps the per-request cost bounded regardless.
+const OWNED_CANDIDATE_SUPPLEMENT_CAP = 150;
+
+// Edge types this contextual supplement exists to restore - the ones
+// scripts/compute-synergy-graph.mjs intentionally no longer persists
+// catalog-wide (see that file's header and the OWNED_CANDIDATE_
+// SUPPLEMENT comment above).
+const CONTEXTUAL_SUPPLEMENT_EDGE_TYPES = new Set([
+  "gy_setup_for",
+  "discard_payoff_for",
+  "banish_payoff_for",
+]);
+
+function mechRowToProfile(row: {
+  card_catalog_id: string;
+  tags: string[] | null;
+  search_targets: string[] | null;
+  named_material_targets: string[] | null;
+  named_requirement_targets: string[] | null;
+  material_specificity: string | null;
+  material_text: string | null;
+  evidence: Record<string, unknown> | null;
+  engine_version: string;
+}): CardMechanicsProfile {
+  return {
+    cardId: row.card_catalog_id,
+    tags: (row.tags ?? []) as CardMechanicsProfile["tags"],
+    searchTargets: row.search_targets ?? [],
+    namedMaterialTargets: row.named_material_targets ?? [],
+    namedRequirementTargets: row.named_requirement_targets ?? [],
+    materialSpecificity:
+      (row.material_specificity as CardMechanicsProfile["materialSpecificity"]) ?? null,
+    materialText: row.material_text ?? null,
+    evidence: (row.evidence ??
+      {
+        classifiedRefs: [],
+        isExtraDeckCard: false,
+        extraDeckKind: { fusion: false, synchro: false, xyz: false, link: false, pendulum: false },
+        scores: { power: 0, accessibility: 0, dependency: 0, genericUtility: 0, floor: 0, ceiling: 0, draftValue: 0 },
+      }) as CardMechanicsProfile["evidence"],
+    engineVersion: row.engine_version,
+  };
+}
+
+/**
+ * Restores gy_setup_for/discard_payoff_for/banish_payoff_for
+ * detection - intentionally no longer persisted catalog-wide (see
+ * the OWNED_CANDIDATE_SUPPLEMENT comment block above) - by evaluating
+ * them live, deterministically, against only the player's own owned
+ * cards. Mutates `edgesByCandidateId` in place, adding an entry only
+ * when a candidate doesn't already carry that edge type from the
+ * persisted graph. Every failure mode here (missing card_mechanics
+ * rows, a query error) is a silent no-op - this is a supplement, and
+ * its absence must never break the rest of the insight.
+ */
+async function supplementWithOwnedContextualEdges(
+  supabase: SupabaseClient,
+  target: SynergyCatalogCard,
+  ownedCardIds: string[],
+  edgesByCandidateId: Map<string, PrecomputedEdgeReason[]>
+): Promise<void> {
+  const candidateIds = ownedCardIds
+    .filter((id) => id !== target.id)
+    .slice(0, OWNED_CANDIDATE_SUPPLEMENT_CAP);
+  if (candidateIds.length === 0) return;
+
+  const { data: mechRows, error: mechError } = await supabase
+    .from("card_mechanics")
+    .select(
+      "card_catalog_id,tags,search_targets,named_material_targets,named_requirement_targets,material_specificity,material_text,evidence,engine_version"
+    )
+    .in("card_catalog_id", [target.id, ...candidateIds]);
+
+  if (mechError || !mechRows || mechRows.length === 0) return;
+
+  const targetRow = mechRows.find((r) => r.card_catalog_id === target.id);
+  if (!targetRow) return;
+
+  const candidateMechRows = mechRows.filter((r) => r.card_catalog_id !== target.id);
+  if (candidateMechRows.length === 0) return;
+
+  const { data: candidateCatalogRows, error: catalogError } = await supabase
+    .from("card_catalog")
+    .select(CATALOG_COLUMNS)
+    .in(
+      "id",
+      candidateMechRows.map((r) => r.card_catalog_id)
+    );
+  if (catalogError || !candidateCatalogRows) return;
+
+  const catalogById = new Map(
+    (candidateCatalogRows as SynergyCatalogCard[]).map((c) => [c.id, c])
+  );
+
+  const targetMech = mechRowToProfile(targetRow);
+
+  for (const row of candidateMechRows) {
+    const candidateCard = catalogById.get(row.card_catalog_id);
+    if (!candidateCard) continue;
+    const candidateMech = mechRowToProfile(row);
+
+    let edges: ReturnType<typeof computeSynergyEdges>;
+    try {
+      edges = computeSynergyEdges(target, targetMech, candidateCard, candidateMech);
+    } catch {
+      continue;
+    }
+
+    for (const edge of edges) {
+      if (!CONTEXTUAL_SUPPLEMENT_EDGE_TYPES.has(edge.edgeType)) continue;
+
+      const otherCardId =
+        edge.sourceCardId === target.id ? edge.targetCardId : edge.sourceCardId;
+      if (otherCardId !== row.card_catalog_id) continue;
+
+      const list = edgesByCandidateId.get(otherCardId) ?? [];
+      if (list.some((e) => e.edgeType === edge.edgeType)) continue;
+
+      list.push({
+        edgeType: edge.edgeType,
+        score: edge.score,
+        confidence: edge.confidence,
+        deterministicReason: edge.deterministicReason,
+      });
+      edgesByCandidateId.set(otherCardId, list);
+    }
+  }
+}
+
 /**
  * Builds (or returns the cached) synergy insight for one card, for
  * one viewing player. Returns `null` only when the target card
@@ -318,25 +488,21 @@ export async function getCardSynergyInsight(
     }
   }
 
+  // "Has the precompute graph actually been run for this card at
+  // all" must be judged from the PERSISTED graph only, before the
+  // contextual owned-card supplement below adds anything - otherwise
+  // a card the precompute script has never touched would still show
+  // as "analyzed" just because the viewer happens to own a card that
+  // GY/discard/banish-pairs with it.
   const graphComputed = edgesByCandidateId.size > 0;
-
-  const candidateIds = Array.from(edgesByCandidateId.keys());
-
-  let pool: SynergyCatalogCard[] = [];
-  if (candidateIds.length > 0) {
-    const { data: poolRows, error: poolError } = await supabase
-      .from("card_catalog")
-      .select(CATALOG_COLUMNS)
-      .in("id", candidateIds);
-
-    pool = poolError ? [] : ((poolRows ?? []) as SynergyCatalogCard[]);
-  }
 
   // Owned-copy counts for this player (ANY league, purely for the
   // "Owned x3" copy-count badge) - never another player's collection
   // data. This is deliberately separate from the league-scoped
   // ownership CLASSIFICATION below, which decides myCards/discover/
-  // tradeTargets membership.
+  // tradeTargets membership. Also doubles as the bounded candidate
+  // set for the contextual GY/discard/banish supplement below - this
+  // player's own collection, never the full catalog.
   const { data: ownedRows } = await supabase
     .from("card_instances")
     .select("card_catalog_id")
@@ -348,6 +514,34 @@ export async function getCardSynergyInsight(
       row.card_catalog_id,
       (ownedCounts.get(row.card_catalog_id) ?? 0) + 1
     );
+  }
+  const ownedCardIds = Array.from(ownedCounts.keys());
+
+  // See the OWNED_CANDIDATE_SUPPLEMENT comment block near the top of
+  // this file: restores gy_setup_for/discard_payoff_for/
+  // banish_payoff_for detection against this player's owned cards,
+  // now that those types are no longer persisted catalog-wide.
+  // Mutates edgesByCandidateId in place; a no-op if the player owns
+  // nothing yet or the target has no card_mechanics row.
+  if (ownedCardIds.length > 0) {
+    await supplementWithOwnedContextualEdges(
+      supabase,
+      target,
+      ownedCardIds,
+      edgesByCandidateId
+    );
+  }
+
+  const candidateIds = Array.from(edgesByCandidateId.keys());
+
+  let pool: SynergyCatalogCard[] = [];
+  if (candidateIds.length > 0) {
+    const { data: poolRows, error: poolError } = await supabase
+      .from("card_catalog")
+      .select(CATALOG_COLUMNS)
+      .in("id", candidateIds);
+
+    pool = poolError ? [] : ((poolRows ?? []) as SynergyCatalogCard[]);
   }
 
   const candidates = generateSynergyCandidates(target, pool, {

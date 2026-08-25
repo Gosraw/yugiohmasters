@@ -12,29 +12,53 @@
 // see the migration header (202608241000_card_synergy_graph.sql) for
 // the full list of tables this script is and is not allowed to write.
 //
-// PERFORMANCE - WHY THIS IS NOT A NAIVE O(n^2) DOUBLE LOOP
-// A brute-force "check every card against every other card" over
-// ~14k rows is ~98,000,000 unordered pairs - far too slow to be a
-// reasonable script even as a one-time precompute, and would also
-// bury the real, structural relationships in noise. Instead this
-// script computes each card's mechanic profile ONCE (O(n)), then
-// builds small indices (by exact name, by archetype, by mechanic-tag
-// bucket, by monster Attribute/Type) and only evaluates pairs that
-// an index lookup says COULD possibly relate:
-//   - searches / material_supply_named / requirement_satisfies: O(1)
-//     average-case name lookup per named reference, never a scan.
-//   - material_supply_constrained: only checked against the bucket of
-//     monsters matching the required Attribute/Type/Tuner, not the
-//     whole catalog.
-//   - gy_setup_for / discard_payoff_for / banish_payoff_for: only
-//     the (setup-bucket x payoff-bucket) cross product, each bucket
-//     typically a small fraction of the full catalog.
-//   - spell_trap_support: only the (archetype -> card ids) index
-//     lookup for the specific archetype a Spell/Trap's own text
-//     names, never every card sharing that archetype "just because".
-// This is the literal implementation of "precompute intelligence
-// once, query cheaply many times" applied to the PRECOMPUTE step
-// itself, not just to the request-time read path.
+// PERFORMANCE - WHY THIS IS NOT A NAIVE O(n^2) DOUBLE LOOP, AND WHY
+// IT NO LONGER MATERIALIZES EVERY TAG-PAIR RELATIONSHIP
+// (2026-08-25 redesign - see reports/synergy-graph/ for the run that
+// preceded this: an earlier version of this script's Pass C ran
+// crossProduct() over raw tag buckets - e.g. every "gy_setup" card
+// against every "gy_payoff" card - and each bucket can hold well
+// over a thousand cards out of ~14k. That is hundreds of thousands
+// to low-millions of pairs, and it is exactly what filled the
+// database to near-capacity with 1,461,604 rows in
+// card_synergy_edges before this redesign. That data has since been
+// deleted; this script must never reproduce it.)
+//
+// The fix is not a smarter cross product, it is to stop persisting
+// generic tag-pair relationships catalog-wide at all. What THIS
+// script still persists is only the high-value, specific, or
+// structurally-bounded categories:
+//   - searches / material_supply_named / requirement_satisfies (Pass
+//     A): O(1) average-case exact-name lookup per named reference in
+//     a card's own text. Sparse by construction - most cards name
+//     zero or one specific card.
+//   - material_supply_constrained (Pass B): only checked against the
+//     bucket of monsters matching the Attribute/Type/Tuner actually
+//     named in an Extra Deck card's material text, AND capped at
+//     MAX_CANDIDATES_PER_SOURCE - a constraint so broad it matches
+//     more than that many monsters (e.g. "any Attribute monster") is
+//     judged too generic to be worth materializing and is skipped
+//     for persistence (still true and computable, just not stored).
+//   - spell_trap_support (Pass C): only the (archetype -> card ids)
+//     index lookup for the specific archetype a Spell/Trap's own
+//     text names, also capped at MAX_CANDIDATES_PER_SOURCE.
+//
+// Generic tag-pair relationships - GY setup/payoff, discard
+// outlet/payoff, banish setup/payoff - are NOT generated or
+// persisted by this script at all anymore. They are real and useful,
+// but only when evaluated against a specific, small, contextual
+// candidate set (e.g. "this player's owned cards") rather than
+// materialized card-catalog-wide. That contextual evaluation lives
+// in src/lib/ai/card-synergy-context.ts, calls the exact same
+// computeSynergyEdges() from lib/synergy-engine.mjs this script
+// uses, and is bounded by the caller's own small candidate list
+// (typically tens of cards, never the full catalog) - see that
+// file's OWNED_CANDIDATE_SUPPLEMENT comment block.
+//
+// A hard SAFE_EDGE_CEILING check (below) additionally refuses to
+// write anything if the deduplicated edge count ever exceeds a sane
+// bound, as defense-in-depth against a future regression here
+// reintroducing unbounded growth.
 //
 // Usage:
 //   node scripts/compute-synergy-graph.mjs                (dry run, writes reports/ only)
@@ -104,6 +128,23 @@ const WRITE = args.includes("--write");
 const INCREMENTAL = args.includes("--incremental");
 const limitArgIndex = args.indexOf("--limit");
 const ROW_LIMIT = limitArgIndex >= 0 ? parseInt(args[limitArgIndex + 1], 10) : null;
+
+// A single source card's candidate set (Pass B, Pass C below) is
+// only materialized as persisted edges when it is this specific -
+// beyond this many candidates, the requirement is judged too generic
+// (e.g. "any DARK monster") to be a high-value persisted
+// relationship and is skipped for storage (it remains true and can
+// still be evaluated on demand, just not written to
+// card_synergy_edges).
+const MAX_CANDIDATES_PER_SOURCE = 40;
+
+// Defense-in-depth: refuse to write ANYTHING to the database if the
+// deduplicated edge count ever exceeds this, no matter how it got
+// there. The previous incident reached 1,461,604 rows; this ceiling
+// is two orders of magnitude below even a generous "lots of named
+// references" estimate for ~14k cards, so tripping it means a real
+// regression in the passes above, not normal growth.
+const SAFE_EDGE_CEILING = 100_000;
 
 if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
   console.error(
@@ -306,7 +347,10 @@ async function main() {
 
   // B) Constrained Extra Deck materials - only against the bucket of
   // monsters matching the specific Attribute/Type named in the
-  // material text, not the full catalog.
+  // material text, not the full catalog. Skipped entirely (not
+  // persisted) when the candidate set is too broad to count as a
+  // specific relationship - see MAX_CANDIDATES_PER_SOURCE.
+  let skippedTooGenericB = 0;
   for (const edCard of bucket.extraDeckWithMaterial) {
     const edMech = mechByCardId.get(edCard.id);
     if (edMech.materialSpecificity !== "constrained") continue;
@@ -319,32 +363,26 @@ async function main() {
     for (const [type, list] of monstersByType) {
       if (text.includes(type)) for (const c of list) candidateSet.set(c.id, c);
     }
+    candidateSet.delete(edCard.id);
+
+    if (candidateSet.size > MAX_CANDIDATES_PER_SOURCE) {
+      skippedTooGenericB += 1;
+      continue;
+    }
 
     for (const candidate of candidateSet.values()) {
-      if (candidate.id === edCard.id) continue;
       addEdges(
         computeSynergyEdges(edCard, edMech, candidate, mechByCardId.get(candidate.id))
       );
     }
   }
 
-  // C) Directional tag-pair edges - bounded cross products of small
-  // buckets, never the full catalog.
-  const crossProduct = (listA, listB) => {
-    for (const a of listA) {
-      for (const b of listB) {
-        if (a.id === b.id) continue;
-        addEdges(computeSynergyEdges(a, mechByCardId.get(a.id), b, mechByCardId.get(b.id)));
-      }
-    }
-  };
-  crossProduct(bucket.gySetup, bucket.gyPayoff);
-  crossProduct(bucket.discardOutlet, bucket.gyPayoff);
-  crossProduct(bucket.banishSetup, bucket.banishPayoff);
-
-  // D) spell_trap_support - only against the specific archetype a
+  // C) spell_trap_support - only against the specific archetype a
   // Spell/Trap's own text functionally names, via the archetype
   // index, never a scan of every card sharing that archetype tag.
+  // Also capped - an archetype bucket bigger than
+  // MAX_CANDIDATES_PER_SOURCE is skipped for persistence.
+  let skippedTooGenericC = 0;
   for (const stCard of bucket.spellsTraps) {
     const stMech = mechByCardId.get(stCard.id);
     for (const ref of stMech.evidence.classifiedRefs ?? []) {
@@ -357,6 +395,10 @@ async function main() {
       }
       const candidates = byArchetype.get(ref.term.trim().toLowerCase());
       if (!candidates) continue;
+      if (candidates.length > MAX_CANDIDATES_PER_SOURCE) {
+        skippedTooGenericC += 1;
+        continue;
+      }
       for (const candidate of candidates) {
         if (candidate.id === stCard.id) continue;
         addEdges(
@@ -366,8 +408,35 @@ async function main() {
     }
   }
 
+  // NOTE: what used to be "Pass C" here - crossProduct(gySetup,
+  // gyPayoff), crossProduct(discardOutlet, gyPayoff),
+  // crossProduct(banishSetup, banishPayoff) - is INTENTIONALLY GONE.
+  // Those bucket-wide cross products are the confirmed root cause of
+  // the 1,461,604-row incident (see the file header). GY setup/
+  // payoff, discard outlet/payoff, and banish setup/payoff are still
+  // fully supported - just evaluated contextually, on demand,
+  // against a small candidate set (e.g. a player's owned cards) in
+  // src/lib/ai/card-synergy-context.ts, never materialized here.
+
   const edges = Array.from(edgeMap.values());
   console.log(`🔗 ${edges.length} deduplicated typed edges generated.`);
+  if (skippedTooGenericB > 0 || skippedTooGenericC > 0) {
+    console.log(
+      `⏭️  Skipped persisting ${skippedTooGenericB} constrained-material source(s) and ${skippedTooGenericC} spell/trap-support reference(s) whose candidate set exceeded MAX_CANDIDATES_PER_SOURCE=${MAX_CANDIDATES_PER_SOURCE} (too generic to persist - still computable contextually).`
+    );
+  }
+
+  if (edges.length > SAFE_EDGE_CEILING) {
+    console.error(
+      `\n❌ SAFETY CEILING TRIPPED: ${edges.length} deduplicated edges exceeds SAFE_EDGE_CEILING=${SAFE_EDGE_CEILING}.\n` +
+        `   This should not happen given Passes A/B/C above - refusing to write anything to the\n` +
+        `   database. Investigate which pass produced this many edges (see the per-pass counts\n` +
+        `   logged above) before re-running with --write. Nothing has been written.`
+    );
+    if (WRITE) {
+      process.exit(1);
+    }
+  }
 
   const edgeTypeCounts = {};
   const confidenceCounts = { high: 0, medium: 0, low: 0 };

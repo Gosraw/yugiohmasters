@@ -58,9 +58,15 @@ import {
   scoreCard,
   proposeRarity,
   recommendOppressiveness,
+  isWritableForValuation,
   VALUATION_ENGINE_VERSION,
   RARITY_ORDER,
 } from "../lib/valuation-engine.mjs";
+import {
+  SEASON_1_CURRENT_RELEASE_STAGE,
+  computeSeason1ProvisionalEligibility,
+  computeFormatEligibleProxy,
+} from "../lib/format-eligibility.mjs";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SECRET_KEY =
@@ -84,84 +90,29 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
 });
 
 const SELECT_COLUMNS =
-  "id, external_card_id, name, card_type, frame_type, monster_type, race, attribute, level, rank, link_rating, atk, def, description, archetype, game_rarity, master_duel_status, valuation_manually_overridden, release_date";
+  "id, external_card_id, name, card_type, frame_type, monster_type, race, attribute, level, rank, link_rating, atk, def, description, archetype, game_rarity, master_duel_status, valuation_manually_overridden, release_date, release_stage";
 
 // ---------------------------------------------------------
-// PROVISIONAL Season 1 (2020 pool) eligibility, computed
-// client-side from this same SELECT so the JSON/CSV export can
-// report a real, non-guessed 2020-pool distribution alongside the
-// full-catalog one. This DELIBERATELY mirrors, field-for-field,
-// the live is_duelist_circle_format_eligible() predicate
-// (supabase/migrations/202608231500_duelist_circle_format_engine.sql)
-// as configured by the seeded 'season_1' format row in that same
-// migration (release_cutoff 2020-12-31; allow_illusion=false,
-// allow_synchro=false, allow_xyz=true, allow_link=false,
-// allow_pendulum=false, allow_fusion=true) - it is NOT a guess at
-// what that predicate does, it is a direct JS port of it, so this
-// script and the live SQL function cannot silently diverge as long
-// as this comment is kept in sync with that migration.
-//
-// Two things this can NEVER do that the real SQL function does:
-//   - format_card_overrides (per-card manual include/exclude) -
-//     this script has no such table to read, so a card that would
-//     be manually overridden in the live format is NOT reflected
-//     here. This is a report-only proxy, never a substitute for
-//     actually calling is_duelist_circle_format_eligible() live.
-//   - release_stage / current_release_stage gating - deliberately
-//     omitted here, because release_stage is assigned BY this same
-//     audit's oppressiveness step (recommendOppressiveness) and
-//     rarity/pool-size analysis should not silently exclude cards
-//     the audit itself is the one proposing a stage for.
+// PROVISIONAL Season 1 (2020 pool) eligibility + the closer
+// FORMAT_ELIGIBLE_PROXY (season1ProvisionalEligible AND
+// release_stage gating) now live in lib/format-eligibility.mjs
+// (extracted 2026-08-25 so this logic is unit-testable from
+// lib/valuation-engine.regression.test.mjs without pulling in this
+// script's Supabase client construction). See that module's header
+// for exactly what these proxies can and cannot account for
+// relative to the live is_duelist_circle_format_eligible() SQL
+// function - in short: no format_card_overrides support either way,
+// and FORMAT_ELIGIBLE_PROXY is the one that also gates on
+// release_stage, matching the live predicate; the older
+// season1ProvisionalEligible-only proxy does not, and materially
+// over-counts the true eligible pool (~9.4k vs. the true ~8.95k) -
+// treat FORMAT_ELIGIBLE_PROXY as the one to calibrate against.
 // Absent card_type/monster_type/race/release_date on OLDER export
 // files (pre-dating this field's addition) means this field will
 // be undefined for every row in that file - callers must treat a
 // missing season1_provisional_eligible field as "unknown", never
 // as "false".
 // ---------------------------------------------------------
-const SEASON_1_RELEASE_CUTOFF = "2020-12-31";
-const SEASON_1_ALLOW = {
-  illusion: false,
-  synchro: false,
-  xyz: true,
-  link: false,
-  pendulum: false,
-  fusion: true,
-};
-
-function isMasterDuelOfferable(status) {
-  return ["unlimited", "semi_limited", "limited"].includes(status ?? "");
-}
-
-function computeSeason1ProvisionalEligibility(card) {
-  if (!isMasterDuelOfferable(card.master_duel_status)) return false;
-
-  const cardType = (card.card_type ?? "").toLowerCase();
-  const frameType = (card.frame_type ?? "").toLowerCase();
-  const race = card.race ?? "";
-  const monsterType = (card.monster_type ?? "").toLowerCase();
-
-  const isSynchro = cardType.includes("synchro") || frameType.includes("synchro");
-  const isXyz = cardType.includes("xyz") || frameType.includes("xyz");
-  const isLink = cardType.includes("link") || frameType.includes("link");
-  const isPendulum = cardType.includes("pendulum") || frameType.includes("pendulum");
-  const isFusion = cardType.includes("fusion") || frameType.includes("fusion");
-  const isIllusion = race === "Illusion" || monsterType.includes("illusion");
-
-  if (isSynchro && !SEASON_1_ALLOW.synchro) return false;
-  if (isXyz && !SEASON_1_ALLOW.xyz) return false;
-  if (isLink && !SEASON_1_ALLOW.link) return false;
-  if (isPendulum && !SEASON_1_ALLOW.pendulum) return false;
-  if (isFusion && !SEASON_1_ALLOW.fusion) return false;
-  if (isIllusion && !SEASON_1_ALLOW.illusion) return false;
-
-  if (card.release_date != null && card.release_date > SEASON_1_RELEASE_CUTOFF) {
-    return false;
-  }
-  // release_date == null (unknown) is NEVER excluded on cutoff
-  // grounds alone, matching the live SQL predicate exactly.
-
-  return true;
-}
 
 const RARITY_RANK = {
   Normal: 0,
@@ -213,7 +164,8 @@ function scoreOneCard(card) {
     scores.dependency
   );
   const season1ProvisionalEligible = computeSeason1ProvisionalEligibility(card);
-  return { signals, scores, proposedRarity, opp, season1ProvisionalEligible };
+  const formatEligibleProxy = computeFormatEligibleProxy(card, season1ProvisionalEligible);
+  return { signals, scores, proposedRarity, opp, season1ProvisionalEligible, formatEligibleProxy };
 }
 
 function csvEscape(value) {
@@ -256,8 +208,8 @@ async function main() {
 
   const results = [];
   for (const card of cards) {
-    const { signals, scores, proposedRarity, opp, season1ProvisionalEligible } = scoreOneCard(card);
-    results.push({ card, signals, scores, proposedRarity, opp, season1ProvisionalEligible });
+    const { signals, scores, proposedRarity, opp, season1ProvisionalEligible, formatEligibleProxy } = scoreOneCard(card);
+    results.push({ card, signals, scores, proposedRarity, opp, season1ProvisionalEligible, formatEligibleProxy });
   }
 
   // ---- Rarity distribution before/after (full catalog) ----
@@ -276,6 +228,27 @@ async function main() {
   const afterSeason1 = {};
   for (const r of season1Results) {
     afterSeason1[r.proposedRarity] = (afterSeason1[r.proposedRarity] ?? 0) + 1;
+  }
+
+  // ---- Rarity distribution, FORMAT_ELIGIBLE_PROXY pool - the
+  //      closest offline approximation to the live format_eligible =
+  //      true boolean (season1ProvisionalEligible AND release_stage
+  //      === current_release_stage). See computeFormatEligibleProxy
+  //      above for exactly what this still cannot account for
+  //      (format_card_overrides). This is the population any
+  //      Legendary/rarity calibration decision should be checked
+  //      against - not the older PROVISIONAL 2020 SEASON 1 POOL
+  //      section, which omits the release_stage gate entirely. ----
+  const formatEligibleResults = results.filter((r) => r.formatEligibleProxy);
+  const afterFormatEligible = {};
+  for (const r of formatEligibleResults) {
+    afterFormatEligible[r.proposedRarity] = (afterFormatEligible[r.proposedRarity] ?? 0) + 1;
+  }
+  const legendaryByType = {};
+  for (const r of formatEligibleResults) {
+    if (r.proposedRarity !== "Legendary") continue;
+    const t = r.card.card_type ?? "(unknown)";
+    legendaryByType[t] = (legendaryByType[t] ?? 0) + 1;
   }
 
   // ---- Oppressiveness tier distribution ----
@@ -335,7 +308,7 @@ async function main() {
       )
   );
 
-  const manuallyLocked = results.filter((r) => r.card.valuation_manually_overridden);
+  const manuallyLocked = results.filter((r) => !isWritableForValuation(r.card));
 
   // ---- False-positive / false-negative archetype dependency
   //      review - directly answers the exact failure mode the
@@ -396,6 +369,7 @@ async function main() {
     "master_duel_status",
     "release_date",
     "season1_provisional_eligible",
+    "format_eligible_proxy",
     "archetype",
     "archetype_thematic_only",
     "reason",
@@ -420,6 +394,7 @@ async function main() {
       r.card.master_duel_status,
       r.card.release_date ?? "",
       r.season1ProvisionalEligible,
+      r.formatEligibleProxy,
       r.card.archetype ?? "",
       r.card.archetype ? String(r.signals.archetypeIsThematicOnly) : "",
       r.scores.reason,
@@ -455,7 +430,9 @@ async function main() {
         monster_type: r.card.monster_type,
         race: r.card.race,
         release_date: r.card.release_date,
+        release_stage: r.card.release_stage,
         season1_provisional_eligible: r.season1ProvisionalEligible,
+        format_eligible_proxy: r.formatEligibleProxy,
       })),
       null,
       2
@@ -566,6 +543,27 @@ async function main() {
         }% |`
     ),
     ``,
+    `## Rarity distribution - FORMAT_ELIGIBLE_PROXY pool (${formatEligibleResults.length} of ${results.length} cards)`,
+    ``,
+    `Closest offline approximation to the LIVE \`format_eligible = true\` boolean from is_duelist_circle_format_eligible() (season1ProvisionalEligible AND release_stage === ${SEASON_1_CURRENT_RELEASE_STAGE}). Still does not account for format_card_overrides (per-card manual include/exclude) - never a substitute for the live SQL function. This is the population any Legendary/rarity calibration should be evaluated against, superseding the PROVISIONAL 2020 SEASON 1 POOL section above (which omits the release_stage gate and over-counts the true eligible pool by several hundred cards).`,
+    ``,
+    "| Rarity | Count | % of format-eligible pool |",
+    "|---|---|---|",
+    ...RARITY_ORDER.map(
+      (k) =>
+        `| ${k} | ${afterFormatEligible[k] ?? 0} | ${
+          formatEligibleResults.length ? (((afterFormatEligible[k] ?? 0) / formatEligibleResults.length) * 100).toFixed(2) : "0.00"
+        }% |`
+    ),
+    ``,
+    `### Legendary (format-eligible pool) by card_type`,
+    ``,
+    "| card_type | Count |",
+    "|---|---|",
+    ...Object.entries(legendaryByType)
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `| ${k} | ${v} |`),
+    ``,
     `## Oppressiveness tier distribution`,
     ``,
     `Green (starting-pool safe): ${oppTiers.green} | Orange (manual review): ${oppTiers.orange} | Red (recommend later stage): ${oppTiers.red}`,
@@ -624,6 +622,8 @@ async function main() {
   console.log(`\nBEFORE distribution:`, before);
   console.log(`PROPOSED distribution (full catalog):`, after);
   console.log(`PROPOSED distribution (provisional 2020 Season 1 pool, ${season1Results.length} cards):`, afterSeason1);
+  console.log(`PROPOSED distribution (format_eligible_proxy pool, ${formatEligibleResults.length} cards - closest offline approximation of live format_eligible):`, afterFormatEligible);
+  console.log(`Legendary (format_eligible_proxy pool) by card_type:`, legendaryByType);
   console.log(`Oppressiveness tiers:`, oppTiers);
   console.log(
     `Archetype tags found thematic-only: ${archetypeThematicOnly.length} | functionally load-bearing: ${archetypeFunctionallyLoadBearing.length}`
@@ -640,7 +640,7 @@ async function main() {
   let written = 0;
   let skippedOverride = 0;
   const BATCH = 200;
-  const writable = results.filter((r) => !r.card.valuation_manually_overridden);
+  const writable = results.filter((r) => isWritableForValuation(r.card));
   skippedOverride = results.length - writable.length;
 
   for (let i = 0; i < writable.length; i += BATCH) {

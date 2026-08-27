@@ -1,11 +1,13 @@
 import Link from "next/link";
 
 import {
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   Clock3,
   Coins,
   Crown,
+  Flame,
   Gift,
   Home,
   Medal,
@@ -26,6 +28,7 @@ import {
 import {
   addCompetitionPlayer,
   addCompetitionPlayerV2,
+  detectCompetitionTiebreaksV2,
   distributeCompetitionRewards,
   distributeCompetitionRewardsV2,
   finalizeCompetitionV2,
@@ -33,6 +36,7 @@ import {
   removeCompetitionPlayer,
   removeCompetitionPlayerV2,
   startCompetition,
+  startCompetitionTiebreak,
   startCompetitionV2,
 } from "@/app/actions/competitions";
 
@@ -193,6 +197,41 @@ type CompetitionMatch = {
 
   player_one_duel_wins: number;
   player_two_duel_wins: number;
+
+  // Track 3 (2026-08-27): set only for a deciding/sudden-death match
+  // spawned by start_competition_tiebreak - these are excluded from
+  // the normal round-grouped display below and rendered inside the
+  // Tiebreak panel instead.
+  tiebreak_id:
+    | string
+    | null;
+};
+
+// Track 3 (2026-08-27): one row per full tie (2 or 3 players sharing
+// an identical points/head-to-head/duel-differential/duel-wins
+// tuple) detected by detect_and_create_competition_tiebreaks - see
+// 202608271000_competition_tiebreaks.sql for the full state machine.
+type CompetitionTiebreak = {
+  id: string;
+
+  tied_profile_ids: string[];
+
+  tie_size: number;
+
+  status:
+    | "pending"
+    | "in_progress"
+    | "resolved";
+
+  streak_holder_id:
+    | string
+    | null;
+
+  streak_count: number;
+
+  resolved_order:
+    | string[]
+    | null;
 };
 
 // =========================================================
@@ -403,6 +442,10 @@ export default async function CompetitionDetailPage({
       data: matchData,
       error: matchError,
     },
+    {
+      data: tiebreakData,
+      error: tiebreakError,
+    },
   ] = await Promise.all([
     supabase
       .from(
@@ -530,7 +573,8 @@ export default async function CompetitionDetailPage({
           meeting_number,
           match_format,
           player_one_duel_wins,
-          player_two_duel_wins
+          player_two_duel_wins,
+          tiebreak_id
         `
       )
       .eq(
@@ -544,6 +588,34 @@ export default async function CompetitionDetailPage({
             true,
         }
       ),
+
+    // Track 3 (2026-08-27): V1 has no tiebreak concept at all, so
+    // this stays a resolved empty array for V1 rather than querying -
+    // same pattern as the standings/final-results slots above.
+    isV2
+      ? supabase
+          .from(
+            "competition_tiebreaks"
+          )
+          .select(
+            `
+              id,
+              tied_profile_ids,
+              tie_size,
+              status,
+              streak_holder_id,
+              streak_count,
+              resolved_order
+            `
+          )
+          .eq(
+            "competition_id",
+            competition.id
+          )
+      : Promise.resolve({
+          data: [] as CompetitionTiebreak[],
+          error: null,
+        }),
   ]);
 
   if (
@@ -753,6 +825,39 @@ export default async function CompetitionDetailPage({
         match.status !==
         "completed"
     );
+
+  // ======================================================
+  // TIEBREAKS (Track 3, 2026-08-27)
+  // ======================================================
+
+  if (tiebreakError) {
+    throw new Error(
+      tiebreakError.message
+    );
+  }
+
+  const tiebreaks =
+    (tiebreakData ??
+      []) as CompetitionTiebreak[];
+
+  const unresolvedTiebreaks =
+    tiebreaks.filter(
+      (tiebreak) =>
+        tiebreak.status !==
+        "resolved"
+    );
+
+  function tiebreakOpenMatch(
+    tiebreak: CompetitionTiebreak
+  ) {
+    return matches.find(
+      (match) =>
+        match.tiebreak_id ===
+          tiebreak.id &&
+        match.status !==
+          "completed"
+    );
+  }
 
   // ======================================================
   // UI
@@ -1223,6 +1328,226 @@ export default async function CompetitionDetailPage({
           </section>
         )}
 
+      {/* TIEBREAKS (Track 3, 2026-08-27)
+          Only ever populated for V2 competitions. A full tie (2 or 3
+          players sharing an identical points/head-to-head/duel-
+          differential/duel-wins line) has to be resolved with a real
+          deciding match before the competition can be finalized -
+          finalize_competition_v2 raises otherwise. This panel is the
+          only place an admin can see that state and drive it. */}
+
+      {isV2 &&
+        tiebreaks.length >
+          0 && (
+          <section className="panel mt-6 overflow-hidden border-amber-300/20">
+            <div className="border-b border-white/[0.06] p-5">
+              <div className="flex items-center gap-2">
+                <Flame
+                  size={18}
+                  className="text-amber-300"
+                />
+
+                <h2 className="text-xl font-black">
+                  Tiebreaks
+                </h2>
+              </div>
+
+              <p className="mt-1 text-xs text-zinc-600">
+                {unresolvedTiebreaks.length >
+                0
+                  ? "The competition cannot be finalized until every tiebreak below is resolved."
+                  : "All tiebreaks are resolved - final placement reflects the deciding match results."}
+              </p>
+            </div>
+
+            <div className="divide-y divide-white/[0.05]">
+              {tiebreaks.map(
+                (tiebreak) => {
+                  const openMatch =
+                    tiebreakOpenMatch(
+                      tiebreak
+                    );
+
+                  const tiedNames =
+                    tiebreak.tied_profile_ids.map(
+                      (profileId) =>
+                        playerName(
+                          profileMap.get(
+                            profileId
+                          )
+                        )
+                    );
+
+                  return (
+                    <div
+                      key={
+                        tiebreak.id
+                      }
+                      className="p-5"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        {tiebreak.status !==
+                          "resolved" && (
+                          <AlertTriangle
+                            size={15}
+                            className="text-amber-300"
+                          />
+                        )}
+
+                        <p className="font-black text-zinc-200">
+                          {tiedNames.join(
+                            " · "
+                          )}
+                        </p>
+
+                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-400">
+                          {tiebreak.tie_size}-way tie
+                        </span>
+
+                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-400">
+                          {tiebreak.status ===
+                          "resolved"
+                            ? "Resolved"
+                            : tiebreak.status ===
+                              "in_progress"
+                            ? "In progress"
+                            : "Awaiting deciding match"}
+                        </span>
+                      </div>
+
+                      {tiebreak.tie_size ===
+                        3 &&
+                        tiebreak.status !==
+                          "resolved" &&
+                        tiebreak.streak_holder_id && (
+                          <p className="mt-2 text-xs text-zinc-500">
+                            Sudden death: {playerName(
+                              profileMap.get(
+                                tiebreak.streak_holder_id
+                              )
+                            )}{" "}
+                            has {
+                              tiebreak.streak_count
+                            }{" "}
+                            consecutive win
+                            {tiebreak.streak_count ===
+                            1
+                              ? ""
+                              : "s"}{" "}
+                            - one more resolves the tie.
+                          </p>
+                        )}
+
+                      {tiebreak.status ===
+                        "resolved" &&
+                        tiebreak.resolved_order && (
+                          <p className="mt-2 text-xs text-zinc-500">
+                            Final order:{" "}
+                            {tiebreak.resolved_order
+                              .map(
+                                (profileId) =>
+                                  playerName(
+                                    profileMap.get(
+                                      profileId
+                                    )
+                                  )
+                              )
+                              .join(
+                                " > "
+                              )}
+                          </p>
+                        )}
+
+                      {isAdmin &&
+                        tiebreak.status !==
+                          "resolved" &&
+                        openMatch && (
+                          <div className="mt-3">
+                            <p className="text-xs font-black text-cyan-200">
+                              Deciding match: {playerName(
+                                profileMap.get(
+                                  openMatch.player_one_id
+                                )
+                              )}{" "}
+                              vs{" "}
+                              {playerName(
+                                profileMap.get(
+                                  openMatch.player_two_id
+                                )
+                              )}
+                            </p>
+
+                            <CompetitionMatchResultFormV2
+                              matchId={
+                                openMatch.id
+                              }
+                              competitionId={
+                                competition.id
+                              }
+                              matchFormat={
+                                openMatch.match_format
+                              }
+                              playerOneLabel={playerName(
+                                profileMap.get(
+                                  openMatch.player_one_id
+                                )
+                              )}
+                              playerTwoLabel={playerName(
+                                profileMap.get(
+                                  openMatch.player_two_id
+                                )
+                              )}
+                              mode="tiebreak"
+                            />
+                          </div>
+                        )}
+
+                      {isAdmin &&
+                        tiebreak.status !==
+                          "resolved" &&
+                        !openMatch && (
+                          <form
+                            action={
+                              startCompetitionTiebreak
+                            }
+                            className="mt-3"
+                          >
+                            <input
+                              type="hidden"
+                              name="tiebreak_id"
+                              value={
+                                tiebreak.id
+                              }
+                            />
+
+                            <input
+                              type="hidden"
+                              name="competition_id"
+                              value={
+                                competition.id
+                              }
+                            />
+
+                            <SubmitButton
+                              pendingLabel="Starting..."
+                              className="inline-flex items-center gap-2 rounded-lg border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs font-black text-amber-200"
+                            >
+                              <Swords
+                                size={13}
+                              />
+
+                              Start Deciding Match
+                            </SubmitButton>
+                          </form>
+                        )}
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          </section>
+        )}
+
       {/* MATCHES - V1 (flat list, unchanged) */}
 
       {competition.status !==
@@ -1331,6 +1656,13 @@ export default async function CompetitionDetailPage({
           >();
 
           for (const match of matches) {
+            // Tiebreak deciders (Track 3) have no round_number and
+            // are rendered in their own panel below, not grouped in
+            // with the regular round-robin schedule.
+            if (match.tiebreak_id) {
+              continue;
+            }
+
             const roundKey =
               match.round_number ?? 0;
 
@@ -1585,7 +1917,37 @@ export default async function CompetitionDetailPage({
 
             <p className="mt-2 text-sm leading-6 text-zinc-500">
               Finalization freezes the standings. Every linked competition match must be completed first.
+              {isV2 &&
+                " Any full tie for placement also needs its deciding match(es) played first - finalizing will refuse otherwise."}
             </p>
+
+            {isV2 && (
+              <form
+                action={
+                  detectCompetitionTiebreaksV2
+                }
+                className="mt-4"
+              >
+                <input
+                  type="hidden"
+                  name="competition_id"
+                  value={
+                    competition.id
+                  }
+                />
+
+                <SubmitButton
+                  pendingLabel="Checking..."
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-black text-zinc-300"
+                >
+                  <Flame
+                    size={13}
+                  />
+
+                  Check for Ties
+                </SubmitButton>
+              </form>
+            )}
 
             <form
               action={
@@ -1616,10 +1978,18 @@ export default async function CompetitionDetailPage({
 
       {/* REWARD DISTRIBUTION */}
 
+      {/* FIXED (2026-08-27): this section used to disappear forever
+          once rewards_distributed_at was set, even if the underlying
+          RPC had granted nothing (empty competition_reward_rules -
+          see distribute_competition_rewards_v2's own fix header in
+          202608270930_competition_reward_and_match_dp_fixes.sql) -
+          there was no way for an admin to ever retry. The RPC is
+          idempotent (skips any profile that already has a 'granted'
+          row), so it is always safe to show and re-run this, whether
+          or not a previous attempt already ran. */}
       {isAdmin &&
         competition.status ===
-          "completed" &&
-        !competition.rewards_distributed_at && (
+          "completed" && (
           <section className="relative mt-6 overflow-hidden rounded-2xl border border-violet-300/20 bg-violet-300/[0.035] p-6">
             <Gift
               size={42}
@@ -1631,7 +2001,9 @@ export default async function CompetitionDetailPage({
             </h2>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
-              Distribute the configured DP and pack vouchers. This operation can only succeed once.
+              {competition.rewards_distributed_at
+                ? "Distribute again to grant rewards to anyone who doesn't have one yet (e.g. after a result correction changed their placement). Anyone already rewarded is left untouched."
+                : "Distribute the configured DP and pack vouchers. Safe to run more than once - already-rewarded players are never double-granted."}
             </p>
 
             <form
@@ -1651,7 +2023,7 @@ export default async function CompetitionDetailPage({
               />
 
               <ConfirmSubmitButton
-                confirmMessage="Distribute rewards now? This can only succeed once."
+                confirmMessage="Distribute rewards now? Already-rewarded players are never double-granted."
                 pendingLabel="Distributing..."
                 className="primary-button inline-flex items-center gap-2"
               >
@@ -1659,7 +2031,9 @@ export default async function CompetitionDetailPage({
                   size={15}
                 />
 
-                Distribute Rewards
+                {competition.rewards_distributed_at
+                  ? "Distribute Remaining Rewards"
+                  : "Distribute Rewards"}
               </ConfirmSubmitButton>
             </form>
           </section>
@@ -1679,7 +2053,7 @@ export default async function CompetitionDetailPage({
               </p>
 
               <p className="mt-1 text-xs text-zinc-600">
-                DP and vouchers have been credited to the final standings.
+                DP and vouchers have been credited to the final standings. Check each player&apos;s duel point history for the exact amounts.
               </p>
             </div>
           </div>

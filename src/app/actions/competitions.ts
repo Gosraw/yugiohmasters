@@ -815,6 +815,154 @@ export async function finalizeCompetitionV2(
 }
 
 // =========================================================
+// V2 - TIEBREAKS (2026-08-27, Track 3)
+//
+// Three thin wrappers around the RPCs added in
+// 202608271000_competition_tiebreaks.sql, following the exact same
+// FormData -> requireUser() -> supabase.rpc() -> throw-on-error ->
+// revalidatePath() pattern as every other V2 action above. All three
+// RPCs are admin-gated server-side (SECURITY DEFINER, checks the
+// caller is a league admin) - these wrappers add no extra
+// authorization of their own, matching e.g. finalizeCompetitionV2.
+// =========================================================
+
+export async function detectCompetitionTiebreaksV2(
+  formData: FormData
+) {
+  const {
+    supabase,
+  } = await requireUser();
+
+  const competitionId =
+    requiredString(
+      formData,
+      "competition_id"
+    );
+
+  const {
+    error,
+  } = await supabase.rpc(
+    "detect_and_create_competition_tiebreaks",
+    {
+      target_competition_id:
+        competitionId,
+    }
+  );
+
+  if (error) {
+    throw new Error(
+      error.message
+    );
+  }
+
+  revalidatePath(
+    `/competitions/${competitionId}`
+  );
+}
+
+export async function startCompetitionTiebreak(
+  formData: FormData
+) {
+  const {
+    supabase,
+  } = await requireUser();
+
+  const tiebreakId =
+    requiredString(
+      formData,
+      "tiebreak_id"
+    );
+
+  const competitionId =
+    requiredString(
+      formData,
+      "competition_id"
+    );
+
+  const {
+    error,
+  } = await supabase.rpc(
+    "start_competition_tiebreak",
+    {
+      target_tiebreak_id:
+        tiebreakId,
+    }
+  );
+
+  if (error) {
+    throw new Error(
+      error.message
+    );
+  }
+
+  revalidatePath(
+    `/competitions/${competitionId}`
+  );
+}
+
+export async function submitCompetitionTiebreakMatchResult(
+  formData: FormData
+) {
+  const {
+    supabase,
+  } = await requireUser();
+
+  const matchId =
+    requiredString(
+      formData,
+      "match_id"
+    );
+
+  const competitionId =
+    requiredString(
+      formData,
+      "competition_id"
+    );
+
+  const playerOneWins =
+    Number.parseInt(
+      requiredString(
+        formData,
+        "player_one_duel_wins"
+      ),
+      10
+    );
+
+  const playerTwoWins =
+    Number.parseInt(
+      requiredString(
+        formData,
+        "player_two_duel_wins"
+      ),
+      10
+    );
+
+  const {
+    error,
+  } = await supabase.rpc(
+    "submit_competition_tiebreak_match_result",
+    {
+      target_match_id:
+        matchId,
+      target_player_one_duel_wins:
+        playerOneWins,
+      target_player_two_duel_wins:
+        playerTwoWins,
+    }
+  );
+
+  if (error) {
+    throw new Error(
+      error.message
+    );
+  }
+
+  revalidatePath(
+    `/competitions/${competitionId}`
+  );
+}
+
+// =========================================================
 // V2 - DISTRIBUTE REWARDS
 // =========================================================
 
@@ -831,7 +979,17 @@ export async function distributeCompetitionRewardsV2(
       "competition_id"
     );
 
+  // FIXED (2026-08-27): distribute_competition_rewards_v2 now
+  // returns the number of NEW grants it actually created (was `void`
+  // - see that function's fix header in
+  // 202608270930_competition_reward_and_match_dp_fixes.sql) instead
+  // of only ever reporting success via a non-null error. `data` is
+  // that count - not yet surfaced in the UI (the page's own copy was
+  // updated to stop implying "distributed" always means "something
+  // was granted"), but captured here rather than discarded so a
+  // future toast/inline count is a small addition, not a rewrite.
   const {
+    data: grantsCreated,
     error,
   } = await supabase.rpc(
     "distribute_competition_rewards_v2",
@@ -844,6 +1002,12 @@ export async function distributeCompetitionRewardsV2(
   if (error) {
     throw new Error(
       error.message
+    );
+  }
+
+  if (typeof grantsCreated === "number" && grantsCreated === 0) {
+    console.warn(
+      `[competitions] distribute_competition_rewards_v2 granted 0 new rewards for competition ${competitionId} - either everyone eligible was already rewarded, or nobody has a matching reward rule for their placement.`
     );
   }
 

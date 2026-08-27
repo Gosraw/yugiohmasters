@@ -12,6 +12,7 @@ import {
 import {
   correctCompetitionMatchResultV2,
   submitCompetitionMatchResultV2,
+  submitCompetitionTiebreakMatchResult,
 } from "@/app/actions/competitions";
 
 import {
@@ -29,6 +30,16 @@ import {
 // mode="submit" for an open match's first result.
 // mode="correct" for fixing an already-completed match - adds a
 // required reason field and calls the correction action instead.
+// mode="tiebreak" for an open tiebreak match (Track 3, 2026-08-27) -
+// same score-preset UI, calls submitCompetitionTiebreakMatchResult
+// instead. No reason field: a tiebreak match is always a first
+// submission, never a correction (correcting a resolved tiebreak's
+// match is a documented out-of-scope edge case - see the header
+// comment in 202608271000_competition_tiebreaks.sql). Reusing this
+// component (rather than a parallel copy) keeps the single-duel/
+// best-of-3 preset logic and score validation UI in exactly one
+// place, which is also why the server functions share their score
+// validation code with submit_competition_match_result_v2.
 // =========================================================
 
 type CompetitionMatchResultFormV2Props = {
@@ -37,7 +48,7 @@ type CompetitionMatchResultFormV2Props = {
   matchFormat: "single_duel" | "best_of_3";
   playerOneLabel: string;
   playerTwoLabel: string;
-  mode: "submit" | "correct";
+  mode: "submit" | "correct" | "tiebreak";
 };
 
 const BO3_PRESETS: {
@@ -75,7 +86,9 @@ export function CompetitionMatchResultFormV2({
   const action =
     mode === "correct"
       ? correctCompetitionMatchResultV2
-      : submitCompetitionMatchResultV2;
+      : mode === "tiebreak"
+        ? submitCompetitionTiebreakMatchResult
+        : submitCompetitionMatchResultV2;
 
   if (mode === "correct" && !showReason) {
     return (
@@ -191,7 +204,11 @@ export function CompetitionMatchResultFormV2({
         className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-300/25 bg-emerald-300/10 px-3 py-2 text-xs font-black text-emerald-200 disabled:opacity-40"
       >
         <CheckCircle2 size={14} />
-        {mode === "correct" ? "Save Correction" : "Save Result"}
+        {mode === "correct"
+          ? "Save Correction"
+          : mode === "tiebreak"
+            ? "Save Tiebreak Result"
+            : "Save Result"}
       </SubmitButton>
     </form>
   );

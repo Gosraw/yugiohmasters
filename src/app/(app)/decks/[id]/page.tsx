@@ -170,6 +170,14 @@ type CardCatalogItem = {
     | string
     | null;
 
+  // Track 5 (2026-08-27): real Monster Type/Race from card_catalog
+  // (indexed - see card_catalog_race_idx). See src/lib/card-race.ts
+  // for the fixed filter vocabulary this feeds in
+  // DeckCollectionBrowser - never inferred from name/archetype.
+  race:
+    | string
+    | null;
+
   level:
     | number
     | null;
@@ -815,7 +823,7 @@ export default async function DeckBuilderPage({
         "card_catalog"
       )
       .select(
-        "id,name,image_url,card_type,atk,def,game_rarity,rarity_score,format_eligible,master_duel_status,external_card_id,master_duel_card_id,archetype,monster_type,attribute,level,rank,link_rating"
+        "id,name,image_url,card_type,atk,def,game_rarity,rarity_score,format_eligible,master_duel_status,external_card_id,master_duel_card_id,archetype,monster_type,attribute,race,level,rank,link_rating"
       )
       .in(
         "id",

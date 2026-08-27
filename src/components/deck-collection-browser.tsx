@@ -23,6 +23,7 @@ import { addCardToDeck } from "@/app/actions/decks";
 import { DeckActionButton } from "@/components/deck-action-button";
 import { useDeckLiveComposition } from "@/components/deck-live-composition";
 import { MasterDuelBadge } from "@/components/master-duel-badge";
+import { MONSTER_RACES, matchesRace } from "@/lib/card-race";
 
 // Query param keys this browser mirrors its filters into, so
 // leaving the page (e.g. tapping a card to inspect it, or
@@ -36,6 +37,7 @@ const PARAM_KEYS = {
   section: "bsec",
   rarity: "brar",
   archetype: "barc",
+  race: "brace",
   sort: "bsort",
   onlyAvailable: "bavail",
 } as const;
@@ -59,6 +61,8 @@ export type DeckBrowserCard = {
     archetype: string | null;
     monster_type: string | null;
     attribute: string | null;
+    // Track 5 (2026-08-27) - see src/lib/card-race.ts.
+    race: string | null;
     level: number | null;
     rank: number | null;
     link_rating: number | null;
@@ -204,6 +208,7 @@ function useEffectSyncFiltersToUrl({
   section,
   rarity,
   archetype,
+  race,
   sort,
   onlyAvailable,
 }: {
@@ -217,6 +222,7 @@ function useEffectSyncFiltersToUrl({
   section: DeckSection;
   rarity: string;
   archetype: string;
+  race: string;
   sort: SortOption;
   onlyAvailable: boolean;
 }) {
@@ -234,6 +240,7 @@ function useEffectSyncFiltersToUrl({
       section,
       rarity,
       archetype,
+      race,
       sort,
       onlyAvailable: onlyAvailable
         ? "1"
@@ -286,6 +293,7 @@ function useEffectSyncFiltersToUrl({
     section,
     rarity,
     archetype,
+    race,
     sort,
     onlyAvailable,
   ]);
@@ -362,6 +370,14 @@ export function DeckCollectionBrowser({
         ) ?? "all"
     );
 
+  const [race, setRace] =
+    useState(
+      () =>
+        searchParams.get(
+          PARAM_KEYS.race
+        ) ?? "all"
+    );
+
   const [sort, setSort] =
     useState<SortOption>(
       () =>
@@ -403,6 +419,7 @@ export function DeckCollectionBrowser({
     section,
     rarity,
     archetype,
+    race,
     sort,
     onlyAvailable,
   });
@@ -529,6 +546,16 @@ export function DeckCollectionBrowser({
             }
 
             if (
+              race !== "all" &&
+              !matchesRace(
+                card.race,
+                race
+              )
+            ) {
+              return false;
+            }
+
+            if (
               onlyAvailable &&
               group
                 .availableInstances
@@ -607,6 +634,7 @@ export function DeckCollectionBrowser({
       onlyAvailable,
       rarity,
       archetype,
+      race,
       search,
       section,
       sort,
@@ -618,6 +646,7 @@ export function DeckCollectionBrowser({
     section !== "all" ||
     rarity !== "all" ||
     archetype !== "all" ||
+    race !== "all" ||
     sort !== "name-asc" ||
     onlyAvailable;
 
@@ -626,6 +655,7 @@ export function DeckCollectionBrowser({
     section !== "all" ||
     rarity !== "all" ||
     archetype !== "all" ||
+    race !== "all" ||
     sort !== "name-asc" ||
     onlyAvailable;
 
@@ -635,6 +665,7 @@ export function DeckCollectionBrowser({
     setSection("all");
     setRarity("all");
     setArchetype("all");
+    setRace("all");
     setSort("name-asc");
     setOnlyAvailable(false);
   }
@@ -932,6 +963,46 @@ export function DeckCollectionBrowser({
                 </option>
 
                 {archetypes.map(
+                  (value) => (
+                    <option
+                      key={
+                        value
+                      }
+                      value={
+                        value
+                      }
+                    >
+                      {
+                        value
+                      }
+                    </option>
+                  )
+                )}
+              </select>
+            </label>
+
+            <label>
+              <span className="mb-2 block text-[10px] font-black uppercase tracking-[.18em] text-zinc-600">
+                Monster Type
+              </span>
+
+              <select
+                value={race}
+                onChange={(
+                  event
+                ) =>
+                  setRace(
+                    event.target
+                      .value
+                  )
+                }
+                className="field w-full cursor-pointer"
+              >
+                <option value="all">
+                  All monster types
+                </option>
+
+                {MONSTER_RACES.map(
                   (value) => (
                     <option
                       key={

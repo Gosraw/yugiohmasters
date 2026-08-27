@@ -23,6 +23,7 @@ function catalogCard(
     image_url: null,
     card_type: "Effect Monster",
     attribute: null,
+    race: null,
     atk: null,
     def: null,
     game_rarity: "Rare",

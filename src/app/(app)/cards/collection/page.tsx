@@ -35,6 +35,10 @@ import {
 } from "@/lib/collection";
 
 import {
+  MONSTER_RACES,
+} from "@/lib/card-race";
+
+import {
   ScrollPositionMemory,
 } from "@/components/scroll-position-memory";
 
@@ -55,6 +59,7 @@ type SearchParams = Promise<{
   type?: string;
   section?: string;
   attribute?: string;
+  race?: string;
   availability?: string;
   forTrade?: string;
   sort?: string;
@@ -298,6 +303,10 @@ export default async function CollectionPage({
     params.attribute ??
     "";
 
+  const race =
+    params.race ??
+    "";
+
   const availability =
     params.availability ??
     "";
@@ -454,6 +463,7 @@ export default async function CollectionPage({
         type,
         section,
         attribute,
+        race,
         availability,
         forTrade,
         sort,
@@ -504,6 +514,11 @@ export default async function CollectionPage({
       "attribute",
       attribute
     );
+  if (race)
+    activeQuery.set(
+      "race",
+      race
+    );
   if (availability)
     activeQuery.set(
       "availability",
@@ -545,6 +560,7 @@ export default async function CollectionPage({
       type,
       section,
       attribute,
+      race,
       availability,
       groupBy,
     ].filter(Boolean)
@@ -1051,6 +1067,35 @@ export default async function CollectionPage({
               <option value="DIVINE">
                 DIVINE
               </option>
+            </select>
+
+            <select
+              name="race"
+              defaultValue={
+                race
+              }
+              className="field"
+            >
+              <option value="">
+                All monster types
+              </option>
+
+              {MONSTER_RACES.map(
+                (monsterRace) => (
+                  <option
+                    key={
+                      monsterRace
+                    }
+                    value={
+                      monsterRace
+                    }
+                  >
+                    {
+                      monsterRace
+                    }
+                  </option>
+                )
+              )}
             </select>
 
             <select

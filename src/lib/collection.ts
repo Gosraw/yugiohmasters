@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { matchesRace } from "@/lib/card-race";
+
 // =========================================================
 // SHARED COLLECTION LOGIC
 //
@@ -37,6 +39,11 @@ export type CollectionCardCatalogItem = {
   image_url: string | null;
   card_type: string;
   attribute: string | null;
+  // Real Monster Type/Race from card_catalog (indexed - see
+  // card_catalog_race_idx) - null for Spell/Trap cards. See
+  // src/lib/card-race.ts for the fixed filter vocabulary and the
+  // reasoning for never inferring this from a name/archetype guess.
+  race: string | null;
   atk: number | null;
   def: number | null;
   game_rarity: string | null;
@@ -89,6 +96,10 @@ export type CollectionFilters = {
   // narrow down to just their Extra Deck material while browsing.
   section?: string;
   attribute?: string;
+  // Real card_catalog.race value (Dragon, Spellcaster, ...) - see
+  // src/lib/card-race.ts. Independent of `type`/`section`, exactly
+  // like `attribute`.
+  race?: string;
   availability?: string; // "" | "available" | "locked"
   forTrade?: boolean;
   sort?: string;
@@ -206,7 +217,7 @@ export async function fetchOwnedCollection(
     const { data: catalogData, error: catalogError } = await supabase
       .from("card_catalog")
       .select(
-        "id,name,image_url,card_type,attribute,atk,def,game_rarity,rarity_score,master_duel_status,archetype"
+        "id,name,image_url,card_type,attribute,race,atk,def,game_rarity,rarity_score,master_duel_status,archetype"
       )
       .in("id", catalogIds);
 
@@ -285,6 +296,7 @@ export function filterAndSortCollection(
   const type = filters.type ?? "";
   const section = filters.section ?? "";
   const attribute = filters.attribute ?? "";
+  const race = filters.race ?? "";
   const availability = filters.availability ?? "";
   const sort = filters.sort ?? "name";
 
@@ -332,6 +344,10 @@ export function filterAndSortCollection(
 
   if (attribute) {
     result = result.filter((group) => group.card.attribute === attribute);
+  }
+
+  if (race) {
+    result = result.filter((group) => matchesRace(group.card.race, race));
   }
 
   if (availability === "available") {
@@ -416,6 +432,7 @@ export function parseCollectionReturnTo(
     type: query.get("type") ?? undefined,
     section: query.get("section") ?? undefined,
     attribute: query.get("attribute") ?? undefined,
+    race: query.get("race") ?? undefined,
     availability: query.get("availability") ?? undefined,
     forTrade: query.get("forTrade") === "1",
     sort: query.get("sort") ?? undefined,

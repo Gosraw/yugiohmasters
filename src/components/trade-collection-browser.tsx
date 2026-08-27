@@ -26,6 +26,11 @@ import {
   SubmitButton,
 } from "@/components/submit-button";
 
+import {
+  MONSTER_RACES,
+  matchesRace,
+} from "@/lib/card-race";
+
 // =========================================================
 // TYPES
 // =========================================================
@@ -39,6 +44,12 @@ export type TradeBrowserCard = {
       | null;
 
     card_type: string;
+
+    // Track 6 (2026-08-27) - real Monster Type/Race from
+    // card_catalog (indexed). See src/lib/card-race.ts.
+    race:
+      | string
+      | null;
 
     game_rarity:
       | string
@@ -234,6 +245,12 @@ export function TradeCollectionBrowser({
     useState("all");
 
   const [
+    race,
+    setRace,
+  ] =
+    useState("all");
+
+  const [
     availability,
     setAvailability,
   ] =
@@ -328,6 +345,17 @@ export function TradeCollectionBrowser({
               (card.game_rarity ??
                 "Not Rated") !==
                 rarity
+            ) {
+              return false;
+            }
+
+            if (
+              race !==
+                "all" &&
+              !matchesRace(
+                card.race,
+                race
+              )
             ) {
               return false;
             }
@@ -433,6 +461,7 @@ export function TradeCollectionBrowser({
       availability,
       cards,
       category,
+      race,
       rarity,
       search,
       sort,
@@ -448,6 +477,8 @@ export function TradeCollectionBrowser({
       "all" ||
     rarity !==
       "all" ||
+    race !==
+      "all" ||
     availability !==
       "all" ||
     sort !==
@@ -459,6 +490,9 @@ export function TradeCollectionBrowser({
       "all"
     );
     setRarity(
+      "all"
+    );
+    setRace(
       "all"
     );
     setAvailability(
@@ -691,6 +725,51 @@ export function TradeCollectionBrowser({
               </option>
 
               {rarities.map(
+                (
+                  value
+                ) => (
+                  <option
+                    key={
+                      value
+                    }
+                    value={
+                      value
+                    }
+                  >
+                    {
+                      value
+                    }
+                  </option>
+                )
+              )}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-[10px] font-black uppercase tracking-[.18em] text-zinc-600">
+              Monster Type
+            </span>
+
+            <select
+              value={
+                race
+              }
+              onChange={(
+                event
+              ) =>
+                setRace(
+                  event
+                    .target
+                    .value
+                )
+              }
+              className="field w-full cursor-pointer"
+            >
+              <option value="all">
+                All monster types
+              </option>
+
+              {MONSTER_RACES.map(
                 (
                   value
                 ) => (

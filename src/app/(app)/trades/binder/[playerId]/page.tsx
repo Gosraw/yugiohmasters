@@ -6,6 +6,8 @@ import {
   ArrowLeft,
   Home,
   Repeat2,
+  Search,
+  SlidersHorizontal,
   Sparkles,
   Tag,
 } from "lucide-react";
@@ -19,6 +21,10 @@ import {
   filterAndSortCollection,
   rarityStyles,
 } from "@/lib/collection";
+
+import {
+  MONSTER_RACES,
+} from "@/lib/card-race";
 
 export const dynamic =
   "force-dynamic";
@@ -51,12 +57,34 @@ function playerName(
 
 export default async function TradeBinderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{
     playerId: string;
   }>;
+
+  // Track 6 (2026-08-27): this page had no filter form at all before -
+  // a binder with many for-trade cards had no way to narrow the view.
+  // `q` and `race` mirror Collection's own query-param filter pattern
+  // (see cards/collection/page.tsx) so a bookmarked/shared filtered
+  // binder link behaves the same way.
+  searchParams: Promise<{
+    q?: string;
+    race?: string;
+  }>;
 }) {
   const { playerId } = await params;
+
+  const filterParams =
+    await searchParams;
+
+  const q =
+    filterParams.q ??
+    "";
+
+  const race =
+    filterParams.race ??
+    "";
 
   const {
     supabase,
@@ -128,6 +156,7 @@ export default async function TradeBinderDetailPage({
   // ======================================================
 
   let forTradeCards;
+  let totalForTradeCount;
 
   try {
     const owned = await fetchOwnedCollection(
@@ -136,9 +165,24 @@ export default async function TradeBinderDetailPage({
       membership.league_id
     );
 
+    // Unfiltered count first, so the empty state can tell "this
+    // binder is genuinely empty" apart from "no card matches your
+    // filters" - same distinction Collection's own empty state makes
+    // (see totalCards === 0 in cards/collection/page.tsx). No extra
+    // query: both calls reuse the single already-fetched `owned` list.
+    totalForTradeCount = filterAndSortCollection(
+      owned,
+      {
+        forTrade: true,
+        sort: "name",
+      }
+    ).length;
+
     forTradeCards = filterAndSortCollection(
       owned,
       {
+        q,
+        race,
         forTrade: true,
         sort: "name",
       }
@@ -160,6 +204,10 @@ export default async function TradeBinderDetailPage({
       </main>
     );
   }
+
+  const hasActiveFilters =
+    Boolean(q) ||
+    Boolean(race);
 
   // ======================================================
   // UI
@@ -201,11 +249,15 @@ export default async function TradeBinderDetailPage({
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-            {forTradeCards.length === 0
+            {totalForTradeCount === 0
               ? "No physical copies marked for trade yet."
-              : `${forTradeCards.length} unique card${
-                  forTradeCards.length === 1 ? "" : "s"
-                } currently marked for trade.`}
+              : hasActiveFilters
+                ? `${forTradeCards.length} of ${totalForTradeCount} card${
+                    totalForTradeCount === 1 ? "" : "s"
+                  } marked for trade shown.`
+                : `${totalForTradeCount} unique card${
+                    totalForTradeCount === 1 ? "" : "s"
+                  } currently marked for trade.`}
           </p>
         </div>
 
@@ -220,6 +272,70 @@ export default async function TradeBinderDetailPage({
         )}
       </header>
 
+      {/* FILTERS - search + Monster Type only (this is a read-only,
+          already for-trade-scoped view, so rarity/card-type filters
+          weren't asked for here - Race is the one Track 6 explicitly
+          calls out, and search covers the rest). A plain GET form:
+          one query per page load, same as Collection's own filter
+          form, never a query per keystroke/selection. */}
+
+      <form
+        method="get"
+        className="panel mt-6 grid gap-3 p-4 sm:grid-cols-[1fr_auto_auto_auto]"
+      >
+        <label className="relative">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+          />
+
+          <input
+            name="q"
+            defaultValue={q}
+            placeholder="Search this binder..."
+            className="field w-full pl-9"
+          />
+        </label>
+
+        <select
+          name="race"
+          defaultValue={race}
+          className="field"
+        >
+          <option value="">
+            All monster types
+          </option>
+
+          {MONSTER_RACES.map(
+            (monsterRace) => (
+              <option
+                key={monsterRace}
+                value={monsterRace}
+              >
+                {monsterRace}
+              </option>
+            )
+          )}
+        </select>
+
+        <button
+          type="submit"
+          className="primary-button inline-flex items-center justify-center gap-2 whitespace-nowrap"
+        >
+          <SlidersHorizontal size={15} />
+          Apply
+        </button>
+
+        {hasActiveFilters && (
+          <Link
+            href={`/trades/binder/${playerId}`}
+            className="inline-flex items-center justify-center rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
+          >
+            Clear
+          </Link>
+        )}
+      </form>
+
       {/* GRID */}
 
       {forTradeCards.length === 0 ? (
@@ -230,13 +346,17 @@ export default async function TradeBinderDetailPage({
           />
 
           <h2 className="mt-4 text-xl font-black">
-            Nothing here yet
+            {totalForTradeCount === 0
+              ? "Nothing here yet"
+              : "No cards match your filters"}
           </h2>
 
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
-            {isOwnBinder
-              ? "Mark physical copies as “For Trade” from a card's detail page to list them here."
-              : `${playerName(profile)} hasn't marked any cards for trade yet.`}
+            {totalForTradeCount === 0
+              ? isOwnBinder
+                ? "Mark physical copies as “For Trade” from a card's detail page to list them here."
+                : `${playerName(profile)} hasn't marked any cards for trade yet.`
+              : "Try clearing the search or Monster Type filter above."}
           </p>
         </section>
       ) : (

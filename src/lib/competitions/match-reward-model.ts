@@ -15,7 +15,7 @@
 // =========================================================
 
 // Mirrors _compute_league_match_reward exactly: draw (null winner)
-// -> 50, win -> 100, loss -> 25, invalid winner (neither player) ->
+// -> 75, win -> 100, loss -> 50, invalid winner (neither player) ->
 // null (the caller must raise on this, same as
 // _award_match_duel_points_internal and the correction block do).
 export function computeLeagueMatchReward(
@@ -24,7 +24,7 @@ export function computeLeagueMatchReward(
   otherPlayerId: string
 ): number | null {
   if (winnerId === null) {
-    return 50;
+    return 75;
   }
 
   if (winnerId === playerId) {
@@ -32,7 +32,7 @@ export function computeLeagueMatchReward(
   }
 
   if (winnerId === otherPlayerId) {
-    return 25;
+    return 50;
   }
 
   return null;

@@ -90,19 +90,57 @@
 
 -- ---------------------------------------------------------
 -- FINDING 1 - lock down profiles.duel_points from direct client
--- writes. The table-wide `grant ... update on public.profiles to
--- authenticated` (202608190001_phase1_foundation.sql) already covers
--- every other column (display name, avatar, etc.) - this narrows
--- just the one column that must only ever move through a vetted,
--- server-side, ledgered path (award_match_duel_points,
--- distribute_competition_rewards[_v2], shop purchases, trades,
--- wagers - see the write-site audit in the Track 2/7 report).
+-- writes.
+--
+-- CORRECTED 2026-08-27 (post-review): the original fix here was
+-- `revoke update (duel_points) on public.profiles from authenticated`,
+-- relying on the table-wide `grant update on public.profiles to
+-- authenticated` (202608190001_phase1_foundation.sql) to still cover
+-- every other column. That does NOT work: a column-level REVOKE only
+-- removes a column-level privilege, and never narrows a broader
+-- table-level GRANT that already covers all columns - a role holding
+-- table-level UPDATE can still update every column, duel_points
+-- included, regardless of any column-level revoke naming it. The
+-- correct pattern is the reverse: revoke the table-level UPDATE
+-- entirely, then grant UPDATE back only on the specific columns a
+-- player is allowed to self-edit - which is also a strictly safer
+-- default (a future new profiles column is NOT client-writable unless
+-- explicitly added to this list, instead of silently inheriting the
+-- old table-wide grant).
+--
+-- The allow-list below is exactly the columns actually written by
+-- profile-editing server actions (src/app/actions/profile.ts -
+-- updateProfile, equip/unequip title, select boss monster option),
+-- so normal username/avatar/bio/theme/boss-personality editing keeps
+-- working unchanged. duel_points is deliberately absent - every
+-- legitimate mutation goes through a SECURITY DEFINER RPC
+-- (award_match_duel_points, distribute_competition_rewards[_v2], shop
+-- purchases, trades, wagers), which runs as the function owner and is
+-- unaffected by grants targeting `authenticated`.
 -- ---------------------------------------------------------
 
-revoke update (duel_points) on public.profiles from authenticated;
+revoke update on public.profiles from authenticated;
+
+grant update (
+  duelist_name,
+  catchphrase,
+  signature_quote,
+  bio,
+  avatar_url,
+  profile_banner_url,
+  accent_theme,
+  boss_personality,
+  favorite_play_style,
+  favorite_card_type,
+  favorite_attribute,
+  favorite_monster_type,
+  custom_title,
+  boss_monster_option_id,
+  updated_at
+) on public.profiles to authenticated;
 
 comment on column public.profiles.duel_points is
-  'Current Duel Point balance. All mutations should also be written to duel_point_transactions. NOT directly client-writable - see 202608270900_security_hardening_rls_and_grants.sql (column-level UPDATE revoked from authenticated 2026-08-27); every legitimate mutation goes through a SECURITY DEFINER RPC, which runs as the function owner and is unaffected by this revoke.';
+  'Current Duel Point balance. All mutations should also be written to duel_point_transactions. NOT directly client-writable - see 202608270900_security_hardening_rls_and_grants.sql (table-level UPDATE revoked from authenticated and replaced with an explicit column allow-list that excludes duel_points, 2026-08-27); every legitimate mutation goes through a SECURITY DEFINER RPC, which runs as the function owner and is unaffected by this revoke.';
 
 
 -- ---------------------------------------------------------

@@ -35,19 +35,19 @@ describe("computeLeagueMatchReward", () => {
     ).toBe(100);
   });
 
-  it("pays 25 to the loser", () => {
+  it("pays 50 to the loser", () => {
     expect(
       computeLeagueMatchReward("alice", "bob", "alice")
-    ).toBe(25);
+    ).toBe(50);
   });
 
-  it("pays 50 to both players on a draw (null winner)", () => {
+  it("pays 75 to both players on a draw (null winner)", () => {
     expect(
       computeLeagueMatchReward(null, "alice", "bob")
-    ).toBe(50);
+    ).toBe(75);
     expect(
       computeLeagueMatchReward(null, "bob", "alice")
-    ).toBe(50);
+    ).toBe(75);
   });
 
   it("returns null for an invalid winner (neither participant)", () => {
@@ -110,12 +110,12 @@ describe("correction delta + capped debit (end-to-end scenarios)", () => {
 
   it("credits the difference when a loss is corrected to a win", () => {
     const priorTotal = sumPriorMatchRewardAmounts([
-      { reason: "match_reward", amount: 25 },
+      { reason: "match_reward", amount: 50 },
     ]);
 
     expect(
       computeCorrectionDelta(100, priorTotal)
-    ).toBe(75);
+    ).toBe(50);
   });
 
   it("debits the difference when a win is corrected to a loss, capped at the current balance", () => {
@@ -124,13 +124,13 @@ describe("correction delta + capped debit (end-to-end scenarios)", () => {
     ]);
 
     const delta = computeCorrectionDelta(
-      25,
+      50,
       priorTotal
     );
 
-    expect(delta).toBe(-75);
+    expect(delta).toBe(-50);
     expect(computeCappedDebit(delta, 1000)).toBe(
-      75
+      50
     );
     // Player already spent most of it - debit is capped at what's
     // left, never driving the balance negative.
@@ -140,26 +140,26 @@ describe("correction delta + capped debit (end-to-end scenarios)", () => {
   });
 
   it("correctly re-numbers and re-sums across a second correction of the same match", () => {
-    // Original: win (100). First correction: to a loss (25) -> -75.
+    // Original: win (100). First correction: to a loss (50) -> -50.
     const afterFirstCorrection = [
       { reason: "match_reward", amount: 100 },
       {
         reason: nextCorrectionReason(0),
-        amount: -75,
+        amount: -50,
       },
     ];
 
-    // Second correction: back to a win (100). Prior total is now 25,
-    // so the delta credits the remaining 75, and the new reason is
+    // Second correction: back to a win (100). Prior total is now 50,
+    // so the delta credits the remaining 50, and the new reason is
     // numbered _2 (one existing correction row found).
     const priorTotal = sumPriorMatchRewardAmounts(
       afterFirstCorrection
     );
 
-    expect(priorTotal).toBe(25);
+    expect(priorTotal).toBe(50);
     expect(
       computeCorrectionDelta(100, priorTotal)
-    ).toBe(75);
+    ).toBe(50);
     expect(nextCorrectionReason(1)).toBe(
       "match_reward_correction_2"
     );

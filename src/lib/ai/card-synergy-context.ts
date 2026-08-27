@@ -250,6 +250,21 @@ function writeCache(key: string, data: CardSynergyInsight): void {
   }
 }
 
+// Test-only escape hatch (2026-08-27): this module-level cache is a
+// deliberate, correct production optimization - it is keyed on both
+// cardId AND userId, so two real users (or two real cards) never
+// collide. It is NOT meant to be cleared in production; there is no
+// call site for this outside tests. It exists because a test suite
+// that reuses the same nominal (cardId, userId) across several `it()`
+// blocks - to keep each scenario's fixture readable - would otherwise
+// have every scenario after the first silently served the FIRST
+// scenario's cached result, since the module (and its cache) is
+// loaded once per test file. Call this in beforeEach() whenever a
+// test suite reuses ids across cases with different mock data.
+export function clearCardSynergyInsightCacheForTests(): void {
+  cache.clear();
+}
+
 const CATALOG_COLUMNS =
   "id,name,card_type,monster_type,attribute,archetype,level,rank,link_rating,atk,def,description,master_duel_status,image_url,game_rarity";
 

@@ -8,6 +8,7 @@ import {
 } from "vitest";
 
 import {
+  clearCardSynergyInsightCacheForTests,
   getCardSynergyInsight,
 } from "@/lib/ai/card-synergy-context";
 
@@ -165,6 +166,14 @@ describe("getCardSynergyInsight", () => {
 
   beforeEach(() => {
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    // Several scenarios below intentionally reuse the same nominal
+    // TARGET_ID/USER_ID against different mock tables for fixture
+    // readability - without this, the module-level cache (correctly
+    // keyed on cardId+userId for real production use) would serve
+    // test 2's cached result to every later test using the same ids,
+    // which is exactly the "several tests unexpectedly receive
+    // owned-1" failure this addresses. See clearCardSynergyInsightCacheForTests's own comment.
+    clearCardSynergyInsightCacheForTests();
   });
 
   afterEach(() => {

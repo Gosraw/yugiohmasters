@@ -24,7 +24,7 @@
 -- competition already created before this migration).
 --
 -- BUG C (missing match-level DP) - award_match_duel_points (100 win /
--- 50 draw / 25 loss for 'league' matches) is only ever called from
+-- 75 draw / 50 loss for 'league' matches) is only ever called from
 -- the peer-to-peer confirm/dispute-resolution flow
 -- (src/app/actions/matches.ts). Competition V2 matches are created
 -- with match_type = 'league' (202608231100_competition_v2_
@@ -213,7 +213,7 @@ grant execute on function public.create_competition_v2(uuid, text, integer, text
 -- ---------------------------------------------------------
 -- 3. MATCH-LEVEL DP - shared internal helper (BUG C).
 --    Pure, reused by both the award and the correction path below,
---    so the 100/50/25 rule is defined in exactly one place.
+--    so the 100/75/50 rule is defined in exactly one place.
 -- ---------------------------------------------------------
 
 create or replace function public._compute_league_match_reward(
@@ -227,9 +227,9 @@ immutable
 set search_path to 'public'
 as $function$
   select case
-    when winner_id is null then 50
+    when winner_id is null then 75
     when winner_id = player_id then 100
-    when winner_id = other_player_id then 25
+    when winner_id = other_player_id then 50
     else null -- an invalid winner_id (neither player) - caller must handle
   end;
 $function$;

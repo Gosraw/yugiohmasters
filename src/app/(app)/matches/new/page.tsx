@@ -907,11 +907,11 @@ export default async function NewMatchPage({
                     </span>
 
                     <span className="rounded-full border border-zinc-500/20 bg-zinc-500/[0.05] px-2.5 py-1 text-[9px] font-black text-zinc-300">
-                      DRAW +50 DP
+                      DRAW +75 DP
                     </span>
 
                     <span className="rounded-full border border-red-400/20 bg-red-400/[0.05] px-2.5 py-1 text-[9px] font-black text-red-200">
-                      LOSS +25 DP
+                      LOSS +50 DP
                     </span>
                   </div>
                 </div>

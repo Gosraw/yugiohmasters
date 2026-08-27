@@ -295,8 +295,10 @@ export function CardSynergyInsight({
         totalSuggestions === 0 &&
         !state.data.graphComputed && (
           <p className="mt-4 text-sm text-zinc-500">
-            This card hasn&apos;t been analyzed yet - check back after the
-            next Duelist Coach update.
+            Not enough data to analyze this card yet - it isn&apos;t part of
+            an archetype we can search, and you don&apos;t own any cards
+            that connect to it yet. Try adding cards to your collection
+            or joining a league.
           </p>
         )}
 

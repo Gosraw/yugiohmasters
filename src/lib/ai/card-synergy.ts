@@ -169,6 +169,14 @@ async function callAiProvider(
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey) {
+    // Logged (not silent) so a missing key in an environment that's
+    // supposed to have AI explanations shows up in server logs rather
+    // than looking identical to "AI explained it, deterministically
+    // no different" - callers still always get the deterministic
+    // fallback explanation regardless, this never affects behavior.
+    console.warn(
+      "[card-synergy] ANTHROPIC_API_KEY not set - falling back to deterministic explanations"
+    );
     return null;
   }
 
@@ -195,6 +203,9 @@ async function callAiProvider(
     });
 
     if (!response.ok) {
+      console.error(
+        `[card-synergy] AI provider returned ${response.status} - falling back to deterministic explanations`
+      );
       return null;
     }
 
@@ -202,12 +213,18 @@ async function callAiProvider(
     const text = data?.content?.[0]?.text;
 
     if (typeof text !== "string" || text.trim().length === 0) {
+      console.error(
+        "[card-synergy] AI provider returned an empty/malformed response body - falling back to deterministic explanations"
+      );
       return null;
     }
 
     const parsed = parseAiResponse(text);
 
     if (parsed.length === 0) {
+      console.error(
+        "[card-synergy] AI provider response didn't match the expected CARD_ID format - falling back to deterministic explanations"
+      );
       return null;
     }
 
@@ -223,7 +240,11 @@ async function callAiProvider(
     }
 
     return result.size > 0 ? result : null;
-  } catch {
+  } catch (err) {
+    console.error(
+      "[card-synergy] AI provider call threw (timeout/network) - falling back to deterministic explanations",
+      err
+    );
     return null;
   }
 }

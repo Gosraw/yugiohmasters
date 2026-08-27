@@ -62,10 +62,22 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(insight);
-  } catch {
-    // Deliberately generic-safe fallback response body rather than
-    // a 500 - the UI treats a non-ok response and a network error
-    // identically ("temporarily unavailable"), so this is enough.
+  } catch (err) {
+    // The response body is deliberately generic-safe rather than a
+    // 500 with error detail - the UI treats a non-ok response and a
+    // network error identically ("temporarily unavailable"). But the
+    // failure itself must never be silent server-side: every prior
+    // version of this catch swallowed the real exception entirely,
+    // making a genuine provider/config/query failure indistinguishable
+    // from "legitimately nothing found" in the logs, which is exactly
+    // what made the underlying "Coach shows nothing" bug hard to
+    // diagnose. Logging here does not change the response - it only
+    // makes a real failure visible in server logs.
+    console.error("[api/card-synergy] getCardSynergyInsight threw", {
+      cardId,
+      userId,
+      error: err,
+    });
     return NextResponse.json(
       { error: "Card insights are temporarily unavailable." },
       { status: 503 }

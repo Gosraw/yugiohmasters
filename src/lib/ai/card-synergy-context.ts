@@ -68,37 +68,77 @@ import {
 // found" - this is a disclosed, non-broken degraded state, the same
 // pattern already used for the valuation engine's proposal columns.
 //
-// OWNED_CANDIDATE_SUPPLEMENT (2026-08-25, Track B redesign): GY
-// setup/payoff, discard outlet/payoff, and banish setup/payoff
-// relationships (edge types gy_setup_for/discard_payoff_for/
-// banish_payoff_for) are NO LONGER precomputed catalog-wide by
-// scripts/compute-synergy-graph.mjs - materializing those as a full
-// (tag-bucket x tag-bucket) cross product is the confirmed root
-// cause of the earlier 1,461,604-row card_synergy_edges incident
-// (see that script's header). They are still real, still useful, and
-// still fully deterministic - they are just no longer persisted for
-// every card in the catalog against every other card.
+// LIVE_EDGE_SUPPLEMENT (2026-08-25, Track B redesign; widened
+// 2026-08-27 - see the "Coach shows nothing generated" root-cause
+// writeup in docs/ for the investigation this responds to):
 //
-// Instead, getCardSynergyInsight() below evaluates them CONTEXTUALLY,
-// on demand, against ONLY the small set of cards the viewing player
-// actually owns (never the full ~14k-row catalog): it fetches this
-// player's owned card ids (a query already needed for the "Owned x3"
-// badge - see ownedCardIds below), reads their card_mechanics rows
-// (one bounded IN-clause query, capped at
-// OWNED_CANDIDATE_SUPPLEMENT_CAP ids) plus the target card's own
-// card_mechanics row, and calls the exact same computeSynergyEdges()
-// the precompute script uses (via src/lib/synergy/index.ts, re-
-// exporting lib/synergy-engine.mjs - one source of truth for the
-// actual edge logic). Only the three edge types above are merged in
-// this way; named-reference types (searches/material_supply_named/
-// requirement_satisfies) are already exhaustively and cheaply
-// persisted by Pass A of the precompute script, so recomputing them
-// live would be redundant.
+// card_synergy_edges is the PERSISTED, catalog-wide precompute -
+// scripts/compute-synergy-graph.mjs has never been run against real
+// production data (no network access from any dev sandbox), so that
+// table is confirmed EMPTY in production. Relying on it alone meant
+// every mode (My Cards / Discover / Trade Targets) was structurally
+// almost always empty, which is what showed up to players as a
+// generic "nothing generated" result with no distinction from a real
+// failure.
+//
+// Rather than re-attempt a catalog-wide precompute (the confirmed
+// root cause of the earlier 1,461,604-row card_synergy_edges
+// incident - see that script's header), this module now runs the
+// SAME deterministic computeSynergyEdges() engine the precompute
+// script uses (src/lib/synergy/index.ts, re-exporting
+// lib/synergy-engine.mjs - one source of truth for edge logic) LIVE,
+// on demand, against three small, explicitly bounded candidate pools
+// - never the full ~14k-row catalog:
+//
+//   1. OWNED: cards the viewing player already owns (a query already
+//      needed for the "Owned x3" badge - see ownedCardIds below),
+//      capped at LIVE_SUPPLEMENT_CANDIDATE_CAP ids. Feeds "My Cards".
+//   2. LEAGUE-OWNED: cards owned by someone else in the player's
+//      league (one card_instances query scoped by league_id, capped),
+//      so "Trade Targets" has real candidates to evaluate instead of
+//      being permanently empty whenever the persisted graph has
+//      nothing for this card. Feeds "Trade Targets" (via the existing
+//      ownership classification below, which buckets a candidate as
+//      a trade target purely from WHO owns it, unchanged).
+//   3. ARCHETYPE-SCOPED: cards sharing the target's archetype (one
+//      indexed card_catalog query on card_catalog_archetype_idx,
+//      capped) - bounded by real archetype group sizes, not a scan of
+//      the catalog. Feeds "Discover". Cards with no archetype get no
+//      Discover candidates at all (an honest limitation, not a silent
+//      scan) - see the graphComputed/attemptedLive note below.
+//
+// Every one of the 8 card_synergy_edges edge types is computed live
+// here now (searches, material_supply_named/constrained,
+// requirement_satisfies, gy_setup_for, discard_payoff_for,
+// banish_payoff_for, spell_trap_support) - the earlier version of
+// this supplement only restored 3 of 8, reasoning that the other 5
+// were "already cheaply persisted by Pass A of the precompute
+// script." That precompute has never actually run, so that
+// assumption left Discover/Trade-Target/most-of-My-Cards
+// structurally starved; there is no correctness reason to keep the
+// narrower filter once the pool itself is already small and bounded.
+// generateSynergyCandidates()'s own "archetype-alone is never a
+// sufficient reason" filter still applies unchanged, so an
+// archetype-scoped candidate with no OTHER real edge still gets
+// excluded - this does not reintroduce "same archetype = synergy".
+//
+// GRAPH-NOT-YET-COMPUTED / graphComputed semantics: `graphComputed`
+// used to mean strictly "the persisted precompute has rows for this
+// card," which - given the precompute has never run - was false for
+// nearly every card and rendered the "hasn't been analyzed yet"
+// message almost universally, indistinguishable from a real failure.
+// It now also turns true whenever a genuine live-computation attempt
+// was made (owned/league/archetype), regardless of whether that
+// attempt found anything - "we looked and found nothing" (an honest
+// negative, shown as "no strong synergies found") is a materially
+// different, and now far more common, outcome than "we never looked"
+// (shown only when the player owns nothing related, isn't in a
+// league, and the card has no archetype to search by).
 //
 // This keeps the "never scan the catalog" and "no huge materialized
-// graph" requirements intact while restoring exactly the detection
-// power the removed passes provided, scoped to what actually matters
-// for THIS player's card coach - their own collection.
+// graph" requirements intact while restoring real detection power
+// across all three modes, each still bounded to a small, explicitly
+// scoped candidate pool.
 //
 // CACHING: a small in-memory, best-effort, per-server-instance
 // cache keyed on card_catalog_id (+ owner, since "owned" framing is
@@ -146,12 +186,15 @@ export type CardSynergyInsight = {
   // to relate to the target). Empty when the graph hasn't surfaced
   // one - never fabricated.
   packages: SynergyPackage[];
-  // false only when the precomputed synergy graph has literally no
-  // card_synergy_edges rows touching this card at all - i.e. the
-  // precompute script has not been run yet (or this specific card
-  // hasn't been picked up by it), NOT "the engine looked and found
-  // nothing". The UI uses this to show an honest "not yet analyzed"
-  // message instead of implying a real negative result.
+  // true whenever this card has EITHER persisted card_synergy_edges
+  // rows OR a genuine live computation was attempted against it
+  // (owned cards, league-mates' cards, or an archetype-scoped pool -
+  // see the LIVE_EDGE_SUPPLEMENT comment above getCardSynergyInsight).
+  // false only in the narrow case where none of those angles apply at
+  // all (no owned/league-relevant cards, no archetype, no persisted
+  // graph) - the UI shows an honest "not enough data yet" message
+  // only in that case, and "no strong synergies found" (a real
+  // negative) whenever graphComputed is true but nothing surfaced.
   graphComputed: boolean;
 };
 
@@ -210,6 +253,44 @@ function writeCache(key: string, data: CardSynergyInsight): void {
 const CATALOG_COLUMNS =
   "id,name,card_type,monster_type,attribute,archetype,level,rank,link_rating,atk,def,description,master_duel_status,image_url,game_rarity";
 
+const MECH_COLUMNS =
+  "card_catalog_id,tags,search_targets,named_material_targets,named_requirement_targets,material_specificity,material_text,evidence,engine_version";
+
+/**
+ * Batched card_mechanics fetch -> CardMechanicsProfile map, for any
+ * bounded id list. Shared by every live-edge supplement below and by
+ * findOwnedPackages' live pairwise fallback, so there is exactly one
+ * place that knows how to turn a card_mechanics row into a
+ * CardMechanicsProfile (mechRowToProfile) and exactly one place that
+ * logs a fetch failure instead of silently returning an empty map.
+ */
+async function fetchMechProfiles(
+  supabase: SupabaseClient,
+  ids: string[]
+): Promise<Map<string, CardMechanicsProfile>> {
+  const map = new Map<string, CardMechanicsProfile>();
+  if (ids.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from("card_mechanics")
+    .select(MECH_COLUMNS)
+    .in("card_catalog_id", ids);
+
+  if (error) {
+    console.error("[card-synergy] card_mechanics fetch failed", {
+      ids: ids.length,
+      error,
+    });
+    return map;
+  }
+
+  for (const row of (data ?? []) as Parameters<typeof mechRowToProfile>[0][]) {
+    map.set(row.card_catalog_id, mechRowToProfile(row));
+  }
+
+  return map;
+}
+
 /**
  * Looks for a real triangle in the precomputed synergy graph among a
  * small set of owned candidates: does candidate A also relate to
@@ -229,7 +310,13 @@ async function findOwnedPackages(
 
   const ownedIds = ownedCandidates.map((c) => c.card.id);
   const nameById = new Map(ownedCandidates.map((c) => [c.card.id, c.card.name]));
+  const cardById = new Map(ownedCandidates.map((c) => [c.card.id, c.card]));
 
+  const packages: SynergyPackage[] = [];
+  const seen = new Set<string>();
+
+  // Pass 1: the persisted graph - works once (if ever) the operator
+  // runs the catalog-wide precompute script.
   const { data, error } = await supabase
     .from("card_synergy_edges")
     .select("source_card_id,target_card_id,deterministic_reason")
@@ -237,54 +324,90 @@ async function findOwnedPackages(
     .in("target_card_id", ownedIds)
     .limit(10);
 
-  if (error || !data || data.length === 0) return [];
+  if (error) {
+    console.error("[card-synergy] findOwnedPackages persisted-edge query failed", error);
+  } else {
+    for (const row of (data ?? []) as {
+      source_card_id: string;
+      target_card_id: string;
+      deterministic_reason: string;
+    }[]) {
+      if (row.source_card_id === row.target_card_id) continue;
 
-  const seen = new Set<string>();
-  const packages: SynergyPackage[] = [];
+      const pairKey = [row.source_card_id, row.target_card_id].sort().join("|");
+      if (seen.has(pairKey)) continue;
 
-  for (const row of data as {
-    source_card_id: string;
-    target_card_id: string;
-    deterministic_reason: string;
-  }[]) {
-    if (row.source_card_id === row.target_card_id) continue;
+      const aName = nameById.get(row.source_card_id);
+      const bName = nameById.get(row.target_card_id);
+      if (!aName || !bName) continue;
 
-    const pairKey = [row.source_card_id, row.target_card_id].sort().join("|");
-    if (seen.has(pairKey)) continue;
-    seen.add(pairKey);
+      seen.add(pairKey);
+      packages.push({
+        cardIds: [target.id, row.source_card_id, row.target_card_id],
+        cardNames: [target.name, aName, bName],
+        reason: row.deterministic_reason,
+      });
 
-    const aName = nameById.get(row.source_card_id);
-    const bName = nameById.get(row.target_card_id);
-    if (!aName || !bName) continue;
+      if (packages.length >= 2) return packages;
+    }
+  }
 
-    packages.push({
-      cardIds: [target.id, row.source_card_id, row.target_card_id],
-      cardNames: [target.name, aName, bName],
-      reason: row.deterministic_reason,
-    });
+  // Pass 2: live pairwise check among the top owned candidates. The
+  // persisted graph is currently empty in production, so without
+  // this an "Owned Package" callout would never appear no matter how
+  // obviously two owned cards combo with each other. Bounded: at most
+  // 6 owned candidates reach this function (see the call site), so
+  // at most 15 pairs, each a pure in-memory computeSynergyEdges()
+  // call - the only I/O is the one bounded card_mechanics fetch below.
+  if (packages.length >= 2) return packages;
 
-    if (packages.length >= 2) break;
+  const mechMap = await fetchMechProfiles(supabase, ownedIds);
+
+  for (let i = 0; i < ownedIds.length && packages.length < 2; i++) {
+    for (let j = i + 1; j < ownedIds.length && packages.length < 2; j++) {
+      const idA = ownedIds[i];
+      const idB = ownedIds[j];
+      const pairKey = [idA, idB].sort().join("|");
+      if (seen.has(pairKey)) continue;
+
+      const mechA = mechMap.get(idA);
+      const mechB = mechMap.get(idB);
+      const cardA = cardById.get(idA);
+      const cardB = cardById.get(idB);
+      if (!mechA || !mechB || !cardA || !cardB) continue;
+
+      let edges: ReturnType<typeof computeSynergyEdges>;
+      try {
+        edges = computeSynergyEdges(cardA, mechA, cardB, mechB);
+      } catch (err) {
+        console.error(
+          `[card-synergy] findOwnedPackages live check threw for ${idA} <-> ${idB}`,
+          err
+        );
+        continue;
+      }
+      if (edges.length === 0) continue;
+
+      seen.add(pairKey);
+      packages.push({
+        cardIds: [target.id, idA, idB],
+        cardNames: [target.name, nameById.get(idA)!, nameById.get(idB)!],
+        reason: edges[0].deterministicReason,
+      });
+    }
   }
 
   return packages;
 }
 
-// Hard cap on how many of the player's own owned card ids are ever
-// fed into the contextual supplement below - defensive, in case a
-// single player's collection somehow grows very large. A friends-
-// league collection is nowhere near this in practice, but the cap
-// keeps the per-request cost bounded regardless.
-const OWNED_CANDIDATE_SUPPLEMENT_CAP = 150;
-
-// Edge types this contextual supplement exists to restore - the ones
-// scripts/compute-synergy-graph.mjs intentionally no longer persists
-// catalog-wide (see that file's header and the OWNED_CANDIDATE_
-// SUPPLEMENT comment above).
-const CONTEXTUAL_SUPPLEMENT_EDGE_TYPES = new Set([
-  "gy_setup_for",
-  "discard_payoff_for",
-  "banish_payoff_for",
-]);
+// Hard cap on how many candidate ids are ever fed into any one live
+// edge supplement below - defensive, in case a single player's
+// collection or a league's combined collection somehow grows very
+// large. A friends-league app is nowhere near this in practice, but
+// the cap keeps the per-request cost bounded regardless, and keeps
+// this from ever becoming the "catalog-wide scan" the architecture
+// explicitly forbids.
+const LIVE_SUPPLEMENT_CANDIDATE_CAP = 150;
 
 function mechRowToProfile(row: {
   card_catalog_id: string;
@@ -318,75 +441,76 @@ function mechRowToProfile(row: {
 }
 
 /**
- * Restores gy_setup_for/discard_payoff_for/banish_payoff_for
- * detection - intentionally no longer persisted catalog-wide (see
- * the OWNED_CANDIDATE_SUPPLEMENT comment block above) - by evaluating
- * them live, deterministically, against only the player's own owned
- * cards. Mutates `edgesByCandidateId` in place, adding an entry only
- * when a candidate doesn't already carry that edge type from the
- * persisted graph. Every failure mode here (missing card_mechanics
- * rows, a query error) is a silent no-op - this is a supplement, and
- * its absence must never break the rest of the insight.
+ * Live, deterministic edge computation between `target` and a bounded
+ * candidate id list - the shared engine behind all three "LIVE_EDGE_
+ * SUPPLEMENT" sources described in the header comment above (owned,
+ * league-owned, archetype-scoped). Mutates `edgesByCandidateId` in
+ * place, adding an entry only when a candidate doesn't already carry
+ * that edge type (from the persisted graph or an earlier supplement
+ * call). Computes ALL edge types (not a narrow subset) since every
+ * pool this is called with is already small and bounded.
+ *
+ * Returns `true` if a genuine computation attempt was made (i.e.
+ * there was at least one candidate id and a target card_mechanics
+ * row to compare against) - used by the caller to set `graphComputed`
+ * honestly even when the attempt finds nothing. A missing
+ * card_mechanics row, a query error, or a computeSynergyEdges()
+ * exception is logged (never silent) and degrades this one
+ * supplement gracefully - it must never break the rest of the insight.
  */
-async function supplementWithOwnedContextualEdges(
+async function supplementWithLiveEdges(
   supabase: SupabaseClient,
   target: SynergyCatalogCard,
-  ownedCardIds: string[],
+  targetMech: CardMechanicsProfile | undefined,
+  rawCandidateIds: string[],
   edgesByCandidateId: Map<string, PrecomputedEdgeReason[]>
-): Promise<void> {
-  const candidateIds = ownedCardIds
-    .filter((id) => id !== target.id)
-    .slice(0, OWNED_CANDIDATE_SUPPLEMENT_CAP);
-  if (candidateIds.length === 0) return;
+): Promise<boolean> {
+  const candidateIds = Array.from(
+    new Set(rawCandidateIds.filter((id) => id !== target.id))
+  ).slice(0, LIVE_SUPPLEMENT_CANDIDATE_CAP);
 
-  const { data: mechRows, error: mechError } = await supabase
-    .from("card_mechanics")
-    .select(
-      "card_catalog_id,tags,search_targets,named_material_targets,named_requirement_targets,material_specificity,material_text,evidence,engine_version"
-    )
-    .in("card_catalog_id", [target.id, ...candidateIds]);
-
-  if (mechError || !mechRows || mechRows.length === 0) return;
-
-  const targetRow = mechRows.find((r) => r.card_catalog_id === target.id);
-  if (!targetRow) return;
-
-  const candidateMechRows = mechRows.filter((r) => r.card_catalog_id !== target.id);
-  if (candidateMechRows.length === 0) return;
-
-  const { data: candidateCatalogRows, error: catalogError } = await supabase
-    .from("card_catalog")
-    .select(CATALOG_COLUMNS)
-    .in(
-      "id",
-      candidateMechRows.map((r) => r.card_catalog_id)
+  if (candidateIds.length === 0) return false;
+  if (!targetMech) {
+    console.error(
+      `[card-synergy] no card_mechanics row for target ${target.id}; skipping live edge supplement`
     );
-  if (catalogError || !candidateCatalogRows) return;
+    return true;
+  }
+
+  const [mechMap, { data: candidateCatalogRows, error: catalogError }] =
+    await Promise.all([
+      fetchMechProfiles(supabase, candidateIds),
+      supabase.from("card_catalog").select(CATALOG_COLUMNS).in("id", candidateIds),
+    ]);
+
+  if (catalogError) {
+    console.error("[card-synergy] candidate catalog fetch failed", catalogError);
+  }
 
   const catalogById = new Map(
-    (candidateCatalogRows as SynergyCatalogCard[]).map((c) => [c.id, c])
+    ((candidateCatalogRows ?? []) as SynergyCatalogCard[]).map((c) => [c.id, c])
   );
 
-  const targetMech = mechRowToProfile(targetRow);
-
-  for (const row of candidateMechRows) {
-    const candidateCard = catalogById.get(row.card_catalog_id);
-    if (!candidateCard) continue;
-    const candidateMech = mechRowToProfile(row);
+  for (const candidateId of candidateIds) {
+    const candidateCard = catalogById.get(candidateId);
+    const candidateMech = mechMap.get(candidateId);
+    if (!candidateCard || !candidateMech) continue;
 
     let edges: ReturnType<typeof computeSynergyEdges>;
     try {
       edges = computeSynergyEdges(target, targetMech, candidateCard, candidateMech);
-    } catch {
+    } catch (err) {
+      console.error(
+        `[card-synergy] computeSynergyEdges threw for ${target.id} <-> ${candidateId}`,
+        err
+      );
       continue;
     }
 
     for (const edge of edges) {
-      if (!CONTEXTUAL_SUPPLEMENT_EDGE_TYPES.has(edge.edgeType)) continue;
-
       const otherCardId =
         edge.sourceCardId === target.id ? edge.targetCardId : edge.sourceCardId;
-      if (otherCardId !== row.card_catalog_id) continue;
+      if (otherCardId !== candidateId) continue;
 
       const list = edgesByCandidateId.get(otherCardId) ?? [];
       if (list.some((e) => e.edgeType === edge.edgeType)) continue;
@@ -400,6 +524,8 @@ async function supplementWithOwnedContextualEdges(
       edgesByCandidateId.set(otherCardId, list);
     }
   }
+
+  return true;
 }
 
 /**
@@ -488,25 +614,27 @@ export async function getCardSynergyInsight(
     }
   }
 
-  // "Has the precompute graph actually been run for this card at
-  // all" must be judged from the PERSISTED graph only, before the
-  // contextual owned-card supplement below adds anything - otherwise
-  // a card the precompute script has never touched would still show
-  // as "analyzed" just because the viewer happens to own a card that
-  // GY/discard/banish-pairs with it.
-  const graphComputed = edgesByCandidateId.size > 0;
+  // Whether the PERSISTED graph has anything for this card - kept as
+  // its own signal (distinct from `graphComputed` below, which also
+  // accounts for the live supplements) purely so a future operator
+  // run of the precompute script remains observable independently.
+  const persistedGraphHasEdges = edgesByCandidateId.size > 0;
 
   // Owned-copy counts for this player (ANY league, purely for the
   // "Owned x3" copy-count badge) - never another player's collection
   // data. This is deliberately separate from the league-scoped
   // ownership CLASSIFICATION below, which decides myCards/discover/
-  // tradeTargets membership. Also doubles as the bounded candidate
-  // set for the contextual GY/discard/banish supplement below - this
+  // tradeTargets membership. Also doubles as the bounded OWNED
+  // candidate source for the live edge supplement below - this
   // player's own collection, never the full catalog.
-  const { data: ownedRows } = await supabase
+  const { data: ownedRows, error: ownedRowsError } = await supabase
     .from("card_instances")
     .select("card_catalog_id")
     .eq("current_owner_id", userId);
+
+  if (ownedRowsError) {
+    console.error("[card-synergy] owned card_instances fetch failed", ownedRowsError);
+  }
 
   const ownedCounts = new Map<string, number>();
   for (const row of (ownedRows ?? []) as { card_catalog_id: string }[]) {
@@ -517,20 +645,113 @@ export async function getCardSynergyInsight(
   }
   const ownedCardIds = Array.from(ownedCounts.keys());
 
-  // See the OWNED_CANDIDATE_SUPPLEMENT comment block near the top of
-  // this file: restores gy_setup_for/discard_payoff_for/
-  // banish_payoff_for detection against this player's owned cards,
-  // now that those types are no longer persisted catalog-wide.
-  // Mutates edgesByCandidateId in place; a no-op if the player owns
-  // nothing yet or the target has no card_mechanics row.
+  // League lookup is needed both for the LEAGUE-OWNED live supplement
+  // right below (Trade Targets candidates) and for the ownership
+  // classification step further down - fetched once, here, and
+  // reused for both.
+  const leagueId = await getLeagueIdForUser(supabase, userId);
+
+  // Target's own card_mechanics row, fetched once and reused across
+  // all three live edge supplements below (see the LIVE_EDGE_
+  // SUPPLEMENT header comment near the top of this file).
+  const targetMech = (await fetchMechProfiles(supabase, [target.id])).get(target.id);
+
+  // Tracks whether at least one live computation was genuinely
+  // attempted (regardless of whether it found anything) - feeds
+  // `graphComputed` below so "we looked and found nothing" reads as
+  // an honest negative rather than "not yet analyzed".
+  let attemptedLive = false;
+
+  // SOURCE 1 - OWNED: feeds "My Cards".
   if (ownedCardIds.length > 0) {
-    await supplementWithOwnedContextualEdges(
+    const attempted = await supplementWithLiveEdges(
       supabase,
       target,
+      targetMech,
       ownedCardIds,
       edgesByCandidateId
     );
+    attemptedLive = attemptedLive || attempted;
   }
+
+  // SOURCE 2 - LEAGUE-OWNED: feeds "Trade Targets". One card_instances
+  // query scoped to this league, excluding the viewer's own copies,
+  // capped - never a catalog-wide scan.
+  if (leagueId) {
+    const { data: leagueInstanceRows, error: leagueInstanceError } = await supabase
+      .from("card_instances")
+      .select("card_catalog_id")
+      .eq("league_id", leagueId)
+      .neq("current_owner_id", userId)
+      .limit(LIVE_SUPPLEMENT_CANDIDATE_CAP * 4);
+
+    if (leagueInstanceError) {
+      console.error("[card-synergy] league card_instances fetch failed", leagueInstanceError);
+    }
+
+    const leagueMateCardIds = Array.from(
+      new Set(
+        ((leagueInstanceRows ?? []) as { card_catalog_id: string }[]).map(
+          (r) => r.card_catalog_id
+        )
+      )
+    ).slice(0, LIVE_SUPPLEMENT_CANDIDATE_CAP);
+
+    if (leagueMateCardIds.length > 0) {
+      const attempted = await supplementWithLiveEdges(
+        supabase,
+        target,
+        targetMech,
+        leagueMateCardIds,
+        edgesByCandidateId
+      );
+      attemptedLive = attemptedLive || attempted;
+    }
+  }
+
+  // SOURCE 3 - ARCHETYPE-SCOPED: feeds "Discover". One indexed
+  // card_catalog query (card_catalog_archetype_idx), capped - bounded
+  // by real archetype group sizes, never a full-catalog scan. A card
+  // with no archetype gets no Discover candidates from this source at
+  // all (an honest limitation, not a scan-based guess).
+  if (target.archetype) {
+    const { data: archetypeRows, error: archetypeError } = await supabase
+      .from("card_catalog")
+      .select("id")
+      .eq("archetype", target.archetype)
+      .neq("id", target.id)
+      .limit(LIVE_SUPPLEMENT_CANDIDATE_CAP);
+
+    if (archetypeError) {
+      console.error("[card-synergy] archetype-scoped candidate fetch failed", archetypeError);
+    }
+
+    const archetypeCandidateIds = ((archetypeRows ?? []) as { id: string }[]).map(
+      (r) => r.id
+    );
+
+    if (archetypeCandidateIds.length > 0) {
+      const attempted = await supplementWithLiveEdges(
+        supabase,
+        target,
+        targetMech,
+        archetypeCandidateIds,
+        edgesByCandidateId
+      );
+      attemptedLive = attemptedLive || attempted;
+    } else {
+      // We tried (the card has an archetype) even though nothing came
+      // back - still counts as a genuine attempt.
+      attemptedLive = true;
+    }
+  }
+
+  // See the LIVE_EDGE_SUPPLEMENT / graphComputed header comment above:
+  // true whenever the persisted graph has rows for this card OR a
+  // live computation was genuinely attempted, even if it found
+  // nothing - only a card with no owned/league/archetype angle at all
+  // falls through to the honest "not yet analyzed" state.
+  const graphComputed = persistedGraphHasEdges || attemptedLive;
 
   const candidateIds = Array.from(edgesByCandidateId.keys());
 
@@ -540,6 +761,10 @@ export async function getCardSynergyInsight(
       .from("card_catalog")
       .select(CATALOG_COLUMNS)
       .in("id", candidateIds);
+
+    if (poolError) {
+      console.error("[card-synergy] candidate pool fetch failed", poolError);
+    }
 
     pool = poolError ? [] : ((poolRows ?? []) as SynergyCatalogCard[]);
   }
@@ -558,9 +783,8 @@ export async function getCardSynergyInsight(
   // Duel eligibility filter, so `formatEligible` is always true here -
   // format exclusion for THIS feature already happened upstream; this
   // call's real job is the owned/league-member/nobody split, not
-  // re-deciding eligibility. ----
-  const leagueId = await getLeagueIdForUser(supabase, userId);
-
+  // re-deciding eligibility. (leagueId was already fetched above, for
+  // the LEAGUE-OWNED live edge supplement - reused here as-is.) ----
   let availabilityByCardId = new Map<string, CardAvailability>();
   if (leagueId && candidates.length > 0) {
     availabilityByCardId = await batchGetCardAvailability(

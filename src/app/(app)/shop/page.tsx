@@ -1012,17 +1012,6 @@ export default async function ShopPage({
         !card.sold_at
     ).length;
 
-  const voucherTotal =
-    vouchers.reduce(
-      (
-        total,
-        voucher
-      ) =>
-        total +
-        voucher.quantity,
-      0
-    );
-
   // ======================================================
   // UI
   // ======================================================
@@ -1291,17 +1280,6 @@ export default async function ShopPage({
             </p>
           </div>
 
-          <div className="panel p-4">
-            <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
-              Pack Vouchers
-            </p>
-
-            <p className="mt-1 text-xl font-black text-violet-200">
-              {
-                voucherTotal
-              }
-            </p>
-          </div>
         </section>
 
         {/* ==================================================

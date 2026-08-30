@@ -51,9 +51,88 @@ import { ARCHETYPE_REGISTRY, ROLES, EXTRA_DECK_KINDS, SUMMON_DIFFICULTIES, PACKA
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
 
+// Every text field this generator emits goes through this function - it is
+// the ONLY place responsible for turning a JS string into a safe SQL string
+// literal. It doubles every embedded single quote ('' is the standard SQL
+// escape for a literal quote inside a '...'-delimited string) and always
+// wraps the result in its own quote pair, so callers never hand-build a
+// literal or string-concatenate raw text into a query.
+//
+// Self-verified: after escaping, the function un-escapes its own output and
+// asserts it recovers the exact original string. Doubling-then-undoubling a
+// quote character is mathematically its own inverse, so this can only ever
+// fail if a future edit to the escaping logic breaks that invariant - which
+// is exactly the "we changed the generator and it quietly stopped escaping
+// something" bug class this guards against. See findUnsafeSqlLiteral()
+// below for the complementary check on the FINAL assembled SQL text (which
+// also catches a value that bypassed sqlQuote() entirely).
 function sqlQuote(value) {
   if (value === null || value === undefined) return "null";
-  return `'${String(value).replace(/'/g, "''")}'`;
+  const str = String(value);
+  const escaped = str.replace(/'/g, "''");
+  const literal = `'${escaped}'`;
+  const roundTripped = literal.slice(1, -1).replace(/''/g, "'");
+  if (roundTripped !== str) {
+    throw new Error(
+      `sqlQuote() safety check failed for value ${JSON.stringify(str)} -> ${JSON.stringify(literal)} - refusing to emit unsafe SQL`
+    );
+  }
+  return literal;
+}
+
+// Scans an assembled SQL string exactly the way Postgres itself tokenizes
+// standard-conforming single-quoted string literals (a lone ' starts/ends a
+// literal, '' inside one is an escaped literal quote, and -- starts a
+// line comment that is NOT scanned for quotes) and reports the first place
+// the file is unsafe: an odd/unterminated string. This is the generator's
+// defense against the "Skyscraper" bug class - a value that reaches the
+// output WITHOUT going through sqlQuote() (or a future edit to sqlQuote()
+// that stops escaping correctly) corrupts quote-parity for every statement
+// after it in the file, which can surface as a bizarre, seemingly unrelated
+// error far later in the script (e.g. a card name from a much earlier
+// statement being parsed as a bare identifier).
+//
+// Returns null when the SQL is safe, or a diagnostic string describing the
+// first problem found.
+export function findUnsafeSqlLiteral(sql) {
+  let inString = false;
+  let stringStartLine = null;
+  let line = 1;
+  let i = 0;
+  const n = sql.length;
+  while (i < n) {
+    const c = sql[i];
+    if (c === "\n") {
+      line++;
+      i++;
+      continue;
+    }
+    if (!inString && c === "-" && sql[i + 1] === "-") {
+      const nl = sql.indexOf("\n", i);
+      i = nl === -1 ? n : nl;
+      continue;
+    }
+    if (c === "'") {
+      if (inString) {
+        if (sql[i + 1] === "'") {
+          i += 2;
+          continue;
+        }
+        inString = false;
+        i++;
+        continue;
+      }
+      inString = true;
+      stringStartLine = line;
+      i++;
+      continue;
+    }
+    i++;
+  }
+  if (inString) {
+    return `unterminated string literal starting at line ${stringStartLine} - a value likely reached the output without going through sqlQuote(), or sqlQuote() itself regressed`;
+  }
+  return null;
 }
 
 function findNewestCatalogSnapshot() {
@@ -163,7 +242,7 @@ export function validateRegistry(registry, catalogSnapshot) {
   return { errors, warnings };
 }
 
-function generateSql(registry) {
+export function generateSql(registry) {
   const lines = [];
   lines.push("begin;");
   lines.push("");
@@ -287,7 +366,70 @@ async function main() {
     const { errors: errors3 } = validateRegistry(mechRegistry, mechSnapshot);
     if (errors3.length === 0) throw new Error("self-test 3 failed: expected a Synchro-mechanic error");
 
-    console.log("generate-archetype-registry-migration.mjs self-test: 3/3 checks passed");
+    const nastyValues = [
+      "Jaden Yuki's HERO lineup",
+      "HERO''s Bond (already doubled)",
+      "D - Formation",
+      "a value with a \"double quote\" inside",
+      "ends with a quote'",
+      "'starts with a quote",
+      "just a single quote: '",
+      "multiple '' '' adjacent doubled quotes",
+      "semicolon; inside prose - and a hyphen too",
+    ];
+    for (const v of nastyValues) {
+      const quoted = sqlQuote(v);
+      const unescaped = quoted.slice(1, -1).replace(/''/g, "'");
+      if (unescaped !== v) {
+        throw new Error(`self-test 4 failed: sqlQuote round-trip mismatch for ${JSON.stringify(v)} -> ${quoted}`);
+      }
+    }
+    const nastyRegistry = [
+      {
+        code: "nasty_test",
+        name: "Nasty Test",
+        description: nastyValues.join(" | "),
+        priorityRank: 1,
+        profile: {
+          nostalgiaRelevance: "HIGH",
+          consistency: "HIGH",
+          removal: "HIGH",
+          defense: "HIGH",
+          recovery: "HIGH",
+          bossPower: "HIGH",
+          summoningSpeed: "FAST",
+          overallHealth: "HEALTHY",
+          deckReality: "FULL_DECK",
+        },
+        gaps: [{ category: "other", description: nastyValues.join(" | ") }],
+        notes: nastyValues.join(" | "),
+        bossProgression: {},
+        cards: nastyValues.map((v, idx) => ({
+          name: `Nasty Card ${idx}`,
+          role: "CORE",
+          notes: v,
+        })),
+      },
+    ];
+    const nastySql = generateSql(nastyRegistry);
+    const nastyUnsafe = findUnsafeSqlLiteral(nastySql);
+    if (nastyUnsafe) {
+      throw new Error(`self-test 4 failed: findUnsafeSqlLiteral flagged generator output as unsafe: ${nastyUnsafe}`);
+    }
+
+    const brokenSql = "insert into t (name) values ('It's broken');";
+    const brokenResult = findUnsafeSqlLiteral(brokenSql);
+    if (!brokenResult) {
+      throw new Error("self-test 5 failed: findUnsafeSqlLiteral did not catch an unescaped apostrophe");
+    }
+
+    const commentSql = "-- this comment has an apostrophe: don't touch it\nselect 1;";
+    const commentResult = findUnsafeSqlLiteral(commentSql);
+    if (commentResult) {
+      throw new Error(`self-test 6 failed: a -- comment was incorrectly treated as breaking string parity: ${commentResult}`);
+    }
+
+    console.log("generate-archetype-registry-migration.mjs self-test: 6/6 checks passed");
     return;
   }
 
@@ -316,6 +458,13 @@ async function main() {
   }
 
   const sql = generateSql(ARCHETYPE_REGISTRY);
+
+  const unsafe = findUnsafeSqlLiteral(sql);
+  if (unsafe) {
+    console.error(`\nREFUSING TO WRITE MIGRATION - generated SQL failed the quote-safety check: ${unsafe}`);
+    process.exit(1);
+  }
+
   const outPath = getFlag("--out") ?? path.join(REPO_ROOT, "supabase", "migrations", "202608301400_seed_archetype_registry.sql");
   fs.writeFileSync(outPath, sql, "utf8");
 

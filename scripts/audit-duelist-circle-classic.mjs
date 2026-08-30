@@ -235,7 +235,7 @@ function runSelfTest() {
 
 async function runLiveAudit() {
   const { createClient } = await import("@supabase/supabase-js");
-  const { extractValuationSignals, scoreCard, proposeRarity, classifyCardContext, RARITY_ORDER } = await import(
+  const { extractValuationSignals, scoreCard, proposeRarity, classifyCardContext, getArchetypeRelevanceHint, RARITY_ORDER } = await import(
     "../lib/valuation-engine.mjs"
   );
   const { writeFileSync, mkdirSync } = await import("node:fs");
@@ -344,6 +344,12 @@ async function runLiveAudit() {
       manuallyOverridden: isOverridden,
       context: context.context,
       contextReason: context.reason,
+      // 2026-08-30 human calibration pass (brief section 9G): report-
+      // only - NEVER read by scoreCard/proposeRarity - so a reviewer
+      // can weigh expected real play rate (nostalgia) alongside the
+      // automated rarity, without the engine silently boosting any
+      // card just for carrying a popular archetype tag.
+      archetypeRelevanceHint: getArchetypeRelevanceHint(card.archetype),
       scores,
     });
   }

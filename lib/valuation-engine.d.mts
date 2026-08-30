@@ -42,6 +42,7 @@ export type MaterialSpecificity = "n/a" | "generic" | "constrained" | "named";
 export type ExtraDeckMaterials = {
   specificity: MaterialSpecificity;
   materialText: string;
+  materialCount: number;
   reason: string;
 };
 
@@ -66,6 +67,7 @@ export type ValuationSignals = {
   def: number | null;
   hasCost: boolean;
   costTribute: boolean;
+  tributeCount: number;
   costDiscard: boolean;
   costBanishSelf: boolean;
   costLifePoints: boolean;
@@ -99,6 +101,10 @@ export type ValuationSignals = {
   searchNarrow: boolean;
   drawsCards: boolean;
   generatesAdvantage: boolean;
+  hasImmediateOnSummonImpact: boolean;
+  hasDelayedSetup: boolean;
+  hasRandomness: boolean;
+  isSingleUseOnly: boolean;
   textLength: number;
 };
 
@@ -191,6 +197,16 @@ export function parseExtraDeckMaterials(
   text: string,
   isExtraDeckCard: boolean
 ): ExtraDeckMaterials;
+
+// Added 2026-08-30 (human calibration pass, brief section 9G) -
+// report-only archetype popularity/nostalgia hint, deliberately never
+// read by scoreCard/proposeRarity. See the constant's own header
+// comment in valuation-engine.mjs.
+export type ArchetypeRelevance = "high" | "unknown";
+export const ARCHETYPE_RELEVANCE_HINTS: Record<string, ArchetypeRelevance>;
+export function getArchetypeRelevanceHint(
+  archetype: string | null
+): ArchetypeRelevance;
 
 export const VALUATION_ENGINE_VERSION: string;
 export const RARITY_ORDER: GameRarity[];

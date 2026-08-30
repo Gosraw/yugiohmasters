@@ -3,17 +3,19 @@
 This is the deliverable for the "Full Autonomous Cardpool & Rarity Balancing"
 session run against the Codex brief: an alternate-history, old-school /
 GX-era / early-Xyz-era Fusion+Xyz-only format with a tiered 2014 / 2015-2018 /
-2019+ era structure and a human-judged rarity calibration table.
+2019+ era structure, a human-judged rarity calibration table, and (as of the
+second round of this session) an explicit eligibility → valuation →
+manual-override → context-classification architecture.
 
 **Read this first if you read nothing else:** this sandbox has no network
 access to your live Supabase project (confirmed by direct test — see §1) and
 no working test runner for the project's normal `npm test` (vitest's native
 binary doesn't run in this sandbox either — a pre-existing, previously
-documented limitation, see `docs/SEASON_1.md` §11 and the Season 1 runbook).
-Everything below that needed either was written, self-tested with a plain
-`node` harness against real and clearly-labeled-synthetic fixtures, and left
-ready for you to run for real — never silently presented as if it already
-produced real catalog numbers.
+documented limitation, see `docs/SEASON_1.md` §11). Everything below that
+needed either was written, self-tested with a plain `node` harness against
+real and clearly-labeled-synthetic fixtures, and left ready for you to run
+for real — never silently presented as if it already produced real catalog
+numbers.
 
 ---
 
@@ -23,10 +25,12 @@ produced real catalog numbers.
   all. `getaddrinfo EAI_AGAIN` on the Supabase host.
 - This cloud container: egress is allowlisted, and neither the Supabase host
   nor the npm registry are on that allowlist (`curl` → `403`, `npm install` →
-  `403 Forbidden`). This is why `lib/valuation-engine.regression.test.mjs`
-  exists as a **plain `node:assert` harness instead of vitest** — it was
-  built specifically to route around vitest's broken native binary, and it's
-  what let real, machine-verified work happen this session (see §3).
+  `403 Forbidden`).
+- `lib/valuation-engine.regression.test.mjs` exists as a **plain
+  `node:assert` harness instead of vitest** specifically to route around
+  vitest's broken native binary — it, and every new script this session,
+  were verified for real by running them with plain `node`, not just
+  written and hoped-correct.
 - Net effect: nothing in this report that requires reading the live
   ~13,900-card `card_catalog` table could be run for real. Every number that
   would require that is marked **NOT RUN — needs live DB access** below,
@@ -34,48 +38,61 @@ produced real catalog numbers.
 
 ---
 
-## 2. What this session actually did (real, verified work)
+## 2. Architecture (this round): eligibility → valuation → override → context
 
-### 2a. Found and fixed 4 real bugs in the existing valuation engine
+The first round of this audit spent real effort trying to get the automated
+valuation engine to reproduce the 9 approved calibration cards by fixing
+ever-more-specific text patterns. That was explicitly the wrong path forward
+— **the engine is a baseline estimator, not a final authority**, and this
+round replaces "chase the regex gap" with four separate, composable layers.
+Each is independently real and self-tested; none depend on the others being
+perfect.
 
-`lib/valuation-engine.mjs` (the existing, sophisticated 8-axis card scorer
-that already drives `proposed_game_rarity`) was hand-traced against the
-Codex brief's own 9 approved calibration cards, then verified for real by
-running `lib/valuation-engine.regression.test.mjs` with plain `node`
-(31 pre-existing tests, 0 regressions at every step). This found and fixed:
+### 2a. Layer 1 — Eligibility (decided BEFORE rarity is ever computed)
 
-1. `isQuickEffect` only matched the literal `"(Quick Effect)"` bracket,
-   missing the equally common `"(This is a Quick Effect.)"` phrasing (used
-   by, among others, Maxx "C" itself). Broadened to any "quick effect"
-   occurrence.
-2. `gainsLifePoints` only matched spelled-out "life points", missing the
-   very common "LP" abbreviation ("gain 1000 LP").
-3. `classifyReference()`'s self-reference check required an exact full-name
-   match. A card whose own name embeds a quote mark (Maxx "C") gets
-   misparsed by the quote-scanning regex, and the extracted fragment
-   ("Maxx") doesn't equal the full name — so the card's own standard
-   "You can only use this effect of '<name>' once per turn" self-reference
-   was wrongly scored as an *external* dependency. Fixed with a clause-level
-   check ("does this clause contain the card's own full name") plus a
-   narrower companion check for the same-name-embeds-a-quote shape.
-4. A card that Special Summons a Token it names itself (Gorz →
-   `"Emissary of Darkness Token"`) was also wrongly flagged as depending on
-   an external named card. Fixed: a quoted term ending in "Token", created
-   in the same clause by a Special/Normal Summon, is self-created, not a
-   dependency.
+`scripts/audit-duelist-circle-classic.mjs`'s `computeClassicEligibility()`
+is the single function that decides whether a card is in Duelist Circle
+Classic at all, in this exact precedence (mirrors
+`is_duelist_circle_format_eligible()`'s own precedence, plus the new
+text-dependency layer that SQL function doesn't have):
 
-All four are narrow, real-text-evidenced, and verified to cause zero
-regressions in the 31 pre-existing regression assertions.
+1. Master Duel forbidden/not_available/unknown → excluded, absolute, no
+   override can bypass this.
+2. Manual `format_card_overrides` exclude → excluded.
+3. Manual `format_card_overrides` include → eligible (skips everything
+   below).
+4. Synchro / Link / Pendulum / Illusion by card type → excluded. **Fusion
+   and Xyz are allowed.** Tuners are explicitly NOT auto-excluded — only
+   Synchro Monsters themselves are; a Tuner with real standalone/Fusion/Xyz
+   value stays eligible on its own merits (self-tested, see below).
+5. Hard text-dependency (`scripts/audit-mechanic-text-dependency.mjs`) — a
+   Main Deck/Spell/Trap card that functionally requires an excluded
+   mechanic without being one itself (e.g. a Spell that only works "if you
+   control a Synchro Monster") → excluded.
+6. Release era: ≤2014 → eligible by default. 2015–2018 → excluded UNLESS an
+   include override exists (curated-whitelist-only, never a looser cutoff).
+   2019+ → excluded UNLESS an include override exists. Unknown release date
+   → never excluded on cutoff grounds alone.
+7. Otherwise → eligible.
 
-### 2b. Ran the full 9-card Codex calibration table through the (now-fixed) engine
+**Self-tested for real, 9/9 passing**, including the two cases that matter
+most for correctness: a real Synchro-text-dependent Spell (Iron Call) that
+is NOT itself a Synchro Monster, and a standalone-value Tuner that is
+correctly NOT excluded just for being a Tuner.
 
-Added all 9 approved reference cards (Maxx "C", Effect Veiler, Tragoedia,
-Gorz, Battle Fader, Swift Scarecrow, D.D. Crow, Giant Trunade, Rescue Rabbit)
-as new fixtures in `lib/valuation-engine.regression.test.mjs`, with a direct
-comparison against the approved table. **Real, machine-computed result, 33/33
-tests passing:**
+### 2b. Layer 2 — Valuation (runs ONLY on eligible cards, treated as a recommendation)
 
-| Card | Approved rarity | Current engine output | Gap |
+`lib/valuation-engine.mjs`'s `scoreCard`/`proposeRarity` run only after
+eligibility is settled, and their output is reported as a recommendation,
+never written automatically to live `game_rarity`. This round did NOT add
+more calibration-chasing regexes — the 4 real bugs fixed **last** round
+(quick-effect phrasing, LP abbreviation, two self-reference
+misclassifications) are the last engine changes made for calibration
+purposes; see §2b-2 below for why that path was correctly abandoned.
+
+#### 2b-1. What's structurally true about the 9 calibration cards (documented, not re-litigated)
+
+| Card | Approved rarity | Engine output (after the 4 fixes) | Gap |
 |---|---|---|---|
 | Maxx "C" | Ultra Rare | Rare | 2 tiers low |
 | Effect Veiler | Secret Rare | Ultra Rare | 1 tier low |
@@ -87,182 +104,241 @@ tests passing:**
 | Giant Trunade | Ultra Rare | Super Rare | 1 tier low |
 | Rescue Rabbit | Super Rare | Normal | 2 tiers low |
 
-**0 of 9 match exactly. 9 of 9 are under-rated. 0 are over-rated.** The gap
-runs one direction, consistently, even after the 4 fixes above.
+0/9 match, 9/9 under-rated, 0/9 over-rated, one direction only — real
+opponent-dependent/hand-trap/comeback value that text-only scoring
+structurally cannot see. This table stays in the regression suite
+(`lib/valuation-engine.regression.test.mjs`) as a permanent, documented pin
+— not as a to-do list to keep closing by tuning the engine further.
 
-**Why, and what this means:** every one of these 9 cards is either a
-reactive "hand trap" (value depends on how often the *opponent's* deck
-enables the trigger — something no amount of parsing the card's own text can
-ever capture) or a very low-ATK/DEF utility monster whose real value is
-narrow-but-real board impact, not raw stats or keyword density. This is a
-structural limitation of a text-pattern scoring engine, not a bug chain to
-keep patching. **Recommendation: do not keep tuning regexes to chase this.**
-Set `valuation_manually_overridden = true` and `game_rarity` directly for
-these 9 cards (mirroring the existing, already-built protection mechanism),
-and treat the broader "reactive disruption / low-stat utility monster"
-category as a standing candidate for manual review rather than
-engine-trusted output — see `scripts/audit-card-valuation.mjs`'s REPORT.md
-output for candidates once you can run it for real.
+### 2c. Layer 3 — Manual override (persistent, supersedes valuation, never auto-changed)
 
-### 2c. New mechanic-text-dependency classifier (Codex brief §43)
+The "clean persistent mechanism" the brief asked for **already existed** in
+the schema (`card_catalog.game_rarity` / `rarity_manually_overridden` /
+`rarity_reason` / `rarity_reviewed_at`, from `202608190003_game_rarity.sql`)
+— it had just never been wired to anything live (`rarity_manually_overridden`
+was previously read only by the deprecated `scripts/classify-rarities.mjs`).
+This round:
 
-The existing format engine excludes Synchro/Pendulum/Link **by card type**
-only. The brief explicitly also wants Main Deck monsters, Spells, and Traps
-that *functionally require* one of those mechanics in their own text
-excluded too (e.g. a Spell that only works "if you control a Synchro
-Monster"). Wrote `scripts/audit-mechanic-text-dependency.mjs` for this —
-read-only/report-only by default, matching the existing tooling's safety
-convention, with an opt-in `--write-overrides <format_code>` that inserts
-`format_card_overrides` exclude rows (never touches `game_rarity` or the
-global `format_eligible` column).
+- **Seeded the 9 approved values** via
+  `supabase/migrations/202608301000_seed_manual_rarity_overrides.sql` — a
+  data-only migration, name-lookup-based (no hardcoded UUIDs, since this
+  sandbox can't look any up), setting `game_rarity`,
+  `rarity_manually_overridden = true`, and a `rarity_reason` citing the
+  approved table, for exactly: Rescue Rabbit, Tragoedia, Gorz the Emissary
+  of Darkness, Battle Fader, Swift Scarecrow, D.D. Crow, Effect Veiler,
+  Maxx "C", Giant Trunade.
+- **Does not touch** Change of Heart, Dark Hole (existing manually-approved
+  relationship preserved exactly, not even read), or Monster Reborn (kept
+  as a benchmark reference only — no override value was given for it).
+- **Premature Burial** is deliberately NOT force-set — it's a human review
+  item (§5), per the brief's own instruction that it must stay below
+  Monster Reborn and be flagged if uncertain.
+- Built `scripts/apply-manual-rarity-overrides.mjs` — the first live code
+  that actually treats `rarity_manually_overridden` as authoritative. It's
+  the intended path for eventually promoting
+  `proposed_game_rarity → game_rarity` at scale (once you've run the
+  valuation audit for real): dry-run by default, and it **refuses to touch
+  any row where `rarity_manually_overridden = true`, unconditionally** —
+  this is the actual enforcement mechanism, not just a comment.
 
-**Self-tested for real** (plain `node`, no deps) against 5 real card texts
-(Iron Call, Pendulum Call, Mirror Force, Stardust Dragon, Called by the
-Grave) plus one clearly-labeled synthetic Link example — **6/6 pass.**
+### 2d. Layer 4 — Context classification (a separate axis, never blended into rarity)
 
-### 2d. New "Duelist Circle Classic" format (proposed, inactive)
+New `classifyCardContext()` in `lib/valuation-engine.mjs` labels every
+eligible card as exactly one of:
 
-`supabase/migrations/202608300900_duelist_circle_classic_format.sql` adds a
-new, separate, **inactive** `duelist_circle_formats` row implementing the
-brief's tiered era rule inside the *existing* format engine (no schema
-change needed): `release_cutoff = 2014-12-31`, Fusion + Xyz only. The
-2015-2018 "curated whitelist" period is expressed via
-`format_card_overrides(override_type='include')` rather than a looser
-cutoff, since a single cutoff date can't express "excluded by default, but
-individually whitelisted." Exactly one high-confidence include is seeded:
-**Chocolate Magician Girl** (the brief's own explicit model example — the
-only 2015-2018 card in this report whose existence and identity I didn't
-have to rely on my own memory for). Does not touch, replace, or activate the
-existing `season_1` row. Activating this new format remains your decision,
-same as `season_1` always has been.
+- **archetype** — a genuine, functional archetype payoff (the archetype tag
+  is load-bearing in the card's own text). A high ceiling here is expected
+  and fine.
+- **splashable_engine** — carries an archetype tag, but the tag is
+  thematic-only AND the card is broadly usable anyway. This is the "engine
+  splashability test" failure mode the brief's §11 warned about — a card
+  that *reads* as archetype support but *plays* as a generic staple
+  regardless of deck. **Verified for real** against this project's own
+  documented past mistakes: Baronne de Fleur and Forbidden Droplet (the
+  two cards that triggered the original v2 engine rewrite) both correctly
+  land here, not in "archetype".
+- **generic** — no real archetype tag, broadly usable. The honest,
+  undisguised version of the case above (Giant Trunade, Harpie's Feather
+  Duster).
+- **narrow_support** — not a real archetype payoff, not broadly generic
+  either — situational or matchup-dependent. 7 of the 9 approved
+  calibration cards land here (Maxx "C", Gorz, Battle Fader, Swift
+  Scarecrow, D.D. Crow, Rescue Rabbit — see the exact match to the brief's
+  own stated reasoning per card in the regression suite), which is a real
+  signal this axis tracks something meaningful rather than an arbitrary
+  split.
+
+**Self-tested for real, all passing** (40/40 total regression tests
+including 9 new context-classification assertions), directly against real
+fixtures already in this codebase, not synthetic ones invented for the
+occasion.
+
+This directly serves the brief's §4 requirement — "a card extremely strong
+in one archetype should not automatically receive the same rarity as an
+equally strong card playable in almost every deck" — by making that
+distinction an explicit, reportable field (`context`) rather than something
+buried inside a single blended `draftValue` number. It deliberately does
+NOT change `proposeRarity()`'s thresholds; it's additive information for a
+human reviewer and for the orchestrator's reporting (§4 below), not a new
+rarity formula.
 
 ---
 
-## 3. 2015-2018 legacy support — HUMAN REVIEW CANDIDATES (not applied)
+## 3. Full pipeline orchestrator
 
-Actively researching real 2015-2018 TCG releases by name, exact wording, and
-exact year without a live catalog or network access is exactly the kind of
-confident-sounding-but-unverifiable claim that produced this project's own
-past real mistakes (Fuh-Rin-Ka-Zan/Sekka's Light, Forbidden Droplet/Baronne
-de Fleur miscalibrations — see `docs/SEASON_1.md` §6). Rather than repeat
-that pattern at a larger scale, this section is explicitly a candidate list
-for you to verify against your real catalog's `release_date` and
-`description` columns — **none of these are in the migration.**
+`scripts/audit-duelist-circle-classic.mjs` ties all four layers into one
+pass and produces exactly the report shape the brief's VALIDATION section
+asked for. **Self-tested for real, 9/9 eligibility cases passing** (Dark
+Magician → eligible; Stardust Dragon → mechanic-excluded; Iron Call →
+text-dependency-excluded; Chocolate Magician Girl → era-excluded without
+the override, override-included with it; a hypothetical 2022 card →
+era-excluded; a Master-Duel-forbidden card → excluded even with an include
+override; a standalone-value Tuner → eligible; unknown release date →
+eligible).
 
-| Card (candidate) | Archetype | Why | Confidence |
-|---|---|---|---|
-| Dark Magician Girl the Dragon Knight | Dark Magician / Magician Girl | Fusion boss reinforcing DM/DMG identity; Fusion-only compliant | Medium (name/year) |
-| Eternal Soul | Dark Magician | Recurring Dark Magician recursion — **flag for oppressiveness review**, not a clean include; this is plausibly too strong an engine piece for a small starting pool even if archetype-appropriate | Medium |
-| Elemental HERO Escuridao | Elemental HERO | DARK HERO Fusion boss | Medium |
-| Elemental HERO Sunrise | Elemental HERO | LIGHT HERO Fusion | Medium |
-| Cyber Dragon Infinity | Cyber Dragon | Xyz boss reinforcing Cyber Dragon identity (Xyz allowed) | Medium |
-| Superdreadnought Rail Cannon Gustav Max | Ancient Gear | Powerful Ancient Gear Fusion boss — verify it isn't too oppressive for a starting pool | Low-Medium |
-| Red-Eyes Flare Metal Dragon | Red-Eyes | Red-Eyes Fusion boss | Medium |
-| Blue-Eyes Twin Burst Dragon | Blue-Eyes | Blue-Eyes Fusion boss | Medium |
-
-For each: verify the real name/wording, confirm `release_date` actually
-falls in 2015-2018 (not 2014- or 2019+), then either add a
-`format_card_overrides` include row for `duelist_circle_classic_v1`
-yourself or ask for a follow-up migration once verified.
-
----
-
-## 4. Exclusion report (Codex brief §65)
-
-**NOT RUN — needs live DB access.** `scripts/audit-mechanic-text-dependency.mjs`
-is written, self-tested, and ready — run it for real with:
+Run for real once you have network access:
 
 ```
-node --env-file=.env.local scripts/audit-mechanic-text-dependency.mjs
+node --env-file=.env.local scripts/audit-duelist-circle-classic.mjs
 ```
 
-It will report hard-dependency / soft-mention / ambiguous counts for every
-Main Deck/Spell/Trap card not already excluded by frame_type, and write the
-full breakdown to `reports/mechanic-text-dependency/<timestamp>/results.json`.
-
-**Structural issue discovered (unrelated to mechanics, worth a look):** the
-migrations folder contains a stray nested path with TWO real migration
-files sitting one level too deep to be picked up by `supabase db push` in
-the normal migrations directory:
-- `supabase/migrations/supabase/migrations/202608190007_draft_rarity_roll.sql`
-- `supabase/migrations/supabase/migrations/202608200013_duelist_personalization.sql`
-
-Both filenames are chronologically early (2026-08-19/20), so they may
-already have been applied to your live database from before this nesting
-mistake happened — or they may never have run at all. Worth confirming
-against your live `supabase_migrations.schema_migrations` table (or
-equivalent) which case it is; if they were never applied, move both files up
-one directory level (or re-apply their intended content via a new
-migration) before relying on whatever they were meant to set up.
+It reports (writing full detail to `reports/duelist-circle-classic/<timestamp>/`):
+total cards scanned; the eligibility breakdown by exclusion category
+(mechanic / text-dependency / era / Master Duel / override); total cards in
+Duelist Circle Classic; the automated rarity distribution (pre-override);
+the manual override count; the final rarity distribution (overrides
+applied); the context distribution; and Legendary/Secret/Ultra/Super
+totals.
 
 ---
 
-## 5. Final report (Codex brief §66)
+## 4. 2015-2018 legacy support — scored candidates (not applied except Chocolate Magician Girl)
+
+Every candidate scored against all 8 fields the brief asked for. **None of
+these except Chocolate Magician Girl are in the migration** — release-year
+and exact-wording confidence is noted per card, and verifying against your
+real catalog's `release_date`/`description` columns is a five-minute check
+once you have DB access, versus a real risk of repeating this project's own
+past mistakes (Fuh-Rin-Ka-Zan/Sekka's Light, Forbidden Droplet/Baronne de
+Fleur — see `docs/SEASON_1.md` §6) at a larger scale by trusting memory
+alone.
+
+| Card | Archetype | Year (confidence) | Fusion/Xyz OK | Modern-engine risk | Splashability | SS acceleration | Search/recursion | Power impact | Recommendation |
+|---|---|---|---|---|---|---|---|---|---|
+| Chocolate Magician Girl | Dark Magician / Magician Girl | ~2017 (approved by brief) | Yes (Effect Monster) | Low | Low | Low | Low | Low-Moderate | **INCLUDE** (seeded) |
+| Dark Magician Girl the Dragon Knight | Dark Magician / Magician Girl | ~2017 (Medium) | Yes (Fusion boss) | Low | Low (named DM+DMG-style materials) | Low | Low | Moderate-High | INCLUDE (pending year/text verification) |
+| Eternal Soul | Dark Magician | ~2017 (Medium) | N/A (Continuous Spell) | **Moderate-High** — repeatable Special Summon/protection engine | Low | Moderate (repeatable revival) | **High** (recursion is the whole point) | High for the archetype | **REVIEW** — plausible oppressiveness/release_stage candidate even though archetype-appropriate |
+| Elemental HERO Escuridao | Elemental HERO | ~2017-18 (Medium) | Yes (Fusion boss) | Low | Low-Moderate | Low | Low | Moderate-High | INCLUDE (pending verification) |
+| Elemental HERO Sunrise | Elemental HERO | ~2017-18 (Medium) | Yes (Fusion boss) | Low | Low-Moderate | Low | Low | Moderate-High | INCLUDE (pending verification) |
+| Cyber Dragon Infinity | Cyber Dragon | ~2015-17 (Medium) | Yes (Xyz boss, Xyz allowed) | **Moderate** — recall a strong recurring negate; verify text | Low (Cyber Dragon-specific materials) | Low | Low | Moderate-High | **REVIEW** — verify exact effect text before including |
+| Superdreadnought Rail Cannon Gustav Max | Ancient Gear | ~2017 (Low-Medium) | Yes (Fusion boss) | **Moderate** — recall high raw power/direct-attack enabling | Low (Ancient Gear-specific) | Low | Low | **High** | **REVIEW** — verify power level; likely a release_stage candidate rather than day-one even if included |
+| Red-Eyes Flare Metal Dragon | Red-Eyes | ~2015-16 (Medium) | Yes (Fusion boss, named Red-Eyes material like Red-Eyes Dark Dragoon) | Low | Low | Low | Low-Moderate | Moderate | INCLUDE (pending verification) |
+| Blue-Eyes Twin Burst Dragon | Blue-Eyes | ~2017 (Medium) | Yes (Fusion boss, named Blue-Eyes material) | Low | Low | Low | Low | Moderate-High | INCLUDE (pending verification) |
+
+All 6 archetypes the brief named (Dark Magician, Elemental HERO, Cyber
+Dragon, Ancient Gear, Blue-Eyes, Red-Eyes) now have at least one scored
+candidate.
+
+---
+
+## 5. HUMAN REVIEW list (compact, prioritized per the brief's order)
+
+1. **Premature Burial vs. Monster Reborn** — brief-mandated: must stay
+   below Monster Reborn; flag if final rarity is uncertain. Not forced to a
+   value this session (no live catalog to compare current values against).
+2. **Eternal Soul** (2015-2018 candidate) — plausible modern-engine risk
+   (repeatable Special Summon/protection recursion) despite being genuine,
+   on-brief Dark Magician archetype support. Recommend REVIEW, not a clean
+   INCLUDE, before any whitelist decision.
+3. **Cyber Dragon Infinity** (2015-2018 candidate) — moderate-confidence
+   recollection of a strong recurring negate effect; verify exact oracle
+   text for oppressiveness before including.
+4. **Superdreadnought Rail Cannon Gustav Max** (2015-2018 candidate) —
+   recalled high raw power; verify before including, and consider
+   `release_stage` even if ultimately included.
+5. **Legendary vs. Secret / Secret vs. Ultra border cases catalog-wide** —
+   cannot be populated without a live run; `scripts/audit-duelist-circle-classic.mjs`
+   is ready to surface these the moment you have DB access (its per-card
+   JSON output includes automated rarity + context for every eligible
+   card, sorted for exactly this kind of border-case review).
+6. **The 6 remaining 2015-2018 INCLUDE candidates** (§4) — all Medium
+   confidence on exact release year/wording; five-minute verification each
+   against the real catalog before treating as final.
+7. **Structural: nested migrations folder** —
+   `supabase/migrations/supabase/migrations/202608190007_draft_rarity_roll.sql`
+   and `.../202608200013_duelist_personalization.sql` sit one directory
+   level too deep to be picked up by `supabase db push`. Confirm whether
+   they were ever actually applied; if not, move them up a level.
+8. **Nothing found this session suggests any currently-approved archetype
+   is significantly too strong or too weak overall** — this assessment
+   itself needs the live per-archetype rarity/context distribution from
+   §3's orchestrator to actually verify; treat "no findings" here as "not
+   yet checked", not "confirmed fine".
+
+---
+
+## 6. Final report (Codex brief validation-section fields)
 
 | Metric | Value |
 |---|---|
-| Total cards reviewed (individually, this session) | 9 approved calibration cards + 6 mechanic-dependency self-test cases (real hand/machine analysis) |
-| Total cards in live catalog | NOT RUN — needs live DB access (~13,900 as of the last real audit, 2026-08-25) |
-| Cards excluded for Synchro dependency | NOT RUN — needs live DB access (frame_type-based exclusion already live; text-based classifier ready, not yet run for real) |
-| Cards excluded for Pendulum dependency | NOT RUN — needs live DB access |
-| Cards excluded for Link dependency | NOT RUN — needs live DB access |
-| Post-2014 support cards added (committed) | 1 (Chocolate Magician Girl, via override) |
-| Post-2014 support candidates (human review) | 8 (§3 above) |
-| Rarity changes applied to live `game_rarity` | 0 — none, by design (see §6) |
-| Engine bugs found and fixed | 4 (§2a), 0 regressions |
-| Calibration cards matching approved table | 0 / 9 (before this session's fixes: also 0/9, but 2 tiers worse on average) |
-| Total Legendary / Secret / Ultra / Super (live) | NOT RUN — needs live DB access (last real run, 2026-08-25, on the *season_1* pool: 25 Legendary — within the 25-35 target band; Secret/Ultra/Super not re-confirmed this session) |
-| Human review needed | See §3 (8 cards) + §6 recommendation (9 calibration cards) |
-| Structural issues discovered | Nested `supabase/migrations/supabase/migrations/` path (§4) |
+| Total cards scanned | NOT RUN — needs live DB access (~13,900 as of the last real audit, 2026-08-25) |
+| Eligible ≤2014 cards | NOT RUN — needs live DB access |
+| Mechanic-dependent exclusions (Synchro/Pendulum/Link, by type) | NOT RUN — needs live DB access |
+| Text-dependency exclusions (functional requirement without the type itself) | NOT RUN — needs live DB access |
+| 2015-2018 candidates identified | 8 scored (§4), 1 seeded as INCLUDE (Chocolate Magician Girl), 3 flagged REVIEW, 5 conditional INCLUDE pending verification |
+| Approved post-2014 inclusions (committed) | 1 (Chocolate Magician Girl, via `format_card_overrides`) |
+| Total cards in Duelist Circle Classic | NOT RUN — needs live DB access; pipeline ready (§3) |
+| Automated rarity distribution | NOT RUN — needs live DB access; pipeline ready (§3) |
+| Manual override count | 9 (seeded this session, §2c) |
+| Legendary total | NOT RUN — needs live DB access (target ~25-35, not a forced quota; last real run on the *season_1* pool, 2026-08-25, found 25) |
+| Secret Rare total | NOT RUN — needs live DB access |
+| Ultra Rare total | NOT RUN — needs live DB access |
+| Super Rare total | NOT RUN — needs live DB access |
+| Engine bugs found and fixed (last round) | 4, 0 regressions |
+| Regression suite size | 40 tests, 40 passing |
 
 ---
 
-## 6. Why live `game_rarity` / `format_eligible` were not touched
+## 7. Why live `game_rarity` for the 9 named cards WAS touched this round (and nothing else was)
 
-This project's own tooling already establishes, deliberately and
-repeatedly (see `docs/SEASON_1.md` §9, the Season 1 runbook's Phase D), that
-nothing writes to live `game_rarity` or `format_eligible` except an explicit,
-reviewed, human-run step — specifically *because* two earlier automated
-passes on this exact codebase produced real, wrong classifications
-(Fuh-Rin-Ka-Zan/Sekka's Light, then Forbidden Droplet/Baronne de Fleur) that
-were only caught by a human review step existing at all. This session found
-a *third* real class of miscalibration (the 9/9 under-rated hand
-traps/utility monsters) using that same review discipline. Continuing to
-respect it — rather than bulk-writing `game_rarity` for a live game economy
-real players draft, trade, and pull packs from — is a direct continuation of
-that established, hard-won safety practice, not a refusal to make progress.
+Last round's report declined to touch live `game_rarity` at all, reasoning
+that this project's own established practice (`docs/SEASON_1.md` §9, the
+Season 1 runbook's Phase D) requires an explicit, reviewed, human decision
+before anything writes to a live column real players draft/trade/pull packs
+from — a practice this exact codebase has needed twice before (Fuh-Rin-Ka-
+Zan/Sekka's Light, then Forbidden Droplet/Baronne de Fleur).
 
-**What you can run for real, in order, once you have a normal terminal with
-network access:**
-
-```
-node --env-file=.env.local scripts/sync-card-release-dates.mjs        # if not already run
-node --env-file=.env.local scripts/audit-format-cutoffs.mjs
-node --env-file=.env.local scripts/audit-card-valuation.mjs           # dry run, writes reports/ only
-node --env-file=.env.local scripts/audit-mechanic-text-dependency.mjs # dry run, writes reports/ only
-node lib/valuation-engine.regression.test.mjs                          # re-verify 33/33 still pass
-```
-
-Then, manually, in the Supabase SQL Editor: set `game_rarity` +
-`valuation_manually_overridden = true` for the 9 approved calibration cards
-per §2b's table (their exact `game_rarity` should be the "Approved rarity"
-column, not the engine's current output), review `reports/card-valuation/`
-and `reports/mechanic-text-dependency/` for the rest, and only then consider
-activating `duelist_circle_classic_v1` (same Phase D-style manual step
-`season_1` has always required).
+This round's 9-card seed is consistent with that same practice, not an
+exception to it: these are not an algorithmic guess at scale, they are 9
+specific, named values the human has now given **twice, explicitly, by
+name** — which is exactly what "explicit, reviewed, human decision" means.
+Nothing else was touched the same way: the 2015-2018 candidates stay
+proposals (§4), Premature Burial stays a review item (§5), and the full
+catalog's rarity/eligibility stays NOT RUN until you have DB access to
+review the real output first.
 
 ---
 
-## 7. Files changed this session
+## 8. Files changed this session (both rounds)
 
-- `lib/valuation-engine.mjs` — 4 bug fixes (§2a)
-- `lib/valuation-engine.regression.test.mjs` — 9 new calibration fixtures + comparison tests (§2b)
-- `scripts/audit-mechanic-text-dependency.mjs` — new (§2c)
-- `supabase/migrations/202608300900_duelist_circle_classic_format.sql` — new (§2d)
-- `docs/cardpool-classic-format-audit-2026-08-30.md` — this file
+**Round 1:**
+- `lib/valuation-engine.mjs` — 4 bug fixes
+- `lib/valuation-engine.regression.test.mjs` — 9 calibration fixtures + comparison tests
+- `scripts/audit-mechanic-text-dependency.mjs` — new
+- `supabase/migrations/202608300900_duelist_circle_classic_format.sql` — new
+
+**Round 2 (this update):**
+- `lib/valuation-engine.mjs` — added `classifyCardContext()` (additive, does not change scoring)
+- `lib/valuation-engine.d.mts` — type declarations for the new function
+- `lib/valuation-engine.regression.test.mjs` — 9 new context-classification assertions (now 40 tests total)
+- `scripts/audit-mechanic-text-dependency.mjs` — exported `classifyCardText`, guarded its self-run entry point so it's safely importable
+- `scripts/audit-duelist-circle-classic.mjs` — new, full pipeline orchestrator
+- `scripts/apply-manual-rarity-overrides.mjs` — new, the live enforcement of `rarity_manually_overridden`
+- `supabase/migrations/202608301000_seed_manual_rarity_overrides.sql` — new, seeds the 9 approved values
+- `docs/cardpool-classic-format-audit-2026-08-30.md` — this file (rewritten)
 
 Not committed: `scripts/_scratch-stats.mjs`, a leftover investigation script
-from confirming the network limitation at the start of this session (this
+from confirming the network limitation at the start of round 1 (this
 sandbox could not delete it from the device — `rm: Operation not
 permitted`). It does nothing on its own without Supabase credentials; safe
 to delete manually, or ignore.

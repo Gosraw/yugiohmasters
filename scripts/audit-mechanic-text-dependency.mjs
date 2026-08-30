@@ -167,7 +167,7 @@ function testPattern(pattern, text) {
   return typeof pattern === "function" ? pattern(text) : pattern.test(text);
 }
 
-function classifyCardText(description) {
+export function classifyCardText(description) {
   const text = description ?? "";
   const findings = [];
 
@@ -408,17 +408,32 @@ async function runLiveAudit() {
 }
 
 // ---------------------------------------------------------
-// Entry point
+// Entry point - guarded so classifyCardText (and, in principle, the
+// other exported helpers) can be safely IMPORTED by another script
+// (see scripts/audit-duelist-circle-classic.mjs) without triggering
+// the self-test or a live audit as an import side effect. Only runs
+// when this file is the one actually executed by `node`.
 // ---------------------------------------------------------
 
-const forceSelfTest = process.argv.includes("--self-test");
-const hasEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY));
-
-if (forceSelfTest || !hasEnv) {
-  if (!hasEnv && !forceSelfTest) {
-    console.log("No Supabase env vars found - running the offline self-test instead of a live audit.\n");
+const isMainModule = await (async () => {
+  try {
+    const { pathToFileURL } = await import("node:url");
+    return import.meta.url === pathToFileURL(process.argv[1] ?? "").href;
+  } catch {
+    return false;
   }
-  runSelfTest();
-} else {
-  await runLiveAudit();
+})();
+
+if (isMainModule) {
+  const forceSelfTest = process.argv.includes("--self-test");
+  const hasEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY));
+
+  if (forceSelfTest || !hasEnv) {
+    if (!hasEnv && !forceSelfTest) {
+      console.log("No Supabase env vars found - running the offline self-test instead of a live audit.\n");
+    }
+    runSelfTest();
+  } else {
+    await runLiveAudit();
+  }
 }

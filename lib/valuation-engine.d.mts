@@ -141,6 +141,31 @@ export function scoreCard(
 
 export function proposeRarity(scores: ValuationScores): GameRarity;
 
+export type CardContext =
+  | "archetype"
+  | "splashable_engine"
+  | "generic"
+  | "narrow_support";
+
+export type CardContextResult = {
+  context: CardContext;
+  reason: string;
+};
+
+// Added 2026-08-30 (Duelist Circle Classic architecture pass) -
+// separate axis from draftValue/proposeRarity, never folded back
+// into them. See the function's own header comment in
+// valuation-engine.mjs for the full rationale.
+export function classifyCardContext(
+  signals: ValuationSignals,
+  scores: ValuationScores,
+  card: ValuationCardInput
+): CardContextResult;
+
+export function isWritableForValuation(card: {
+  valuation_manually_overridden?: boolean | null;
+}): boolean;
+
 // Deprecated alias - do not add new callers.
 export function draftValueToRarity(draftValue: number): GameRarity;
 

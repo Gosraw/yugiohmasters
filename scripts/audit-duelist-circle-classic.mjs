@@ -282,22 +282,48 @@ async function runLiveAudit() {
     from += pageSize;
   }
 
+  // Single pass over the FULL catalog (not just eligible cards). Every
+  // row - eligible or not - gets a perCard record with enough raw
+  // fields (archetype, card_type, release_date, eligibility category +
+  // reason) to filter into every review-output bucket the brief asks
+  // for without this script pre-building bespoke aggregation logic:
+  // era_excluded_2015_2018 rows ARE the "2015-2018 REVIEW candidates"
+  // pool (excluded absent an override); override_included rows with a
+  // post-2018 release_date ARE the "post-2018 exception candidates";
+  // text_dependency_excluded rows ARE the mechanic-dependent-exclusion
+  // list; etc. Valuation (scoreCard/proposeRarity/classifyCardContext)
+  // still only ever runs for eligible cards - excluded cards get no
+  // scores field at all, matching the architecture's own rule that
+  // rarity is never computed before eligibility is confirmed.
   const byCategory = new Map();
-  const eligibleCards = [];
-  for (const card of rows) {
-    const overrideType = overridesByCardId.get(card.id) ?? null;
-    const result = computeClassicEligibility(card, overrideType);
-    byCategory.set(result.category, (byCategory.get(result.category) ?? 0) + 1);
-    if (result.eligible) eligibleCards.push(card);
-  }
-
   const automatedRarityDist = Object.fromEntries(RARITY_ORDER.map((r) => [r, 0]));
   const finalRarityDist = Object.fromEntries(RARITY_ORDER.map((r) => [r, 0]));
   const contextDist = { generic: 0, archetype: 0, narrow_support: 0, splashable_engine: 0 };
   let manualOverrideCount = 0;
+  let eligibleCount = 0;
   const perCard = [];
 
-  for (const card of eligibleCards) {
+  for (const card of rows) {
+    const overrideType = overridesByCardId.get(card.id) ?? null;
+    const result = computeClassicEligibility(card, overrideType);
+    byCategory.set(result.category, (byCategory.get(result.category) ?? 0) + 1);
+
+    const base = {
+      name: card.name,
+      archetype: card.archetype ?? null,
+      card_type: card.card_type ?? null,
+      release_date: card.release_date ?? null,
+      eligible: result.eligible,
+      eligibilityCategory: result.category,
+      eligibilityReason: result.reason,
+    };
+
+    if (!result.eligible) {
+      perCard.push(base);
+      continue;
+    }
+    eligibleCount++;
+
     const signals = extractValuationSignals(card);
     const scores = scoreCard(signals, card);
     const automatedRarity = proposeRarity(scores);
@@ -312,21 +338,34 @@ async function runLiveAudit() {
     if (finalRarity && finalRarityDist[finalRarity] != null) finalRarityDist[finalRarity]++;
 
     perCard.push({
-      name: card.name,
+      ...base,
       automatedRarity,
       finalRarity,
       manuallyOverridden: isOverridden,
       context: context.context,
       contextReason: context.reason,
+      scores,
     });
   }
+
+  // override_included spans BOTH the 2015-2018 curated window and any
+  // 2019+ exception - split it by the card's own release_date (already
+  // on every perCard record) rather than approximating from the
+  // category count alone, so "2015-2018 included" and "post-2018
+  // exception" are exact, disjoint lists/counts.
+  const curated2015to2018IncludedCount = perCard.filter(
+    (c) => c.eligibilityCategory === "override_included" && c.release_date >= CURATED_WINDOW_START && c.release_date <= CURATED_WINDOW_END
+  ).length;
+  const post2018IncludedCount = perCard.filter(
+    (c) => c.eligibilityCategory === "override_included" && c.release_date > CURATED_WINDOW_END
+  ).length;
 
   console.log(`Total cards scanned: ${rows.length}`);
   console.log(`\nEligibility breakdown:`);
   for (const [cat, count] of byCategory.entries()) {
     console.log(`  ${cat}: ${count}`);
   }
-  console.log(`\nTotal cards in Duelist Circle Classic: ${eligibleCards.length}`);
+  console.log(`\nTotal cards in Duelist Circle Classic: ${eligibleCount}`);
   console.log(`\nAutomated rarity distribution (engine recommendation, pre-override):`);
   for (const r of RARITY_ORDER) console.log(`  ${r}: ${automatedRarityDist[r]}`);
   console.log(`\nManual overrides applied: ${manualOverrideCount}`);
@@ -351,7 +390,20 @@ async function runLiveAudit() {
       {
         totalScanned: rows.length,
         eligibilityBreakdown: Object.fromEntries(byCategory),
-        totalEligible: eligibleCards.length,
+        totalEligible: eligibleCount,
+        totalExcluded: rows.length - eligibleCount,
+        // Named counts the audit brief asked for explicitly, each a
+        // direct lookup into eligibilityBreakdown above (0 if a
+        // category never occurred) - no new classification logic.
+        eligibleAt2014OrEarlierCount: byCategory.get("eligible_core") ?? 0,
+        curated2015to2018IncludedCount,
+        curated2015to2018ReviewCount: byCategory.get("era_excluded_2015_2018") ?? 0,
+        post2018IncludedCount,
+        post2018ExcludedCount: byCategory.get("era_excluded_2019_plus") ?? 0,
+        mechanicExcludedCount: byCategory.get("mechanic_excluded") ?? 0,
+        textDependencyExcludedCount: byCategory.get("text_dependency_excluded") ?? 0,
+        masterDuelExcludedCount: byCategory.get("master_duel_excluded") ?? 0,
+        overrideExcludedCount: byCategory.get("override_excluded") ?? 0,
         automatedRarityDist,
         manualOverrideCount,
         finalRarityDist,

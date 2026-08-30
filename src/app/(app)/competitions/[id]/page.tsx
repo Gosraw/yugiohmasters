@@ -1874,19 +1874,22 @@ export default async function CompetitionDetailPage({
                 className="panel p-4"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <p className="font-black">
+                  <p
+                    className="min-w-0 truncate font-black"
+                    title={matchLabel(match)}
+                  >
                     {matchLabel(match)}
                   </p>
 
                   {match.status === "completed" ? (
                     <CheckCircle2
                       size={16}
-                      className="text-emerald-300"
+                      className="shrink-0 text-emerald-300"
                     />
                   ) : (
                     <Clock3
                       size={16}
-                      className="text-cyan-300"
+                      className="shrink-0 text-cyan-300"
                     />
                   )}
                 </div>

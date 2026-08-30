@@ -85,8 +85,15 @@ export function BottomNav({
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#090b10]/95 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-15px_50px_rgba(0,0,0,.35)] backdrop-blur-xl">
-      <div className="mx-auto max-w-4xl overflow-x-auto px-2">
-        <div className="flex min-w-max items-center justify-center gap-1">
+      {/* Mobile fix (2026-08-30): this used to be min-w-max +
+          overflow-x-auto with a 74px min-width per item - 7 items
+          at 74px (plus gaps/padding) needs ~560px, so on a
+          375-430px phone the primary nav itself required a
+          horizontal swipe and PROFILE/MORE sat off-screen. Each
+          item is now flex-1 so all 7 always fit one row on any
+          phone width, no nav-bar scrolling required. */}
+      <div className="mx-auto max-w-4xl px-1">
+        <div className="flex items-center justify-between gap-0.5">
           {items.map(
             ({
               href,
@@ -108,7 +115,7 @@ export function BottomNav({
                       ? "page"
                       : undefined
                   }
-                  className={`group relative flex min-w-[74px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 transition-all duration-150 active:scale-[0.93] ${
+                  className={`group relative flex min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 transition-all duration-150 active:scale-[0.93] ${
                     active
                       ? "bg-amber-300/[0.08] text-amber-200"
                       : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200"

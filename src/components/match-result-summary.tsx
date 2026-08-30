@@ -8,6 +8,7 @@ import {
 import type {
   MatchSettlementSummary,
 } from "@/lib/match-settlement-summary";
+import { voucherLabel } from "@/lib/match-settlement-summary";
 
 // =========================================================
 // MATCH RESULT SUMMARY
@@ -29,17 +30,6 @@ import type {
 //   3. COMPETITION COMPLETE - only when this result auto-finalized
 //      the competition AND placement rewards were actually granted.
 // =========================================================
-
-const VOUCHER_LABEL: Record<string, string> = {
-  normal_pack: "Standard Pack",
-  premium_pack: "Premium Pack",
-  deluxe_pack: "Deluxe Pack",
-  special_pack: "Special Pack",
-};
-
-function voucherLabel(voucherType: string) {
-  return VOUCHER_LABEL[voucherType] ?? voucherType;
-}
 
 function ordinal(n: number) {
   const s = ["th", "st", "nd", "rd"];

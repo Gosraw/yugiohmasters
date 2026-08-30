@@ -56,6 +56,10 @@ import {
   CompetitionMatchResultFormV2,
 } from "@/components/competition-match-result-form-v2";
 
+import {
+  voucherLabel,
+} from "@/lib/match-settlement-summary";
+
 export const dynamic =
   "force-dynamic";
 
@@ -232,6 +236,23 @@ type CompetitionTiebreak = {
   resolved_order:
     | string[]
     | null;
+};
+
+type CompetitionRewardGrant = {
+  profile_id: string;
+  placement: number;
+  duel_points_granted: number;
+  voucher_type: string | null;
+  voucher_quantity: number;
+};
+
+type CompetitionRoundRewardGrant = {
+  profile_id: string;
+  round_number: number;
+  reward_role: "participation" | "round_winner";
+  duel_points_granted: number;
+  voucher_type: string | null;
+  voucher_quantity: number;
 };
 
 // =========================================================
@@ -446,6 +467,14 @@ export default async function CompetitionDetailPage({
       data: tiebreakData,
       error: tiebreakError,
     },
+    {
+      data: rewardGrantData,
+      error: rewardGrantError,
+    },
+    {
+      data: roundRewardGrantData,
+      error: roundRewardGrantError,
+    },
   ] = await Promise.all([
     supabase
       .from(
@@ -614,6 +643,55 @@ export default async function CompetitionDetailPage({
           )
       : Promise.resolve({
           data: [] as CompetitionTiebreak[],
+          error: null,
+        }),
+
+    // Actual granted placement rewards (not the configured rules -
+    // rewardData above is the rule table, this is what really got
+    // paid out) so Final Results can show real DP/voucher amounts
+    // instead of only a generic "rewards distributed" banner.
+    wantsFinalResults
+      ? supabase
+          .from(
+            "competition_reward_grants"
+          )
+          .select(
+            "profile_id,placement,duel_points_granted,voucher_type,voucher_quantity"
+          )
+          .eq(
+            "competition_id",
+            competition.id
+          )
+          .eq(
+            "status",
+            "granted"
+          )
+      : Promise.resolve({
+          data: [] as CompetitionRewardGrant[],
+          error: null,
+        }),
+
+    // Round-level rewards (participation + round-winner) granted so
+    // far, V2 round-robin only - settled automatically as each
+    // round completes, independent of overall competition status.
+    isV2
+      ? supabase
+          .from(
+            "competition_round_reward_grants"
+          )
+          .select(
+            "profile_id,round_number,reward_role,duel_points_granted,voucher_type,voucher_quantity"
+          )
+          .eq(
+            "competition_id",
+            competition.id
+          )
+          .eq(
+            "status",
+            "granted"
+          )
+      : Promise.resolve({
+          data: [] as CompetitionRoundRewardGrant[],
           error: null,
         }),
   ]);
@@ -839,6 +917,99 @@ export default async function CompetitionDetailPage({
   const tiebreaks =
     (tiebreakData ??
       []) as CompetitionTiebreak[];
+
+  // ======================================================
+  // REWARD GRANTS (actual amounts paid, not the rule config)
+  // ======================================================
+
+  if (rewardGrantError) {
+    throw new Error(
+      rewardGrantError.message
+    );
+  }
+
+  if (roundRewardGrantError) {
+    throw new Error(
+      roundRewardGrantError.message
+    );
+  }
+
+  const rewardGrants =
+    (rewardGrantData ??
+      []) as CompetitionRewardGrant[];
+
+  const roundRewardGrants =
+    (roundRewardGrantData ??
+      []) as CompetitionRoundRewardGrant[];
+
+  type ProfileRewardTotal = {
+    dpTotal: number;
+    vouchers: Map<string, number>;
+  };
+
+  function addVoucher(
+    totals: ProfileRewardTotal,
+    voucherType: string | null,
+    voucherQuantity: number
+  ) {
+    if (!voucherType || voucherQuantity <= 0) {
+      return;
+    }
+    totals.vouchers.set(
+      voucherType,
+      (totals.vouchers.get(voucherType) ?? 0) +
+        voucherQuantity
+    );
+  }
+
+  const rewardTotalsByProfile = new Map<
+    string,
+    ProfileRewardTotal
+  >();
+
+  function totalsFor(profileId: string) {
+    let totals =
+      rewardTotalsByProfile.get(profileId);
+    if (!totals) {
+      totals = { dpTotal: 0, vouchers: new Map() };
+      rewardTotalsByProfile.set(profileId, totals);
+    }
+    return totals;
+  }
+
+  for (const grant of rewardGrants) {
+    const totals = totalsFor(grant.profile_id);
+    totals.dpTotal += grant.duel_points_granted;
+    addVoucher(
+      totals,
+      grant.voucher_type,
+      grant.voucher_quantity
+    );
+  }
+
+  for (const grant of roundRewardGrants) {
+    const totals = totalsFor(grant.profile_id);
+    totals.dpTotal += grant.duel_points_granted;
+    addVoucher(
+      totals,
+      grant.voucher_type,
+      grant.voucher_quantity
+    );
+  }
+
+  const roundRewardCountByRound = new Map<
+    number,
+    number
+  >();
+
+  for (const grant of roundRewardGrants) {
+    roundRewardCountByRound.set(
+      grant.round_number,
+      (roundRewardCountByRound.get(
+        grant.round_number
+      ) ?? 0) + 1
+    );
+  }
 
   const unresolvedTiebreaks =
     tiebreaks.filter(
@@ -1786,9 +1957,14 @@ export default async function CompetitionDetailPage({
                   (match) => match.status === "completed"
                 );
 
+                const roundRewardCount =
+                  roundRewardCountByRound.get(
+                    roundNumber
+                  ) ?? 0;
+
                 return (
                   <div key={roundNumber}>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="text-[9px] font-black uppercase tracking-[.2em] text-cyan-300">
                         {isCurrent
                           ? "Current Round"
@@ -1801,6 +1977,14 @@ export default async function CompetitionDetailPage({
                         Round {roundNumber} of{" "}
                         {competition.total_rounds}
                       </span>
+
+                      {isCompleted &&
+                        roundRewardCount > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-black text-emerald-200">
+                            <Gift size={10} />
+                            Rewards granted
+                          </span>
+                        )}
                     </div>
 
                     <div className="mt-3 grid gap-3 lg:grid-cols-2">
@@ -1866,39 +2050,95 @@ export default async function CompetitionDetailPage({
                     </div>
                   </div>
 
-                  <div className="flex gap-4 text-xs font-black">
-                    <span className="text-emerald-200">
-                      {
-                        result.wins
-                      }{" "}
-                      W
-                    </span>
+                  <div className="flex flex-col items-start gap-2 sm:items-end">
+                    <div className="flex gap-4 text-xs font-black">
+                      <span className="text-emerald-200">
+                        {
+                          result.wins
+                        }{" "}
+                        W
+                      </span>
 
-                    <span className="text-zinc-400">
-                      {
-                        result.draws
-                      }{" "}
-                      D
-                    </span>
+                      <span className="text-zinc-400">
+                        {
+                          result.draws
+                        }{" "}
+                        D
+                      </span>
 
-                    <span className="text-red-200">
-                      {
-                        result.losses
-                      }{" "}
-                      L
-                    </span>
+                      <span className="text-red-200">
+                        {
+                          result.losses
+                        }{" "}
+                        L
+                      </span>
 
-                    <span className="text-amber-200">
-                      {
-                        result.points
-                      }{" "}
-                      PTS
-                    </span>
+                      <span className="text-amber-200">
+                        {
+                          result.points
+                        }{" "}
+                        PTS
+                      </span>
+                    </div>
+
+                    {(() => {
+                      const totals =
+                        rewardTotalsByProfile.get(
+                          result.profile_id
+                        );
+
+                      if (!totals) {
+                        return null;
+                      }
+
+                      const voucherEntries = Array.from(
+                        totals.vouchers.entries()
+                      );
+
+                      if (
+                        totals.dpTotal === 0 &&
+                        voucherEntries.length === 0
+                      ) {
+                        return null;
+                      }
+
+                      return (
+                        <div className="flex flex-wrap items-center justify-end gap-1.5 text-[10px] font-bold">
+                          {totals.dpTotal > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-amber-200">
+                              <Coins size={10} />+
+                              {totals.dpTotal} DP
+                            </span>
+                          )}
+
+                          {voucherEntries.map(
+                            ([voucherType, quantity]) => (
+                              <span
+                                key={voucherType}
+                                className="inline-flex items-center gap-1 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-cyan-200"
+                              >
+                                <Ticket size={10} />
+                                {quantity}×{" "}
+                                {voucherLabel(
+                                  voucherType
+                                )}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )
             )}
           </div>
+
+          <p className="mt-4 text-[10px] font-bold uppercase tracking-wide text-zinc-600">
+            Rewards shown reflect duel points and vouchers actually
+            granted so far (placement + round rewards) - redeem
+            vouchers from the Shop.
+          </p>
         </section>
       )}
 

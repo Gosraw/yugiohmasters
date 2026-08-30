@@ -30,6 +30,21 @@ type SupabaseClient =
 // older history.
 // =========================================================
 
+// Shared voucher-type -> display-label map. Single source of truth
+// so every place that shows a voucher (this module's consumers,
+// plus the competition-completion reward breakdown) uses the same
+// wording instead of re-declaring the map per component.
+export const VOUCHER_LABEL: Record<string, string> = {
+  normal_pack: "Standard Pack",
+  premium_pack: "Premium Pack",
+  deluxe_pack: "Deluxe Pack",
+  special_pack: "Special Pack",
+};
+
+export function voucherLabel(voucherType: string) {
+  return VOUCHER_LABEL[voucherType] ?? voucherType;
+}
+
 export type DpAward = {
   profileId: string;
   profileName: string;

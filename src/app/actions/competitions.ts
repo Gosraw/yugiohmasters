@@ -12,6 +12,11 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  buildMatchSettlementSummary,
+  type MatchSettlementSummary,
+} from "@/lib/match-settlement-summary";
+
 // =========================================================
 // HELPERS
 // =========================================================
@@ -34,6 +39,25 @@ function requiredString(
 
   return value;
 }
+
+// =========================================================
+// MATCH RESULT ACTION STATE
+//
+// submit_competition_match_result_v2 / submit_competition_tiebreak_
+// match_result are void RPCs - the settlement (match DP, round
+// rewards, competition finalize + rewards) all already happened
+// inside them, atomically and idempotently, before this ever runs.
+// This state shape lets the client component show what ACTUALLY got
+// granted (via buildMatchSettlementSummary re-reading the ledger/
+// grant tables) instead of the frontend guessing or computing its
+// own numbers.
+// =========================================================
+
+export type MatchResultActionState =
+  | { status: "idle" }
+  | { status: "error"; error: string }
+  | { status: "success"; summary: MatchSettlementSummary | null };
+
 
 // =========================================================
 // CREATE COMPETITION
@@ -638,41 +662,37 @@ export async function startCompetitionV2(
 // =========================================================
 
 export async function submitCompetitionMatchResultV2(
+  _prevState: MatchResultActionState,
   formData: FormData
-) {
+): Promise<MatchResultActionState> {
   const {
     supabase,
   } = await requireUser();
 
-  const matchId =
-    requiredString(
-      formData,
-      "match_id"
-    );
+  let matchId: string;
+  let competitionId: string;
+  let playerOneWins: number;
+  let playerTwoWins: number;
 
-  const competitionId =
-    requiredString(
-      formData,
-      "competition_id"
-    );
-
-  const playerOneWins =
-    Number.parseInt(
-      requiredString(
-        formData,
-        "player_one_duel_wins"
-      ),
+  try {
+    matchId = requiredString(formData, "match_id");
+    competitionId = requiredString(formData, "competition_id");
+    playerOneWins = Number.parseInt(
+      requiredString(formData, "player_one_duel_wins"),
       10
     );
-
-  const playerTwoWins =
-    Number.parseInt(
-      requiredString(
-        formData,
-        "player_two_duel_wins"
-      ),
+    playerTwoWins = Number.parseInt(
+      requiredString(formData, "player_two_duel_wins"),
       10
     );
+  } catch (err) {
+    return {
+      status: "error",
+      error: err instanceof Error ? err.message : "Invalid form submission.",
+    };
+  }
+
+  const settledFrom = new Date().toISOString();
 
   const {
     error,
@@ -689,14 +709,34 @@ export async function submitCompetitionMatchResultV2(
   );
 
   if (error) {
-    throw new Error(
-      error.message
-    );
+    return {
+      status: "error",
+      error: error.message,
+    };
   }
 
   revalidatePath(
     `/competitions/${competitionId}`
   );
+
+  let summary: MatchSettlementSummary | null = null;
+
+  try {
+    summary = await buildMatchSettlementSummary(supabase, {
+      matchId,
+      competitionId,
+      settledFrom,
+    });
+  } catch {
+    // The result was saved successfully - a failure summarizing it
+    // afterward should never make the submission look like it failed.
+    summary = null;
+  }
+
+  return {
+    status: "success",
+    summary,
+  };
 }
 
 // =========================================================
@@ -704,47 +744,37 @@ export async function submitCompetitionMatchResultV2(
 // =========================================================
 
 export async function correctCompetitionMatchResultV2(
+  _prevState: MatchResultActionState,
   formData: FormData
-) {
+): Promise<MatchResultActionState> {
   const {
     supabase,
   } = await requireUser();
 
-  const matchId =
-    requiredString(
-      formData,
-      "match_id"
-    );
+  let matchId: string;
+  let competitionId: string;
+  let playerOneWins: number;
+  let playerTwoWins: number;
+  let reason: string;
 
-  const competitionId =
-    requiredString(
-      formData,
-      "competition_id"
-    );
-
-  const playerOneWins =
-    Number.parseInt(
-      requiredString(
-        formData,
-        "player_one_duel_wins"
-      ),
+  try {
+    matchId = requiredString(formData, "match_id");
+    competitionId = requiredString(formData, "competition_id");
+    playerOneWins = Number.parseInt(
+      requiredString(formData, "player_one_duel_wins"),
       10
     );
-
-  const playerTwoWins =
-    Number.parseInt(
-      requiredString(
-        formData,
-        "player_two_duel_wins"
-      ),
+    playerTwoWins = Number.parseInt(
+      requiredString(formData, "player_two_duel_wins"),
       10
     );
-
-  const reason =
-    requiredString(
-      formData,
-      "reason"
-    );
+    reason = requiredString(formData, "reason");
+  } catch (err) {
+    return {
+      status: "error",
+      error: err instanceof Error ? err.message : "Invalid form submission.",
+    };
+  }
 
   const {
     error,
@@ -762,14 +792,20 @@ export async function correctCompetitionMatchResultV2(
   );
 
   if (error) {
-    throw new Error(
-      error.message
-    );
+    return {
+      status: "error",
+      error: error.message,
+    };
   }
 
   revalidatePath(
     `/competitions/${competitionId}`
   );
+
+  return {
+    status: "success",
+    summary: null,
+  };
 }
 
 // =========================================================
@@ -901,41 +937,37 @@ export async function startCompetitionTiebreak(
 }
 
 export async function submitCompetitionTiebreakMatchResult(
+  _prevState: MatchResultActionState,
   formData: FormData
-) {
+): Promise<MatchResultActionState> {
   const {
     supabase,
   } = await requireUser();
 
-  const matchId =
-    requiredString(
-      formData,
-      "match_id"
-    );
+  let matchId: string;
+  let competitionId: string;
+  let playerOneWins: number;
+  let playerTwoWins: number;
 
-  const competitionId =
-    requiredString(
-      formData,
-      "competition_id"
-    );
-
-  const playerOneWins =
-    Number.parseInt(
-      requiredString(
-        formData,
-        "player_one_duel_wins"
-      ),
+  try {
+    matchId = requiredString(formData, "match_id");
+    competitionId = requiredString(formData, "competition_id");
+    playerOneWins = Number.parseInt(
+      requiredString(formData, "player_one_duel_wins"),
       10
     );
-
-  const playerTwoWins =
-    Number.parseInt(
-      requiredString(
-        formData,
-        "player_two_duel_wins"
-      ),
+    playerTwoWins = Number.parseInt(
+      requiredString(formData, "player_two_duel_wins"),
       10
     );
+  } catch (err) {
+    return {
+      status: "error",
+      error: err instanceof Error ? err.message : "Invalid form submission.",
+    };
+  }
+
+  const settledFrom = new Date().toISOString();
 
   const {
     error,
@@ -952,14 +984,37 @@ export async function submitCompetitionTiebreakMatchResult(
   );
 
   if (error) {
-    throw new Error(
-      error.message
-    );
+    return {
+      status: "error",
+      error: error.message,
+    };
   }
 
   revalidatePath(
     `/competitions/${competitionId}`
   );
+
+  // A tiebreak match is never itself part of a "round" (its
+  // matches.round_number is null - see start_competition_tiebreak),
+  // so there is no round-reward summary here, only a possible
+  // competition-completion summary if resolving this tiebreak just
+  // let the competition auto-finalize.
+  let summary: MatchSettlementSummary | null = null;
+
+  try {
+    summary = await buildMatchSettlementSummary(supabase, {
+      matchId,
+      competitionId,
+      settledFrom,
+    });
+  } catch {
+    summary = null;
+  }
+
+  return {
+    status: "success",
+    summary,
+  };
 }
 
 // =========================================================

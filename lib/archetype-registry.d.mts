@@ -109,7 +109,7 @@ export type ShapedArchetype = {
 };
 
 export interface SupabaseLikeClient {
-  from(table: string): any;
+  from(table: string): unknown;
 }
 
 export function shapeArchetype(

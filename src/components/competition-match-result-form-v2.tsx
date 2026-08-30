@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useActionState,
   useState,
 } from "react";
 
@@ -13,11 +14,20 @@ import {
   correctCompetitionMatchResultV2,
   submitCompetitionMatchResultV2,
   submitCompetitionTiebreakMatchResult,
+  type MatchResultActionState,
 } from "@/app/actions/competitions";
+
+import {
+  MatchResultSummary,
+} from "@/components/match-result-summary";
 
 import {
   SubmitButton,
 } from "@/components/submit-button";
+
+const INITIAL_STATE: MatchResultActionState = {
+  status: "idle",
+};
 
 // =========================================================
 // COMPETITION MATCH RESULT FORM (V2)
@@ -90,6 +100,14 @@ export function CompetitionMatchResultFormV2({
         ? submitCompetitionTiebreakMatchResult
         : submitCompetitionMatchResultV2;
 
+  const [
+    state,
+    formAction,
+  ] = useActionState(
+    action,
+    INITIAL_STATE
+  );
+
   if (mode === "correct" && !showReason) {
     return (
       <button
@@ -103,9 +121,22 @@ export function CompetitionMatchResultFormV2({
     );
   }
 
+  if (state.status === "success") {
+    if (state.summary) {
+      return <MatchResultSummary summary={state.summary} />;
+    }
+
+    return (
+      <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-300/[0.04] p-3 text-xs font-black text-emerald-200">
+        <CheckCircle2 size={14} />
+        {mode === "correct" ? "Correction saved." : "Result saved."}
+      </div>
+    );
+  }
+
   return (
     <form
-      action={action}
+      action={formAction}
       className="mt-3 space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3"
     >
       <input type="hidden" name="match_id" value={matchId} />
@@ -196,6 +227,12 @@ export function CompetitionMatchResultFormV2({
             className="field w-full text-sm"
           />
         </label>
+      )}
+
+      {state.status === "error" && (
+        <p className="rounded-lg border border-red-400/25 bg-red-400/10 px-2.5 py-2 text-xs font-bold text-red-200">
+          {state.error}
+        </p>
       )}
 
       <SubmitButton

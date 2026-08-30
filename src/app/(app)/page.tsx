@@ -768,7 +768,7 @@ export default async function DashboardPage() {
   {/* DUEL POINTS */}
 
   <Link
-    href="/matches"
+    href="/wallet"
     className="panel group relative min-h-[112px] overflow-hidden p-5 transition-all hover:-translate-y-1 hover:border-cyan-300/25"
   >
     <Zap

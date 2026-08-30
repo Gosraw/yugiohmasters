@@ -5,7 +5,9 @@ import {
   Award,
   Bell,
   BookOpen,
+  Coins,
   Compass,
+  Gamepad2,
   Layers3,
   Medal,
   Repeat2,
@@ -30,6 +32,20 @@ type ExploreItem = {
 };
 
 const items: ExploreItem[] = [
+  {
+    href: "/play",
+    label: "Game Modes",
+    description: "Competition, Best of 3, Tournament and the Life Points counter.",
+    icon: Gamepad2,
+    accent: "amber",
+  },
+  {
+    href: "/wallet",
+    label: "DP Wallet",
+    description: "Every credit and debit to your Duel Points, in order.",
+    icon: Coins,
+    accent: "amber",
+  },
   {
     href: "/league",
     label: "League",

@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "seed:dev": "node scripts/seed-dev.mjs",
     "season:reset": "node scripts/season-reset.mjs",
-    "season:reset:apply": "node scripts/season-reset.mjs --apply"
+    "season:reset:apply": "node scripts/season-reset.mjs --apply",
+    "check:sql": "node scripts/check-plpgsql-foreach-slice.mjs supabase/migrations/*.sql scripts/generated/*.sql"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",

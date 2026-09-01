@@ -287,7 +287,7 @@ do $$
 declare
   v_format_id uuid;
   v_count integer;
-  v_card record;
+  v_card text[];
   v_cards text[][] := array[
     -- [name, reason]
     array['Elemental HERO Shadow Mist', 'Elemental HERO: generic-target removal (discard 1 card, destroy any card) plus on-death recursion (searches a HERO card) - fixes the archetype''s real weakness (no removal) without becoming a repeatable engine (once per turn, real discard cost).'],

@@ -65,6 +65,12 @@ type Trade = {
   superseded_by:
     | string
     | null;
+
+  expires_at:
+    | string
+    | null;
+
+  auto_expired: boolean;
 };
 
 type Profile = {
@@ -145,13 +151,64 @@ function formatDate(
   );
 }
 
+// P1A: 24h server-enforced trade expiry - purely a display
+// helper, the actual enforcement lives in accept_trade() and
+// expire_stale_trades() (see 202609012300_trade_offer_expiry.sql).
+function formatExpiry(
+  expiresAt: string | null
+): string | null {
+  if (!expiresAt) {
+    return null;
+  }
+
+  const msRemaining =
+    new Date(expiresAt).getTime() - Date.now();
+
+  if (msRemaining <= 0) {
+    return "Expiring...";
+  }
+
+  const hoursRemaining = Math.floor(
+    msRemaining / (1000 * 60 * 60)
+  );
+
+  if (hoursRemaining >= 1) {
+    return `Expires in ${hoursRemaining}h`;
+  }
+
+  const minutesRemaining = Math.max(
+    1,
+    Math.floor(msRemaining / (1000 * 60))
+  );
+
+  return `Expires in ${minutesRemaining}m`;
+}
+
 function TradeStatusBadge({
   status,
   countered,
+  autoExpired,
 }: {
   status: TradeStatus;
   countered?: boolean;
+  autoExpired?: boolean;
 }) {
+  if (
+    status ===
+      "declined" &&
+    autoExpired
+  ) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-400/30 bg-orange-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-orange-200">
+        <Clock3
+          size={10}
+        />
+
+        Expired
+      </span>
+    );
+  }
+
   if (
     status ===
       "declined" &&
@@ -314,6 +371,9 @@ function TradeCard({
             countered={Boolean(
               trade.superseded_by
             )}
+            autoExpired={
+              trade.auto_expired
+            }
           />
 
           <span
@@ -415,9 +475,11 @@ function TradeCard({
             ? "Build your offer"
             : trade.status ===
                 "pending"
-              ? isSender
-                ? "Waiting for response"
-                : "Your response required"
+              ? `${
+                  isSender
+                    ? "Waiting for response"
+                    : "Your response required"
+                } · ${formatExpiry(trade.expires_at) ?? ""}`
               : trade.status ===
                   "accepted"
                 ? "Ownership transferred"
@@ -480,6 +542,13 @@ export default async function TradesPage() {
   const leagueId =
     membership.league_id;
 
+  // P1A: lazily sweep stale trade offers past their 24h expiry
+  // into 'declined' + auto_expired = true, so this list reflects
+  // expiry promptly rather than waiting for someone to try (and
+  // fail) to accept one. Best-effort - a failure here should
+  // never block the page from loading.
+  await supabase.rpc("expire_stale_trades");
+
   // ======================================================
   // TRADES
   // ======================================================
@@ -500,7 +569,9 @@ export default async function TradesPage() {
         submitted_at,
         completed_at,
         parent_trade_id,
-        superseded_by
+        superseded_by,
+        expires_at,
+        auto_expired
       `
     )
     .eq(

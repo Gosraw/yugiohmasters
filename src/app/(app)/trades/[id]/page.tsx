@@ -69,6 +69,9 @@ type Trade = {
   dp_requested: number;
   parent_trade_id: string | null;
   superseded_by: string | null;
+
+  expires_at: string | null;
+  auto_expired: boolean;
 };
 
 type TradeItem = {
@@ -158,13 +161,60 @@ function formatDate(
   );
 }
 
+// P1A: 24h server-enforced trade expiry - purely a display
+// helper, the actual enforcement lives in accept_trade() and
+// expire_stale_trades() (see 202609012300_trade_offer_expiry.sql).
+function formatExpiry(
+  expiresAt: string | null
+): string | null {
+  if (!expiresAt) {
+    return null;
+  }
+
+  const msRemaining =
+    new Date(expiresAt).getTime() - Date.now();
+
+  if (msRemaining <= 0) {
+    return "Expiring...";
+  }
+
+  const hoursRemaining = Math.floor(
+    msRemaining / (1000 * 60 * 60)
+  );
+
+  if (hoursRemaining >= 1) {
+    return `Expires in ${hoursRemaining}h`;
+  }
+
+  const minutesRemaining = Math.max(
+    1,
+    Math.floor(msRemaining / (1000 * 60))
+  );
+
+  return `Expires in ${minutesRemaining}m`;
+}
+
 function TradeStatusBadge({
   status,
   countered,
+  autoExpired,
 }: {
   status: Trade["status"];
   countered?: boolean;
+  autoExpired?: boolean;
 }) {
+  if (
+    status === "declined" &&
+    autoExpired
+  ) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-400/30 bg-orange-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-orange-200">
+        <Clock3 size={12} />
+        Expired
+      </span>
+    );
+  }
+
   if (
     status === "declined" &&
     countered
@@ -315,7 +365,7 @@ export default async function TradeDetailPage({
   } = await supabase
     .from("trades")
     .select(
-      "id,league_id,created_by,sender_id,receiver_id,status,message,created_at,submitted_at,completed_at,dp_offered,dp_requested,parent_trade_id,superseded_by"
+      "id,league_id,created_by,sender_id,receiver_id,status,message,created_at,submitted_at,completed_at,dp_offered,dp_requested,parent_trade_id,superseded_by,expires_at,auto_expired"
     )
     .eq("id", id)
     .maybeSingle();
@@ -764,7 +814,14 @@ export default async function TradeDetailPage({
           countered={Boolean(
             trade.superseded_by
           )}
+          autoExpired={trade.auto_expired}
         />
+
+        {trade.status === "pending" && (
+          <p className="mt-3 text-[10px] font-black uppercase tracking-wider text-amber-300/80">
+            {formatExpiry(trade.expires_at)}
+          </p>
+        )}
 
         <p className="mt-5 text-xs font-black tracking-[.28em] text-amber-300">
           CARD TRADE

@@ -7,6 +7,7 @@ import {
   BookOpen,
   Coins,
   Compass,
+  Crown,
   Gamepad2,
   Layers3,
   Medal,
@@ -32,6 +33,13 @@ type ExploreItem = {
 };
 
 const items: ExploreItem[] = [
+  {
+    href: "/boss",
+    label: "Boss Path",
+    description: "Choose a signature monster, grind four evolution stages, and become the boss your league has to prepare for.",
+    icon: Crown,
+    accent: "amber",
+  },
   {
     href: "/play",
     label: "Game Modes",

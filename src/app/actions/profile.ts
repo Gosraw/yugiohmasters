@@ -1136,20 +1136,41 @@ export async function chooseBossMonster(
     );
   }
 
+  // Season 1: start_personal_initial_draft() is one-time per player
+  // (it raises if the caller already has a drafting or completed
+  // draft_players row) - the mandatory onboarding flow in
+  // src/lib/supabase/proxy.ts is now the normal way a player reaches
+  // their Initial Draft, so this cosmetic Boss Monster picker must
+  // not error out for a player who already has one. Only attempt the
+  // RPC when the player genuinely has no draft yet; either way,
+  // /draft itself already renders the correct state (active,
+  // completed, or the start button).
   const {
-    error: draftError,
-  } = await supabase.rpc(
-    "start_personal_initial_draft",
-    {
-      target_league_id:
-        membership.league_id,
-    }
-  );
+    data: existingDraftPlayer,
+  } = await supabase
+    .from("draft_players")
+    .select("id")
+    .eq("profile_id", userId)
+    .in("status", ["drafting", "completed"])
+    .limit(1)
+    .maybeSingle();
 
-  if (draftError) {
-    throw new Error(
-      `Initial Draft starten mislukt: ${draftError.message}`
+  if (!existingDraftPlayer) {
+    const {
+      error: draftError,
+    } = await supabase.rpc(
+      "start_personal_initial_draft",
+      {
+        target_league_id:
+          membership.league_id,
+      }
     );
+
+    if (draftError) {
+      throw new Error(
+        `Initial Draft starten mislukt: ${draftError.message}`
+      );
+    }
   }
 
   revalidateIdentity();

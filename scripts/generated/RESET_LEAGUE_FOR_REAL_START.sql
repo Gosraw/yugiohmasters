@@ -409,3 +409,106 @@ begin
 end $$;
 
 commit;
+
+
+-- =========================================================
+-- REAL START - FULL ACCOUNT WIPE (Season 1 launch-flow item 9)
+--
+-- Everything above this line keeps every account and wipes only
+-- test-run gameplay state. TONIGHT's actual Season 1 real start is a
+-- DIFFERENT, WIDER operation: bossg, faro and samiro must register
+-- brand new accounts from scratch, so their auth.users rows - and
+-- therefore their profiles, via the ON DELETE CASCADE from
+-- profiles.id to auth.users(id) - must be deleted too, not just
+-- their gameplay state.
+--
+-- THIS CANNOT BE DONE BY RUNNING MORE SQL IN THIS FILE.
+-- auth.users is managed by Supabase Auth outside plain SQL privileges
+-- in the normal case (see scripts/reset-test-data.sql's own
+-- "AUTH USERS - DO NOT DELETE VIA SQL" section) - Supabase manages
+-- related auth state (sessions, identities, refresh tokens) outside
+-- what a plain SQL DELETE can safely clean up. Deleting an account
+-- must go through Supabase's Admin API
+-- (supabase.auth.admin.deleteUser(id)) or the Dashboard UI. This
+-- project already has the correct, already-audited mechanism for
+-- that - use it instead of writing new raw SQL against auth.users:
+--
+--   1. npm run season:reset          -- DRY RUN. Calls
+--      season_reset_preview() (supabase/migrations/
+--      202608231520_season_reset.sql) and prints exactly what would
+--      be removed, with nothing changed. Run this first.
+--
+--   2. npm run season:reset:apply    -- THE REAL START. Calls
+--      season_reset_apply('RESET DUELIST CIRCLE SEASON')
+--      (supabase/migrations/202608231530_season_reset_safe_delete_fix.sql,
+--      extended by 202609020900_season_reset_apply_achievement_claims_fix.sql
+--      to also clear public.achievement_claims - see that migration's
+--      own header for why: achievement_claims.claimant_id is an ON
+--      DELETE RESTRICT fk to profiles that would otherwise block
+--      step 3 below for any player who ever submitted a Pay-to-Win
+--      claim). That RPC deletes every table with a RESTRICT fk to
+--      profiles (drafts, card_instances, decks, matches, trades,
+--      shop history, competitions, achievement_claims, etc.) and
+--      nulls the two RESTRICT fks on rows that must themselves
+--      survive (leagues.created_by, card_catalog.rarity_reviewed_by),
+--      then returns every remaining profiles.id.
+--
+--      scripts/season-reset.mjs then passes each returned id to
+--      supabase.auth.admin.deleteUser(id) using the service-role key
+--      (a second, separate Supabase client from the one used for the
+--      RPC calls above - the RPCs are admin-gated on a real human
+--      session and a service-role key has no such session, so it
+--      cannot call them; it is used ONLY for this final delete step).
+--      Deleting auth.users cascades to profiles (ON DELETE CASCADE)
+--      and from there to every table with a CASCADE fk to profiles
+--      (wallets, card_wishlist_items, player_boss_paths and its
+--      stage-unlock/achievement-event children, player_pack_luck,
+--      dashboard_coach_insights, competition_round_reward_grants,
+--      competition_tiebreaks, competition_deck_locks, league_members,
+--      and so on) - cleanly, because every RESTRICT fk that could
+--      have blocked that cascade was already cleared by
+--      season_reset_apply() in step 2.
+--
+--   3. bossg, faro and samiro each visit /signup and register a
+--      brand new account. The mandatory onboarding gate
+--      (src/lib/supabase/proxy.ts) takes it from there: Boss Path
+--      selection (existing choose_boss_path RPC, the existing 20
+--      Boss Routes) before the Initial Draft (existing
+--      start_personal_initial_draft RPC, 60 Main / 2 Fusion / 2 XYZ)
+--      before Home or any other league page. No admin needs to
+--      manually claim league admin first for this step - only
+--      claim_league_admin_if_none() (see below) needs that, and only
+--      if the very first new registrant's automatic bootstrap
+--      somehow does not grant it.
+--
+-- FOUR THINGS TO CHECK AFTER RUNNING season:reset:apply, BEFORE
+-- anyone registers:
+--   - season_reset_preview()/season_reset_apply() run under the
+--     calling human admin's own session (RLS-gated, not the
+--     service-role key) - whoever runs npm run season:reset:apply
+--     must themselves already be a league admin. If the account
+--     wipe is being run by someone who is not currently an admin,
+--     have an existing admin run it, or call
+--     claim_league_admin_if_none(target_league_id) first (a no-op
+--     if the league already has an admin).
+--   - bootstrap_private_league() (called automatically by the new
+--     onboarding gate the moment a freshly-registered player first
+--     loads any page) only grants role='admin' when it creates a
+--     BRAND NEW leagues row - never when a player joins a kept one.
+--     Since this REAL START keeps the leagues row itself (only
+--     league_members is emptied, via the profiles cascade), the
+--     FIRST of the three players to register tonight becomes a
+--     plain 'player', not an admin - exactly the gap
+--     claim_league_admin_if_none() (supabase/migrations/
+--     202608231520_season_reset.sql) exists to fix. If nobody has
+--     admin after the three re-registrations, have any one of them
+--     call claim_league_admin_if_none(<league_id>) once (a no-op in
+--     any league that already has an admin).
+--   - This is destructive and irreversible outside of a database
+--     backup. Confirm a backup exists before running
+--     season:reset:apply for real.
+--   - Do NOT attempt to "speed this up" with a raw
+--     DELETE FROM auth.users - see the DO NOT DELETE VIA SQL note
+--     above. It bypasses Supabase-managed auth state and is not
+--     supported.
+-- =========================================================

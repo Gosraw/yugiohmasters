@@ -54,7 +54,11 @@ export async function signup(
     };
   }
 
-  redirect("/onboarding");
+  // Season 1: the mandatory onboarding gate in src/lib/supabase/proxy.ts
+  // takes over from here (Boss Path selection, then the Initial
+  // Draft) - it fires on the very next authenticated request no
+  // matter what path is requested, so landing on / is enough.
+  redirect("/");
 }
 
 export async function logout() {

@@ -39,7 +39,7 @@ supabase db push
 ```
 
 This applies every not-yet-applied file in `supabase/migrations/` in
-filename order, including all 12 new ones below. This is the same method
+filename order, including all 13 new ones below. This is the same method
 `docs/SEASON_1_RUNBOOK.md` recommends and avoids the large-paste issue
 entirely (each migration is pushed as its own file).
 
@@ -60,6 +60,7 @@ Editor, in this exact order (`pbcopy` shown for macOS):
 | 10 | `202609011800_boss_route_stage_grants_quantity.sql` | 45 | Adds multi-copy support to stage grants (e.g. Toon World ×2) | Yes |
 | 11 | `202609011900_seed_boss_routes.sql` | 4,737 | **Seeds all 20 Boss Routes** (231 KB — see note below) | Yes |
 | 12 | `202609012000_boss_route_rpcs.sql` | 906 | Boss Route RPCs (choose/unlock/evolve/confirm) | Yes |
+| 13 | `202609012100_apply_final_season1_rarities.sql` | 315 | **Applies the Sep 1 rarity-engine recalibration** to the eligible Classic pool (275 cards; preserves all 15 manual overrides) — run this before §3's reset so the real season starts with final rarities | Yes |
 
 Every file is idempotent by construction (`create or replace function`,
 `create table if not exists`, `on conflict do update`, or plain `update`
@@ -78,6 +79,7 @@ pbcopy < supabase/migrations/202609011700_draft_boss_route_exclusion.sql
 pbcopy < supabase/migrations/202609011800_boss_route_stage_grants_quantity.sql
 pbcopy < supabase/migrations/202609011900_seed_boss_routes.sql
 pbcopy < supabase/migrations/202609012000_boss_route_rpcs.sql
+pbcopy < supabase/migrations/202609012100_apply_final_season1_rarities.sql
 ```
 
 Run each `pbcopy`, paste into the SQL Editor, run it, confirm it succeeds,

@@ -171,6 +171,28 @@ export function validateRegistry(registry, catalogSnapshot) {
     if (seenCodes.has(arch.code)) errors.push(`duplicate archetype code: ${arch.code}`);
     seenCodes.add(arch.code);
 
+    // generateSql() below interpolates priorityRank RAW (not through
+    // sqlQuote()) because it is meant to always be a plain integer - the
+    // one field in this whole generator not routed through the string
+    // escaper. That is only safe as long as it is actually a number: a
+    // stray string value here (e.g. a data-entry typo like
+    // priorityRank: "2") would be interpolated verbatim into the VALUES
+    // list unquoted and unescaped, the same "value reached raw SQL
+    // without going through sqlQuote()" bug class the "Skyscraper"
+    // production incident investigation was looking for (see
+    // findUnsafeSqlLiteral() above and the regression suite). Caught
+    // here, at validation time, rather than relying on it happening to
+    // still produce syntactically valid SQL.
+    if (
+      arch.priorityRank !== undefined &&
+      arch.priorityRank !== null &&
+      typeof arch.priorityRank !== "number"
+    ) {
+      errors.push(
+        `${arch.code}: priorityRank must be a number or omitted, got ${typeof arch.priorityRank} (${JSON.stringify(arch.priorityRank)}) - this field is emitted into SQL unquoted`
+      );
+    }
+
     const seenNames = new Set();
     for (const card of arch.cards) {
       if (seenNames.has(card.name)) {

@@ -1111,6 +1111,65 @@ export async function confirmMatchResult(
     matchId
   );
 
+  // ======================================================
+  // BOSS ROUTE ACHIEVEMENT CONFIRMATION (task 141)
+  //
+  // The "Confirm Result" form doubles as the opponent-witness
+  // step for Boss Route progress: any checked
+  // "boss_event" values (encoded "pathId:eventId", never free
+  // text) are submitted here as well, right after the match
+  // itself flips to completed - matching what
+  // confirm_boss_achievement_event requires. Each confirmation
+  // is best-effort: the match result is already safely
+  // confirmed above, so a single failed/duplicate Boss
+  // confirmation must never roll back or block the rest of the
+  // page.
+  // ======================================================
+
+  const bossEventSelections =
+    formData
+      .getAll("boss_event")
+      .map((value) =>
+        String(value)
+      );
+
+  for (const selection of bossEventSelections) {
+    const [
+      playerBossPathId,
+      eventId,
+    ] = selection.split(":");
+
+    if (
+      !playerBossPathId ||
+      !eventId
+    ) {
+      continue;
+    }
+
+    const {
+      error: bossEventError,
+    } = await supabase.rpc(
+      "confirm_boss_achievement_event",
+      {
+        target_match_id:
+          matchId,
+        target_player_boss_path_id:
+          playerBossPathId,
+        target_event_id:
+          eventId,
+      }
+    );
+
+    if (bossEventError) {
+      // Non-fatal: log server-side and let the player retry
+      // individual Boss confirmations later from the match page.
+      console.error(
+        "confirm_boss_achievement_event failed:",
+        bossEventError.message
+      );
+    }
+  }
+
   revalidatePath("/");
   revalidatePath("/matches");
   revalidatePath(
@@ -1118,6 +1177,7 @@ export async function confirmMatchResult(
   );
   revalidatePath("/league");
   revalidatePath("/profile");
+  revalidatePath("/boss");
 
   redirect(
     `/matches/${matchId}?success=${encodeURIComponent("Result confirmed!")}`

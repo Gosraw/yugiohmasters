@@ -184,6 +184,19 @@ type BossMonster = {
   name: string;
 };
 
+type BossConfirmationEventOption = {
+  id: string;
+  label: string;
+  isFinishingBlow: boolean;
+  alreadyConfirmed: boolean;
+};
+
+type BossConfirmationPathOption = {
+  pathId: string;
+  routeName: string;
+  events: BossConfirmationEventOption[];
+};
+
 type Deck = {
   id: string;
   name: string;
@@ -1151,6 +1164,240 @@ export default async function MatchDetailPage({
     !playerTwoEscrow;
 
   // ======================================================
+  // BOSS ROUTE CONFIRMATION OPTIONS (task 141)
+  //
+  // Shown only to the opponent about to confirm this match's
+  // result - they are the sole eyewitness who can attest to the
+  // result-submitter's Boss Route milestones from this duel.
+  // Y/N checkboxes only (no free text), matching what
+  // confirm_boss_achievement_event requires and what the spec
+  // asks for.
+  // ======================================================
+
+  let bossConfirmationOptions: BossConfirmationPathOption[] =
+    [];
+
+  if (
+    canConfirm &&
+    match.result_submitted_by
+  ) {
+    const {
+      data: bossPathsData,
+      error: bossPathsError,
+    } = await supabase
+      .from("player_boss_paths")
+      .select(
+        "id,route_id,mastered_at"
+      )
+      .eq(
+        "profile_id",
+        match.result_submitted_by
+      )
+      .eq(
+        "league_id",
+        match.league_id
+      );
+
+    if (bossPathsError) {
+      throw new Error(
+        bossPathsError.message
+      );
+    }
+
+    const activeBossPaths =
+      (
+        (bossPathsData ??
+          []) as Array<{
+          id: string;
+          route_id: string;
+          mastered_at:
+            | string
+            | null;
+        }>
+      ).filter(
+        (path) =>
+          !path.mastered_at
+      );
+
+    if (
+      activeBossPaths.length >
+      0
+    ) {
+      const routeIds = [
+        ...new Set(
+          activeBossPaths.map(
+            (path) =>
+              path.route_id
+          )
+        ),
+      ];
+
+      const pathIds =
+        activeBossPaths.map(
+          (path) => path.id
+        );
+
+      const [
+        {
+          data: routesData,
+          error: routesError,
+        },
+        {
+          data: eventsData,
+          error: eventsError,
+        },
+        {
+          data: confirmedData,
+          error:
+            confirmedError,
+        },
+      ] = await Promise.all([
+        supabase
+          .from(
+            "boss_routes"
+          )
+          .select("id,name")
+          .in(
+            "id",
+            routeIds
+          ),
+        supabase
+          .from(
+            "boss_route_achievement_events"
+          )
+          .select(
+            "id,route_id,label,is_finishing_blow"
+          )
+          .in(
+            "route_id",
+            routeIds
+          ),
+        supabase
+          .from(
+            "player_boss_achievement_events"
+          )
+          .select(
+            "player_boss_path_id,event_id"
+          )
+          .eq(
+            "match_id",
+            match.id
+          )
+          .in(
+            "player_boss_path_id",
+            pathIds
+          ),
+      ]);
+
+      if (routesError) {
+        throw new Error(
+          routesError.message
+        );
+      }
+
+      if (eventsError) {
+        throw new Error(
+          eventsError.message
+        );
+      }
+
+      if (confirmedError) {
+        throw new Error(
+          confirmedError.message
+        );
+      }
+
+      const routeNameMap =
+        new Map(
+          (
+            routesData ??
+            []
+          ).map(
+            (route) => [
+              route.id as string,
+              route.name as string,
+            ]
+          )
+        );
+
+      const confirmedSet =
+        new Set(
+          (
+            confirmedData ??
+            []
+          ).map(
+            (row) =>
+              `${row.player_boss_path_id}:${row.event_id}`
+          )
+        );
+
+      bossConfirmationOptions =
+        activeBossPaths
+          .map(
+            (path) => {
+              const events =
+                (
+                  eventsData ??
+                  []
+                )
+                  .filter(
+                    (
+                      event
+                    ) =>
+                      event.route_id ===
+                      path.route_id
+                  )
+                  .map(
+                    (
+                      event
+                    ) => ({
+                      id: event.id as string,
+                      label:
+                        event.label as string,
+                      isFinishingBlow:
+                        Boolean(
+                          event.is_finishing_blow
+                        ),
+                      alreadyConfirmed:
+                        confirmedSet.has(
+                          `${path.id}:${event.id}`
+                        ),
+                    })
+                  )
+                  .sort(
+                    (
+                      a,
+                      b
+                    ) =>
+                      Number(
+                        a.isFinishingBlow
+                      ) -
+                      Number(
+                        b.isFinishingBlow
+                      )
+                  );
+
+              return {
+                pathId:
+                  path.id,
+                routeName:
+                  routeNameMap.get(
+                    path.route_id
+                  ) ??
+                  "Boss Route",
+                events,
+              };
+            }
+          )
+          .filter(
+            (option) =>
+              option.events
+                .length > 0
+          );
+    }
+  }
+
+  // ======================================================
   // UI
   // ======================================================
 
@@ -2065,6 +2312,7 @@ export default async function MatchDetailPage({
                   action={
                     confirmMatchResult
                   }
+                  className="space-y-4"
                 >
                   <input
                     type="hidden"
@@ -2073,6 +2321,93 @@ export default async function MatchDetailPage({
                       match.id
                     }
                   />
+
+                  {bossConfirmationOptions.length >
+                    0 && (
+                    <div className="space-y-3 rounded-xl border border-amber-300/15 bg-amber-300/[0.03] p-4">
+                      <p className="text-xs font-black uppercase tracking-wider text-amber-300">
+                        Confirm{" "}
+                        {playerName(
+                          profileMap.get(
+                            match.result_submitted_by ??
+                              ""
+                          )
+                        )}
+                        &apos;s Boss progress this duel
+                      </p>
+
+                      <p className="text-xs text-zinc-600">
+                        Only check what you personally witnessed. No pressure — these can be confirmed on a later duel too.
+                      </p>
+
+                      {bossConfirmationOptions.map(
+                        (option) => (
+                          <div
+                            key={
+                              option.pathId
+                            }
+                            className="space-y-2 border-t border-white/5 pt-3 first:border-t-0 first:pt-0"
+                          >
+                            <p className="text-sm font-bold text-zinc-300">
+                              {
+                                option.routeName
+                              }
+                            </p>
+
+                            {option.events.map(
+                              (
+                                event
+                              ) => (
+                                <label
+                                  key={
+                                    event.id
+                                  }
+                                  className="flex cursor-pointer items-center gap-2 text-sm text-zinc-400"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    name="boss_event"
+                                    value={`${option.pathId}:${event.id}`}
+                                    defaultChecked={
+                                      event.alreadyConfirmed
+                                    }
+                                    disabled={
+                                      event.alreadyConfirmed
+                                    }
+                                    className="h-4 w-4 rounded border-white/20 bg-transparent accent-amber-400"
+                                  />
+
+                                  {event.isFinishingBlow ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      <Trophy
+                                        size={
+                                          13
+                                        }
+                                        className="text-amber-400"
+                                      />
+
+                                      Finishing blow:{" "}
+                                      {
+                                        event.label
+                                      }
+                                    </span>
+                                  ) : (
+                                    event.label
+                                  )}
+
+                                  {event.alreadyConfirmed && (
+                                    <span className="text-xs text-emerald-400">
+                                      (confirmed)
+                                    </span>
+                                  )}
+                                </label>
+                              )
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
 
                   <SubmitButton
                     pendingLabel="Confirming..."

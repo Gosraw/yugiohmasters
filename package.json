@@ -13,7 +13,7 @@
     "seed:dev": "node scripts/seed-dev.mjs",
     "season:reset": "node scripts/season-reset.mjs",
     "season:reset:apply": "node scripts/season-reset.mjs --apply",
-    "check:sql": "node scripts/check-plpgsql-foreach-slice.mjs supabase/migrations/*.sql scripts/generated/*.sql && node scripts/check-sql-quote-safety.mjs supabase/migrations/*.sql scripts/generated/*.sql"
+    "check:sql": "node scripts/check-plpgsql-foreach-slice.mjs supabase/migrations/*.sql scripts/generated/*.sql scripts/generated/phase1_sections/*.sql && node scripts/check-sql-quote-safety.mjs supabase/migrations/*.sql scripts/generated/*.sql scripts/generated/phase1_sections/*.sql"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",

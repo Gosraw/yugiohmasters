@@ -717,6 +717,38 @@ export async function acceptMatchChallenge(
   }
 
   // -------------------------------------------------------
+  // ACCEPT EXISTING CHALLENGE FIRST
+  //
+  // Deliberately runs BEFORE any wager funding/locking below. This
+  // is the only step that can fail for a reason that has nothing to
+  // do with the wager itself (no Active Ready deck, challenge no
+  // longer pending, wrong player) - previously it ran LAST, so a
+  // player who lacked a ready deck could already have had DP
+  // deducted (fund_match_dp_wager) or a card locked
+  // (add_match_wager_card) with no rollback, leaving them worse off
+  // with the challenge still stuck pending. Running the
+  // fail-without-side-effects check first means a deck-check failure
+  // now leaves no DP debited and no card locked, so no rollback is
+  // needed at all.
+  // -------------------------------------------------------
+
+  const {
+    error,
+  } = await supabase.rpc(
+    "accept_match_challenge",
+    {
+      target_match_id:
+        matchId,
+    }
+  );
+
+  if (error) {
+    throw new Error(
+      error.message
+    );
+  }
+
+  // -------------------------------------------------------
   // PRACTICE DP WAGER
   // -------------------------------------------------------
 
@@ -777,26 +809,6 @@ export async function acceptMatchChallenge(
         `Kaart inzet mislukt: ${cardError.message}`
       );
     }
-  }
-
-  // -------------------------------------------------------
-  // ACCEPT EXISTING CHALLENGE
-  // -------------------------------------------------------
-
-  const {
-    error,
-  } = await supabase.rpc(
-    "accept_match_challenge",
-    {
-      target_match_id:
-        matchId,
-    }
-  );
-
-  if (error) {
-    throw new Error(
-      error.message
-    );
   }
 
   revalidatePath("/");

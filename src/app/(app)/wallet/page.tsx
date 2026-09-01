@@ -51,6 +51,9 @@ type TransactionReason =
   | "competition_reward"
   | "shop_purchase"
   | "trade"
+  | "practice_wager_stake"
+  | "practice_wager_win"
+  | "practice_wager_refund"
   | string;
 
 type TransactionRow = {
@@ -74,6 +77,16 @@ const REASON_META: Record<
   competition_reward: { icon: Trophy, label: "Competition reward" },
   shop_purchase: { icon: Package, label: "Shop purchase" },
   trade: { icon: Repeat2, label: "Trade" },
+  // Practice/BO3 Challenge DP wagers - kept visually and textually
+  // distinct from ordinary league "Duel result" rewards above, since
+  // these move DP between players rather than granting it from the
+  // league. A losing stake never gets its own separate transaction
+  // (the debit below at stake time already reflects it - there is
+  // nothing further to credit back), so "loss" is represented by the
+  // negative stake amount itself rather than a second row.
+  practice_wager_stake: { icon: Coins, label: "Challenge stake" },
+  practice_wager_win: { icon: Coins, label: "Challenge winnings" },
+  practice_wager_refund: { icon: Coins, label: "Challenge stake refunded" },
 };
 
 function reasonMeta(reason: string) {

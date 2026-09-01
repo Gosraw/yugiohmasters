@@ -164,7 +164,7 @@ export function CompetitionMatchResultFormV2({
             onClick={() =>
               setSelected({ playerOneWins: 1, playerTwoWins: 0 })
             }
-            className={`rounded-lg border px-3 py-2 text-xs font-black transition ${
+            className={`rounded-lg border px-3 py-2 text-xs font-black leading-snug break-words transition ${
               selected?.playerOneWins === 1
                 ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
                 : "border-white/10 text-zinc-400"
@@ -178,7 +178,7 @@ export function CompetitionMatchResultFormV2({
             onClick={() =>
               setSelected({ playerOneWins: 0, playerTwoWins: 1 })
             }
-            className={`rounded-lg border px-3 py-2 text-xs font-black transition ${
+            className={`rounded-lg border px-3 py-2 text-xs font-black leading-snug break-words transition ${
               selected?.playerTwoWins === 1
                 ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
                 : "border-white/10 text-zinc-400"
@@ -199,7 +199,7 @@ export function CompetitionMatchResultFormV2({
                   playerTwoWins: preset.playerTwoWins,
                 })
               }
-              className={`rounded-lg border px-3 py-2 text-xs font-black transition ${
+              className={`rounded-lg border px-3 py-2 text-xs font-black leading-snug break-words transition ${
                 selected?.playerOneWins === preset.playerOneWins &&
                 selected?.playerTwoWins === preset.playerTwoWins
                   ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"

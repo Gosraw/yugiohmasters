@@ -1185,6 +1185,10 @@ export default async function MatchDetailPage({
             href="/"
             className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-sm font-bold text-zinc-400 transition-all hover:border-white/20 hover:text-zinc-100"
           >
+            <Home size={16} />
+
+            Home
+          </Link>
 
           {competition && (
             <Link
@@ -1198,18 +1202,13 @@ export default async function MatchDetailPage({
               Competition
             </Link>
           )}
-
-            <Home size={16} />
-
-            Home
-          </Link>
         </nav>
 
         {/* ==================================================
             DUEL HERO
         ================================================== */}
 
-        <header className="arena-frame relative mt-6 overflow-hidden rounded-[28px] border border-red-300/10 bg-gradient-to-br from-white/[0.045] via-black/50 to-black/75 p-6 shadow-[0_30px_100px_rgba(0,0,0,.45)] sm:p-8">
+        <header className="arena-frame relative mt-4 overflow-hidden rounded-[28px] border border-red-300/10 bg-gradient-to-br from-white/[0.045] via-black/50 to-black/75 p-5 shadow-[0_30px_100px_rgba(0,0,0,.45)] sm:mt-6 sm:p-8">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute left-1/2 top-0 h-64 w-64 -translate-x-1/2 rounded-full bg-red-500/[0.05] blur-[100px]" />
 
@@ -1256,17 +1255,17 @@ export default async function MatchDetailPage({
               )}
             </div>
 
-                       <p className="mt-6 text-center text-[10px] font-black uppercase tracking-[.3em] text-zinc-600">
+                       <p className="mt-4 text-center text-[10px] font-black uppercase tracking-[.3em] text-zinc-600 sm:mt-6">
               {competition
                 ? competition.name
                 : "Duel Arena"}
             </p>
 
-            <div className="mt-6 grid items-center gap-6 md:grid-cols-[1fr_auto_1fr]">
+            <div className="mt-4 grid items-center gap-4 sm:mt-6 sm:gap-6 md:grid-cols-[1fr_auto_1fr]">
               {/* PLAYER ONE */}
 
               <div className="text-center md:text-right">
-                <p className="text-3xl font-black leading-tight sm:text-4xl">
+                <p className="text-3xl font-black leading-tight break-words sm:text-4xl">
                   {playerName(
                     playerOne
                   )}
@@ -1291,7 +1290,7 @@ export default async function MatchDetailPage({
 
               {/* VS */}
 
-              <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
+              <div className="relative mx-auto flex h-16 w-16 items-center justify-center sm:h-20 sm:w-20">
                 <div className="pointer-events-none absolute inset-0 animate-pulse rounded-full bg-red-500/[0.12] blur-xl" />
 
                 <div className="corner-cut relative flex h-full w-full items-center justify-center border border-red-300/25 bg-black/60 shadow-[0_0_35px_rgba(248,113,113,.15)]">
@@ -1304,7 +1303,7 @@ export default async function MatchDetailPage({
               {/* PLAYER TWO */}
 
               <div className="text-center md:text-left">
-                <p className="text-3xl font-black leading-tight sm:text-4xl">
+                <p className="text-3xl font-black leading-tight break-words sm:text-4xl">
                   {playerName(
                     playerTwo
                   )}
@@ -1328,7 +1327,7 @@ export default async function MatchDetailPage({
               </div>
             </div>
 
-            <div className="duel-divider mx-auto mt-6 max-w-xs" />
+            <div className="duel-divider mx-auto mt-4 max-w-xs sm:mt-6" />
 
             <p className="mt-4 text-center text-xs text-zinc-600">
               Created{" "}
@@ -1354,7 +1353,7 @@ export default async function MatchDetailPage({
               &apos;s Deck
             </p>
 
-            <p className="mt-2 font-black text-cyan-100">
+            <p className="mt-2 break-words font-black text-cyan-100">
               {match.player_one_deck_id
                 ? deckMap.get(
                     match
@@ -1375,7 +1374,7 @@ export default async function MatchDetailPage({
               &apos;s Deck
             </p>
 
-            <p className="mt-2 font-black text-cyan-100">
+            <p className="mt-2 break-words font-black text-cyan-100">
               {match.player_two_deck_id
                 ? deckMap.get(
                     match
@@ -1598,7 +1597,7 @@ export default async function MatchDetailPage({
 
         {match.status ===
           "pending" && (
-          <section className="panel mt-6 p-6">
+          <section className="panel mt-4 p-4 sm:mt-6 sm:p-6">
             {isPlayerTwo ? (
               <>
                 <div className="flex items-center gap-2">
@@ -1659,11 +1658,12 @@ export default async function MatchDetailPage({
                       )}
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-3">
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                       <form
                         action={
                           acceptMatchChallenge
                         }
+                        className="w-full sm:w-auto"
                       >
                         <input
                           type="hidden"
@@ -1678,7 +1678,7 @@ export default async function MatchDetailPage({
                             insufficientDp
                           }
                           pendingLabel="Accepting..."
-                          className="primary-button inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="primary-button inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
                         >
                           <Zap
                             size={16}
@@ -1696,6 +1696,7 @@ export default async function MatchDetailPage({
                         action={
                           declineMatchChallenge
                         }
+                        className="w-full sm:w-auto"
                       >
                         <input
                           type="hidden"
@@ -1708,7 +1709,7 @@ export default async function MatchDetailPage({
                         <ConfirmSubmitButton
                           confirmMessage="Decline this challenge?"
                           pendingLabel="Declining..."
-                          className="rounded-xl border border-red-400/20 px-4 py-3 text-sm font-black text-red-300"
+                          className="w-full rounded-xl border border-red-400/20 px-4 py-3 text-sm font-black text-red-300 sm:w-auto"
                         >
                           Decline
                         </ConfirmSubmitButton>
@@ -1786,14 +1787,14 @@ export default async function MatchDetailPage({
                       </p>
                     )}
 
-                    <div className="mt-4 flex flex-wrap gap-3">
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                       <SubmitButton
                         disabled={
                           selectableCards.length ===
                           0
                         }
                         pendingLabel="Accepting..."
-                        className="primary-button inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="primary-button inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
                       >
                         <LockKeyhole
                           size={16}
@@ -1809,7 +1810,7 @@ export default async function MatchDetailPage({
                         }
                         formNoValidate
                         pendingLabel="Declining..."
-                        className="rounded-xl border border-red-400/20 px-4 py-3 text-sm font-black text-red-300"
+                        className="w-full rounded-xl border border-red-400/20 px-4 py-3 text-sm font-black text-red-300 sm:w-auto"
                       >
                         Decline
                       </ConfirmSubmitButton>
@@ -1818,11 +1819,12 @@ export default async function MatchDetailPage({
                 ) : (
                   /* NORMAL ACCEPT */
 
-                  <div className="mt-5 flex flex-wrap gap-3">
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                     <form
                       action={
                         acceptMatchChallenge
                       }
+                      className="w-full sm:w-auto"
                     >
                       <input
                         type="hidden"
@@ -1834,7 +1836,7 @@ export default async function MatchDetailPage({
 
                       <SubmitButton
                         pendingLabel="Accepting..."
-                        className="primary-button inline-flex items-center gap-2"
+                        className="primary-button inline-flex w-full items-center justify-center gap-2 sm:w-auto"
                       >
                         <CheckCircle2
                           size={16}
@@ -1848,6 +1850,7 @@ export default async function MatchDetailPage({
                       action={
                         declineMatchChallenge
                       }
+                      className="w-full sm:w-auto"
                     >
                       <input
                         type="hidden"
@@ -1860,7 +1863,7 @@ export default async function MatchDetailPage({
                       <ConfirmSubmitButton
                         confirmMessage="Decline this challenge?"
                         pendingLabel="Declining..."
-                        className="rounded-xl border border-red-400/20 px-4 py-3 text-sm font-black text-red-300"
+                        className="w-full rounded-xl border border-red-400/20 px-4 py-3 text-sm font-black text-red-300 sm:w-auto"
                       >
                         Decline
                       </ConfirmSubmitButton>
@@ -1924,7 +1927,7 @@ export default async function MatchDetailPage({
         {match.status ===
           "accepted" &&
           isParticipant && (
-          <section className="panel mt-6 p-6">
+          <section className="panel mt-4 p-4 sm:mt-6 sm:p-6">
             <div className="flex items-center gap-2">
               <Swords
                 size={19}
@@ -1944,7 +1947,7 @@ export default async function MatchDetailPage({
               action={
                 completeMatch
               }
-              className="mt-5 space-y-4"
+              className="mt-4 space-y-3 sm:mt-5 sm:space-y-4"
             >
               <input
                 type="hidden"
@@ -2023,7 +2026,7 @@ export default async function MatchDetailPage({
 
         {match.status ===
           "result_submitted" && (
-          <section className="panel mt-6 p-6">
+          <section className="panel mt-4 p-4 sm:mt-6 sm:p-6">
             <div className="flex items-center gap-2">
               <Clock3
                 size={19}
@@ -2057,7 +2060,7 @@ export default async function MatchDetailPage({
                 Waiting for the other duelist to confirm the result.
               </p>
             ) : canConfirm ? (
-              <div className="mt-5 space-y-5">
+              <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
                 <form
                   action={
                     confirmMatchResult
@@ -2133,7 +2136,7 @@ export default async function MatchDetailPage({
 
         {match.status ===
           "disputed" && (
-          <section className="relative mt-6 overflow-hidden rounded-2xl border border-orange-300/20 bg-orange-300/[0.025] p-6">
+          <section className="relative mt-4 overflow-hidden rounded-2xl border border-orange-300/20 bg-orange-300/[0.025] p-4 sm:mt-6 sm:p-6">
             <div className="flex items-center gap-2">
               <AlertTriangle
                 size={20}
@@ -2168,7 +2171,7 @@ export default async function MatchDetailPage({
                 action={
                   resolveDisputedMatch
                 }
-                className="mt-6 space-y-4 border-t border-orange-300/10 pt-5"
+                className="mt-4 space-y-3 border-t border-orange-300/10 pt-4 sm:mt-6 sm:space-y-4 sm:pt-5"
               >
                 <input
                   type="hidden"
@@ -2247,7 +2250,7 @@ export default async function MatchDetailPage({
 
         {match.status ===
           "completed" && (
-          <section className="relative mt-6 overflow-hidden rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.025] p-6 text-center">
+          <section className="relative mt-4 overflow-hidden rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.025] p-4 sm:mt-6 sm:p-6 text-center">
             <Trophy
               size={28}
               className="mx-auto text-amber-300"
@@ -2294,7 +2297,7 @@ export default async function MatchDetailPage({
           "cancelled" ||
           match.status ===
             "declined") && (
-          <section className="panel mt-6 p-6">
+          <section className="panel mt-4 p-4 sm:mt-6 sm:p-6">
             <XCircle
               size={24}
               className="text-zinc-500"

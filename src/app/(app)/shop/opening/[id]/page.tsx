@@ -407,8 +407,8 @@ export default async function PackOpeningPage({
         <div className="absolute -right-40 top-20 h-[500px] w-[500px] rounded-full bg-violet-500/[0.06] blur-[160px]" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <nav className="mb-6 flex flex-wrap items-center gap-3">
+      <div className="relative mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <nav className="mb-4 flex flex-wrap items-center gap-3 sm:mb-6">
           <Link
             href="/shop"
             className="inline-flex items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[0.05] px-3 py-2 text-sm font-black text-amber-300 transition hover:bg-amber-300/[0.1]"

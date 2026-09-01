@@ -1372,7 +1372,7 @@ export default async function CompetitionDetailPage({
           isV2) && (
           <section className="panel mt-6 overflow-hidden">
             <div className="border-b border-white/[0.06] p-5">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Trophy
                     size={18}
@@ -1735,7 +1735,7 @@ export default async function CompetitionDetailPage({
         "draft" &&
         !isV2 && (
         <section className="mt-6">
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
             <div>
               <p className="text-[9px] font-black uppercase tracking-[.2em] text-cyan-300">
                 Competition Duels

@@ -1105,14 +1105,14 @@ export default async function ShopPage({
             HERO
         ================================================== */}
 
-        <header className="arena-frame relative overflow-hidden rounded-[28px] border border-amber-300/15 bg-gradient-to-br from-white/[0.045] via-black/50 to-black/80 p-6 shadow-[0_30px_100px_rgba(0,0,0,.5)] sm:p-8">
+        <header className="arena-frame relative overflow-hidden rounded-[28px] border border-amber-300/15 bg-gradient-to-br from-white/[0.045] via-black/50 to-black/80 p-5 shadow-[0_30px_100px_rgba(0,0,0,.5)] sm:p-6 md:p-8">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -right-20 -top-24 h-80 w-80 rounded-full bg-amber-400/[0.07] blur-[100px]" />
 
             <div className="absolute bottom-[-120px] left-[25%] h-64 w-64 rounded-full bg-violet-500/[0.06] blur-[100px]" />
           </div>
 
-          <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
+          <div className="relative flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-7">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/[0.08] px-3 py-1.5 text-[10px] font-black uppercase tracking-[.18em] text-amber-200">
                 <ShoppingBag
@@ -1122,7 +1122,7 @@ export default async function ShopPage({
                 Duelist Shop
               </div>
 
-              <h1 className="gold-text mt-5 text-4xl font-black sm:text-5xl">
+              <h1 className="gold-text mt-3 text-3xl font-black sm:mt-5 sm:text-4xl md:text-5xl">
                 Shop
               </h1>
 
@@ -1130,7 +1130,7 @@ export default async function ShopPage({
                 Spend hard-earned Duel Points on packs and limited cards. The six featured cards are shared by the entire league — first duelist to buy one gets it.
               </p>
 
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-4 flex flex-wrap gap-3 sm:mt-6">
                 <Link
                   href="/cards/collection"
                   className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-black text-zinc-300 transition hover:border-amber-300/20 hover:text-amber-200"
@@ -1155,7 +1155,7 @@ export default async function ShopPage({
               </div>
             </div>
 
-            <div className="min-w-[220px] rounded-2xl border border-cyan-300/15 bg-black/35 p-5">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-cyan-300/15 bg-black/35 px-4 py-3 sm:min-w-[220px] sm:flex-col sm:items-stretch sm:justify-start sm:p-5">
               <div className="flex items-center gap-2">
                 <Coins
                   size={16}
@@ -1167,14 +1167,14 @@ export default async function ShopPage({
                 </p>
               </div>
 
-              <p className="mt-3 text-4xl font-black text-cyan-100">
+              <p className="flex items-baseline gap-1 text-2xl font-black text-cyan-100 sm:mt-3 sm:block sm:text-4xl">
                 {
                   profile.duel_points
                 }
-              </p>
 
-              <p className="mt-1 text-xs font-black uppercase tracking-wider text-cyan-300">
-                DP
+                <span className="text-xs font-black uppercase tracking-wider text-cyan-300 sm:mt-1 sm:block">
+                  DP
+                </span>
               </p>
             </div>
           </div>
@@ -1311,13 +1311,13 @@ export default async function ShopPage({
             SHOP STATUS
         ================================================== */}
 
-        <section className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <div className="panel p-4">
+        <section className="mt-5 grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-4">
+          <div className="panel p-3 sm:p-4">
             <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
               Rotation
             </p>
 
-            <p className="mt-1 text-xl font-black text-amber-200">
+            <p className="mt-1 text-base font-black text-amber-200 sm:text-xl">
               #
               {
                 rotation
@@ -1327,12 +1327,12 @@ export default async function ShopPage({
             </p>
           </div>
 
-          <div className="panel p-4">
+          <div className="panel p-3 sm:p-4">
             <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
               Singles Refresh
             </p>
 
-            <p className="mt-1 text-xl font-black text-cyan-200">
+            <p className="mt-1 text-base font-black text-cyan-200 sm:text-xl">
               <ShopCountdown
                 endsAt={
                   rotation?.ends_at
@@ -1341,12 +1341,12 @@ export default async function ShopPage({
             </p>
           </div>
 
-          <div className="panel p-4">
+          <div className="panel p-3 sm:p-4">
             <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
               Cards Left
             </p>
 
-            <p className="mt-1 text-xl font-black text-emerald-200">
+            <p className="mt-1 text-base font-black text-emerald-200 sm:text-xl">
               {
                 availableSlots
               }{" "}

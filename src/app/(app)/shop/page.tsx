@@ -12,6 +12,7 @@ import {
   LockKeyhole,
   PackageOpen,
   ShoppingBag,
+  Skull,
   Sparkles,
   Star,
   Swords,
@@ -198,7 +199,8 @@ type SpecialPackRotation = {
 
   theme_category:
     | "attribute"
-    | "archetype";
+    | "archetype"
+    | "monster_type";
 
   theme_value:
     string;
@@ -387,6 +389,59 @@ function voucherTypeForPack(
   return "special_pack";
 }
 
+// =========================================================
+// SPECIAL PACK CATEGORY METADATA
+//
+// One entry per shop_special_pack_rotations.theme_category value.
+// Drives the pack code sent to purchase_shop_pack/redeemPackVoucher,
+// the card's accent color/icon, and its description line - a single
+// source of truth so adding a 4th rotation category later only means
+// adding one entry here rather than hunting down every ternary that
+// used to hardcode "attribute vs everything else".
+// =========================================================
+
+const SPECIAL_CATEGORY_META = {
+  attribute: {
+    packCode: "special_attribute" as const,
+    accent: {
+      border: "border-emerald-300/20",
+      glow: "bg-emerald-400/[0.08]",
+      chip: "border-emerald-300/15 bg-emerald-300/[0.05] text-emerald-200",
+      text: "text-emerald-200",
+      Icon: Flame,
+      eyebrow: "Attribute Spotlight",
+    },
+    describe: (themeValue: string) =>
+      `Every card in this pack is ${themeValue} attribute.`,
+  },
+  archetype: {
+    packCode: "special_archetype" as const,
+    accent: {
+      border: "border-cyan-300/20",
+      glow: "bg-cyan-400/[0.08]",
+      chip: "border-cyan-300/15 bg-cyan-300/[0.05] text-cyan-200",
+      text: "text-cyan-200",
+      Icon: Sparkles,
+      eyebrow: "Archetype Spotlight",
+    },
+    describe: (themeValue: string) =>
+      `Every card in this pack belongs to ${themeValue}.`,
+  },
+  monster_type: {
+    packCode: "special_monster_type" as const,
+    accent: {
+      border: "border-rose-300/20",
+      glow: "bg-rose-400/[0.08]",
+      chip: "border-rose-300/15 bg-rose-300/[0.05] text-rose-200",
+      text: "text-rose-200",
+      Icon: Skull,
+      eyebrow: "Monster Type Spotlight",
+    },
+    describe: (themeValue: string) =>
+      `Every card in this pack is a ${themeValue}-Type monster.`,
+  },
+} as const;
+
 function packAccent(
   code: string
 ) {
@@ -463,6 +518,25 @@ function packAccent(
 
       icon:
         Sparkles,
+    };
+  }
+
+  if (
+    code ===
+    "special_monster_type"
+  ) {
+    return {
+      border:
+        "border-rose-300/20",
+
+      background:
+        "from-rose-400/[0.08] via-orange-400/[0.035] to-black/20",
+
+      text:
+        "text-rose-200",
+
+      icon:
+        Skull,
     };
   }
 
@@ -1457,60 +1531,33 @@ export default async function ShopPage({
         </section>
 
         {/* ==================================================
-            SPECIAL PACKS — Attribute Spotlight + Archetype
-            Spotlight, side by side. Each rotates independently
-            on its own 48h clock and is driven by real catalog
-            data (see refresh_shop_special_pack_rotation_if_needed).
-            A category can be legitimately absent if the catalog
+            SPECIAL PACKS — Attribute, Archetype and Monster Type
+            Spotlight, side by side. Each rotates independently on
+            its own 48h clock and is driven by real catalog data
+            (see refresh_shop_special_pack_rotation_if_needed). A
+            category can be legitimately absent if the catalog
             doesn't currently have enough eligible cards for any
-            theme in it - the section quietly shrinks to one
-            card rather than showing a broken placeholder.
+            theme in it, or its rotation simply hasn't refreshed
+            yet - the section quietly shows however many are
+            currently active (1-3) rather than a broken placeholder.
         ================================================== */}
 
         {specialRotations.length >
           0 && (
-          <section className="mt-8 grid gap-5 lg:grid-cols-2">
+          <section className="mt-8 grid gap-5 lg:grid-cols-3">
             {specialRotations.map(
               (special) => {
-                const isAttribute =
-                  special.theme_category ===
-                  "attribute";
+                const categoryMeta =
+                  SPECIAL_CATEGORY_META[
+                    special.theme_category as keyof typeof SPECIAL_CATEGORY_META
+                  ] ??
+                  SPECIAL_CATEGORY_META.archetype;
 
                 const packCode =
-                  isAttribute
-                    ? "special_attribute"
-                    : "special_archetype";
+                  categoryMeta.packCode;
 
                 const accent =
-                  isAttribute
-                    ? {
-                        border:
-                          "border-emerald-300/20",
-                        glow:
-                          "bg-emerald-400/[0.08]",
-                        chip:
-                          "border-emerald-300/15 bg-emerald-300/[0.05] text-emerald-200",
-                        text:
-                          "text-emerald-200",
-                        Icon:
-                          Flame,
-                        eyebrow:
-                          "Attribute Spotlight",
-                      }
-                    : {
-                        border:
-                          "border-cyan-300/20",
-                        glow:
-                          "bg-cyan-400/[0.08]",
-                        chip:
-                          "border-cyan-300/15 bg-cyan-300/[0.05] text-cyan-200",
-                        text:
-                          "text-cyan-200",
-                        Icon:
-                          Sparkles,
-                        eyebrow:
-                          "Archetype Spotlight",
-                      };
+                  categoryMeta.accent;
 
                 const voucher =
                   vouchers.find(
@@ -1583,9 +1630,9 @@ export default async function ShopPage({
                         </h2>
 
                         <p className="mt-1 text-xs text-zinc-500">
-                          {isAttribute
-                            ? `Every card in this pack is ${special.theme_value} attribute.`
-                            : `Every card in this pack belongs to ${special.theme_value}.`}
+                          {categoryMeta.describe(
+                            special.theme_value
+                          )}
                         </p>
 
                         <div className="mt-3 flex flex-wrap items-end justify-between gap-3">

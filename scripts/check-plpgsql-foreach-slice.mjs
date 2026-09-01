@@ -58,7 +58,6 @@ for (const file of files) {
     continue;
   }
 
-  const lines = text.split("\n");
   let match;
   FOREACH_RE.lastIndex = 0;
   while ((match = FOREACH_RE.exec(text))) {

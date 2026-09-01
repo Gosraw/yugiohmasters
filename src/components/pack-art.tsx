@@ -2,6 +2,7 @@ import {
   Crown,
   Flame,
   Shield,
+  Skull,
   Sparkles,
   Star,
   Swords,
@@ -35,7 +36,8 @@ export type PackTierCode =
   | "deluxe"
   | "special"
   | "special_attribute"
-  | "special_archetype";
+  | "special_archetype"
+  | "special_monster_type";
 
 type PackTier = {
   gradient: string;
@@ -183,6 +185,34 @@ const PACK_TIERS: Record<
     ribbonLabel:
       "SPOTLIGHT",
   },
+
+  // MONSTER TYPE SPOTLIGHT - a themed rotation built around one
+  // monster type (e.g. every card Dragon-Type). Rose/orange keeps
+  // this visually distinct from the emerald "element" pack and the
+  // cyan/violet "archetype" pack while still reading as an "event"
+  // tier via the shared dualTone/ribbon treatment.
+  special_monster_type: {
+    gradient:
+      "from-rose-400 via-orange-800 to-black",
+
+    ring:
+      "border-rose-300/45",
+
+    glowColor:
+      "rgba(253,164,175,.35)",
+
+    icon: Skull,
+
+    tagline:
+      "MONSTER TYPE SPOTLIGHT",
+
+    ornate: false,
+
+    dualTone: true,
+
+    ribbonLabel:
+      "SPOTLIGHT",
+  },
 };
 
 function resolveTier(
@@ -226,6 +256,13 @@ export function packDisplayName(
     "special_archetype"
   ) {
     return "Archetype Spotlight";
+  }
+
+  if (
+    code ===
+    "special_monster_type"
+  ) {
+    return "Monster Type Spotlight";
   }
 
   return "Special Pack";

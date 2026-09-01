@@ -108,6 +108,7 @@ export async function purchasePack(
       "deluxe",
       "special_attribute",
       "special_archetype",
+      "special_monster_type",
     ].includes(
       packCode
     )
@@ -197,6 +198,7 @@ export async function redeemPackVoucher(
       "deluxe",
       "special_attribute",
       "special_archetype",
+      "special_monster_type",
     ].includes(
       packCode
     )

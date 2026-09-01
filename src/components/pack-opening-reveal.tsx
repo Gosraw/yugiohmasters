@@ -400,6 +400,13 @@ function packLabel(
     return "Archetype Spotlight";
   }
 
+  if (
+    code ===
+    "special_monster_type"
+  ) {
+    return "Monster Type Spotlight";
+  }
+
   return "Special Pack";
 }
 

@@ -15,6 +15,7 @@ import {
   Shield,
   ShieldCheck,
   Sparkles,
+  Heart,
   Star,
   Swords,
   Tag,
@@ -50,6 +51,10 @@ import {
 import {
   setCardForTrade,
 } from "@/app/actions/cards";
+
+import {
+  toggleWishlist,
+} from "@/app/actions/wishlist";
 
 import {
   requireUser,
@@ -406,6 +411,56 @@ export default async function CardDetailPage({
           listed: counts.listed,
         }))
         .sort((a, b) => b.owned - a.owned);
+    }
+  }
+
+  // ======================================================
+  // WISHLIST (P0E - "WANTED BY": who in the league has wished
+  // for this catalog card, plus whether the viewer themselves
+  // has). Scoped by league_id exactly like League Ownership
+  // above.
+  // ======================================================
+
+  let isWished = false;
+  let wishedBy: {
+    profileId: string;
+    profileName: string;
+  }[] = [];
+
+  if (leagueId) {
+    const {
+      data: wishRows,
+    } = await supabase
+      .from("card_wishlist_items")
+      .select("profile_id")
+      .eq("card_catalog_id", id)
+      .eq("league_id", leagueId);
+
+    if (wishRows && wishRows.length > 0) {
+      const wisherIds = wishRows.map(
+        (row) => row.profile_id as string
+      );
+
+      isWished = wisherIds.includes(userId);
+
+      const { data: wisherProfiles } = await supabase
+        .from("profiles")
+        .select("id,username,duelist_name")
+        .in("id", wisherIds);
+
+      const wishNameById = new Map(
+        (wisherProfiles ?? []).map((profile) => [
+          profile.id as string,
+          (profile.duelist_name as string) ??
+            (profile.username as string) ??
+            "Duelist",
+        ])
+      );
+
+      wishedBy = wisherIds.map((profileId) => ({
+        profileId,
+        profileName: wishNameById.get(profileId) ?? "Duelist",
+      }));
     }
   }
 
@@ -857,6 +912,41 @@ export default async function CardDetailPage({
                 card.game_rarity
               }
             />
+
+            {leagueId && (
+              <form action={toggleWishlist}>
+                <input
+                  type="hidden"
+                  name="card_catalog_id"
+                  value={id}
+                />
+
+                <input
+                  type="hidden"
+                  name="return_to"
+                  value={`/cards/${id}${
+                    returnTo
+                      ? `?returnTo=${encodeURIComponent(returnTo)}`
+                      : ""
+                  }`}
+                />
+
+                <SubmitButton
+                  pendingLabel="..."
+                  className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-black transition-all ${
+                    isWished
+                      ? "border-rose-400/40 bg-rose-400/15 text-rose-200 hover:border-rose-400/60"
+                      : "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-rose-300/30 hover:text-rose-200"
+                  }`}
+                >
+                  <Heart
+                    size={13}
+                    fill={isWished ? "currentColor" : "none"}
+                  />
+                  {isWished ? "Wished" : "Wish"}
+                </SubmitButton>
+              </form>
+            )}
 
             {card.rarity_needs_review && (
               <span className="rounded-full border border-orange-400/25 bg-orange-400/10 px-3 py-2 text-xs font-bold text-orange-200">
@@ -1470,6 +1560,38 @@ export default async function CardDetailPage({
                           ? `, ${row.listed} listed`
                           : ""}
                       </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {wishedBy.length > 0 && (
+              <div className="panel p-5 sm:p-6">
+                <div className="flex items-center gap-2">
+                  <Heart
+                    size={19}
+                    className="text-rose-300"
+                  />
+
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[.18em] text-zinc-600">
+                      Wishlist
+                    </p>
+
+                    <h2 className="mt-1 text-lg font-black text-rose-200">
+                      Wanted By
+                    </h2>
+                  </div>
+                </div>
+
+                <ul className="mt-4 flex flex-wrap gap-2">
+                  {wishedBy.map((row) => (
+                    <li
+                      key={row.profileId}
+                      className="rounded-full border border-rose-300/20 bg-rose-300/[0.06] px-3 py-1.5 text-sm font-black text-rose-200"
+                    >
+                      {row.profileName}
                     </li>
                   ))}
                 </ul>

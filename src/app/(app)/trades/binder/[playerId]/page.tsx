@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import {
   ArrowLeft,
+  Heart,
   Home,
   Repeat2,
   Search,
@@ -11,6 +12,14 @@ import {
   Sparkles,
   Tag,
 } from "lucide-react";
+
+import {
+  toggleWishlist,
+} from "@/app/actions/wishlist";
+
+import {
+  SubmitButton,
+} from "@/components/submit-button";
 
 import {
   requireUser,
@@ -152,6 +161,14 @@ export default async function TradeBinderDetailPage({
     playerId === userId;
 
   // ======================================================
+  // WISHLIST (P0E) - which of the cards shown in this binder has
+  // the viewer already wished, so the heart toggle here reflects
+  // the same state as the card detail page's Wish button.
+  // ======================================================
+
+  const wishedCardIds = new Set<string>();
+
+  // ======================================================
   // FOR-TRADE CARDS
   // ======================================================
 
@@ -203,6 +220,22 @@ export default async function TradeBinderDetailPage({
         </div>
       </main>
     );
+  }
+
+  if (forTradeCards.length > 0) {
+    const { data: wishRows } = await supabase
+      .from("card_wishlist_items")
+      .select("card_catalog_id")
+      .eq("profile_id", userId)
+      .eq("league_id", membership.league_id)
+      .in(
+        "card_catalog_id",
+        forTradeCards.map((group) => group.card.id)
+      );
+
+    for (const row of wishRows ?? []) {
+      wishedCardIds.add(row.card_catalog_id as string);
+    }
   }
 
   const hasActiveFilters =
@@ -371,9 +404,11 @@ export default async function TradeBinderDetailPage({
               rarityStyles[rarityName] ??
               "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
 
+            const isWished = wishedCardIds.has(card.id);
+
             return (
+              <div key={card.id} className="relative">
               <Link
-                key={card.id}
                 href={
                   isOwnBinder
                     ? `/cards/${card.id}?returnTo=${encodeURIComponent(
@@ -418,6 +453,38 @@ export default async function TradeBinderDetailPage({
                   </div>
                 </div>
               </Link>
+
+              <form
+                action={toggleWishlist}
+                className="absolute right-2 top-2"
+              >
+                <input
+                  type="hidden"
+                  name="card_catalog_id"
+                  value={card.id}
+                />
+
+                <input
+                  type="hidden"
+                  name="return_to"
+                  value={`/trades/binder/${playerId}`}
+                />
+
+                <SubmitButton
+                  pendingLabel="..."
+                  className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border backdrop-blur-sm transition-all ${
+                    isWished
+                      ? "border-rose-400/50 bg-rose-400/25 text-rose-200"
+                      : "border-white/15 bg-black/40 text-zinc-300 hover:border-rose-300/40 hover:text-rose-200"
+                  }`}
+                >
+                  <Heart
+                    size={12}
+                    fill={isWished ? "currentColor" : "none"}
+                  />
+                </SubmitButton>
+              </form>
+              </div>
             );
           })}
         </section>

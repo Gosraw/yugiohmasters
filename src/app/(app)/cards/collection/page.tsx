@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Boxes,
+  Heart,
   Home,
   Layers3,
   LockKeyhole,
@@ -434,6 +435,77 @@ export default async function CollectionPage({
   }
 
   // ======================================================
+  // WANTED FROM YOU (P0E) - cards the viewer owns that someone
+  // ELSE in the league has wished for. Cross-references the
+  // already-fetched owned collection against card_wishlist_items,
+  // never a new owned-cards query.
+  // ======================================================
+
+  let wantedFromYou: {
+    cardId: string;
+    cardName: string;
+    imageUrl: string | null;
+    wisherNames: string[];
+  }[] = [];
+
+  if (leagueId && allGroupedCards.length > 0) {
+    const { data: wishRows } = await supabase
+      .from("card_wishlist_items")
+      .select("card_catalog_id,profile_id")
+      .eq("league_id", leagueId)
+      .neq("profile_id", userId)
+      .in(
+        "card_catalog_id",
+        allGroupedCards.map((group) => group.card.id)
+      );
+
+    if (wishRows && wishRows.length > 0) {
+      const wisherIds = Array.from(
+        new Set(wishRows.map((row) => row.profile_id as string))
+      );
+
+      const { data: wisherProfiles } = await supabase
+        .from("profiles")
+        .select("id,username,duelist_name")
+        .in("id", wisherIds);
+
+      const wishNameById = new Map(
+        (wisherProfiles ?? []).map((profile) => [
+          profile.id as string,
+          (profile.duelist_name as string) ??
+            (profile.username as string) ??
+            "Duelist",
+        ])
+      );
+
+      const cardById = new Map(
+        allGroupedCards.map((group) => [group.card.id, group.card])
+      );
+
+      const namesByCard = new Map<string, string[]>();
+
+      for (const row of wishRows) {
+        const cardId = row.card_catalog_id as string;
+        const wisherName =
+          wishNameById.get(row.profile_id as string) ?? "Duelist";
+
+        const existing = namesByCard.get(cardId) ?? [];
+        existing.push(wisherName);
+        namesByCard.set(cardId, existing);
+      }
+
+      wantedFromYou = Array.from(namesByCard.entries())
+        .map(([cardId, wisherNames]) => ({
+          cardId,
+          cardName: cardById.get(cardId)?.name ?? "Unknown Card",
+          imageUrl: cardById.get(cardId)?.image_url ?? null,
+          wisherNames,
+        }))
+        .sort((a, b) => a.cardName.localeCompare(b.cardName));
+    }
+  }
+
+  // ======================================================
   // GLOBAL COLLECTION STATS (always computed against the
   // unfiltered collection, not the filtered view below)
   // ======================================================
@@ -758,6 +830,48 @@ export default async function CollectionPage({
             </div>
           </div>
         </header>
+
+        {wantedFromYou.length > 0 && (
+          <section className="panel mt-5 p-5 sm:p-6">
+            <div className="flex items-center gap-2">
+              <Heart
+                size={19}
+                className="text-rose-300"
+              />
+
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[.18em] text-zinc-600">
+                  Wishlist
+                </p>
+
+                <h2 className="mt-1 text-lg font-black text-rose-200">
+                  Wanted From You
+                </h2>
+              </div>
+            </div>
+
+            <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {wantedFromYou.map((row) => (
+                <li key={row.cardId}>
+                  <Link
+                    href={`/cards/${row.cardId}?returnTo=/cards/collection`}
+                    className="flex items-center gap-2 rounded-xl border border-rose-300/15 bg-rose-300/[0.04] px-3 py-2.5 transition hover:border-rose-300/35 hover:bg-rose-300/[0.08]"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-black text-zinc-100">
+                        {row.cardName}
+                      </span>
+
+                      <span className="block truncate text-xs text-rose-200">
+                        Wanted by {row.wisherNames.join(", ")}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* ==================================================
             COLLECTION STATS

@@ -1,11 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  Heart,
   Search,
   SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
 import { requireUser } from "@/lib/supabase/queries";
+import { getLeagueIdForUser } from "@/lib/league-stats";
+import { toggleWishlist } from "@/app/actions/wishlist";
+import { SubmitButton } from "@/components/submit-button";
 import { EmptyState } from "@/components/empty-state";
 import { MONSTER_RACES } from "@/lib/card-race";
 
@@ -58,7 +62,9 @@ export default async function CardsPage({
   const race = params.race ?? "";
   const sort = params.sort ?? "name";
 
-  const { supabase } = await requireUser();
+  const { supabase, userId } = await requireUser();
+
+  const leagueId = await getLeagueIdForUser(supabase, userId);
 
   let query = supabase
     .from("card_catalog")
@@ -170,6 +176,24 @@ export default async function CardsPage({
   }
 
   let cards = data ?? [];
+
+  const wishedCardIds = new Set<string>();
+
+  if (leagueId && cards.length > 0) {
+    const { data: wishRows } = await supabase
+      .from("card_wishlist_items")
+      .select("card_catalog_id")
+      .eq("profile_id", userId)
+      .eq("league_id", leagueId)
+      .in(
+        "card_catalog_id",
+        cards.map((card) => card.id)
+      );
+
+    for (const row of wishRows ?? []) {
+      wishedCardIds.add(row.card_catalog_id as string);
+    }
+  }
 
   if (sort === "rarity") {
     cards = [...cards].sort(
@@ -431,9 +455,11 @@ export default async function CardsPage({
                 ] ??
                 "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
 
+              const isWished = wishedCardIds.has(card.id);
+
               return (
+                <div key={card.id} className="relative">
                 <Link
-                  key={card.id}
                   href={`/cards/${card.id}`}
                   className="panel group block overflow-hidden transition duration-200 hover:-translate-y-1 hover:border-amber-300/25"
                 >
@@ -507,6 +533,40 @@ export default async function CardsPage({
                     </div>
                   </div>
                 </Link>
+
+                {leagueId && (
+                  <form
+                    action={toggleWishlist}
+                    className="absolute right-2 top-2"
+                  >
+                    <input
+                      type="hidden"
+                      name="card_catalog_id"
+                      value={card.id}
+                    />
+
+                    <input
+                      type="hidden"
+                      name="return_to"
+                      value="/cards"
+                    />
+
+                    <SubmitButton
+                      pendingLabel="..."
+                      className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border backdrop-blur-sm transition-all ${
+                        isWished
+                          ? "border-rose-400/50 bg-rose-400/25 text-rose-200"
+                          : "border-white/15 bg-black/40 text-zinc-300 hover:border-rose-300/40 hover:text-rose-200"
+                      }`}
+                    >
+                      <Heart
+                        size={12}
+                        fill={isWished ? "currentColor" : "none"}
+                      />
+                    </SubmitButton>
+                  </form>
+                )}
+                </div>
               );
             }
           )}

@@ -35,9 +35,14 @@
 --   - public.shop_special_pack_slots        (Special Pack theme config)
 --   - public.league_economy_defaults, public.settings (economy config)
 --   - public.boss_monster_options           (profile flavor content -
---     NOT a gameplay Boss Route system; see note near the bottom -
---     no Boss Route progression table exists yet anywhere in this
---     schema, so there is nothing of that kind to reset)
+--     NOT the gameplay Boss Route system below; a cosmetic
+--     "favorite boss monster" profile flair feature)
+--   - Boss Route CONFIG (authored once, same footing as card_catalog):
+--     public.boss_routes, boss_route_stages, boss_route_stage_grants,
+--     boss_route_achievement_events, boss_route_achievement_requirements
+--     (task 138-139 - the 20 routes' evolution chains, permanent
+--     support grants and achievement definitions are content, not
+--     player state, exactly like archetype_registry above)
 --   - public.card_synergy_edges, card_synergy_engine_runs (computed
 --     purely from card_catalog, which is unchanged - still valid)
 --   - public.audit_log                      (admin action history -
@@ -58,6 +63,15 @@
 --   - Drafts and all draft sub-state
 --   - Stale computed dashboard coaching insights (they reference
 --     collections/decks that no longer exist after this reset)
+--   - Boss Route RUNTIME (task 139-140 - a player's chosen path,
+--     stage progress and confirmed achievement events): every
+--     player_boss_paths row and its cascaded player_boss_stage_unlocks
+--     / player_boss_achievement_events rows. Boss Route CONFIG (the
+--     20 routes themselves) is preserved - see above.
+--   - Legendary Luck pack-pity state (task 136): every
+--     public.player_pack_luck.luck_points reset to 0, exactly like
+--     duel_points below - this is per-profile pity progress accrued
+--     from test-run pack purchases, not configuration.
 --
 -- SAFETY
 --   - Single transaction: fully applies or fully rolls back.
@@ -109,6 +123,7 @@ declare
   v_pre_drafts integer;
   v_pre_trades integer;
   v_pre_dp_transactions integer;
+  v_pre_player_boss_paths integer;
 begin
   -- -------------------------------------------------------
   -- PRE-FLIGHT COUNTS
@@ -126,11 +141,12 @@ begin
   select count(*) into v_pre_drafts from public.drafts;
   select count(*) into v_pre_trades from public.trades;
   select count(*) into v_pre_dp_transactions from public.duel_point_transactions;
+  select count(*) into v_pre_player_boss_paths from public.player_boss_paths;
 
   raise notice 'RESET PRE-FLIGHT: % profiles / % card_catalog / % archetype_registry / % league_members / % shop_pack_types (all PRESERVED)',
     v_pre_profiles, v_pre_card_catalog, v_pre_archetype_registry, v_pre_league_members, v_pre_shop_pack_types;
-  raise notice 'RESET PRE-FLIGHT (about to remove): % competitions / % matches / % card_instances / % decks / % drafts / % trades / % duel_point_transactions',
-    v_pre_competitions, v_pre_matches, v_pre_card_instances, v_pre_decks, v_pre_drafts, v_pre_trades, v_pre_dp_transactions;
+  raise notice 'RESET PRE-FLIGHT (about to remove): % competitions / % matches / % card_instances / % decks / % drafts / % trades / % duel_point_transactions / % player_boss_paths',
+    v_pre_competitions, v_pre_matches, v_pre_card_instances, v_pre_decks, v_pre_drafts, v_pre_trades, v_pre_dp_transactions, v_pre_player_boss_paths;
 
   -- -------------------------------------------------------
   -- 1. COMPETITIONS (rounds, standings, reward settlements)
@@ -228,6 +244,23 @@ begin
   alter table public.card_instances enable trigger prevent_card_instance_delete_trigger;
 
   -- -------------------------------------------------------
+  -- 7A. BOSS ROUTE RUNTIME (task 139-140)
+  --     Deleted explicitly bottom-up for clarity even though
+  --     player_boss_stage_unlocks and player_boss_achievement_events
+  --     both cascade from player_boss_paths (and
+  --     player_boss_achievement_events also cascades from matches,
+  --     already cleared in step 2). Boss Route CONFIG - boss_routes,
+  --     boss_route_stages, boss_route_stage_grants,
+  --     boss_route_achievement_events/_requirements - is content, not
+  --     player state, and is preserved untouched (player_boss_paths
+  --     only references it with ON DELETE RESTRICT, so deleting rows
+  --     here can never touch it).
+  -- -------------------------------------------------------
+  delete from public.player_boss_achievement_events;
+  delete from public.player_boss_stage_unlocks;
+  delete from public.player_boss_paths;
+
+  -- -------------------------------------------------------
   -- 8. STALE COMPUTED STATE
   --    Dashboard coaching insights reference collections/decks that
   --    no longer exist after steps 4-7 - clearing them avoids
@@ -236,16 +269,20 @@ begin
   delete from public.dashboard_coach_insights;
 
   -- -------------------------------------------------------
-  -- 9. DP BALANCE -> FRESH-START VALUE
+  -- 9. DP BALANCE + LEGENDARY LUCK PITY -> FRESH-START VALUE
   --    profiles.duel_points is the live balance (read by every RPC
   --    via _credit_duel_points). public.wallets is a legacy,
   --    currently-unused table from the very first foundation
   --    migration (nothing in src/ reads from it) - reset for hygiene
   --    in case anything ever reads it, but it is not the source of
-  --    truth.
+  --    truth. player_pack_luck.luck_points (task 136) is per-profile
+  --    pack-pity progress, not configuration - reset to 0 alongside
+  --    DP so nobody starts the real season already primed for a
+  --    Legendary pull from test-run pack purchases.
   -- -------------------------------------------------------
   update public.profiles set duel_points = v_fresh_start_dp;
   update public.wallets set duel_points = v_fresh_start_dp, updated_at = now();
+  update public.player_pack_luck set luck_points = 0, updated_at = now();
 
   -- -------------------------------------------------------
   -- POST-FLIGHT ASSERTIONS
@@ -296,11 +333,27 @@ begin
   if (select count(*) from public.duel_point_transactions) <> 0 then
     raise exception 'RESET ABORTED: duel_point_transactions still has rows after delete.';
   end if;
+  if (select count(*) from public.player_boss_paths) <> 0 then
+    raise exception 'RESET ABORTED: player_boss_paths still has rows after delete.';
+  end if;
+  if (select count(*) from public.player_boss_stage_unlocks) <> 0 then
+    raise exception 'RESET ABORTED: player_boss_stage_unlocks still has rows after delete.';
+  end if;
+  if (select count(*) from public.player_boss_achievement_events) <> 0 then
+    raise exception 'RESET ABORTED: player_boss_achievement_events still has rows after delete.';
+  end if;
+  if (select count(*) from public.boss_routes) <> 20 then
+    raise exception 'RESET ABORTED: boss_routes should still have all 20 CONFIG rows (expected preserved) - found %.',
+      (select count(*) from public.boss_routes);
+  end if;
   if exists (select 1 from public.profiles where duel_points <> v_fresh_start_dp) then
     raise exception 'RESET ABORTED: at least one profile did not reach the fresh-start DP value.';
   end if;
+  if exists (select 1 from public.player_pack_luck where luck_points <> 0) then
+    raise exception 'RESET ABORTED: at least one player_pack_luck row did not reach 0.';
+  end if;
 
-  raise notice 'RESET COMPLETE: all gameplay/test-run state cleared, all configuration preserved, every profile DP balance = %.', v_fresh_start_dp;
+  raise notice 'RESET COMPLETE: all gameplay/test-run state cleared (including Boss Route progress and Legendary Luck pity), all configuration preserved (including all 20 Boss Routes), every profile DP balance = %.', v_fresh_start_dp;
 end $$;
 
 commit;

@@ -91,6 +91,17 @@ type Deck = {
   is_active: boolean;
 };
 
+type Competition = {
+  id: string;
+  name: string;
+
+  status:
+    | "draft"
+    | "active"
+    | "completed"
+    | "cancelled";
+};
+
 type Match = {
   id: string;
 
@@ -333,6 +344,42 @@ export default async function DashboardPage() {
 
     activeDeck =
       deckData as Deck | null;
+  }
+
+  // ======================================================
+  // ACTIVE COMPETITION (clean-start UX: a brand-new/reset league has
+  // zero competitions, so the Quick Actions tile below needs to know
+  // whether one exists in order to show a clear next action instead
+  // of a generic description.)
+  // ======================================================
+
+  let openCompetitions:
+    Competition[] =
+    [];
+
+  if (leagueId) {
+    const {
+      data: competitionData,
+    } = await supabase
+      .from("competitions")
+      .select(
+        "id,name,status"
+      )
+      .eq(
+        "league_id",
+        leagueId
+      )
+      .in(
+        "status",
+        ["draft", "active"]
+      )
+      .order(
+        "created_at",
+        { ascending: false }
+      );
+
+    openCompetitions =
+      (competitionData as Competition[] | null) ?? [];
   }
 
   // ======================================================
@@ -1098,8 +1145,14 @@ export default async function DashboardPage() {
 
             <Link
               href="/competitions"
-              className="panel group cursor-pointer p-5 transition-all hover:-translate-y-1 hover:border-orange-300/25 active:scale-[0.99]"
+              className="panel group relative cursor-pointer p-5 transition-all hover:-translate-y-1 hover:border-orange-300/25 active:scale-[0.99]"
             >
+              {openCompetitions.length === 0 ? (
+                <span className="absolute right-4 top-4 rounded-full border border-orange-300/25 bg-orange-300/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-orange-200">
+                  Start Here
+                </span>
+              ) : null}
+
               <Trophy
                 size={24}
                 className="text-orange-300 transition-transform group-hover:scale-110"
@@ -1110,7 +1163,9 @@ export default async function DashboardPage() {
               </h3>
 
               <p className="mt-2 text-sm leading-6 text-zinc-500">
-                Join official competitions and track live standings.
+                {openCompetitions.length === 0
+                  ? "No active competition yet - create or join one to start tonight."
+                  : `${openCompetitions.length} open competition${openCompetitions.length === 1 ? "" : "s"} - view live standings.`}
               </p>
             </Link>
 

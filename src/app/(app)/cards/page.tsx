@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { requireUser } from "@/lib/supabase/queries";
 import { EmptyState } from "@/components/empty-state";
+import { MONSTER_RACES } from "@/lib/card-race";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ type SearchParams = Promise<{
   rarity?: string;
   type?: string;
   attribute?: string;
+  race?: string;
   sort?: string;
 }>;
 
@@ -53,6 +55,7 @@ export default async function CardsPage({
   const rarity = params.rarity ?? "";
   const type = params.type ?? "";
   const attribute = params.attribute ?? "";
+  const race = params.race ?? "";
   const sort = params.sort ?? "name";
 
   const { supabase } = await requireUser();
@@ -60,13 +63,22 @@ export default async function CardsPage({
   let query = supabase
     .from("card_catalog")
     .select(
-      "id,name,image_url,card_type,attribute,atk,def,game_rarity,rarity_score"
+      "id,name,image_url,card_type,attribute,race,archetype,atk,def,game_rarity,rarity_score"
     );
 
   if (q) {
-    query = query.ilike(
-      "name",
-      `%${q}%`
+    // Name OR effect text OR archetype, case-insensitive - reuses this
+    // same query builder rather than a separate search service. Commas
+    // and parentheses are stripped before building the PostgREST
+    // .or() filter string below since those characters are part of
+    // its own filter grammar (comma separates conditions, parens are
+    // reserved) - safe to drop for a card-name/effect search, and
+    // avoids either a broken filter or a query-injection surface from
+    // unescaped user input.
+    const safeQ = q.replace(/[,()]/g, "");
+
+    query = query.or(
+      `name.ilike.%${safeQ}%,description.ilike.%${safeQ}%,archetype.ilike.%${safeQ}%`
     );
   }
 
@@ -81,6 +93,13 @@ export default async function CardsPage({
     query = query.eq(
       "attribute",
       attribute
+    );
+  }
+
+  if (race) {
+    query = query.eq(
+      "race",
+      race
     );
   }
 
@@ -212,7 +231,7 @@ export default async function CardsPage({
           Search & Filters
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-6">
           <label className="relative lg:col-span-2">
             <Search
               size={17}
@@ -222,7 +241,7 @@ export default async function CardsPage({
             <input
               name="q"
               defaultValue={q}
-              placeholder="Search card name..."
+              placeholder="Search name, effect text or archetype..."
               className="field pl-10"
             />
           </label>
@@ -320,6 +339,22 @@ export default async function CardsPage({
               DIVINE
             </option>
           </select>
+
+          <select
+            name="race"
+            defaultValue={race}
+            className="field"
+          >
+            <option value="">
+              All monster types
+            </option>
+
+            {MONSTER_RACES.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto_auto]">
@@ -379,7 +414,7 @@ export default async function CardsPage({
           <EmptyState
             icon={<Search size={22} />}
             title="No cards match that search."
-            description="Try a different name, rarity or type."
+            description="Try a different name, effect keyword, rarity, type or attribute."
           />
         </div>
       ) : (

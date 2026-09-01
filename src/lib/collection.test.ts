@@ -30,6 +30,7 @@ function catalogCard(
     rarity_score: null,
     master_duel_status: null,
     archetype: null,
+    description: null,
     ...partial,
   };
 }

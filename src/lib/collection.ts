@@ -55,6 +55,10 @@ export type CollectionCardCatalogItem = {
   // NEVER infers an archetype from a name substring (the product
   // spec explicitly forbids that - see groupCollectionByArchetype).
   archetype: string | null;
+  // Real effect/rules text from card_catalog.description - included
+  // so the search box (see filterAndSortCollection's `q` handling)
+  // can match on effect text, not just the card name.
+  description: string | null;
 };
 
 export type CollectionCardInstance = {
@@ -217,7 +221,7 @@ export async function fetchOwnedCollection(
     const { data: catalogData, error: catalogError } = await supabase
       .from("card_catalog")
       .select(
-        "id,name,image_url,card_type,attribute,race,atk,def,game_rarity,rarity_score,master_duel_status,archetype"
+        "id,name,image_url,card_type,attribute,race,atk,def,game_rarity,rarity_score,master_duel_status,archetype,description"
       )
       .in("id", catalogIds);
 
@@ -303,9 +307,22 @@ export function filterAndSortCollection(
   let result = groups;
 
   if (q) {
-    result = result.filter((group) =>
-      group.card.name.toLowerCase().includes(q)
-    );
+    // Name OR effect text OR archetype, case-insensitive - matches
+    // the same three-field search the /cards catalog page uses, so
+    // "what matches a search" means one consistent thing everywhere
+    // in the app rather than a name-only search here and a wider one
+    // there.
+    result = result.filter((group) => {
+      const name = group.card.name.toLowerCase();
+      const description = group.card.description?.toLowerCase() ?? "";
+      const archetype = group.card.archetype?.toLowerCase() ?? "";
+
+      return (
+        name.includes(q) ||
+        description.includes(q) ||
+        archetype.includes(q)
+      );
+    });
   }
 
   if (rarity) {

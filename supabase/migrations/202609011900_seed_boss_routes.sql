@@ -4501,7 +4501,7 @@ on conflict (target_stage_id, event_id) do update set
 -- ================= ROUTE: Cubic (cubic) =================
 
 insert into public.boss_routes (code, name, display_order, teaser_story, star_profile, target_power_grade, is_active)
-values ('cubic', 'Cubic', 20, 'A grinding wall of Rock-Type defenders that turns every attack the opponent commits into a bad trade. Note: built from a closest-thematic-equivalent substitution - see the route''s build notes.', '{"startStrength":3,"growth":3,"bossPower":4,"synergy":3,"flexibility":4}'::jsonb, 'A', true)
+values ('cubic', 'Cubic', 20, 'Six-sided monsters that search, revive and re-search each other in an endless loop, escalating from a lone seed into an overwhelming toolbox of Cubic Lords.', '{"startStrength":3,"growth":4,"bossPower":5,"synergy":4,"flexibility":3}'::jsonb, 'A+', true)
 on conflict (code) do update set
   name = excluded.name,
   display_order = excluded.display_order,
@@ -4513,7 +4513,7 @@ on conflict (code) do update set
 insert into public.boss_route_stages (route_id, stage_number, evolution_card_catalog_id, dp_cost_to_reach)
 select r.id, 1, c.id, null
 from public.boss_routes r, public.card_catalog c
-where r.code = 'cubic' and c.name = 'Gogogo Golem'
+where r.code = 'cubic' and c.name = 'Dark Garnex the Cubic Beast'
 on conflict (route_id, stage_number) do update set
   evolution_card_catalog_id = excluded.evolution_card_catalog_id,
   dp_cost_to_reach = excluded.dp_cost_to_reach;
@@ -4521,7 +4521,7 @@ on conflict (route_id, stage_number) do update set
 insert into public.boss_route_stages (route_id, stage_number, evolution_card_catalog_id, dp_cost_to_reach)
 select r.id, 2, c.id, 900
 from public.boss_routes r, public.card_catalog c
-where r.code = 'cubic' and c.name = 'Guardian Statue'
+where r.code = 'cubic' and c.name = 'Duza the Meteor Cubic Vessel'
 on conflict (route_id, stage_number) do update set
   evolution_card_catalog_id = excluded.evolution_card_catalog_id,
   dp_cost_to_reach = excluded.dp_cost_to_reach;
@@ -4529,7 +4529,7 @@ on conflict (route_id, stage_number) do update set
 insert into public.boss_route_stages (route_id, stage_number, evolution_card_catalog_id, dp_cost_to_reach)
 select r.id, 3, c.id, 1400
 from public.boss_routes r, public.card_catalog c
-where r.code = 'cubic' and c.name = 'B.E.S. Big Core'
+where r.code = 'cubic' and c.name = 'Buster Gundil the Cubic Behemoth'
 on conflict (route_id, stage_number) do update set
   evolution_card_catalog_id = excluded.evolution_card_catalog_id,
   dp_cost_to_reach = excluded.dp_cost_to_reach;
@@ -4537,27 +4537,17 @@ on conflict (route_id, stage_number) do update set
 insert into public.boss_route_stages (route_id, stage_number, evolution_card_catalog_id, dp_cost_to_reach)
 select r.id, 4, c.id, 2400
 from public.boss_routes r, public.card_catalog c
-where r.code = 'cubic' and c.name = 'Gaia Plate the Earth Giant'
+where r.code = 'cubic' and c.name = 'Crimson Nova the Dark Cubic Lord'
 on conflict (route_id, stage_number) do update set
   evolution_card_catalog_id = excluded.evolution_card_catalog_id,
   dp_cost_to_reach = excluded.dp_cost_to_reach;
 
 insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
-select s.id, c.id, true, 1
+select s.id, c.id, false, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 1 and c.name = 'Rock Bombardment'
-on conflict (stage_id, card_catalog_id) do update set
-  is_route_exclusive = excluded.is_route_exclusive,
-  quantity = excluded.quantity;
-
-insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
-select s.id, c.id, true, 1
-from public.boss_route_stages s
-join public.boss_routes r on r.id = s.route_id
-cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 1 and c.name = 'Big Bang Shot'
+where r.code = 'cubic' and s.stage_number = 1 and c.name = 'Cubic Karma'
 on conflict (stage_id, card_catalog_id) do update set
   is_route_exclusive = excluded.is_route_exclusive,
   quantity = excluded.quantity;
@@ -4567,7 +4557,7 @@ select s.id, c.id, false, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 1 and c.name = 'Card of Safe Return'
+where r.code = 'cubic' and s.stage_number = 1 and c.name = 'Cubic Wave'
 on conflict (stage_id, card_catalog_id) do update set
   is_route_exclusive = excluded.is_route_exclusive,
   quantity = excluded.quantity;
@@ -4577,17 +4567,7 @@ select s.id, c.id, false, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 2 and c.name = 'Different Dimension Capsule'
-on conflict (stage_id, card_catalog_id) do update set
-  is_route_exclusive = excluded.is_route_exclusive,
-  quantity = excluded.quantity;
-
-insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
-select s.id, c.id, false, 1
-from public.boss_route_stages s
-join public.boss_routes r on r.id = s.route_id
-cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 2 and c.name = 'Enemy Controller'
+where r.code = 'cubic' and s.stage_number = 1 and c.name = 'Cubic Rebirth'
 on conflict (stage_id, card_catalog_id) do update set
   is_route_exclusive = excluded.is_route_exclusive,
   quantity = excluded.quantity;
@@ -4597,7 +4577,17 @@ select s.id, c.id, true, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 2 and c.name = 'Compulsory Evacuation Device'
+where r.code = 'cubic' and s.stage_number = 2 and c.name = 'Vijam the Cubic Seed'
+on conflict (stage_id, card_catalog_id) do update set
+  is_route_exclusive = excluded.is_route_exclusive,
+  quantity = excluded.quantity;
+
+insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
+select s.id, c.id, true, 1
+from public.boss_route_stages s
+join public.boss_routes r on r.id = s.route_id
+cross join public.card_catalog c
+where r.code = 'cubic' and s.stage_number = 2 and c.name = 'Unification of the Cubic Lords'
 on conflict (stage_id, card_catalog_id) do update set
   is_route_exclusive = excluded.is_route_exclusive,
   quantity = excluded.quantity;
@@ -4607,7 +4597,7 @@ select s.id, c.id, false, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 3 and c.name = 'Book of Moon'
+where r.code = 'cubic' and s.stage_number = 2 and c.name = 'Indiora Doom Volt the Cubic Emperor'
 on conflict (stage_id, card_catalog_id) do update set
   is_route_exclusive = excluded.is_route_exclusive,
   quantity = excluded.quantity;
@@ -4617,7 +4607,7 @@ select s.id, c.id, false, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 3 and c.name = 'United We Stand'
+where r.code = 'cubic' and s.stage_number = 3 and c.name = 'Blade Garoodia the Cubic Beast'
 on conflict (stage_id, card_catalog_id) do update set
   is_route_exclusive = excluded.is_route_exclusive,
   quantity = excluded.quantity;
@@ -4627,7 +4617,17 @@ select s.id, c.id, false, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 3 and c.name = 'Ties of the Brethren'
+where r.code = 'cubic' and s.stage_number = 3 and c.name = 'Geira Guile the Cubic King'
+on conflict (stage_id, card_catalog_id) do update set
+  is_route_exclusive = excluded.is_route_exclusive,
+  quantity = excluded.quantity;
+
+insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
+select s.id, c.id, true, 1
+from public.boss_route_stages s
+join public.boss_routes r on r.id = s.route_id
+cross join public.card_catalog c
+where r.code = 'cubic' and s.stage_number = 3 and c.name = 'Cubic Ascension'
 on conflict (stage_id, card_catalog_id) do update set
   is_route_exclusive = excluded.is_route_exclusive,
   quantity = excluded.quantity;
@@ -4637,7 +4637,7 @@ select s.id, c.id, false, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 4 and c.name = 'Mystical Space Typhoon'
+where r.code = 'cubic' and s.stage_number = 4 and c.name = 'Cubic Dharma'
 on conflict (stage_id, card_catalog_id) do update set
   is_route_exclusive = excluded.is_route_exclusive,
   quantity = excluded.quantity;
@@ -4647,7 +4647,7 @@ select s.id, c.id, false, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 4 and c.name = 'Torrential Tribute'
+where r.code = 'cubic' and s.stage_number = 4 and c.name = 'Cubic Causality'
 on conflict (stage_id, card_catalog_id) do update set
   is_route_exclusive = excluded.is_route_exclusive,
   quantity = excluded.quantity;
@@ -4657,13 +4657,13 @@ select s.id, c.id, false, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 4 and c.name = 'Fissure'
+where r.code = 'cubic' and s.stage_number = 4 and c.name = 'Cubic Mandala'
 on conflict (stage_id, card_catalog_id) do update set
   is_route_exclusive = excluded.is_route_exclusive,
   quantity = excluded.quantity;
 
 insert into public.boss_route_achievement_events (route_id, event_key, label, description, is_finishing_blow)
-select r.id, 'signature_win', 'The wall holds', 'Control a Rock-Type monster with 2400 or more DEF during a match you win.', false
+select r.id, 'signature_win', 'The seed searches', 'Win a match after searching or Special Summoning a Cubic monster from your Deck.', false
 from public.boss_routes r
 where r.code = 'cubic'
 on conflict (route_id, event_key) do update set
@@ -4672,7 +4672,7 @@ on conflict (route_id, event_key) do update set
   is_finishing_blow = excluded.is_finishing_blow;
 
 insert into public.boss_route_achievement_events (route_id, event_key, label, description, is_finishing_blow)
-select r.id, 'signature_move', 'The long game', 'Win a duel that reaches turn 8 or later.', false
+select r.id, 'signature_move', 'Lords unified', 'Win a duel after having 2 or more Cubic monsters on the field at once.', false
 from public.boss_routes r
 where r.code = 'cubic'
 on conflict (route_id, event_key) do update set
@@ -4681,7 +4681,7 @@ on conflict (route_id, event_key) do update set
   is_finishing_blow = excluded.is_finishing_blow;
 
 insert into public.boss_route_achievement_events (route_id, event_key, label, description, is_finishing_blow)
-select r.id, 'finishing_blow', 'Bedrock finish', 'Win the match with damage dealt by Gaia Plate the Earth Giant.', true
+select r.id, 'finishing_blow', 'Dark Cubic Lord''s judgment', 'Win the match with damage dealt by Crimson Nova the Dark Cubic Lord.', true
 from public.boss_routes r
 where r.code = 'cubic'
 on conflict (route_id, event_key) do update set

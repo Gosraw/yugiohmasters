@@ -2884,35 +2884,35 @@ export const BOSS_ROUTES = [
     "code": "cubic",
     "name": "Cubic",
     "displayOrder": 20,
-    "targetPowerGrade": "A",
+    "targetPowerGrade": "A+",
     "starProfile": {
       "startStrength": 3,
-      "growth": 3,
-      "bossPower": 4,
-      "synergy": 3,
-      "flexibility": 4
+      "growth": 4,
+      "bossPower": 5,
+      "synergy": 4,
+      "flexibility": 3
     },
-    "teaserStory": "A grinding wall of Rock-Type defenders that turns every attack the opponent commits into a bad trade. Note: built from a closest-thematic-equivalent substitution - see the route's build notes.",
-    "buildNote": "The real 'Cubic' archetype's best-known card (Vijam the Cubic Seed) is a Tuner meant to enable Synchro Summoning, which this format excludes entirely - using it as a Stage 1 grant would be mechanically dead, matching the design note to avoid it. The rest of the archetype's line is also Synchro-dependent, so this route was rebuilt around real, validated LIGHT/EARTH/DARK Rock-Type monsters and dice-adjacent support with the same defensive, grinding identity, rather than force an unplayable archetype into a Synchro-less format.",
+    "teaserStory": "Six-sided monsters that search, revive and re-search each other in an endless loop, escalating from a lone seed into an overwhelming toolbox of Cubic Lords.",
+    "buildNote": "CORRECTED 2026-09-01: the original build mistakenly treated Vijam the Cubic Seed as a Tuner meant for Synchro Summoning and rebuilt this route around unrelated Rock-Type cards. Vijam is actually a Level 1 DARK Fiend/Effect monster with no Synchro dependency - it does not violate the Fusion/Xyz-only format and never did. Restored to the real, human-approved Cubic identity and evolution chain. Vijam is deliberately placed at Stage 2 or later (never Stage 1) per the approved design note: as a Stage 1 starter it was judged too strong/annoying to hand a player on day one, since it searches immediately upon entering the field.",
     "stages": [
       {
         "stageNumber": 1,
-        "evolutionCard": "Gogogo Golem",
+        "evolutionCard": "Dark Garnex the Cubic Beast",
         "dpCost": null
       },
       {
         "stageNumber": 2,
-        "evolutionCard": "Guardian Statue",
+        "evolutionCard": "Duza the Meteor Cubic Vessel",
         "dpCost": 900
       },
       {
         "stageNumber": 3,
-        "evolutionCard": "B.E.S. Big Core",
+        "evolutionCard": "Buster Gundil the Cubic Behemoth",
         "dpCost": 1400
       },
       {
         "stageNumber": 4,
-        "evolutionCard": "Gaia Plate the Earth Giant",
+        "evolutionCard": "Crimson Nova the Dark Cubic Lord",
         "dpCost": 2400,
         "isBoss": true
       }
@@ -2920,82 +2920,82 @@ export const BOSS_ROUTES = [
     "supportGrants": [
       {
         "stageNumber": 1,
-        "cardName": "Rock Bombardment",
-        "exclusive": true
+        "cardName": "Cubic Karma",
+        "exclusive": false
       },
       {
         "stageNumber": 1,
-        "cardName": "Big Bang Shot",
-        "exclusive": true
+        "cardName": "Cubic Wave",
+        "exclusive": false
       },
       {
         "stageNumber": 1,
-        "cardName": "Card of Safe Return",
+        "cardName": "Cubic Rebirth",
         "exclusive": false
       },
       {
         "stageNumber": 2,
-        "cardName": "Different Dimension Capsule",
-        "exclusive": false
-      },
-      {
-        "stageNumber": 2,
-        "cardName": "Enemy Controller",
-        "exclusive": false
-      },
-      {
-        "stageNumber": 2,
-        "cardName": "Compulsory Evacuation Device",
+        "cardName": "Vijam the Cubic Seed",
         "exclusive": true
       },
       {
-        "stageNumber": 3,
-        "cardName": "Book of Moon",
+        "stageNumber": 2,
+        "cardName": "Unification of the Cubic Lords",
+        "exclusive": true
+      },
+      {
+        "stageNumber": 2,
+        "cardName": "Indiora Doom Volt the Cubic Emperor",
         "exclusive": false
       },
       {
         "stageNumber": 3,
-        "cardName": "United We Stand",
+        "cardName": "Blade Garoodia the Cubic Beast",
         "exclusive": false
       },
       {
         "stageNumber": 3,
-        "cardName": "Ties of the Brethren",
+        "cardName": "Geira Guile the Cubic King",
+        "exclusive": false
+      },
+      {
+        "stageNumber": 3,
+        "cardName": "Cubic Ascension",
+        "exclusive": true
+      },
+      {
+        "stageNumber": 4,
+        "cardName": "Cubic Dharma",
         "exclusive": false
       },
       {
         "stageNumber": 4,
-        "cardName": "Mystical Space Typhoon",
+        "cardName": "Cubic Causality",
         "exclusive": false
       },
       {
         "stageNumber": 4,
-        "cardName": "Torrential Tribute",
-        "exclusive": false
-      },
-      {
-        "stageNumber": 4,
-        "cardName": "Fissure",
+        "cardName": "Cubic Mandala",
         "exclusive": false
       }
     ],
     "achievementEvents": [
       {
         "key": "signature_win",
-        "label": "The wall holds",
-        "description": "Control a Rock-Type monster with 2400 or more DEF during a match you win.",
+        "label": "The seed searches",
+        "description": "Win a match after searching or Special Summoning a Cubic monster from your Deck.",
         "isFinishingBlow": false
       },
       {
         "key": "signature_move",
-        "label": "The long game",
-        "description": "Win a duel that reaches turn 8 or later.",
+        "label": "Lords unified",
+        "description": "Win a duel after having 2 or more Cubic monsters on the field at once.",
         "isFinishingBlow": false
       },
       {
         "key": "finishing_blow",
-        "label": "Bedrock finish",
-        "description": "Win the match with damage dealt by Gaia Plate the Earth Giant.",
+        "label": "Dark Cubic Lord's judgment",
+        "description": "Win the match with damage dealt by Crimson Nova the Dark Cubic Lord.",
         "isFinishingBlow": true
       }
     ],

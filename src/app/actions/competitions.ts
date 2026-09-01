@@ -1075,3 +1075,145 @@ export async function distributeCompetitionRewardsV2(
     `/competitions/${competitionId}`
   );
 }
+
+// =========================================================
+// QUICK START ("TONIGHT") - task 146
+//
+// One-click competition creation for the 3-player league: no
+// manual form, no player picker. Auto-uses every league member as
+// a player, always meetings_per_pairing=3 (everyone plays everyone
+// 3 times), always single_duel, then immediately generates the
+// full round-robin schedule and redirects into the new linear
+// "tonight" flow. Reuses create_competition_v2 / add_competition_
+// player_v2 / generate_round_robin_matches_v2 exactly as the manual
+// V2 form does - no new backend, no duplicate scheduling logic.
+// =========================================================
+
+export async function quickStartTonightCompetition(
+  formData: FormData
+) {
+  const {
+    supabase,
+  } = await requireUser();
+
+  const leagueId =
+    requiredString(
+      formData,
+      "league_id"
+    );
+
+  const {
+    data: memberRows,
+    error: memberError,
+  } = await supabase
+    .from(
+      "league_members"
+    )
+    .select(
+      "profile_id"
+    )
+    .eq(
+      "league_id",
+      leagueId
+    );
+
+  if (memberError) {
+    throw new Error(
+      memberError.message
+    );
+  }
+
+  const playerIds = (
+    memberRows ?? []
+  ).map(
+    (row) =>
+      row.profile_id as string
+  );
+
+  if (playerIds.length < 2) {
+    throw new Error(
+      "Need at least 2 league members to start a competition."
+    );
+  }
+
+  const competitionName = `Tonight - ${new Date().toLocaleDateString(
+    "en-GB",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
+  )}`;
+
+  const {
+    data: competitionId,
+    error: createError,
+  } = await supabase.rpc(
+    "create_competition_v2",
+    {
+      target_league_id:
+        leagueId,
+      target_name:
+        competitionName,
+      target_meetings_per_pairing: 3,
+      target_match_format:
+        "single_duel",
+    }
+  );
+
+  if (createError) {
+    throw new Error(
+      createError.message
+    );
+  }
+
+  if (!competitionId) {
+    throw new Error(
+      "Competition kon niet worden aangemaakt."
+    );
+  }
+
+  for (const profileId of playerIds) {
+    const {
+      error: addPlayerError,
+    } = await supabase.rpc(
+      "add_competition_player_v2",
+      {
+        target_competition_id:
+          competitionId,
+        target_profile_id:
+          profileId,
+      }
+    );
+
+    if (addPlayerError) {
+      throw new Error(
+        addPlayerError.message
+      );
+    }
+  }
+
+  const {
+    error: scheduleError,
+  } = await supabase.rpc(
+    "generate_round_robin_matches_v2",
+    {
+      target_competition_id:
+        competitionId,
+    }
+  );
+
+  if (scheduleError) {
+    throw new Error(
+      scheduleError.message
+    );
+  }
+
+  revalidatePath(
+    "/competitions"
+  );
+
+  redirect(
+    `/competitions/${competitionId}/tonight`
+  );
+}

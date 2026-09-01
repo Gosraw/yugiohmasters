@@ -7,6 +7,7 @@ import {
   Crown,
   Home,
   Medal,
+  Play,
   Plus,
   ShieldCheck,
   Sparkles,
@@ -22,6 +23,14 @@ import {
 import {
   CompetitionCreateFormV2,
 } from "@/components/competition-create-form-v2";
+
+import {
+  quickStartTonightCompetition,
+} from "@/app/actions/competitions";
+
+import {
+  SubmitButton,
+} from "@/components/submit-button";
 
 export const dynamic =
   "force-dynamic";
@@ -476,6 +485,48 @@ export default async function CompetitionsPage() {
         </div>
       </section>
 
+      {/* QUICK START TONIGHT */}
+
+      {isAdmin && (
+        <section className="panel relative mt-6 overflow-hidden border-cyan-300/20 bg-cyan-300/[0.03] p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Play size={17} className="text-cyan-300" />
+
+                <p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">
+                  Game Night
+                </p>
+              </div>
+
+              <h2 className="mt-3 text-2xl font-black">
+                Start Tonight&apos;s Competition
+              </h2>
+
+              <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-500">
+                One tap: every league member is entered, everyone plays everyone 3 times, and the schedule is generated automatically. Opens straight into the linear game-night flow.
+              </p>
+            </div>
+
+            <form action={quickStartTonightCompetition}>
+              <input
+                type="hidden"
+                name="league_id"
+                value={membership.league_id}
+              />
+
+              <SubmitButton
+                pendingLabel="Starting..."
+                className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-5 py-3 text-sm font-black text-cyan-200"
+              >
+                <Play size={16} />
+                Start Competition
+              </SubmitButton>
+            </form>
+          </div>
+        </section>
+      )}
+
       {/* CREATE */}
 
       {isAdmin && (
@@ -568,10 +619,13 @@ export default async function CompetitionsPage() {
                   "tournament";
 
                 return (
-                  <Link
+                  <div
                     key={
                       competition.id
                     }
+                    className="relative"
+                  >
+                  <Link
                     href={`/competitions/${competition.id}`}
                     className="panel group relative overflow-hidden p-5 transition-all hover:-translate-y-1 hover:border-amber-300/20"
                   >
@@ -678,6 +732,17 @@ export default async function CompetitionsPage() {
                       </div>
                     </div>
                   </Link>
+
+                  {competition.status === "active" && (
+                    <Link
+                      href={`/competitions/${competition.id}/tonight`}
+                      className="mt-2 flex items-center justify-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-4 py-2.5 text-xs font-black text-cyan-200 transition hover:border-cyan-300/40"
+                    >
+                      <Play size={13} />
+                      Play Tonight
+                    </Link>
+                  )}
+                  </div>
                 );
               }
             )}

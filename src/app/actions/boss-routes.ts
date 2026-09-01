@@ -207,3 +207,79 @@ export async function evolveBossStage(
     `/boss/${pathId}?success=${encodeURIComponent(`Evolved to Stage ${stageNumber}!`)}`
   );
 }
+
+
+// =========================================================
+// CONFIRM BOSS ACHIEVEMENT EVENT (task 146 - "tonight" flow)
+//
+// Thin wrapper around confirm_boss_achievement_event (see
+// 202609012000_boss_route_rpcs.sql). The RPC itself enforces that
+// the caller is the OPPONENT in that match (never the path owner,
+// never a third party) and that the match is completed - this
+// action just parses input, calls it, and revalidates. Used by the
+// linear "tonight" game-night flow's Boss Progress Y/N step.
+// =========================================================
+
+export async function confirmBossAchievementEvent(
+  formData: FormData
+) {
+  const {
+    supabase,
+  } = await requireUser();
+
+  const matchId = String(
+    formData.get(
+      "match_id"
+    ) ?? ""
+  ).trim();
+
+  const playerBossPathId = String(
+    formData.get(
+      "player_boss_path_id"
+    ) ?? ""
+  ).trim();
+
+  const eventId = String(
+    formData.get(
+      "event_id"
+    ) ?? ""
+  ).trim();
+
+  if (
+    !matchId ||
+    !playerBossPathId ||
+    !eventId
+  ) {
+    throw new Error(
+      "Invalid Boss achievement confirmation request."
+    );
+  }
+
+  const {
+    error,
+  } = await supabase.rpc(
+    "confirm_boss_achievement_event",
+    {
+      target_match_id:
+        matchId,
+      target_player_boss_path_id:
+        playerBossPathId,
+      target_event_id:
+        eventId,
+    }
+  );
+
+  if (error) {
+    throw new Error(
+      error.message
+    );
+  }
+
+  revalidateBossPaths(
+    playerBossPathId
+  );
+
+  revalidatePath(
+    "/competitions"
+  );
+}

@@ -2,6 +2,7 @@
 
 import {
   useActionState,
+  useEffect,
   useState,
 } from "react";
 
@@ -59,6 +60,13 @@ type CompetitionMatchResultFormV2Props = {
   playerOneLabel: string;
   playerTwoLabel: string;
   mode: "submit" | "correct" | "tiebreak";
+  // Optional hook for callers (e.g. the linear "tonight" game-night
+  // flow) that need to react to a successful result submission -
+  // never required, and never changes this component's own
+  // rendering of the result summary below.
+  onSettled?: (
+    summary: MatchResultActionState & { status: "success" }
+  ) => void;
 };
 
 const BO3_PRESETS: {
@@ -79,6 +87,7 @@ export function CompetitionMatchResultFormV2({
   playerOneLabel,
   playerTwoLabel,
   mode,
+  onSettled,
 }: CompetitionMatchResultFormV2Props) {
   const [
     selected,
@@ -107,6 +116,13 @@ export function CompetitionMatchResultFormV2({
     action,
     INITIAL_STATE
   );
+
+  useEffect(() => {
+    if (state.status === "success" && onSettled) {
+      onSettled(state);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   if (mode === "correct" && !showReason) {
     return (

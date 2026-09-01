@@ -61,7 +61,7 @@ export type VoucherAward = {
 export type RoundRewardAward = {
   profileId: string;
   profileName: string;
-  role: "participation" | "round_winner";
+  role: "participation" | "round_winner" | "round_runner_up";
   duelPoints: number;
   voucherType: string | null;
   voucherQuantity: number;
@@ -244,7 +244,7 @@ export async function buildMatchSettlementSummary(
   const roundRewards: RoundRewardAward[] = (roundGrantsResult.data ?? []).map(
     (row: {
       profile_id: string;
-      reward_role: "participation" | "round_winner";
+      reward_role: "participation" | "round_winner" | "round_runner_up";
       duel_points_granted: number;
       voucher_type: string | null;
       voucher_quantity: number;

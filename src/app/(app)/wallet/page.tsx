@@ -47,6 +47,7 @@ type TransactionReason =
   | "match_reward"
   | "round_participation"
   | "round_winner_bonus"
+  | "round_runner_up_bonus"
   | "competition_reward"
   | "shop_purchase"
   | "trade"
@@ -69,6 +70,7 @@ const REASON_META: Record<
   match_reward: { icon: Swords, label: "Duel result" },
   round_participation: { icon: Sparkles, label: "Round participation" },
   round_winner_bonus: { icon: Sparkles, label: "Round winner bonus" },
+  round_runner_up_bonus: { icon: Sparkles, label: "Round 2nd place bonus" },
   competition_reward: { icon: Trophy, label: "Competition reward" },
   shop_purchase: { icon: Package, label: "Shop purchase" },
   trade: { icon: Repeat2, label: "Trade" },
@@ -99,7 +101,8 @@ function detailFor(row: TransactionRow) {
 
   if (
     (row.reason === "round_participation" ||
-      row.reason === "round_winner_bonus") &&
+      row.reason === "round_winner_bonus" ||
+      row.reason === "round_runner_up_bonus") &&
     typeof meta.round_number === "number"
   ) {
     return `Round ${meta.round_number}`;

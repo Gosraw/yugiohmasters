@@ -5,6 +5,7 @@ import {
   isRoundReadyToSettle,
   roundParticipants,
   roundRewardGrantKey,
+  roundRunnersUp,
   roundWinners,
 } from "./round-reward-model";
 
@@ -12,19 +13,26 @@ import {
 // See round-reward-model.ts's header: these tests exercise a
 // hand-transcribed TypeScript port of the round-settlement logic
 // that actually lives in
-// 202608301500_round_reward_settlement_and_auto_finalize.sql,
+// 202608311100_phase2_economy_central_config_and_round_rewards.sql,
 // because this sandbox cannot run the real Postgres functions or
 // execute vitest against this repo's native-binary dependencies.
 // They verify the ALGORITHM as designed (who counts as a
-// participant/winner, and that settling twice never grows the grant
-// set); running the equivalent scenarios against a live Supabase
-// instance is the recommended follow-up before trusting this in
-// production.
+// participant/winner/runner-up, and that settling twice never grows
+// the grant set); running the equivalent scenarios against a live
+// Supabase instance is the recommended follow-up before trusting
+// this in production.
 // =========================================================
 
 const twoMatchRound = [
   { playerOneId: "alice", playerTwoId: "bob", winnerId: "alice", status: "completed" },
   { playerOneId: "carol", playerTwoId: "dave", winnerId: "dave", status: "completed" },
+];
+
+// The real 3-player league shape: exactly one match this round, and
+// a third player ("erin") who is the bye - registered in the
+// competition, but absent from every match row for this round.
+const threePlayerRoundWithBye = [
+  { playerOneId: "alice", playerTwoId: "bob", winnerId: "alice", status: "completed" },
 ];
 
 describe("isRoundReadyToSettle", () => {
@@ -46,10 +54,21 @@ describe("isRoundReadyToSettle", () => {
 });
 
 describe("roundParticipants", () => {
-  it("includes both players of every match, de-duplicated", () => {
-    expect(roundParticipants(twoMatchRound).sort()).toEqual(
-      ["alice", "bob", "carol", "dave"]
-    );
+  it("is every registered competition player, de-duplicated - not derived from matches", () => {
+    expect(
+      roundParticipants(["alice", "bob", "alice"]).sort()
+    ).toEqual(["alice", "bob"]);
+  });
+
+  it("includes the bye player for a 3-player round with only one match", () => {
+    // The bye player ("erin") has no match row this round at all -
+    // roundParticipants takes the competition roster directly, so
+    // it must still be included. This is the Phase 2 fix: the prior
+    // version derived participants from match rows and silently
+    // dropped the bye player.
+    expect(
+      roundParticipants(["alice", "bob", "erin"]).sort()
+    ).toEqual(["alice", "bob", "erin"]);
   });
 });
 
@@ -65,6 +84,28 @@ describe("roundWinners", () => {
       { playerOneId: "alice", playerTwoId: "bob", winnerId: null, status: "completed" },
     ];
     expect(roundWinners(round)).toEqual([]);
+  });
+});
+
+describe("roundRunnersUp", () => {
+  it("includes the loser (non-winner participant) of every match", () => {
+    expect(roundRunnersUp(twoMatchRound).sort()).toEqual(
+      ["bob", "carol"]
+    );
+  });
+
+  it("excludes matches with no winner recorded", () => {
+    const round = [
+      { playerOneId: "alice", playerTwoId: "bob", winnerId: null, status: "completed" },
+    ];
+    expect(roundRunnersUp(round)).toEqual([]);
+  });
+
+  it("never includes a bye player - they have no match row to lose", () => {
+    // "erin" sits out this round entirely; roundRunnersUp only ever
+    // looks at match rows, so it can never wrongly tag the bye
+    // player as a runner-up.
+    expect(roundRunnersUp(threePlayerRoundWithBye)).toEqual(["bob"]);
   });
 });
 
@@ -89,25 +130,29 @@ describe("roundRewardGrantKey", () => {
     expect(
       roundRewardGrantKey("comp-1", 3, "alice", "round_winner")
     ).not.toBe(base);
+    expect(
+      roundRewardGrantKey("comp-1", 3, "alice", "round_runner_up")
+    ).not.toBe(base);
   });
 });
 
 describe("computeRoundRewardGrantKeys", () => {
   it("is empty when the round is not ready to settle", () => {
     expect(
-      computeRoundRewardGrantKeys("comp-1", 3, [])
+      computeRoundRewardGrantKeys("comp-1", 3, ["alice", "bob"], [])
     ).toEqual([]);
   });
 
-  it("produces one participation key per player and one round_winner key per match winner", () => {
+  it("produces one participation key per registered player, one round_winner key per match winner, and one round_runner_up key per match loser", () => {
     const keys = computeRoundRewardGrantKeys(
       "comp-1",
       3,
+      ["alice", "bob", "carol", "dave"],
       twoMatchRound
     );
 
-    expect(keys).toHaveLength(6);
-    expect(new Set(keys).size).toBe(6);
+    expect(keys).toHaveLength(8);
+    expect(new Set(keys).size).toBe(8);
     expect(keys).toContain(
       roundRewardGrantKey("comp-1", 3, "alice", "participation")
     );
@@ -117,8 +162,30 @@ describe("computeRoundRewardGrantKeys", () => {
     expect(keys).toContain(
       roundRewardGrantKey("comp-1", 3, "bob", "participation")
     );
+    expect(keys).toContain(
+      roundRewardGrantKey("comp-1", 3, "bob", "round_runner_up")
+    );
     expect(keys).not.toContain(
       roundRewardGrantKey("comp-1", 3, "bob", "round_winner")
+    );
+  });
+
+  it("includes a participation key for the bye player even though they appear in no match this round", () => {
+    const keys = computeRoundRewardGrantKeys(
+      "comp-1",
+      5,
+      ["alice", "bob", "erin"],
+      threePlayerRoundWithBye
+    );
+
+    expect(keys).toContain(
+      roundRewardGrantKey("comp-1", 5, "erin", "participation")
+    );
+    expect(keys).not.toContain(
+      roundRewardGrantKey("comp-1", 5, "erin", "round_winner")
+    );
+    expect(keys).not.toContain(
+      roundRewardGrantKey("comp-1", 5, "erin", "round_runner_up")
     );
   });
 
@@ -126,11 +193,13 @@ describe("computeRoundRewardGrantKeys", () => {
     const first = computeRoundRewardGrantKeys(
       "comp-1",
       3,
+      ["alice", "bob", "carol", "dave"],
       twoMatchRound
     );
     const second = computeRoundRewardGrantKeys(
       "comp-1",
       3,
+      ["alice", "bob", "carol", "dave"],
       twoMatchRound
     );
 

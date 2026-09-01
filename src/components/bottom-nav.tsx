@@ -153,8 +153,19 @@ export function BottomNav({
                     )}
                   </div>
 
+                  {/* Mobile fix (2026-09-01): PROFILE (7 chars) is the
+                      longest label in this bar - at the old 9px size
+                      with .08em tracking it slightly exceeded each
+                      item's available width on a 375px phone with no
+                      whitespace-nowrap guard, so it silently wrapped
+                      onto two lines and broke the row's vertical
+                      alignment with its six siblings. Tighter tracking
+                      + a hair smaller size brings every label
+                      (including PROFILE) under its column's width, and
+                      whitespace-nowrap is now a hard guarantee against
+                      wrapping on any narrower phone too. */}
                   <span
-                    className={`text-[9px] font-black tracking-[.08em] ${
+                    className={`whitespace-nowrap text-[8px] font-black tracking-[.02em] ${
                       active
                         ? "text-amber-200"
                         : ""

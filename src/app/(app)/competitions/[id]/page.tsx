@@ -1401,35 +1401,45 @@ export default async function CompetitionDetailPage({
               </p>
             </div>
 
+            {/* Mobile fix (2026-09-01): this table previously forced
+                min-w-[650px] with px-5 (20px) cell padding on all 7
+                columns, guaranteeing horizontal scroll on every phone
+                (375-430px) regardless of how little content the
+                3-player league actually has (single-digit P/W/D/L,
+                short names). Dropped the arbitrary min-width and
+                tightened padding below sm: so the real content - a
+                handful of short rows - fits natively on one screen;
+                overflow-x-auto is kept only as a safety net, not the
+                expected path, for an unusually long duelist name. */}
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[650px]">
+              <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/[0.05] text-left text-[9px] font-black uppercase tracking-wider text-zinc-600">
-                    <th className="px-5 py-3">
+                    <th className="px-2 py-3 sm:px-5">
                       #
                     </th>
 
-                    <th className="px-5 py-3">
+                    <th className="px-2 py-3 sm:px-5">
                       Duelist
                     </th>
 
-                    <th className="px-5 py-3 text-center">
+                    <th className="px-1.5 py-3 text-center sm:px-5">
                       P
                     </th>
 
-                    <th className="px-5 py-3 text-center">
+                    <th className="px-1.5 py-3 text-center sm:px-5">
                       W
                     </th>
 
-                    <th className="px-5 py-3 text-center">
+                    <th className="px-1.5 py-3 text-center sm:px-5">
                       D
                     </th>
 
-                    <th className="px-5 py-3 text-center">
+                    <th className="px-1.5 py-3 text-center sm:px-5">
                       L
                     </th>
 
-                    <th className="px-5 py-3 text-right">
+                    <th className="px-2 py-3 text-right sm:px-5">
                       PTS
                     </th>
                   </tr>
@@ -1447,13 +1457,13 @@ export default async function CompetitionDetailPage({
                         }
                         className="border-b border-white/[0.04] last:border-0"
                       >
-                        <td className="px-5 py-4 font-black text-zinc-500">
+                        <td className="px-2 py-4 font-black text-zinc-500 sm:px-5">
                           {
                             index + 1
                           }
                         </td>
 
-                        <td className="px-5 py-4 font-black text-zinc-200">
+                        <td className="max-w-[110px] truncate px-2 py-4 font-black text-zinc-200 sm:max-w-none sm:px-5">
                           {playerName(
                             profileMap.get(
                               standing.profile_id
@@ -1461,31 +1471,31 @@ export default async function CompetitionDetailPage({
                           )}
                         </td>
 
-                        <td className="px-5 py-4 text-center text-zinc-400">
+                        <td className="px-1.5 py-4 text-center text-zinc-400 sm:px-5">
                           {
                             standing.played
                           }
                         </td>
 
-                        <td className="px-5 py-4 text-center font-black text-emerald-200">
+                        <td className="px-1.5 py-4 text-center font-black text-emerald-200 sm:px-5">
                           {
                             standing.wins
                           }
                         </td>
 
-                        <td className="px-5 py-4 text-center text-zinc-400">
+                        <td className="px-1.5 py-4 text-center text-zinc-400 sm:px-5">
                           {
                             standing.draws
                           }
                         </td>
 
-                        <td className="px-5 py-4 text-center font-black text-red-200">
+                        <td className="px-1.5 py-4 text-center font-black text-red-200 sm:px-5">
                           {
                             standing.losses
                           }
                         </td>
 
-                        <td className="px-5 py-4 text-right text-xl font-black text-amber-200">
+                        <td className="px-2 py-4 text-right text-xl font-black text-amber-200 sm:px-5">
                           {
                             standing.points
                           }
@@ -1779,8 +1789,17 @@ export default async function CompetitionDetailPage({
                     href={`/matches/${match.id}`}
                     className="panel p-4 transition hover:border-amber-300/20"
                   >
+                    {/* Mobile fix (2026-09-01): this legacy (non-V2)
+                        match card had no min-w-0/truncate guard on the
+                        player-names line, so a flex row with
+                        justify-between and no shrink allowance could be
+                        forced wider than the card by a long duelist
+                        name, pushing the status icon out and causing
+                        the whole page to scroll horizontally on a
+                        phone. min-w-0 lets the text shrink, truncate
+                        keeps it to one line with an ellipsis. */}
                     <div className="flex items-center justify-between gap-3">
-                      <p className="font-black">
+                      <p className="min-w-0 truncate font-black">
                         {playerName(
                           profileMap.get(
                             match.player_one_id
@@ -1798,12 +1817,12 @@ export default async function CompetitionDetailPage({
                       "completed" ? (
                         <CheckCircle2
                           size={16}
-                          className="text-emerald-300"
+                          className="shrink-0 text-emerald-300"
                         />
                       ) : (
                         <Clock3
                           size={16}
-                          className="text-cyan-300"
+                          className="shrink-0 text-cyan-300"
                         />
                       )}
                     </div>
@@ -1965,6 +1984,31 @@ export default async function CompetitionDetailPage({
                     roundNumber
                   ) ?? 0;
 
+                const roundMatchesCompleted =
+                  roundMatches.filter(
+                    (match) =>
+                      match.status === "completed"
+                  ).length;
+
+                // Bye indicator: in this 3-player round-robin format
+                // every round has one match and one player sitting
+                // out (generate_round_robin_matches_v2 pads an odd
+                // player count with a bye) - that player still shows
+                // up nowhere in roundMatches at all, so without this
+                // there was no on-screen sign a bye happened this
+                // round, only a DP/pack grant buried in their wallet
+                // history afterward.
+                const playersInRound = new Set<string>();
+                for (const match of roundMatches) {
+                  playersInRound.add(match.player_one_id);
+                  playersInRound.add(match.player_two_id);
+                }
+                const byeProfile =
+                  participatingProfiles.find(
+                    (profile) =>
+                      !playersInRound.has(profile.id)
+                  );
+
                 return (
                   <div key={roundNumber}>
                     <div className="flex flex-wrap items-center gap-2">
@@ -1980,6 +2024,20 @@ export default async function CompetitionDetailPage({
                         Round {roundNumber} of{" "}
                         {competition.total_rounds}
                       </span>
+
+                      {roundMatches.length > 0 && (
+                        <span className="text-xs font-black text-zinc-600">
+                          · {roundMatchesCompleted}/
+                          {roundMatches.length} duels done
+                        </span>
+                      )}
+
+                      {byeProfile && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-zinc-500/25 bg-white/[0.03] px-2 py-0.5 text-[10px] font-black text-zinc-400">
+                          <Clock3 size={10} />
+                          {playerName(byeProfile)} has the bye
+                        </span>
+                      )}
 
                       {isCompleted &&
                         roundRewardCount > 0 && (

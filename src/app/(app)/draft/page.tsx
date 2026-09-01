@@ -394,27 +394,17 @@ export default async function DraftPage() {
             </div>
           </div>
 
-          {membership.role ===
-          "admin" ? (
-            <form
-              action={
-                startInitialDraft
-              }
+          <form
+            action={startInitialDraft}
+          >
+            <ConfirmSubmitButton
+              confirmMessage="Start your personal Initial Draft? This can only be completed once."
+              pendingLabel="Starting..."
+              className="primary-button mt-6"
             >
-              <ConfirmSubmitButton
-                confirmMessage="Start the initial draft for the whole league? This can't be redone for players who already drafted."
-                pendingLabel="Starting..."
-                className="primary-button mt-6"
-              >
-                Start Initial Draft
-              </ConfirmSubmitButton>
-            </form>
-          ) : (
-            <p className="mt-6 text-sm text-zinc-500">
-              Wacht tot de admin
-              de draft start.
-            </p>
-          )}
+              Start Initial Draft
+            </ConfirmSubmitButton>
+          </form>
         </section>
       </main>
     );

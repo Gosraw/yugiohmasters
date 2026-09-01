@@ -39,6 +39,14 @@ import {
 } from "@/lib/card-race";
 
 import {
+  setCardForTrade,
+} from "@/app/actions/cards";
+
+import {
+  SubmitButton,
+} from "@/components/submit-button";
+
+import {
   ScrollPositionMemory,
 } from "@/components/scroll-position-memory";
 
@@ -97,11 +105,24 @@ function CollectionCardTile({
     group.quantity >
       0;
 
+  // One quick trade-listing action per tile: list the next
+  // available (unlocked, not-yet-listed) copy, or - once every
+  // available copy is already listed - offer to pull the most
+  // recently listed copy back off the trade list. A wager-locked
+  // copy is never toggled here, matching the "For Trade never
+  // reserves anything" rule already established on the card detail
+  // page.
+  const nextToList = group.instances.find(
+    (instance) => !instance.locked && !instance.for_trade
+  );
+
+  const nextToUnlist = group.instances.find(
+    (instance) => instance.for_trade
+  );
+
   return (
+    <div className="relative">
     <Link
-      key={
-        card.id
-      }
       href={`/cards/${card.id}?returnTo=${encodeURIComponent(
         collectionReturnTo
       )}`}
@@ -268,6 +289,44 @@ function CollectionCardTile({
         </div>
       </div>
     </Link>
+
+    {(nextToList || nextToUnlist) && (
+      <form
+        action={setCardForTrade}
+        className="mt-1.5"
+      >
+        <input
+          type="hidden"
+          name="card_instance_id"
+          value={(nextToList ?? nextToUnlist)?.id ?? ""}
+        />
+
+        <input
+          type="hidden"
+          name="for_trade"
+          value={String(Boolean(nextToList))}
+        />
+
+        <input
+          type="hidden"
+          name="return_to"
+          value={collectionReturnTo}
+        />
+
+        <SubmitButton
+          pendingLabel="Saving..."
+          className={`flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-[9px] font-black uppercase tracking-wider ${
+            nextToList
+              ? "border-white/10 bg-white/[0.03] text-zinc-400 hover:border-emerald-300/30 hover:text-emerald-200"
+              : "border-violet-300/20 bg-violet-300/[0.04] text-violet-200 hover:border-violet-300/40"
+          }`}
+        >
+          <Tag size={10} />
+          {nextToList ? "Offer For Trade" : "Remove From Trade"}
+        </SubmitButton>
+      </form>
+    )}
+    </div>
   );
 }
 

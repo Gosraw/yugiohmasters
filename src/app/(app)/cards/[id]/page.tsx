@@ -20,6 +20,7 @@ import {
   Tag,
   Unlock,
   UnlockKeyhole,
+  Users,
 } from "lucide-react";
 
 import type {
@@ -325,6 +326,88 @@ export default async function CardDetailPage({
       (copy) =>
         copy.locked
     );
+
+  // ======================================================
+  // LEAGUE OWNERSHIP (P0D - "ownership visibility": who in the
+  // league owns this card and how many of their copies are listed
+  // for trade, e.g. "BossG owns x2, 1 listed; Samiro owns x1").
+  // Scoped by league_id exactly like the viewer's own copies above,
+  // and reuses the same card_instances table rather than a new
+  // aggregate/service.
+  // ======================================================
+
+  let leagueOwnership: {
+    profileId: string;
+    profileName: string;
+    owned: number;
+    listed: number;
+  }[] = [];
+
+  if (leagueId) {
+    const {
+      data: leagueInstances,
+    } = await supabase
+      .from("card_instances")
+      .select("current_owner_id,for_trade")
+      .eq("card_catalog_id", id)
+      .eq("league_id", leagueId);
+
+    if (leagueInstances && leagueInstances.length > 0) {
+      const ownerIds = Array.from(
+        new Set(
+          leagueInstances.map(
+            (row) => row.current_owner_id as string
+          )
+        )
+      );
+
+      const { data: ownerProfiles } = await supabase
+        .from("profiles")
+        .select("id,username,duelist_name")
+        .in("id", ownerIds);
+
+      const nameById = new Map(
+        (ownerProfiles ?? []).map((profile) => [
+          profile.id as string,
+          (profile.duelist_name as string) ??
+            (profile.username as string) ??
+            "Duelist",
+        ])
+      );
+
+      const tally = new Map<
+        string,
+        { owned: number; listed: number }
+      >();
+
+      for (const row of leagueInstances as {
+        current_owner_id: string;
+        for_trade: boolean;
+      }[]) {
+        const entry = tally.get(row.current_owner_id) ?? {
+          owned: 0,
+          listed: 0,
+        };
+
+        entry.owned += 1;
+
+        if (row.for_trade) {
+          entry.listed += 1;
+        }
+
+        tally.set(row.current_owner_id, entry);
+      }
+
+      leagueOwnership = Array.from(tally.entries())
+        .map(([profileId, counts]) => ({
+          profileId,
+          profileName: nameById.get(profileId) ?? "Duelist",
+          owned: counts.owned,
+          listed: counts.listed,
+        }))
+        .sort((a, b) => b.owned - a.owned);
+    }
+  }
 
   // ======================================================
   // DECK USAGE
@@ -1352,6 +1435,46 @@ export default async function CardDetailPage({
                 </div>
               </div>
             </div>
+
+            {leagueOwnership.length > 0 && (
+              <div className="panel p-5 sm:p-6">
+                <div className="flex items-center gap-2">
+                  <Users
+                    size={19}
+                    className="text-cyan-300"
+                  />
+
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[.18em] text-zinc-600">
+                      League Ownership
+                    </p>
+
+                    <h2 className="mt-1 text-lg font-black text-cyan-200">
+                      Who Owns This Card
+                    </h2>
+                  </div>
+                </div>
+
+                <ul className="mt-4 space-y-1.5">
+                  {leagueOwnership.map((row) => (
+                    <li
+                      key={row.profileId}
+                      className="flex flex-wrap items-center gap-x-1.5 text-sm text-zinc-300"
+                    >
+                      <span className="font-black text-zinc-100">
+                        {row.profileName}
+                      </span>
+                      <span>
+                        owns x{row.owned}
+                        {row.listed > 0
+                          ? `, ${row.listed} listed`
+                          : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* ===============================================
                 PHYSICAL OWNERSHIP

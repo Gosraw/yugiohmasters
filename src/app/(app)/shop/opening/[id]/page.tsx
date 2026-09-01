@@ -320,6 +320,9 @@ export default async function PackOpeningPage({
             card_catalog_id:
               pull.card_catalog_id,
 
+            card_instance_id:
+              pull.card_instance_id,
+
             pull_position:
               pull.pull_position,
 

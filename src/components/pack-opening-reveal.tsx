@@ -1,5 +1,13 @@
 "use client";
 
+import {
+  setCardForTrade,
+} from "@/app/actions/cards";
+
+import {
+  SubmitButton,
+} from "@/components/submit-button";
+
 import Image from "next/image";
 import Link from "next/link";
 
@@ -151,6 +159,12 @@ type Pull = {
   id: string;
 
   card_catalog_id:
+    string;
+
+  // The actual owned copy this pull created - needed so the result
+  // grid's "Offer For Trade" quick action can list this exact copy
+  // without a second lookup.
+  card_instance_id:
     string;
 
   pull_position:
@@ -1427,10 +1441,8 @@ export function PackOpeningReveal({
                     ] ?? 0;
 
                   return (
+                    <div key={pull.id} className="relative">
                     <Link
-                      key={
-                        pull.id
-                      }
                       href={`/cards/${card.id}?returnTo=/shop`}
                       className={`group relative overflow-hidden rounded-2xl border bg-black/20 transition-all hover:-translate-y-1 ${rarityStyle}`}
                     >
@@ -1508,6 +1520,37 @@ export function PackOpeningReveal({
                         </div>
                       </div>
                     </Link>
+
+                    <form
+                      action={setCardForTrade}
+                      className="mt-1.5"
+                    >
+                      <input
+                        type="hidden"
+                        name="card_instance_id"
+                        value={pull.card_instance_id}
+                      />
+
+                      <input
+                        type="hidden"
+                        name="for_trade"
+                        value="true"
+                      />
+
+                      <input
+                        type="hidden"
+                        name="return_to"
+                        value="/shop"
+                      />
+
+                      <SubmitButton
+                        pendingLabel="Saving..."
+                        className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[8px] font-black uppercase tracking-wider text-zinc-400 hover:border-emerald-300/30 hover:text-emerald-200"
+                      >
+                        Offer For Trade
+                      </SubmitButton>
+                    </form>
+                    </div>
                   );
                 }
               )}

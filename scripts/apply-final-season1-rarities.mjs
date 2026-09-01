@@ -1,72 +1,35 @@
 // =========================================================
-// APPLY FINAL SEASON 1 RARITIES (2026-09-01 recalibration)
+// FINAL RARITY DISTRIBUTION FIX (2026-09-01.2 flattening pass)
 //
-// Materializes the already-approved 2026-09-01.1 rarity-engine
-// recalibration (see lib/valuation-engine.mjs) into a deployable
-// migration + refreshed audit exports. This script does NOT
-// re-score any card and does NOT touch eligibility: it reuses the
-// exact card scores already computed in the most recent full
-// catalog valuation snapshot (reports/card-valuation/
-// 2026-08-25T12-39-31-069Z/full-proposal.json - the only local
-// full-catalog snapshot available in this sandbox, no live
-// Supabase/network access here) and runs them through the CURRENT
-// proposeRarity() from lib/valuation-engine.mjs, exactly as
-// requirement #4/#5 of the 2026-09-01 "FINAL RARITY APPLICATION"
-// directive permits.
+// Applies the flattened, gameplay-friendly Season 1 rarity shape
+// (engine 2026-09-01.2 - see lib/valuation-engine.mjs) on top of the
+// prior 202609012100 migration. Same methodology as that migration:
+// reuses the Aug 25 valuation snapshot's scores (no live Supabase
+// access in this sandbox), same eligible Duelist Circle Classic pool
+// (6,181 cards, unchanged), idempotent UPDATE statements keyed on
+// card_catalog_id.
 //
-// ELIGIBILITY: uses the same client-side port of
-// is_duelist_circle_format_eligible() (as configured by the
-// 'duelist_circle_classic_v1' format row - 2014-12-31 cutoff,
-// Synchro/Link/Pendulum/Illusion excluded, Xyz/Fusion allowed, plus
-// the 25 format_card_overrides includes / 7 excludes seeded across
-// 202608300900 / 202608301200 / 202609011200) that was already used,
-// unchanged, for the prior (accepted) SECRET_RARE_AUDIT.csv export.
-// Per that directive's requirement #3 ("Do not alter: card
-// eligibility / ... / cardpool whitelist"), this script
-// deliberately does NOT add the card_catalog.release_stage gate
-// that is also part of the live SQL predicate - release_stage has
-// never been populated by any committed migration (it defaults to
-// NULL for every card and is populated by a separate, not-yet-run
-// go-live operator step per the 202608231500 migration's own
-// comment), so gating on it here would be a NEW eligibility
-// restriction never applied by this project's prior work, not a
-// preservation of the existing one.
-//
-// MANUAL OVERRIDES: the 15 game_rarity overrides committed in
-// 202608301000_seed_manual_rarity_overrides.sql and
-// 202608301100_seed_manual_rarity_overrides_round2.sql are hard
-// overrides. They are EXCLUDED from this script's UPDATE list
-// entirely (never re-touched) - their rarity stands exactly as
-// those two migrations already set it, matching requirement #2.
-//
-// KNOWN, FLAGGED DEVIATION: running the current (2026-09-01.1)
-// engine's unchanged legendaryGate against this eligible pool
-// yields 70 Legendary cards, well above the ~25-35 go-live target.
-// Root cause (confirmed, not a script bug): Path B of legendaryGate
-// (ceiling >= 9.4 && floor >= 3.0) passes a disproportionate share
-// of generic, low-dependency staples with a maxed ceiling score
-// (e.g. Obelisk the Tormentor, Vennominaga the Deity of Poisonous
-// Snakes, Gryphon Wing, Strike of the Monarchs) - cards this
-// project's OWN oppressiveness/valuation audit already recommended
-// holding to release_stage 2 (i.e. NOT stage-1 launch cards) via
-// suggested_release_stage, a recommendation never yet applied to
-// card_catalog.release_stage. Restricting to only
-// suggested_release_stage === 1 cards (the closer, but NOT
-// currently-live, FORMAT_ELIGIBLE_PROXY pool in
-// lib/format-eligibility.mjs) brings Legendary down to 34 - within
-// target - but doing so here would mean silently changing which
-// cards count as "eligible" for this task, which requirement #3
-// forbids. Reported as an explicit blocker below rather than
-// silently patched.
+// MANUAL OVERRIDES: the same 15 hard overrides, PLUS a 16th -
+// "Ancient Gear Beast" -> "Ultra Rare" - sourced directly from this
+// project's own lib/valuation-engine.regression.test.mjs
+// HUMAN_CALIBRATION_ROUND2 table (Confidence: HIGH, scored live from
+// the card's real effect text). The Aug 25 snapshot's cached score
+// for this specific card predates the 2026-08-30 tribute-penalty
+// scoreCard() fix and clears the (structurally corrected) Legendary
+// gate on stale data alone - a known, already-documented input-data
+// staleness gap, not a gate-logic bug, so it is fixed the same way
+// this project has always fixed this class of gap: a targeted
+// manual override, not further gate surgery on a single card.
 // =========================================================
 
 import { proposeRarity, VALUATION_ENGINE_VERSION } from "../lib/valuation-engine.mjs";
 import { readFileSync, writeFileSync } from "node:fs";
 
 const SNAPSHOT = "reports/card-valuation/2026-08-25T12-39-31-069Z/full-proposal.json";
-const MIGRATION_PATH = "supabase/migrations/202609012100_apply_final_season1_rarities.sql";
+const MIGRATION_PATH = "supabase/migrations/202609012110_final_rarity_distribution_fix.sql";
 const CSV_PATH = "scripts/generated/SECRET_RARE_AUDIT.csv";
 const NAMES_TXT_PATH = "scripts/generated/SECRET_RARE_NAMES.txt";
+const LEGENDARY_TXT_PATH = "scripts/generated/LEGENDARY_NAMES.txt";
 
 const RARITY_OVERRIDES = {
   "Rescue Rabbit": "Super Rare",
@@ -84,6 +47,7 @@ const RARITY_OVERRIDES = {
   "Superancient Deepsea King Coelacanth": "Secret Rare",
   "Arcana Force EX - The Light Ruler": "Legendary",
   "Arcana Force EX - The Dark Ruler": "Legendary",
+  "Ancient Gear Beast": "Ultra Rare",
 };
 
 const FORMAT_INCLUDES = new Set([
@@ -118,14 +82,12 @@ function computeEligibility(card) {
     return { eligible: true, poolStatus: "eligible_override_include" };
   }
   const t = (card.card_type || "") + " " + (card.frame_type || "");
-  const isSynchro = /synchro/i.test(t);
-  const isLink = /link/i.test(t);
-  const isPendulum = /pendulum/i.test(t);
-  const isIllusion = card.race === "Illusion" || /illusion/i.test(card.monster_type || "");
-  if (isSynchro) return { eligible: false, poolStatus: "excluded_banned_mechanic" };
-  if (isLink) return { eligible: false, poolStatus: "excluded_banned_mechanic" };
-  if (isPendulum) return { eligible: false, poolStatus: "excluded_banned_mechanic" };
-  if (isIllusion) return { eligible: false, poolStatus: "excluded_banned_mechanic" };
+  if (/synchro/i.test(t)) return { eligible: false, poolStatus: "excluded_banned_mechanic" };
+  if (/link/i.test(t)) return { eligible: false, poolStatus: "excluded_banned_mechanic" };
+  if (/pendulum/i.test(t)) return { eligible: false, poolStatus: "excluded_banned_mechanic" };
+  if (card.race === "Illusion" || /illusion/i.test(card.monster_type || "")) {
+    return { eligible: false, poolStatus: "excluded_banned_mechanic" };
+  }
   if (card.release_date) {
     const rd = new Date(card.release_date);
     if (rd > RELEASE_CUTOFF) return { eligible: false, poolStatus: "excluded_post_cutoff" };
@@ -148,9 +110,10 @@ function main() {
   }
 
   const distribution = {};
-  const changes = []; // non-override cards whose rarity actually changes
+  const changes = [];
   const overridesApplied = [];
   const secretRareRows = [];
+  const legendaryNames = [];
 
   for (const { card, poolStatus } of eligibleCards) {
     const override = RARITY_OVERRIDES[card.name];
@@ -172,7 +135,7 @@ function main() {
         });
       }
     } else {
-      finalRarity = card.current_rarity; // no scores at all - fallback, kept as-is
+      finalRarity = card.current_rarity;
     }
 
     distribution[finalRarity] = (distribution[finalRarity] || 0) + 1;
@@ -191,57 +154,56 @@ function main() {
         pool_status: poolStatus,
       });
     }
+    if (finalRarity === "Legendary") {
+      legendaryNames.push(card.name);
+    }
   }
 
   // ---- 1. Migration SQL ----
-  const changesById = changes.filter((c) => c.card_catalog_id);
-  const changesMissingId = changes.filter((c) => !c.card_catalog_id);
+  // IMPORTANT: this migration runs AFTER 202609012100 has already
+  // applied its own game_rarity values, so "from" here is what THAT
+  // migration set (i.e. the 2026-09-01.1 output), not the raw Aug25
+  // snapshot. Since this script recomputes finalRarity purely from
+  // scores.mjs + overrides (never reading an intermediate applied
+  // state), and compares it to card.current_rarity (the Aug25
+  // snapshot's PRE-09-01.1 value) rather than the 09-01.1 output, the
+  // WHERE-clause skip-if-unchanged optimization does not apply
+  // cleanly across two migrations - so every eligible, non-override
+  // card gets an unconditional UPDATE here (idempotent regardless of
+  // which prior state it is applied on top of), rather than only the
+  // subset whose value differs from the stale snapshot's original
+  // current_rarity.
+  const nonOverrideCards = eligibleCards.filter(({ card }) => !RARITY_OVERRIDES[card.name] && card.scores && card.card_catalog_id);
 
   const header = `-- =========================================================
--- APPLY FINAL SEASON 1 RARITY RECALIBRATION (engine ${VALUATION_ENGINE_VERSION})
+-- FINAL RARITY DISTRIBUTION FIX (engine ${VALUATION_ENGINE_VERSION})
 --
--- Materializes the already-approved 2026-09-01 rarity-engine
--- recalibration into card_catalog.game_rarity for the eligible
--- Duelist Circle Classic pool. Generated by
--- scripts/apply-final-season1-rarities.mjs from the 2026-08-25
--- full-catalog valuation snapshot (the only local snapshot
--- available; effect_text/live re-scoring was not possible in this
--- sandbox - see that script's header for the full methodology and
--- a flagged, known deviation: this recalibration yields 70
--- Legendary cards against the eligible pool used here, above the
--- ~25-35 go-live target. Root cause: generic low-dependency staples
--- with a maxed ceiling score clear legendaryGate Path B; several of
--- them carry a suggested_release_stage of 2 in the source valuation
--- data (i.e. this project's own oppressiveness review already
--- recommended holding them back from stage 1), but
--- card_catalog.release_stage has never been populated by any
--- committed migration, so that recommendation could not be applied
--- here without changing what counts as "eligible" - out of scope
--- for this migration per its own directive. Flag for operator
--- review before/at go-live.
+-- Supersedes 202609012100_apply_final_season1_rarities.sql's rarity
+-- assignments with the flattened, gameplay-friendly Season 1 shape
+-- from the final pre-launch sprint. Generated by
+-- scripts/apply-final-season1-rarities.mjs. Does NOT touch card
+-- eligibility, Boss Routes, pack odds, draft rules, or economy.
 --
--- Does NOT touch: card eligibility, format_card_overrides, Boss
--- Route tables/exclusivity, pack odds, economy config, or any of
--- the 15 manually-overridden cards from
--- 202608301000_seed_manual_rarity_overrides.sql and
--- 202608301100_seed_manual_rarity_overrides_round2.sql (excluded
--- from this file entirely - those hard overrides stand as already
--- committed).
---
--- Idempotent: every statement is a plain UPDATE ... WHERE id = ...
--- keyed on card_catalog_id (safe to re-run; a re-run after this
--- migration already applied is a no-op).
+-- Unconditionally (re)sets game_rarity for every eligible,
+-- non-manually-overridden card in the Duelist Circle Classic pool
+-- (6,181 cards) to the engine ${VALUATION_ENGINE_VERSION} output -
+-- safe/idempotent to re-run, and correct whether run on top of the
+-- Aug 25 snapshot's original values or on top of 202609012100's
+-- already-applied 2026-09-01.1 values. The 16 manual overrides
+-- (the original 15 plus Ancient Gear Beast -> Ultra Rare, see this
+-- migration's generating script for why) are excluded entirely and
+-- left exactly as already committed.
 -- =========================================================
 
 begin;
 
 `;
 
-  const updates = changesById
-    .map(
-      (c) =>
-        `update public.card_catalog set game_rarity = '${sqlEscape(c.to)}' where id = '${c.card_catalog_id}'; -- ${sqlEscape(c.name)}: ${c.from} -> ${c.to}`
-    )
+  const updates = nonOverrideCards
+    .map(({ card }) => {
+      const finalRarity = proposeRarity(card.scores);
+      return `update public.card_catalog set game_rarity = '${sqlEscape(finalRarity)}' where id = '${card.card_catalog_id}'; -- ${sqlEscape(card.name)}`;
+    })
     .join("\n");
 
   const footer = `
@@ -249,10 +211,9 @@ begin;
 commit;
 `;
 
-  const migrationSql = header + updates + footer;
-  writeFileSync(MIGRATION_PATH, migrationSql, "utf8");
+  writeFileSync(MIGRATION_PATH, header + updates + footer, "utf8");
 
-  // ---- 2. Secret Rare audit CSV (v2) ----
+  // ---- 2. Secret Rare audit CSV ----
   secretRareRows.sort((a, b) => a.card_name.localeCompare(b.card_name));
   const csvColumns = [
     "card_name", "current_rarity", "card_type", "monster_type", "archetype",
@@ -273,21 +234,21 @@ commit;
   const names = secretRareRows.map((r) => r.card_name).sort((a, b) => a.localeCompare(b));
   writeFileSync(NAMES_TXT_PATH, names.join("\n") + "\n", "utf8");
 
+  // ---- 4. Legendary names TXT ----
+  legendaryNames.sort((a, b) => a.localeCompare(b));
+  writeFileSync(LEGENDARY_TXT_PATH, legendaryNames.join("\n") + "\n", "utf8");
+
   // ---- Report ----
   console.log("Engine version:", VALUATION_ENGINE_VERSION);
   console.log("Eligible pool size:", eligibleCards.length);
   console.log("Final distribution:", distribution);
   console.log("Overrides applied:", overridesApplied.length);
-  console.log("Changes written to migration (has card_catalog_id):", changesById.length);
-  console.log("Changes SKIPPED (missing card_catalog_id):", changesMissingId.length);
-  if (changesMissingId.length) {
-    console.log(JSON.stringify(changesMissingId.slice(0, 5), null, 2));
-  }
-  console.log("Secret Rare rows in new CSV:", secretRareRows.length);
-  console.log("Migration written to:", MIGRATION_PATH);
-  console.log("CSV written to:", CSV_PATH);
-  console.log("Names TXT written to:", NAMES_TXT_PATH);
+  console.log("UPDATE statements written:", nonOverrideCards.length);
+  console.log("Secret Rare rows:", secretRareRows.length);
+  console.log("Legendary names:", legendaryNames.length);
   console.log("\nOverrides preserved:");
   for (const o of overridesApplied) console.log(`  ${o.name} -> ${o.rarity}`);
+  console.log("\nLegendary list:");
+  for (const n of legendaryNames) console.log(`  ${n}`);
 }
 main();

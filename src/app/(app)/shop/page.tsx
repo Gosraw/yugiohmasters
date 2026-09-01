@@ -208,6 +208,16 @@ type SpecialPackRotation = {
   theme_label:
     string;
 
+  // 2026-09-02 curated-pool rebuild: which shop_special_pack_definitions
+  // row this rotation was generated from - null only on a historical row
+  // created before curated packs existed. Used to look up the pack's real
+  // theme_description below instead of ever reconstructing a description
+  // from theme_value again (see SPECIAL_CATEGORY_META.describe, now only
+  // a fallback for that historical-null case).
+  pack_definition_id:
+    string
+    | null;
+
   price_dp:
     number;
 
@@ -219,6 +229,17 @@ type SpecialPackRotation = {
 
   ends_at:
     string;
+};
+
+// One entry per shop_special_pack_definitions row - just enough to
+// render the curated pack's real name/description in the Special Packs
+// section below without re-deriving it from theme_value.
+type SpecialPackDefinition = {
+  id: string;
+
+  name: string;
+
+  theme_description: string;
 };
 
 type Voucher = {
@@ -640,6 +661,13 @@ export default async function ShopPage({
     },
     {
       data:
+        packDefinitionData,
+
+      error:
+        packDefinitionError,
+    },
+    {
+      data:
         voucherData,
 
       error:
@@ -708,7 +736,7 @@ export default async function ShopPage({
         "shop_special_pack_rotations"
       )
       .select(
-        "id,theme_category,theme_value,theme_label,price_dp,cards_per_pack,starts_at,ends_at"
+        "id,theme_category,theme_value,theme_label,pack_definition_id,price_dp,cards_per_pack,starts_at,ends_at"
       )
       .eq(
         "status",
@@ -720,6 +748,18 @@ export default async function ShopPage({
           ascending:
             true,
         }
+      ),
+
+    // 2026-09-02 curated-pool rebuild: the 15 fixed pack identities -
+    // fetched in full (there are only ever 15) so the Special Packs
+    // section can show each active rotation's real curated name/
+    // description instead of a raw theme_value.
+    supabase
+      .from(
+        "shop_special_pack_definitions"
+      )
+      .select(
+        "id,name,theme_description"
       ),
 
     supabase
@@ -809,6 +849,26 @@ export default async function ShopPage({
   const specialRotations =
     (specialRotationData ??
       []) as SpecialPackRotation[];
+
+  if (packDefinitionError) {
+    throw new Error(
+      packDefinitionError.message
+    );
+  }
+
+  // 2026-09-02 curated-pool rebuild: id -> {name, theme_description} for
+  // the 15 fixed packs, so the Special Packs section below can show each
+  // active rotation's real curated copy instead of re-deriving text from
+  // theme_value (see SPECIAL_CATEGORY_META.describe for the fallback used
+  // only on a historical rotation row with no pack_definition_id).
+  const packDefinitionsById = new Map(
+    (
+      (packDefinitionData ??
+        []) as SpecialPackDefinition[]
+    ).map(
+      (definition) => [definition.id, definition] as const
+    )
+  );
 
   if (voucherError) {
     throw new Error(
@@ -1559,6 +1619,23 @@ export default async function ShopPage({
                 const accent =
                   categoryMeta.accent;
 
+                // 2026-09-02 curated-pool rebuild: prefer the pack's own
+                // curated description; fall back to the old theme_value-
+                // derived copy only for a historical rotation row with no
+                // pack_definition_id (should not occur going forward).
+                const packDefinition =
+                  special.pack_definition_id
+                    ? packDefinitionsById.get(
+                        special.pack_definition_id
+                      )
+                    : undefined;
+
+                const packDescription =
+                  packDefinition?.theme_description ??
+                  categoryMeta.describe(
+                    special.theme_value
+                  );
+
                 const voucher =
                   vouchers.find(
                     (item) =>
@@ -1630,9 +1707,9 @@ export default async function ShopPage({
                         </h2>
 
                         <p className="mt-1 text-xs text-zinc-500">
-                          {categoryMeta.describe(
-                            special.theme_value
-                          )}
+                          {
+                            packDescription
+                          }
                         </p>
 
                         <div className="mt-3 flex flex-wrap items-end justify-between gap-3">

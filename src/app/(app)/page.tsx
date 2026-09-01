@@ -254,39 +254,94 @@ export default async function DashboardPage() {
   // BOSS MONSTER
   // ======================================================
 
+  // AUDIT FIX (Season 1 audit, Home boss identity item):
+  // profiles.boss_monster_option_id / boss_monster_options is the
+  // OLD pre-Boss-Route concept (a single cosmetic monster picked
+  // once, never evolving) and is not kept in sync once a player has
+  // chosen a Boss Route - it can point at a monster the player is
+  // no longer actually bonded with. public.player_boss_paths
+  // (route_slot = 1) plus the route's current-stage evolution card
+  // is the only authoritative Season 1 Boss identity. This mirrors
+  // exactly what /boss/[pathId] already reads (route -> stages ->
+  // evolution_card_catalog_id -> card_catalog).
+
   let bossMonster:
     BossMonsterOption | null =
     null;
 
-  if (
-    profile.boss_monster_option_id
-  ) {
-    const {
-      data: bossData,
-      error: bossError,
-    } = await supabase
-      .from("boss_monster_options")
-      .select(
-        "id,name,subtitle,image_url"
-      )
-      .eq(
-        "id",
-        profile.boss_monster_option_id
-      )
-      .eq(
-        "active",
-        true
-      )
-      .maybeSingle();
+  const {
+    data: primaryBossPath,
+    error: primaryBossPathError,
+  } = await supabase
+    .from("player_boss_paths")
+    .select("route_id,current_stage")
+    .eq("profile_id", userId)
+    .eq("route_slot", 1)
+    .maybeSingle();
 
-    if (bossError) {
-      throw new Error(
-        bossError.message
-      );
+  if (primaryBossPathError) {
+    throw new Error(
+      primaryBossPathError.message
+    );
+  }
+
+  if (primaryBossPath) {
+    const [
+      {
+        data: routeData,
+        error: routeError,
+      },
+      {
+        data: stageData,
+        error: stageError,
+      },
+    ] = await Promise.all([
+      supabase
+        .from("boss_routes")
+        .select("name")
+        .eq("id", primaryBossPath.route_id)
+        .maybeSingle(),
+      supabase
+        .from("boss_route_stages")
+        .select("evolution_card_catalog_id")
+        .eq("route_id", primaryBossPath.route_id)
+        .eq("stage_number", primaryBossPath.current_stage)
+        .maybeSingle(),
+    ]);
+
+    if (routeError) {
+      throw new Error(routeError.message);
     }
 
-    bossMonster =
-      bossData as BossMonsterOption | null;
+    if (stageError) {
+      throw new Error(stageError.message);
+    }
+
+    if (stageData?.evolution_card_catalog_id) {
+      const {
+        data: cardData,
+        error: cardError,
+      } = await supabase
+        .from("card_catalog")
+        .select("id,name,image_url")
+        .eq("id", stageData.evolution_card_catalog_id)
+        .maybeSingle();
+
+      if (cardError) {
+        throw new Error(cardError.message);
+      }
+
+      if (cardData) {
+        bossMonster = {
+          id: cardData.id,
+          name: cardData.name,
+          subtitle: routeData?.name
+            ? `${routeData.name} · Stage ${primaryBossPath.current_stage} of 4`
+            : `Stage ${primaryBossPath.current_stage} of 4`,
+          image_url: cardData.image_url,
+        };
+      }
+    }
   }
 
   // ======================================================

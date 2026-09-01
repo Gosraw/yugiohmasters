@@ -365,13 +365,24 @@ export default async function PackOpeningPage({
             : opening.pack_code ===
                 "special_archetype"
               ? "Archetype Spotlight"
-              : "Special Pack";
+              : opening.pack_code ===
+                  "special_monster_type"
+                ? "Monster Type Spotlight"
+                : "Special Pack";
 
+  // 2026-09-02 curated-pool rebuild: special_monster_type was already a
+  // fully valid pack code (202608311400) but was missing from this
+  // condition, so a Monster Type Spotlight pack opening always fell back
+  // to the generic "Special Pack" label instead of its real curated name
+  // - included here alongside the other two special categories now that
+  // theme_label reliably holds each pack's curated name for all three.
   if (
     (opening.pack_code ===
       "special_attribute" ||
       opening.pack_code ===
-        "special_archetype") &&
+        "special_archetype" ||
+      opening.pack_code ===
+        "special_monster_type") &&
     opening.special_pack_rotation_id
   ) {
     const {

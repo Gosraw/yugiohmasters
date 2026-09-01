@@ -39,9 +39,21 @@ supabase db push
 ```
 
 This applies every not-yet-applied file in `supabase/migrations/` in
-filename order, including all 14 new ones below. This is the same method
-`docs/SEASON_1_RUNBOOK.md` recommends and avoids the large-paste issue
-entirely (each migration is pushed as its own file).
+filename order, including every migration listed below. This is the same
+method `docs/SEASON_1_RUNBOOK.md` recommends and avoids the large-paste
+issue entirely (each migration is pushed as its own file).
+
+**2026-09-02 update:** the table and `pbcopy` list below originally
+stopped at file #14 (`202609012110_final_rarity_distribution_fix.sql`)
+even though 11 more migrations already existed in the repo at that point
+(#15-20, from the trading/wishlist/achievements/season-reset/draft-start
+work) or were added by the Season 1 audit-and-repair pass that day
+(#21-25: Dark Magician/Cubic route data fix, the welcome-pack RPC, the
+Shop Boss-Route-exclusion fix, and the Special Pack curated-pool rebuild
+in two parts). `supabase db push` was never affected by this gap (it
+always applies every file in the folder regardless of what this doc
+lists) - only the manual-paste fallback path was missing these. Rows
+15-25 below close that gap.
 
 **Fallback: manual paste**, one file at a time, into the Supabase SQL
 Editor, in this exact order (`pbcopy` shown for macOS):
@@ -62,6 +74,17 @@ Editor, in this exact order (`pbcopy` shown for macOS):
 | 12 | `202609012000_boss_route_rpcs.sql` | 906 | Boss Route RPCs (choose/unlock/evolve/confirm) | Yes |
 | 13 | `202609012100_apply_final_season1_rarities.sql` | 315 | **Applies the Sep 1 rarity-engine recalibration** to the eligible Classic pool (275 cards; preserves all 15 manual overrides) — run this before §3's reset so the real season starts with final rarities | Yes |
 | 14 | `202609012110_final_rarity_distribution_fix.sql` | 6,165 | **Supersedes #13 with the flattened final-sprint distribution** (Normal 1893 / Rare 1519 / Super 1412 / Ultra 1112 / Secret 199 / Legendary 46; 16 manual overrides incl. Ancient Gear Beast→Ultra) — run this immediately after #13, still before §3's reset | Yes |
+| 15 | `202609012200_card_wishlist.sql` | 185 | Card wishlist ("Wanted By" / "From You") | Yes |
+| 16 | `202609012300_trade_offer_expiry.sql` | 672 | 24h trade-offer expiry enforcement | Yes |
+| 17 | `202609012400_p2w_achievements.sql` | 568 | The 7 final P2W achievement claims (approval-gated, cadence-enforced) | Yes |
+| 18 | `202609012500_seed_manual_rarity_override_ancient_gear_beast.sql` | 62 | Ancient Gear Beast manual rarity anchor fix | Yes |
+| 19 | `202609020900_season_reset_apply_achievement_claims_fix.sql` | 326 | Season-reset FK fix for `achievement_claims` | Yes |
+| 20 | `202609020901_start_personal_initial_draft.sql` | 194 | **Adds `start_personal_initial_draft()`** — the self-service Initial Draft starter the client already calls; without this file, tapping "Start Draft" raises a Postgres "function does not exist" error | Yes |
+| 21 | `202609020910_fix_dark_magician_and_cubic_route_data.sql` | 156 | *(Season 1 audit)* Corrects the Dark Magician route's Stage 1-4 chain to match the live manual fix (Berry Magician Girl → Dark Magician Girl → Dark Magician of Chaos → The Dark Magicians) and adds the missing Cubic Stage 4 support card | Yes |
+| 22 | `202609020920_claim_welcome_packs.sql` | 138 | *(Season 1 audit)* Adds `claim_welcome_packs()` — grants each league member's one-time Season 1 welcome bonus (1 Normal + 1 Premium + 1 Deluxe voucher) idempotently | Yes |
+| 23 | `202609020930_fix_shop_pack_boss_route_exclusion.sql` | 340 | *(Season 1 audit)* Closes the gap where Shop pack pulls could hand out a Boss Route's evolution monster or exclusive support before it was earned | Yes |
+| 24 | `202609020940_special_pack_curated_pools_schema.sql` | 778 | *(Season 1 audit)* **Special Pack rebuild, part 1** — 15 fixed curated pack identities + their snapshotted card pools | Yes |
+| 25 | `202609020950_special_pack_curated_pools_functions.sql` | 460 | *(Season 1 audit)* **Special Pack rebuild, part 2** — switches pack pulls and rotation refresh over to the curated pools from #24 | Yes |
 
 Every file is idempotent by construction (`create or replace function`,
 `create table if not exists`, `on conflict do update`, or plain `update`
@@ -82,6 +105,17 @@ pbcopy < supabase/migrations/202609011900_seed_boss_routes.sql
 pbcopy < supabase/migrations/202609012000_boss_route_rpcs.sql
 pbcopy < supabase/migrations/202609012100_apply_final_season1_rarities.sql
 pbcopy < supabase/migrations/202609012110_final_rarity_distribution_fix.sql
+pbcopy < supabase/migrations/202609012200_card_wishlist.sql
+pbcopy < supabase/migrations/202609012300_trade_offer_expiry.sql
+pbcopy < supabase/migrations/202609012400_p2w_achievements.sql
+pbcopy < supabase/migrations/202609012500_seed_manual_rarity_override_ancient_gear_beast.sql
+pbcopy < supabase/migrations/202609020900_season_reset_apply_achievement_claims_fix.sql
+pbcopy < supabase/migrations/202609020901_start_personal_initial_draft.sql
+pbcopy < supabase/migrations/202609020910_fix_dark_magician_and_cubic_route_data.sql
+pbcopy < supabase/migrations/202609020920_claim_welcome_packs.sql
+pbcopy < supabase/migrations/202609020930_fix_shop_pack_boss_route_exclusion.sql
+pbcopy < supabase/migrations/202609020940_special_pack_curated_pools_schema.sql
+pbcopy < supabase/migrations/202609020950_special_pack_curated_pools_functions.sql
 ```
 
 Run each `pbcopy`, paste into the SQL Editor, run it, confirm it succeeds,
@@ -102,13 +136,13 @@ migration to "fix" it — copy the exact error and get it looked at first.
 
 ## 2. Essential verification (read-only)
 
-Run in the SQL Editor after all 12 files succeed:
+Run in the SQL Editor after all 14 files succeed (the original 1-14; see the audit addendum below for #21-25):
 
 ```sql
 -- Boss Route content landed completely
 select count(*) from public.boss_routes;                        -- expect 20
 select count(*) from public.boss_route_stages;                  -- expect 80
-select count(*) from public.boss_route_stage_grants;             -- expect 240
+select count(*) from public.boss_route_stage_grants;             -- expect 244 (240 original + 4 from #21's Dark Magician/Cubic data fix)
 select count(*) from public.boss_route_achievement_events;       -- expect 60
 select count(*) from public.boss_route_achievement_requirements; -- expect 100
 
@@ -137,42 +171,109 @@ select count(*) from public.player_pack_luck;
 missing — that means a migration silently didn't apply cleanly even
 though the editor reported success.
 
----
+**2026-09-02 audit addendum — verify files #21-25 too:**
 
-## 3. Starting the REAL season (run once, when everyone is ready)
+```sql
+-- Dark Magician route now reads Berry Magician Girl -> Dark Magician
+-- Girl -> Dark Magician of Chaos -> The Dark Magicians (expect 4 rows,
+-- stage_number 1-4 in that evolution-card order)
+select s.stage_number, c.name
+from public.boss_route_stages s
+join public.boss_routes r on r.id = s.route_id
+join public.card_catalog c on c.id = s.evolution_card_catalog_id
+where r.code = 'dark_magician'
+order by s.stage_number;
 
-`scripts/generated/RESET_LEAGUE_FOR_REAL_START.sql` wipes every
-test-run gameplay artifact (matches, drafts, decks, owned cards, DP
-balances, Legendary Luck pity, **and Boss Route progress** — but not the
-20 Boss Routes themselves, which are config) while preserving accounts,
-league membership, and the cardpool. Read the giant warning at the top of
-that file first.
+-- claim_welcome_packs() and the Special Pack rebuild functions/tables exist
+select proname from pg_proc
+  where proname in (
+    'claim_welcome_packs', 'pick_shop_pack_card',
+    'refresh_shop_special_pack_rotation_if_needed'
+  );                                                              -- expect 3 rows
 
-```bash
-pbcopy < scripts/generated/RESET_LEAGUE_FOR_REAL_START.sql
+select count(*) from public.shop_special_pack_definitions;        -- expect 15
+select count(*) from public.shop_special_pack_pool_cards;         -- expect roughly 3,000-3,500 (15 packs x ~200-290 curated cards each)
+
+-- No curated pack pool should be empty or wildly undersized
+select d.name, count(p.id) as pool_size
+from public.shop_special_pack_definitions d
+left join public.shop_special_pack_pool_cards p on p.pack_definition_id = d.id
+group by d.name
+order by pool_size asc;
 ```
 
-Paste and run it once, only when you're actually ready to start the real
-season — not before, and not more than once per season. It self-verifies
-with `raise notice`/`raise exception` and rolls back the whole transaction
-if anything preserved unexpectedly changed or anything gameplay-related
-still has rows at the end.
+**STOP if:** the Dark Magician chain isn't Berry → Dark Magician Girl →
+Dark Magician of Chaos → The Dark Magicians in that stage order, any of
+the 3 functions is missing, `shop_special_pack_definitions` isn't exactly
+15 rows, or any pack's `pool_size` reads 0.
+
+---
+
+## 3. Resetting gameplay progress (NOT the same as "starting the real season" — read this before running anything here)
+
+**Season 1 already went live for real on 2026-09-01**, before this
+section's two scripts were reconciled. The real accounts (bossg, samo,
+fardin — the old test accounts were deleted first) already have real
+progress: completed Initial Drafts, chosen Boss Routes (including a
+live-corrected Dark Magician route with cards already granted), and
+welcome-bonus vouchers. **Do not run either script below against the
+current live league** unless you specifically intend to erase that
+progress — neither script "starts" anything that hasn't already started.
+This section previously called the accounts-PRESERVING script "Starting
+the REAL season," which read as a required one-time step; it wasn't, and
+running it now would wipe bossg/samo/fardin's real progress. The two
+scripts below are kept for two different FUTURE situations, not as steps
+to run tonight:
+
+- **`scripts/generated/RESET_LEAGUE_FOR_REAL_START.sql`** — wipes every
+  gameplay artifact (matches, drafts, decks, owned cards, DP balances,
+  Legendary Luck pity, and Boss Route progress — but not the 20 Boss
+  Routes themselves, which are config) while **preserving accounts,
+  league membership, and the cardpool**. Use this only if bossg/samo/
+  fardin ever need a full gameplay restart on their SAME 3 accounts
+  (e.g. re-running Season 1 from scratch by agreement). Read the giant
+  warning at the top of that file first.
+  ```bash
+  pbcopy < scripts/generated/RESET_LEAGUE_FOR_REAL_START.sql
+  ```
+  It self-verifies with `raise notice`/`raise exception` and rolls back
+  the whole transaction if anything preserved unexpectedly changed or
+  anything gameplay-related still has rows at the end. Re-runnable, not
+  a one-shot.
+
+- **`scripts/season-reset.mjs`** (documented in full in
+  `docs/SEASON_1_RUNBOOK.md`, Phase E) — the accounts-DELETING flow:
+  wipes gameplay data AND deletes the login accounts themselves. This is
+  what was actually used, once, for the real 2026-09-01 transition from
+  test accounts to bossg/samo/fardin. Use this only for a genuine future
+  Season 2 / new-roster restart, never against the current 3 real
+  accounts unless you mean to remove them. Always run
+  `npm run season:reset` (dry run) before `npm run season:reset:apply`.
 
 ---
 
 ## 4. First click-flow (all 3 players, after the reset)
 
+**2026-09-02 audit correction:** this list previously had Draft before
+Boss Path and described Draft as admin-started — both were stale. The
+mandatory onboarding order (enforced automatically by `proxy.ts` on every
+request, and by `start_personal_initial_draft()`) is Boss Path **then**
+Draft, and both are self-service per player, not admin-run:
+
 1. **Log in.** DP balances start at 0, Legendary Luck pity is 0, no cards,
-   no decks — a clean slate.
-2. **Draft.** An admin starts the league draft the same way as before
-   (unchanged this sprint aside from the fairness/exclusion fixes below);
-   all 3 players complete their picks.
-3. **Choose a Boss Path.** From `/explore`, tap **Boss Path** (or go
-   directly to `/boss`). Each player picks their first route for free —
-   Stage 1's evolution monster and its support cards land in their
-   collection immediately.
-4. **Build a deck**, including the Stage 1 Boss card if you want to run
-   it right away.
+   no decks — a clean slate. Landing on any page automatically redirects
+   you to the next required onboarding step below — there is nothing an
+   admin needs to trigger.
+2. **Choose a Boss Path.** Redirected to `/boss/select?slot=1` until you
+   pick one. Each player picks their first route for free — Stage 1's
+   evolution monster and its support cards land in their collection
+   immediately.
+3. **Initial Draft.** Redirected to `/draft` next. Each player starts
+   and completes their own personal Initial Draft independently (60 Main
+   + 2 Fusion + 2 Xyz picks) — there is no shared/admin-run draft session
+   to wait on.
+4. **Build a deck**, including your Boss Path's Stage 1 card if you want
+   to run it right away.
 5. **Play duels as normal.** After a match is confirmed, the confirming
    player will see checkboxes for the other player's Boss Route
    achievements if any apply — check only what you actually witnessed.

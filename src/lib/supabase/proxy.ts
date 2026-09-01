@@ -76,7 +76,20 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/draft") ||
     pathname.startsWith("/profile");
 
-  if (data?.claims && !publicOnboardingPath && !onboardingExemptPath) {
+  // AUDIT FIX (comprehensive Season 1 audit pass): league-membership
+  // bootstrap used to live INSIDE the "!onboardingExemptPath" branch
+  // below, which means it never ran at all for a request whose very
+  // first hit landed on /boss*, /draft*, or /profile* (a bookmark, a
+  // deep link, a prefetch, or simply the browser's very first request
+  // after signup racing ahead of a redirect). Those three paths are
+  // exactly the pages a mid-onboarding player is expected to be on,
+  // so this was the actual reachable path to the observed "fresh
+  // player has league_id = null" incident, not the theoretical
+  // "private league already has 3 members" exception. Membership is
+  // now ensured for EVERY authenticated, non-public, non-api request
+  // regardless of which page it's for; only the stage-redirect
+  // decision below still skips the exempt pages.
+  if (data?.claims && !publicOnboardingPath) {
     const userId = data.claims.sub as string;
 
     const { data: membership } = await supabase
@@ -95,11 +108,26 @@ export async function updateSession(request: NextRequest) {
       leagueId = (bootstrappedLeagueId as string | null) ?? null;
     }
 
-    // If league bootstrap itself failed (e.g. the private league is
-    // already full at 3 members), fall through and let the page
-    // render normally rather than redirect-looping on a state this
-    // gate cannot resolve.
+    // Season 1 welcome bonus (1 Normal + 1 Premium + 1 Deluxe pack
+    // voucher, no DP cost) - claim_welcome_packs() is fully
+    // idempotent (a dedicated claims table, not the redeemable
+    // vouchers themselves, is the "already granted" guard), so
+    // calling it on every request for every league member is a
+    // no-op after the first time and safe to leave unconditional
+    // here rather than needing its own registration hook. Errors
+    // are swallowed rather than thrown - a hiccup granting a
+    // welcome pack must never block page rendering the way a
+    // failed auth check should.
     if (leagueId) {
+      await supabase.rpc("claim_welcome_packs");
+    }
+
+    // If league bootstrap itself failed (e.g. the private league is
+    // already full at 3 members, which should never happen for the
+    // 3 real players this league is sized for), fall through and let
+    // the page render normally rather than redirect-looping on a
+    // state this gate cannot resolve.
+    if (leagueId && !onboardingExemptPath) {
       const { data: bossPath } = await supabase
         .from("player_boss_paths")
         .select("id")

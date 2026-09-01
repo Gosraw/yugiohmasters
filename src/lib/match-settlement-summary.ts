@@ -117,6 +117,7 @@ export async function buildMatchSettlementSummary(
   const [
     matchResult,
     competitionResult,
+    competitionPlayersResult,
   ] = await Promise.all([
     supabase
       .from("matches")
@@ -130,6 +131,16 @@ export async function buildMatchSettlementSummary(
       .select("id,name,status")
       .eq("id", competitionId)
       .single(),
+    // Every registered competition player, not just this match's two
+    // participants - needed because roundRewards/competitionRewards
+    // below can include a bye player (round reward, no match this
+    // round) or any final-standing player (competition reward), and
+    // a profile missing from the lookup map used to silently render
+    // as "Unknown Duelist".
+    supabase
+      .from("competition_players")
+      .select("profile_id")
+      .eq("competition_id", competitionId),
   ]);
 
   if (matchResult.error) {
@@ -138,6 +149,10 @@ export async function buildMatchSettlementSummary(
 
   if (competitionResult.error) {
     throw new Error(competitionResult.error.message);
+  }
+
+  if (competitionPlayersResult.error) {
+    throw new Error(competitionPlayersResult.error.message);
   }
 
   const match = matchResult.data as {
@@ -159,6 +174,21 @@ export async function buildMatchSettlementSummary(
 
   const roundNumber = match.round_number;
 
+  const competitionPlayerIds = (
+    (competitionPlayersResult.data ?? []) as { profile_id: string }[]
+  ).map((row) => row.profile_id);
+
+  // Union with the match participants as a defensive fallback (e.g. a
+  // participant who has since left competition_players) so the match's
+  // own two players are never dropped from the lookup either way.
+  const allRelevantProfileIds = Array.from(
+    new Set([
+      ...competitionPlayerIds,
+      match.player_one_id,
+      match.player_two_id,
+    ])
+  );
+
   const [
     profilesResult,
     matchDpResult,
@@ -170,7 +200,7 @@ export async function buildMatchSettlementSummary(
     supabase
       .from("profiles")
       .select("id,username,duelist_name,custom_title")
-      .in("id", [match.player_one_id, match.player_two_id]),
+      .in("id", allRelevantProfileIds),
     supabase
       .from("duel_point_transactions")
       .select("profile_id,amount,reason")

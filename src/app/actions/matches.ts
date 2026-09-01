@@ -553,36 +553,22 @@ export async function createMatchChallenge(
   ) {
     const {
       error: configError,
-    } = await supabase
-      .from("matches")
-      .update({
-        match_type:
-          "practice",
+    } = await supabase.rpc(
+      "configure_practice_challenge",
+      {
+        target_match_id:
+          matchId,
 
-        wager_type:
+        target_wager_type:
           requestedWagerType,
 
-        wager_dp_amount:
+        target_wager_dp_amount:
           requestedWagerType ===
           "dp"
             ? wagerDpAmount
             : 0,
-
-        wager_status:
-          requestedWagerType ===
-          "none"
-            ? "none"
-            : "proposed",
-      })
-      .eq("id", matchId)
-      .eq(
-        "player_one_id",
-        userId
-      )
-      .eq(
-        "status",
-        "pending"
-      );
+      }
+    );
 
     if (configError) {
       throw new Error(

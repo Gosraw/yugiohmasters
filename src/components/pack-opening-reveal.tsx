@@ -852,6 +852,31 @@ export function PackOpeningReveal({
     setBusy(false);
   }
 
+  // P1B: the actual "move to the next card" transition - now
+  // its own function so it can be triggered from two places: a
+  // tap on the card slot (every non-Legendary rarity, unchanged
+  // behavior - Secret Rare stays exactly as fast as before), or
+  // the dedicated [Continue] button that appears once a
+  // Legendary's cinematic has actually finished (see
+  // handleSlotClick and the CONTINUE button in the render below).
+  function advanceToNextPull() {
+    setFlipped(false);
+    setImageLoaded(false);
+    clearLegendaryTimers();
+    setLegendaryStep(0);
+    setLegendarySkipped(
+      false
+    );
+
+    setRevealed(
+      (current) =>
+        Math.min(
+          current + 1,
+          pulls.length
+        )
+    );
+  }
+
   function handleSlotClick() {
     if (busy) {
       return;
@@ -904,21 +929,17 @@ export function PackOpeningReveal({
       return;
     }
 
-    setFlipped(false);
-    setImageLoaded(false);
-    clearLegendaryTimers();
-    setLegendaryStep(0);
-    setLegendarySkipped(
-      false
-    );
+    // P1B: a Legendary pull must show LEGENDARY + card art + name
+    // and NOT auto-advance - a tap on the card slot itself never
+    // advances a Legendary, however long ago the cinematic
+    // finished. Only the explicit [Continue] button does. Every
+    // other rarity (Secret Rare included) keeps the original
+    // tap-anywhere-to-advance behavior, unchanged.
+    if (currentRank === 6) {
+      return;
+    }
 
-    setRevealed(
-      (current) =>
-        Math.min(
-          current + 1,
-          pulls.length
-        )
-    );
+    advanceToNextPull();
   }
 
   function revealAll() {
@@ -1342,9 +1363,13 @@ export function PackOpeningReveal({
                     {flipped &&
                     busy
                       ? "Revealing..."
-                      : flipped
-                        ? "Tap for next card"
-                        : `Card ${revealed + 1} of ${pulls.length}`}
+                      : flipped &&
+                          currentRank ===
+                            6
+                        ? "Tap Continue below"
+                        : flipped
+                          ? "Tap for next card"
+                          : `Card ${revealed + 1} of ${pulls.length}`}
                   </p>
 
                   <ChevronRight
@@ -1355,6 +1380,31 @@ export function PackOpeningReveal({
               </button>
             </div>
           </div>
+
+          {flipped &&
+            currentRank ===
+              6 &&
+            !busy &&
+            legendaryStep >=
+              LEGENDARY_FINAL_STEP && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  type="button"
+                  onClick={
+                    advanceToNextPull
+                  }
+                  className="primary-button inline-flex cursor-pointer items-center gap-2 px-6 py-2.5 transition-all hover:-translate-y-0.5 active:scale-[0.97]"
+                >
+                  Continue
+
+                  <ChevronRight
+                    size={
+                      16
+                    }
+                  />
+                </button>
+              </div>
+            )}
 
           <div className="mt-4 flex items-center justify-center gap-4">
             {flipped &&

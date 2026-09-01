@@ -111,6 +111,13 @@ const items: ExploreItem[] = [
     accent: "cyan",
   },
   {
+    href: "/perks",
+    label: "Pay-To-Win",
+    description: "Real-life chores and treats worth real Duel Points - claim one, get another duelist to approve it.",
+    icon: Coins,
+    accent: "emerald",
+  },
+  {
     href: "/duel-companion",
     label: "Duel Companion",
     description: "Life Points, dice, coin flip and a timer for physical duels.",
@@ -138,6 +145,10 @@ const accentStyles: Record<
   cyan: {
     icon: "border-cyan-300/20 bg-cyan-300/10 text-cyan-300",
     hover: "hover:border-cyan-300/30 hover:text-cyan-200",
+  },
+  emerald: {
+    icon: "border-emerald-300/20 bg-emerald-300/10 text-emerald-300",
+    hover: "hover:border-emerald-300/30 hover:text-emerald-200",
   },
 };
 

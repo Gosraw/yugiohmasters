@@ -47,6 +47,10 @@
 --     purely from card_catalog, which is unchanged - still valid)
 --   - public.audit_log                      (admin action history -
 --     an audit trail, not gameplay state; left alone on purpose)
+--   - public.achievements                   (P1C Pay-to-Win seed
+--     content - the 7 achievement definitions - same footing as
+--     card_catalog/boss_monster_options; the CLAIMS against them are
+--     player state and ARE removed below)
 --
 -- WHAT THIS REMOVES (every player's test-run state)
 --   - Competitions, registrations, rounds, standings, reward grants
@@ -72,6 +76,19 @@
 --     public.player_pack_luck.luck_points reset to 0, exactly like
 --     duel_points below - this is per-profile pity progress accrued
 --     from test-run pack purchases, not configuration.
+--   - Wishlist entries (P0E): public.card_wishlist_items - test-run
+--     "I want this card" flags, not something to carry into the real
+--     season.
+--   - Pay-to-Win achievement claims (P1C): every
+--     public.achievement_claims row (pending, approved and rejected
+--     alike). The achievements themselves (the 7 seeded definitions)
+--     are config and are preserved - see above. Leftover test claims
+--     matter here for more than tidiness: request_achievement_claim()
+--     blocks a second APPROVED claim for the same
+--     achievement+player+ISO-week, so an approved test claim made
+--     during THIS calendar week would otherwise silently block that
+--     same player's first real claim of the same achievement this
+--     week.
 --
 -- SAFETY
 --   - Single transaction: fully applies or fully rolls back.
@@ -124,6 +141,8 @@ declare
   v_pre_trades integer;
   v_pre_dp_transactions integer;
   v_pre_player_boss_paths integer;
+  v_pre_wishlist integer;
+  v_pre_achievement_claims integer;
 begin
   -- -------------------------------------------------------
   -- PRE-FLIGHT COUNTS
@@ -142,11 +161,13 @@ begin
   select count(*) into v_pre_trades from public.trades;
   select count(*) into v_pre_dp_transactions from public.duel_point_transactions;
   select count(*) into v_pre_player_boss_paths from public.player_boss_paths;
+  select count(*) into v_pre_wishlist from public.card_wishlist_items;
+  select count(*) into v_pre_achievement_claims from public.achievement_claims;
 
   raise notice 'RESET PRE-FLIGHT: % profiles / % card_catalog / % archetype_registry / % league_members / % shop_pack_types (all PRESERVED)',
     v_pre_profiles, v_pre_card_catalog, v_pre_archetype_registry, v_pre_league_members, v_pre_shop_pack_types;
-  raise notice 'RESET PRE-FLIGHT (about to remove): % competitions / % matches / % card_instances / % decks / % drafts / % trades / % duel_point_transactions / % player_boss_paths',
-    v_pre_competitions, v_pre_matches, v_pre_card_instances, v_pre_decks, v_pre_drafts, v_pre_trades, v_pre_dp_transactions, v_pre_player_boss_paths;
+  raise notice 'RESET PRE-FLIGHT (about to remove): % competitions / % matches / % card_instances / % decks / % drafts / % trades / % duel_point_transactions / % player_boss_paths / % wishlist_items / % achievement_claims',
+    v_pre_competitions, v_pre_matches, v_pre_card_instances, v_pre_decks, v_pre_drafts, v_pre_trades, v_pre_dp_transactions, v_pre_player_boss_paths, v_pre_wishlist, v_pre_achievement_claims;
 
   -- -------------------------------------------------------
   -- 1. COMPETITIONS (rounds, standings, reward settlements)
@@ -285,6 +306,27 @@ begin
   update public.player_pack_luck set luck_points = 0, updated_at = now();
 
   -- -------------------------------------------------------
+  -- 10. WISHLIST (P0E)
+  --     public.card_wishlist_items keys on (profile_id,
+  --     card_catalog_id) - references card_catalog (preserved) and
+  --     profiles (preserved), never card_instances, so it has no
+  --     ordering dependency on steps 1-7 above. Cleared purely
+  --     because it is test-run player state, not configuration.
+  -- -------------------------------------------------------
+  delete from public.card_wishlist_items;
+
+  -- -------------------------------------------------------
+  -- 11. PAY-TO-WIN ACHIEVEMENT CLAIMS (P1C)
+  --     public.achievement_claims references achievements (seed
+  --     content, preserved - see header), profiles and leagues
+  --     (both preserved) - never card_instances or matches, so it
+  --     too has no ordering dependency on steps 1-7. See the
+  --     "WHAT THIS REMOVES" note above for why leftover approved
+  --     test claims are more than cosmetic clutter here.
+  -- -------------------------------------------------------
+  delete from public.achievement_claims;
+
+  -- -------------------------------------------------------
   -- POST-FLIGHT ASSERTIONS
   -- -------------------------------------------------------
   if (select count(*) from public.profiles) <> v_pre_profiles then
@@ -352,8 +394,18 @@ begin
   if exists (select 1 from public.player_pack_luck where luck_points <> 0) then
     raise exception 'RESET ABORTED: at least one player_pack_luck row did not reach 0.';
   end if;
+  if (select count(*) from public.card_wishlist_items) <> 0 then
+    raise exception 'RESET ABORTED: card_wishlist_items still has rows after delete.';
+  end if;
+  if (select count(*) from public.achievement_claims) <> 0 then
+    raise exception 'RESET ABORTED: achievement_claims still has rows after delete.';
+  end if;
+  if (select count(*) from public.achievements) <> 7 then
+    raise exception 'RESET ABORTED: achievements should still have all 7 seeded CONFIG rows (expected preserved) - found %.',
+      (select count(*) from public.achievements);
+  end if;
 
-  raise notice 'RESET COMPLETE: all gameplay/test-run state cleared (including Boss Route progress and Legendary Luck pity), all configuration preserved (including all 20 Boss Routes), every profile DP balance = %.', v_fresh_start_dp;
+  raise notice 'RESET COMPLETE: all gameplay/test-run state cleared (including Boss Route progress, Legendary Luck pity, wishlist entries and Pay-to-Win claims), all configuration preserved (including all 20 Boss Routes and all 7 Pay-to-Win achievements), every profile DP balance = %.', v_fresh_start_dp;
 end $$;
 
 commit;

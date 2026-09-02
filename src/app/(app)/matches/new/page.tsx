@@ -28,6 +28,10 @@ import {
   SubmitButton,
 } from "@/components/submit-button";
 
+import {
+  getPrimaryBossIdentities,
+} from "@/lib/boss-identity";
+
 export const dynamic =
   "force-dynamic";
 
@@ -44,14 +48,6 @@ type Profile = {
   username: string | null;
   duelist_name: string;
   custom_title: string | null;
-  boss_monster_option_id:
-    | string
-    | null;
-};
-
-type BossMonster = {
-  id: string;
-  name: string;
 };
 
 type Deck = {
@@ -165,7 +161,6 @@ export default async function NewMatchPage({
         username,
         duelist_name,
         custom_title,
-        boss_monster_option_id,
         duel_points
       `
     )
@@ -287,8 +282,7 @@ export default async function NewMatchPage({
           id,
           username,
           duelist_name,
-          custom_title,
-          boss_monster_option_id
+          custom_title
         `
       )
       .in(
@@ -320,81 +314,34 @@ export default async function NewMatchPage({
   );
 
   // ======================================================
-  // BOSS MONSTERS
+  // BOSS IDENTITIES
+  //
+  // AUDIT FIX (Season 1 audit, legacy schema-assumption item): this
+  // used to join through profiles.boss_monster_option_id ->
+  // boss_monster_options, the OLD pre-Boss-Route cosmetic concept
+  // that is never set for a Season 1 player (the mandatory
+  // onboarding gate sends new players through /boss/select, not the
+  // old /onboarding flow that used to write this field) - both "your
+  // Boss Monster" and every rival's card showed "Unbound" for a
+  // player who has clearly already chosen and is actively
+  // progressing a real Boss Route. See src/lib/boss-identity.ts for
+  // the shared, corrected lookup (player_boss_paths route_slot 1 ->
+  // current-stage evolution card), the same source Home already
+  // uses.
   // ======================================================
 
-  const bossIds = [
-    ...new Set(
-      [
-        currentProfile
-          .boss_monster_option_id,
-
-        ...profiles.map(
-          (profile) =>
-            profile
-              .boss_monster_option_id
-        ),
-      ].filter(
-        (
-          value
-        ): value is string =>
-          Boolean(value)
-      )
-    ),
-  ];
-
-  let bosses:
-    BossMonster[] =
-    [];
-
-  if (
-    bossIds.length >
-    0
-  ) {
-    const {
-      data: bossData,
-      error: bossError,
-    } = await supabase
-      .from(
-        "boss_monster_options"
-      )
-      .select(
-        "id,name"
-      )
-      .in(
-        "id",
-        bossIds
-      );
-
-    if (bossError) {
-      throw new Error(
-        bossError.message
-      );
-    }
-
-    bosses =
-      (bossData ??
-        []) as BossMonster[];
-  }
-
   const bossMap =
-    new Map(
-      bosses.map(
-        (boss) => [
-          boss.id,
-          boss,
-        ]
-      )
+    await getPrimaryBossIdentities(
+      supabase,
+      [
+        userId,
+        ...profileIds,
+      ]
     );
 
   const myBoss =
-    currentProfile
-      .boss_monster_option_id
-      ? bossMap.get(
-          currentProfile
-            .boss_monster_option_id
-        ) ?? null
-      : null;
+    bossMap.get(userId) ??
+    null;
 
   // ======================================================
   // AVAILABLE CARD INSTANCES FOR WAGER
@@ -767,13 +714,9 @@ export default async function NewMatchPage({
                 {profiles.map(
                   (profile) => {
                     const boss =
-                      profile
-                        .boss_monster_option_id
-                        ? bossMap.get(
-                            profile
-                              .boss_monster_option_id
-                          )
-                        : null;
+                      bossMap.get(
+                        profile.id
+                      );
 
                     return (
                       <label

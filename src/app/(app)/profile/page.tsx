@@ -47,6 +47,10 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  getPrimaryBossIdentity,
+} from "@/lib/boss-identity";
+
+import {
   InstallAppCard,
 } from "@/components/install-app-card";
 
@@ -412,6 +416,22 @@ export default async function ProfilePage() {
         profile
           .boss_monster_option_id
     ) ?? null;
+
+  // AUDIT FIX (Season 1 audit, legacy schema-assumption item): the
+  // "boss" resolved above is the OLD pre-Boss-Route cosmetic pick
+  // (profiles.boss_monster_option_id / boss_monster_options), which
+  // the mandatory Season 1 onboarding gate never sets for a new
+  // player (it sends them through /boss/select instead of the old
+  // /onboarding flow that used to write this field). It is kept
+  // below as a separate, clearly-labeled cosmetic flavor pick - see
+  // src/lib/boss-identity.ts for why it must not be conflated with
+  // a player's real, currently-evolving Boss Route identity, which
+  // this second lookup resolves the same way Home does.
+  const bossRouteIdentity =
+    await getPrimaryBossIdentity(
+      supabase,
+      userId
+    );
 
   // ======================================================
   // MATCHES
@@ -1025,7 +1045,53 @@ export default async function ProfilePage() {
         </section>
 
         {/* ==================================================
-            BOSS MONSTER
+            BOSS ROUTE (Season 1 - the real, currently-evolving
+            identity; see src/lib/boss-identity.ts)
+        ================================================== */}
+
+        <section className="panel relative mt-6 overflow-hidden p-6">
+          <div className="pointer-events-none absolute right-[-60px] top-[-60px] h-56 w-56 rounded-full bg-amber-400/[0.07] blur-3xl" />
+
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <Crown
+                  size={17}
+                  className="text-amber-300"
+                />
+
+                <p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">
+                  Boss Route
+                </p>
+              </div>
+
+              <h2 className="mt-3 text-2xl font-black">
+                {bossRouteIdentity?.name ??
+                  "No Boss Route chosen yet"}
+              </h2>
+
+              {bossRouteIdentity?.subtitle && (
+                <p className="mt-1 text-xs font-bold uppercase tracking-wider text-zinc-600">
+                  {bossRouteIdentity.subtitle}
+                </p>
+              )}
+            </div>
+
+            <Link
+              href="/boss"
+              className="inline-flex shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-xl border border-amber-300/20 bg-amber-300/5 px-4 py-2 text-sm font-bold text-amber-300 transition-all hover:border-amber-300/40 hover:bg-amber-300/10 active:scale-95"
+            >
+              {bossRouteIdentity
+                ? "View Boss Route"
+                : "Choose Boss Route"}
+            </Link>
+          </div>
+        </section>
+
+        {/* ==================================================
+            BOSS MONSTER (COSMETIC) - the OLD pre-Boss-Route pick,
+            unrelated to Season 1 progression above. Kept as-is,
+            out of scope for this audit pass.
         ================================================== */}
 
         <section className="panel relative mt-6 overflow-hidden p-6">
@@ -1040,9 +1106,13 @@ export default async function ProfilePage() {
                 />
 
                 <p className="text-xs font-black uppercase tracking-[.2em] text-violet-300">
-                  Boss Monster
+                  Boss Monster (Cosmetic)
                 </p>
               </div>
+
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-600">
+                A visitekaartje only - separate from your Boss Route above
+              </p>
 
               <h2 className="mt-3 text-2xl font-black">
                 {boss?.name ??

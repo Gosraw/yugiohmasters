@@ -20,6 +20,11 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  getPrimaryBossIdentities,
+  type BossIdentity,
+} from "@/lib/boss-identity";
+
 export const dynamic =
   "force-dynamic";
 
@@ -38,14 +43,7 @@ type Profile = {
   duelist_name: string;
   custom_title: string | null;
   avatar_url: string | null;
-  boss_monster_option_id: string | null;
   accent_theme: string | null;
-};
-
-type BossMonster = {
-  id: string;
-  name: string;
-  image_url: string | null;
 };
 
 type Match = {
@@ -81,7 +79,7 @@ type PlayerStanding = {
   profile: Profile;
 
   bossMonster:
-    | BossMonster
+    | BossIdentity
     | null;
 
   wins: number;
@@ -103,11 +101,11 @@ type Rivalry = {
   playerTwo: Profile;
 
   playerOneBoss:
-    | BossMonster
+    | BossIdentity
     | null;
 
   playerTwoBoss:
-    | BossMonster
+    | BossIdentity
     | null;
 
   playerOneWins: number;
@@ -451,7 +449,6 @@ export default async function LeaguePage() {
           duelist_name,
           custom_title,
           avatar_url,
-          boss_monster_option_id,
           accent_theme
         `
       )
@@ -482,84 +479,34 @@ export default async function LeaguePage() {
     );
 
   // ======================================================
-  // BOSS MONSTERS
+  // BOSS IDENTITIES
+  //
+  // AUDIT FIX (Season 1 audit, legacy schema-assumption item): this
+  // used to join through profiles.boss_monster_option_id ->
+  // boss_monster_options, the OLD pre-Boss-Route cosmetic concept
+  // that is never set for a Season 1 player (the mandatory
+  // onboarding gate sends new players through /boss/select, not the
+  // old /onboarding flow that used to write this field) - the whole
+  // league roster and every rivalry card showed "Unbound" for
+  // players who have clearly already chosen and are actively
+  // progressing a real Boss Route. See src/lib/boss-identity.ts for
+  // the shared, corrected lookup (player_boss_paths route_slot 1 ->
+  // current-stage evolution card), the same source Home already
+  // uses.
   // ======================================================
 
-  const bossIds = [
-    ...new Set(
-      profiles
-        .map(
-          (profile) =>
-            profile
-              .boss_monster_option_id
-        )
-        .filter(
-          (
-            value
-          ): value is string =>
-            Boolean(value)
-        )
-    ),
-  ];
-
-  let bossMonsters:
-    BossMonster[] =
-    [];
-
-  if (
-    bossIds.length >
-    0
-  ) {
-    const {
-      data: bossData,
-      error: bossError,
-    } = await supabase
-      .from(
-        "boss_monster_options"
-      )
-      .select(
-        "id,name,image_url"
-      )
-      .in(
-        "id",
-        bossIds
-      );
-
-    if (bossError) {
-      throw new Error(
-        bossError.message
-      );
-    }
-
-    bossMonsters =
-      (bossData ??
-        []) as BossMonster[];
-  }
-
-  const bossMap =
-    new Map(
-      bossMonsters.map(
-        (boss) => [
-          boss.id,
-          boss,
-        ]
-      )
+  const bossIdentityMap =
+    await getPrimaryBossIdentities(
+      supabase,
+      profileIds
     );
 
   function bossForProfile(
     profile: Profile
   ) {
-    if (
-      !profile
-        .boss_monster_option_id
-    ) {
-      return null;
-    }
-
     return (
-      bossMap.get(
-        profile
-          .boss_monster_option_id
+      bossIdentityMap.get(
+        profile.id
       ) ?? null
     );
   }

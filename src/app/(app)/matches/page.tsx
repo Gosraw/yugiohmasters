@@ -22,6 +22,11 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  getPrimaryBossIdentities,
+  type BossIdentity,
+} from "@/lib/boss-identity";
+
 export const dynamic =
   "force-dynamic";
 
@@ -105,15 +110,6 @@ type Profile = {
   username: string | null;
   duelist_name: string;
   custom_title: string | null;
-
-  boss_monster_option_id:
-    | string
-    | null;
-};
-
-type BossMonster = {
-  id: string;
-  name: string;
 };
 
 type Deck = {
@@ -132,7 +128,7 @@ type MatchCardProps = {
 
   bosses: Map<
     string,
-    BossMonster
+    BossIdentity
   >;
 
   decks: Map<
@@ -400,17 +396,13 @@ function MatchCard({
       : match.player_one_deck_id;
 
   const myBoss =
-    me?.boss_monster_option_id
-      ? bosses.get(
-          me.boss_monster_option_id
-        )
+    me
+      ? bosses.get(me.id)
       : undefined;
 
   const opponentBoss =
-    opponent?.boss_monster_option_id
-      ? bosses.get(
-          opponent.boss_monster_option_id
-        )
+    opponent
+      ? bosses.get(opponent.id)
       : undefined;
 
   let resultText:
@@ -755,8 +747,7 @@ export default async function MatchesPage() {
           id,
           username,
           duelist_name,
-          custom_title,
-          boss_monster_option_id
+          custom_title
         `
       )
       .in(
@@ -786,67 +777,25 @@ export default async function MatchesPage() {
     );
 
   // ======================================================
-  // BOSS MONSTERS
+  // BOSS IDENTITIES
+  //
+  // AUDIT FIX (Season 1 audit, legacy schema-assumption item): this
+  // used to join through profiles.boss_monster_option_id ->
+  // boss_monster_options, the OLD pre-Boss-Route cosmetic concept
+  // that is never set for a Season 1 player (the mandatory
+  // onboarding gate sends new players through /boss/select, not the
+  // old /onboarding flow that used to write this field) - every
+  // match card showed "Unbound" for a player who has clearly
+  // already chosen and is actively progressing a real Boss Route.
+  // See src/lib/boss-identity.ts for the shared, corrected lookup
+  // (player_boss_paths route_slot 1 -> current-stage evolution
+  // card), the same source Home already uses.
   // ======================================================
 
-  const bossIds = [
-    ...new Set(
-      profiles
-        .map(
-          (profile) =>
-            profile.boss_monster_option_id
-        )
-        .filter(
-          (
-            value
-          ): value is string =>
-            Boolean(value)
-        )
-    ),
-  ];
-
-  let bosses:
-    BossMonster[] =
-    [];
-
-  if (
-    bossIds.length >
-    0
-  ) {
-    const {
-      data: bossData,
-      error: bossError,
-    } = await supabase
-      .from(
-        "boss_monster_options"
-      )
-      .select(
-        "id,name"
-      )
-      .in(
-        "id",
-        bossIds
-      );
-
-    if (bossError) {
-      throw new Error(
-        bossError.message
-      );
-    }
-
-    bosses =
-      (bossData ??
-        []) as BossMonster[];
-  }
-
   const bossMap =
-    new Map(
-      bosses.map(
-        (boss) => [
-          boss.id,
-          boss,
-        ]
-      )
+    await getPrimaryBossIdentities(
+      supabase,
+      profileIds
     );
 
   // ======================================================

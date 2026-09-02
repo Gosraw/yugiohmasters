@@ -172,7 +172,38 @@ select
     where lower(p.username) = 'bossg'
       and c.name in ('Berry Magician Girl', 'Lemon Magician Girl', 'Chocolate Magician Girl')
   ) as bossg_dm_starter_card_count,
-  (select count(*) from public.card_instances) as total_card_instances_count;
+  (select count(*) from public.card_instances) as total_card_instances_count,
+  -- Season 1 audit round-2 (2026-09-02) hardening: the counts above
+  -- only catch a row being ADDED or REMOVED - they cannot catch
+  -- bossg/samo/fardin's real progress VALUES changing while the row
+  -- counts stay the same (e.g. bossg's current_stage silently
+  -- regressing from 3 to 1 while samo's advances from 1 to 3 - net
+  -- zero change to player_boss_paths_count above, but a real data
+  -- corruption). These two deterministic signature strings capture
+  -- the exact (username, route_slot, route_id, current_stage,
+  -- mastered_at) state and the exact (username, status,
+  -- main_picks_completed, fusion_picks_completed,
+  -- xyz_picks_completed) draft state for exactly the three players
+  -- this deploy must never disturb, sorted so the string comparison
+  -- is order-independent.
+  (
+    select string_agg(
+      format('%s:%s:%s:%s:%s', p.username, pbp.route_slot, pbp.route_id, pbp.current_stage, coalesce(pbp.mastered_at::text, 'null')),
+      '|' order by p.username, pbp.route_slot
+    )
+    from public.player_boss_paths pbp
+    join public.profiles p on p.id = pbp.profile_id
+    where lower(p.username) in ('bossg', 'samo', 'fardin')
+  ) as boss_progress_signature_for_the_3,
+  (
+    select string_agg(
+      format('%s:%s:%s:%s:%s', p.username, dp.status, dp.main_picks_completed, dp.fusion_picks_completed, dp.xyz_picks_completed),
+      '|' order by p.username, dp.id
+    )
+    from public.draft_players dp
+    join public.profiles p on p.id = dp.profile_id
+    where lower(p.username) in ('bossg', 'samo', 'fardin')
+  ) as draft_progress_signature_for_the_3;
 
 do $preflight_snapshot_notice$
 declare
@@ -8324,8 +8355,24 @@ begin
   end if;
 
   select count(*) into v_pool_count from public.shop_special_pack_pool_cards;
+  -- Season 1 audit round-2 (2026-09-02) hardening: was previously
+  -- just a "not empty" check. Strengthened to an exact-count
+  -- assertion against 3978 (not 3980), the independently-recounted
+  -- true total after all pool corrections in this file (including
+  -- the Lemon/Chocolate Magician Girl removal from arcane_circle) -
+  -- verified by re-summing every pack's `where c.name in (...)`
+  -- literal list directly against this file's own source text.
+  -- A count below 3978 means at least one listed card name failed
+  -- to resolve against card_catalog (silent join miss); a count
+  -- above 3978 means an unexpected extra row was inserted somewhere.
+  -- Either way, that is real information this deploy must not
+  -- silently swallow.
   if v_pool_count = 0 then
     raise exception 'SPECIAL PACK SEED ABORTED: shop_special_pack_pool_cards is empty after seeding.';
+  end if;
+
+  if v_pool_count <> 3978 then
+    raise exception 'SPECIAL PACK SEED ABORTED: expected exactly 3978 total pool rows across all 15 packs, found %. This means at least one card name in a pack''s pool list failed to resolve against card_catalog (or an unexpected extra row exists) - do not proceed without investigating which pack is short.', v_pool_count;
   end if;
 
   -- Real safety check: no pool row may reference a card that is any
@@ -8748,6 +8795,8 @@ declare
   v_drafts_completed_now int;
   v_draft_players_now int;
   v_total_card_instances_now int;
+  v_boss_progress_signature_now text;
+  v_draft_progress_signature_now text;
 begin
   select * into v_snap from pre_deploy_snapshot;
 
@@ -8756,6 +8805,37 @@ begin
   select count(*) into v_drafts_completed_now from public.drafts where status = 'completed';
   select count(*) into v_draft_players_now from public.draft_players;
   select count(*) into v_total_card_instances_now from public.card_instances;
+
+  -- Season 1 audit round-2 (2026-09-02) hardening: exact per-player
+  -- signature check for bossg/samo/fardin - catches a stage/route/
+  -- draft-status VALUE changing even when the row counts above stay
+  -- identical (see the snapshot column's own comment for why the
+  -- counts alone are not sufficient).
+  select string_agg(
+    format('%s:%s:%s:%s:%s', p.username, pbp.route_slot, pbp.route_id, pbp.current_stage, coalesce(pbp.mastered_at::text, 'null')),
+    '|' order by p.username, pbp.route_slot
+  )
+  into v_boss_progress_signature_now
+  from public.player_boss_paths pbp
+  join public.profiles p on p.id = pbp.profile_id
+  where lower(p.username) in ('bossg', 'samo', 'fardin');
+
+  select string_agg(
+    format('%s:%s:%s:%s:%s', p.username, dp.status, dp.main_picks_completed, dp.fusion_picks_completed, dp.xyz_picks_completed),
+    '|' order by p.username, dp.id
+  )
+  into v_draft_progress_signature_now
+  from public.draft_players dp
+  join public.profiles p on p.id = dp.profile_id
+  where lower(p.username) in ('bossg', 'samo', 'fardin');
+
+  if v_boss_progress_signature_now is distinct from v_snap.boss_progress_signature_for_the_3 then
+    raise exception 'POST-DEPLOY ABORTED: bossg/samo/fardin''s exact Boss Route progress changed - before="%" after="%". This deploy must never alter an existing player''s route_slot, route_id, current_stage, or mastered_at.', v_snap.boss_progress_signature_for_the_3, v_boss_progress_signature_now;
+  end if;
+
+  if v_draft_progress_signature_now is distinct from v_snap.draft_progress_signature_for_the_3 then
+    raise exception 'POST-DEPLOY ABORTED: bossg/samo/fardin''s exact Initial Draft progress changed - before="%" after="%". This deploy must never alter an existing player''s draft status or pick counts.', v_snap.draft_progress_signature_for_the_3, v_draft_progress_signature_now;
+  end if;
 
   if v_league_members_now <> v_snap.league_members_count then
     raise exception 'POST-DEPLOY ABORTED: league_members count changed from % to % - this deploy must not change league memberships.', v_snap.league_members_count, v_league_members_now;
@@ -8779,6 +8859,8 @@ begin
 
   raise notice 'POST-DEPLOY: league_members (%), player_boss_paths (%), completed drafts (%), draft_players (%), and total card_instances (%) all confirmed UNCHANGED by this deploy.',
     v_league_members_now, v_player_boss_paths_now, v_drafts_completed_now, v_draft_players_now, v_total_card_instances_now;
+
+  raise notice 'POST-DEPLOY: bossg/samo/fardin exact Boss Route and Initial Draft progress signatures confirmed UNCHANGED by this deploy.';
 end $post_unchanged_state$;
 
 do $post_final_summary$

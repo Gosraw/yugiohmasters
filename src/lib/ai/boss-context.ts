@@ -17,6 +17,10 @@ import {
   getAttentionItems,
 } from "@/lib/attention-items";
 
+import {
+  getPrimaryBossIdentity,
+} from "@/lib/boss-identity";
+
 type SupabaseClient =
   Awaited<
     ReturnType<typeof requireUser>
@@ -85,7 +89,7 @@ export async function buildBossContext(
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "duelist_name,duel_points,boss_personality,boss_monster_option_id"
+      "duelist_name,duel_points,boss_personality"
     )
     .eq("id", userId)
     .single();
@@ -99,17 +103,25 @@ export async function buildBossContext(
   const bossPersonality =
     profile?.boss_personality ?? null;
 
-  let bossName: string | null = null;
+  // AUDIT FIX (Season 1 audit, legacy schema-assumption item): this
+  // used to join through profiles.boss_monster_option_id ->
+  // boss_monster_options, the OLD pre-Boss-Route cosmetic concept
+  // that is never set for a Season 1 player (the mandatory
+  // onboarding gate sends new players through /boss/select, not the
+  // old /onboarding flow that used to write this field) - the AI
+  // companion would greet an actively-progressing player as if they
+  // had no Boss identity at all. See src/lib/boss-identity.ts for
+  // the shared, corrected lookup (player_boss_paths route_slot 1 ->
+  // current-stage evolution card), the same source Home already
+  // uses.
+  const bossIdentity =
+    await getPrimaryBossIdentity(
+      supabase,
+      userId
+    );
 
-  if (profile?.boss_monster_option_id) {
-    const { data: boss } = await supabase
-      .from("boss_monster_options")
-      .select("name")
-      .eq("id", profile.boss_monster_option_id)
-      .maybeSingle();
-
-    bossName = boss?.name ?? null;
-  }
+  const bossName: string | null =
+    bossIdentity?.name ?? null;
 
   const leagueId =
     await getLeagueIdForUser(

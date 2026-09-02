@@ -577,6 +577,82 @@ function packAccent(
 }
 
 // =========================================================
+// SCHEMA-MISMATCH FALLBACK (Season 1 audit round 4, 2026-09-02)
+//
+// WHY THIS EXISTS
+// The Special Pack curated-pool rebuild (the shop_special_pack_definitions
+// table, and the pack_definition_id column on shop_special_pack_rotations)
+// shipped as application code before the matching Supabase migrations
+// (202609020940_special_pack_curated_pools_schema.sql and
+// 202609021020_special_pack_15_definitions_and_pools.sql) were necessarily
+// applied to the live database - GitHub/Vercel deploy the Next.js app on
+// every push to main, but the Supabase migrations are a separate, manual
+// step (see docs/GO_LIVE_TONIGHT.md). If that manual step lags behind a
+// code deploy, this page's queries for the curated-pool table/column fail
+// with a Postgres "column/relation does not exist" error, and this page
+// used to hard-throw on that - taking down Normal, Premium, and Deluxe
+// pack purchases too, since they render on this same page, below the
+// Special Packs section that was failing.
+//
+// This helper recognizes ONLY that specific class of error (an undefined
+// column or an undefined/uncached relation - Postgres SQLSTATE
+// 42703/42P01, or PostgREST's own PGRST204/PGRST205 codes for a stale
+// schema cache) so the page can fall back to pre-curated-pool behavior
+// instead of crashing. Any other error still throws exactly as before -
+// this is a narrow compatibility shim, not a blanket error swallow, and
+// it becomes permanently inert (never taken) the moment the real
+// migrations are applied live.
+// =========================================================
+
+function isMissingCuratedPackSchemaObjectError(
+  error:
+    | {
+        code?:
+          string
+          | null;
+
+        message?:
+          string
+          | null;
+      }
+    | null
+    | undefined
+) {
+  if (!error) {
+    return false;
+  }
+
+  const code =
+    error.code ??
+    "";
+
+  if (
+    [
+      "42703",
+      "42P01",
+      "PGRST204",
+      "PGRST205",
+    ].includes(code)
+  ) {
+    return true;
+  }
+
+  const message = (
+    error.message ??
+    ""
+  ).toLowerCase();
+
+  return (
+    message.includes(
+      "pack_definition_id"
+    ) ||
+    message.includes(
+      "shop_special_pack_definitions"
+    )
+  );
+}
+
+// =========================================================
 // PAGE
 // =========================================================
 
@@ -838,7 +914,66 @@ export default async function ShopPage({
     rotationCards[0] ??
     null;
 
+  let effectiveSpecialRotationData =
+    specialRotationData;
+
   if (
+    specialRotationError &&
+    isMissingCuratedPackSchemaObjectError(
+      specialRotationError
+    )
+  ) {
+    // Live DB predates the pack_definition_id column - refetch with the
+    // pre-curated-pool column set and treat every row as a "historical"
+    // rotation (pack_definition_id: null), which the rendering code
+    // below already falls back to SPECIAL_CATEGORY_META.describe() for.
+    console.error(
+      "shop_special_pack_rotations query missing pack_definition_id (DB migration not yet applied) - falling back to legacy columns:",
+      specialRotationError.message
+    );
+
+    const {
+      data:
+        legacySpecialRotationData,
+
+      error:
+        legacySpecialRotationError,
+    } = await supabase
+      .from(
+        "shop_special_pack_rotations"
+      )
+      .select(
+        "id,theme_category,theme_value,theme_label,price_dp,cards_per_pack,starts_at,ends_at"
+      )
+      .eq(
+        "status",
+        "active"
+      )
+      .order(
+        "theme_category",
+        {
+          ascending:
+            true,
+        }
+      );
+
+    if (legacySpecialRotationError) {
+      throw new Error(
+        legacySpecialRotationError.message
+      );
+    }
+
+    effectiveSpecialRotationData = (
+      legacySpecialRotationData ??
+        []
+    ).map(
+      (row) => ({
+        ...row,
+        pack_definition_id:
+          null,
+      })
+    );
+  } else if (
     specialRotationError
   ) {
     throw new Error(
@@ -847,10 +982,30 @@ export default async function ShopPage({
   }
 
   const specialRotations =
-    (specialRotationData ??
+    (effectiveSpecialRotationData ??
       []) as SpecialPackRotation[];
 
-  if (packDefinitionError) {
+  let effectivePackDefinitionData =
+    packDefinitionData;
+
+  if (
+    packDefinitionError &&
+    isMissingCuratedPackSchemaObjectError(
+      packDefinitionError
+    )
+  ) {
+    // Live DB predates the shop_special_pack_definitions table entirely -
+    // treat it as "no curated definitions yet" rather than crashing; every
+    // Special Pack rotation then renders via the legacy theme_value-based
+    // description, exactly as it did before the curated-pool rebuild.
+    console.error(
+      "shop_special_pack_definitions table not found (DB migration not yet applied) - falling back to legacy pack descriptions:",
+      packDefinitionError.message
+    );
+
+    effectivePackDefinitionData =
+      [];
+  } else if (packDefinitionError) {
     throw new Error(
       packDefinitionError.message
     );
@@ -860,10 +1015,12 @@ export default async function ShopPage({
   // the 15 fixed packs, so the Special Packs section below can show each
   // active rotation's real curated copy instead of re-deriving text from
   // theme_value (see SPECIAL_CATEGORY_META.describe for the fallback used
-  // only on a historical rotation row with no pack_definition_id).
+  // only on a historical rotation row with no pack_definition_id, OR on
+  // any row when the live DB predates the curated-pool migrations - see
+  // isMissingCuratedPackSchemaObjectError above).
   const packDefinitionsById = new Map(
     (
-      (packDefinitionData ??
+      (effectivePackDefinitionData ??
         []) as SpecialPackDefinition[]
     ).map(
       (definition) => [definition.id, definition] as const

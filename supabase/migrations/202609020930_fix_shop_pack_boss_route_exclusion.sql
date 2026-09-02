@@ -22,16 +22,27 @@ begin;
 -- cards are earned, not pulled" design.
 --
 -- WHAT THIS CHANGES
--- Reissues pick_shop_pack_card() with the identical
--- "not exists (... boss_route_stages ...) and not exists
--- (... boss_route_stage_grants where is_route_exclusive ...)"
--- clause already used by Draft, added to card.format_eligible in
--- all four candidate queries (byte-for-byte the same predicate
--- shape as 202609011700's, just aliased to this function's `card`
--- table instead of Draft's `c`). Every other line - theme
--- matching, copy-limit logic, league-wide Legendary handling,
--- fallback ordering - is untouched, reproduced exactly from the
--- live version.
+-- Reissues pick_shop_pack_card() with a
+-- "not exists (... boss_route_stages where stage_number = 4 ...)
+-- and not exists (... boss_route_stage_grants where
+-- is_route_exclusive ...)" clause, added to card.format_eligible in
+-- all four candidate queries.
+--
+-- CORRECTED 2026-09-02: the clause originally committed here (and
+-- the equivalent, already-deployed Draft clause in
+-- 202609011700_draft_boss_route_exclusion.sql it was copied from)
+-- excluded a card if it was ANY stage's evolution monster, not just
+-- Stage 4's. That was over-broad - the authoritative rule is only
+-- "Stage 4 (final Boss) monsters are always excluded" plus
+-- "explicitly is_route_exclusive-flagged support is always
+-- excluded"; an ordinary Stage 1-3 evolution monster stays
+-- purchasable, matching "replaced Stage 1-3 evolution monsters do
+-- not count against permanent support cap" (which only makes sense
+-- if those cards are otherwise ordinary). This version has
+-- `and brs.stage_number = 4` added to the boss_route_stages check.
+-- The equivalent fix for Draft's create_next_draft_offer() is a
+-- separate migration (202609020970) since that function is already
+-- deployed and must be fixed forward, not edited in place.
 --
 -- Non-exclusive Boss Route support grants (most of each route's
 -- 12-15 permanent cards) are NOT affected and remain normally
@@ -125,6 +136,7 @@ begin
       select 1
       from public.boss_route_stages brs
       where brs.evolution_card_catalog_id = card.id
+        and brs.stage_number = 4
     )
     and not exists (
       select 1
@@ -193,6 +205,7 @@ begin
       select 1
       from public.boss_route_stages brs
       where brs.evolution_card_catalog_id = card.id
+        and brs.stage_number = 4
     )
     and not exists (
       select 1
@@ -243,6 +256,7 @@ begin
       select 1
       from public.boss_route_stages brs
       where brs.evolution_card_catalog_id = card.id
+        and brs.stage_number = 4
     )
     and not exists (
       select 1
@@ -307,6 +321,7 @@ begin
       select 1
       from public.boss_route_stages brs
       where brs.evolution_card_catalog_id = card.id
+        and brs.stage_number = 4
     )
     and not exists (
       select 1

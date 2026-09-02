@@ -27,14 +27,12 @@ begin;
 --
 -- The plain "Dark Magician" card (previously Stage 3's evolution
 -- monster) is no longer an evolution stage in the corrected chain.
--- Rather than silently drop the route's single most iconic card,
--- it is added as a Stage 3 support grant alongside the existing
--- Dark-Magician-specific support (Eternal Soul, Sage's Stone,
--- Diffusion Wave-Motion all reference "a Dark Magician" by name),
--- non-exclusive since Dark Magician is a normal draft/pack-eligible
--- card in its own right, not something this route should lock
--- away. Flagged in the audit report as a judgment call the user
--- should confirm rather than a directly-specified requirement.
+-- CORRECTED 2026-09-02: an earlier draft of this migration re-added
+-- it as a Stage 3 support grant on its own initiative - reverted.
+-- The authoritative Stage 1 support list (below) is exactly the 5
+-- named cards and nothing else; no placement is invented for Dark
+-- Magician (plain) here. See the bottom of this file for the
+-- explicit revert note.
 --
 -- Existing card ownership already granted to players (bossg's
 -- manual Berry/Lemon/Chocolate grant, and any cards already
@@ -46,64 +44,57 @@ begin;
 -- WHY - Cubic
 -- Stage 4 (Crimson Nova the Dark Cubic Lord) currently grants only
 -- 3 support cards (Cubic Dharma, Cubic Causality, Cubic Mandala)
--- against a spec'd 4. The best-evidence 4th card is Crimson Nova
--- Trinity the Dark Cubic Lord - the direct upgraded/Trinity form of
--- the Stage 4 boss itself (2016-07-21, inside the 2015-2018
--- whitelist window) - confirmed present in card_catalog. No other
--- "Crimson Nova"-named card exists in the catalog. Added as a
--- Stage 4 exclusive grant, consistent with how this route already
--- flags its strongest per-stage pieces (Vijam the Cubic Seed /
--- Unification of the Cubic Lords at Stage 2, Cubic Ascension at
--- Stage 3) as route-exclusive.
+-- against the spec's own 4th named card, "Crimson Nova Boss EX".
+-- CORRECTED 2026-09-02: an earlier draft of this migration
+-- substituted "Crimson Nova Trinity the Dark Cubic Lord" for that
+-- card without approval - reverted. "Crimson Nova Boss EX" does not
+-- exist as an exact row in card_catalog (verified against the local
+-- card-valuation snapshot). This migration does NOT add a 4th Stage
+-- 4 support card - see the bottom of this file for the explicit
+-- flag-not-guess note.
 --
 -- SAFETY
--- Every statement below is the same on-conflict-do-update /
--- on-conflict-do-nothing shape as the original seed migration -
--- fully idempotent, re-runnable, and additive only. No table shape
--- changes. No deletes.
+-- The Stage 1-4 evolution chain fix is one multi-row UPDATE keyed
+-- on (route, stage_number) - safe to re-run any number of times,
+-- since it always sets the same final values regardless of the
+-- table's current contents (see the note directly above that
+-- statement for why it must be one statement, not four). The Stage
+-- 1 support additions below use the same on-conflict-do-update
+-- shape as the original seed migration - also fully idempotent. No
+-- table shape changes. No deletes.
 -- =========================================================
 
 -- ---- Dark Magician: corrected evolution chain ----
+--
+-- SAFETY: this is deliberately ONE multi-row UPDATE (not 4 separate
+-- single-row UPDATEs). boss_route_stages has a UNIQUE (route_id,
+-- evolution_card_catalog_id) constraint, and the corrected Stage 3
+-- card ("Dark Magician of Chaos") is the CURRENT Stage 4 card in the
+-- old/live seed data. Four separate UPDATE statements, run in
+-- stage-number order, would set Stage 3 to "Dark Magician of Chaos"
+-- while Stage 4 still held that exact same card - an immediate
+-- unique-constraint violation, since this constraint is not
+-- deferrable. A single UPDATE...FROM (VALUES...) statement changes
+-- every affected row together, so Postgres only evaluates the
+-- constraint against the final state of the statement and never
+-- sees that transient collision.
 
+with target_values (stage_number, card_name, new_dp_cost) as (
+  values
+    (1, 'Berry Magician Girl', null::integer),
+    (2, 'Dark Magician Girl', 900),
+    (3, 'Dark Magician of Chaos', 1400),
+    (4, 'The Dark Magicians', 2400)
+)
 update public.boss_route_stages s
 set
   evolution_card_catalog_id = c.id,
-  dp_cost_to_reach = null
-from public.boss_routes r, public.card_catalog c
+  dp_cost_to_reach = tv.new_dp_cost
+from target_values tv
+join public.boss_routes r on r.code = 'dark_magician'
+join public.card_catalog c on c.name = tv.card_name
 where s.route_id = r.id
-  and r.code = 'dark_magician'
-  and s.stage_number = 1
-  and c.name = 'Berry Magician Girl';
-
-update public.boss_route_stages s
-set
-  evolution_card_catalog_id = c.id,
-  dp_cost_to_reach = 900
-from public.boss_routes r, public.card_catalog c
-where s.route_id = r.id
-  and r.code = 'dark_magician'
-  and s.stage_number = 2
-  and c.name = 'Dark Magician Girl';
-
-update public.boss_route_stages s
-set
-  evolution_card_catalog_id = c.id,
-  dp_cost_to_reach = 1400
-from public.boss_routes r, public.card_catalog c
-where s.route_id = r.id
-  and r.code = 'dark_magician'
-  and s.stage_number = 3
-  and c.name = 'Dark Magician of Chaos';
-
-update public.boss_route_stages s
-set
-  evolution_card_catalog_id = c.id,
-  dp_cost_to_reach = 2400
-from public.boss_routes r, public.card_catalog c
-where s.route_id = r.id
-  and r.code = 'dark_magician'
-  and s.stage_number = 4
-  and c.name = 'The Dark Magicians';
+  and s.stage_number = tv.stage_number;
 
 -- ---- Dark Magician: Stage 1 support additions ----
 
@@ -127,30 +118,29 @@ on conflict (stage_id, card_catalog_id) do update set
   is_route_exclusive = excluded.is_route_exclusive,
   quantity = excluded.quantity;
 
--- ---- Dark Magician: restore plain "Dark Magician" as Stage 3 support ----
--- (was implicitly present as the old Stage 3 evolution card; the
--- corrected chain no longer includes it as an evolution monster)
+-- ---- Dark Magician: plain "Dark Magician" support placement ----
+-- CORRECTION (2026-09-02 review): an earlier draft of this
+-- migration re-added plain "Dark Magician" as a Stage 3 support
+-- grant on the reasoning that it was "implicitly present" as the
+-- old Stage 3 evolution card. That placement was never actually
+-- specified anywhere in the authoritative route spec (only the 5
+-- named Stage 1 support cards above are specified for this route)
+-- and has been reverted - do not invent a support placement for a
+-- card the spec doesn't mention. If Dark Magician (plain) is meant
+-- to be part of this route at all, that needs an explicit decision
+-- and a follow-up migration, not a guess made here.
 
-insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
-select s.id, c.id, false, 1
-from public.boss_route_stages s
-join public.boss_routes r on r.id = s.route_id
-cross join public.card_catalog c
-where r.code = 'dark_magician' and s.stage_number = 3 and c.name = 'Dark Magician'
-on conflict (stage_id, card_catalog_id) do update set
-  is_route_exclusive = excluded.is_route_exclusive,
-  quantity = excluded.quantity;
-
--- ---- Cubic: Stage 4 missing 4th support card ----
-
-insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
-select s.id, c.id, true, 1
-from public.boss_route_stages s
-join public.boss_routes r on r.id = s.route_id
-cross join public.card_catalog c
-where r.code = 'cubic' and s.stage_number = 4 and c.name = 'Crimson Nova Trinity the Dark Cubic Lord'
-on conflict (stage_id, card_catalog_id) do update set
-  is_route_exclusive = excluded.is_route_exclusive,
-  quantity = excluded.quantity;
+-- ---- Cubic: Stage 4 support gap - NOT fixed, flagged instead ----
+-- CORRECTION (2026-09-02 review): an earlier draft of this
+-- migration added "Crimson Nova Trinity the Dark Cubic Lord" as a
+-- substitute for the spec's actual 4th Stage 4 support card,
+-- "Crimson Nova Boss EX" - that substitution was never approved and
+-- has been reverted. "Crimson Nova Boss EX" does not exist as an
+-- exact row in card_catalog (verified against the local
+-- card-valuation snapshot; confirm against the live database before
+-- concluding it's truly absent). Cubic's Stage 4 support stays at
+-- its current 3 cards (Cubic Dharma, Cubic Causality, Cubic
+-- Mandala) until the real card is identified or added - do not
+-- guess a replacement.
 
 commit;

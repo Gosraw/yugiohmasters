@@ -47,15 +47,22 @@ begin;
 --
 -- NOTE ON THE 3 ALREADY-LIVE PLAYERS
 -- bossg/samo/fardin already received their welcome vouchers via a
--- manual live grant before this function existed. This migration
--- does NOT call claim_welcome_packs() for them or backfill the
--- claims table on their behalf - doing so without live read access
--- to confirm their current reward_vouchers/shop_purchases state
--- risks double-granting. See the audit report's live-data section
--- for the exact read-only verification query and the safe backfill
--- snippet (insert into season1_welcome_bonus_claims only, no
--- voucher grant) to run by hand once their current state is
--- confirmed.
+-- manual live grant before this function existed. CORRECTED
+-- 2026-09-02: an earlier draft of this migration deliberately did
+-- NOT backfill the claims table for them (leaving it as a manual,
+-- by-hand follow-up), on the theory that backfilling without a live
+-- read to confirm their exact current state risked masking a real
+-- problem. Per review, that is backwards: leaving them unbackfilled
+-- is what actually causes a double-grant, since the very first time
+-- claim_welcome_packs() runs for one of them (e.g. from proxy.ts)
+-- it would find no season1_welcome_bonus_claims row and grant a
+-- second set of 3 vouchers. The migration now backfills them
+-- directly (see the BACKFILL block below) - inserting only the
+-- claims-table marker row, granting no additional vouchers - which
+-- is the safe direction regardless of whether their existing
+-- reward_vouchers rows are still unredeemed, partially redeemed, or
+-- fully redeemed: none of that changes whether they already went
+-- through the welcome process once.
 --
 -- SAFETY
 -- Purely additive: one new table, one new function. Does not touch
@@ -76,6 +83,39 @@ create table if not exists public.season1_welcome_bonus_claims (
 
 comment on table public.season1_welcome_bonus_claims is
   'Idempotency marker for claim_welcome_packs(): one row per profile that has ever received the Season 1 welcome bonus (1 Normal + 1 Premium + 1 Deluxe voucher). Vouchers themselves are deleted on redemption, so this table - not reward_vouchers - is the durable "already granted" check.';
+
+-- =========================================================
+-- BACKFILL (2026-09-02 review): bossg, samo and fardin already
+-- received their normal_pack/premium_pack/deluxe_pack vouchers
+-- through a manual live grant, before this function or this
+-- marker table existed. Without this backfill, the very first time
+-- claim_welcome_packs() ran for each of them (e.g. from proxy.ts on
+-- their next request) it would find no season1_welcome_bonus_claims
+-- row, insert one, and grant them a SECOND set of 3 vouchers -
+-- exactly the double-grant this migration must not cause.
+--
+-- This marks all three as already-claimed using
+-- lower(profiles.username) so it's independent of any capitalization
+-- in how the usernames are actually stored, and independent of
+-- whatever the current state of their reward_vouchers rows is
+-- (already redeemed, partially redeemed, or still sitting unopened
+-- - none of that changes whether they already went through the
+-- welcome process once). Deliberately scoped to exactly these 3
+-- usernames rather than "every current league member" so that a
+-- genuinely new player who joins before this migration is deployed,
+-- but isn't one of these 3, still gets their real automatic bonus
+-- the first time the function runs for them.
+--
+-- Idempotent: on conflict do nothing means re-running this
+-- migration (or running it after one of the three has since
+-- claimed some other way) never errors and never double-inserts.
+-- =========================================================
+
+insert into public.season1_welcome_bonus_claims (profile_id)
+select id
+from public.profiles
+where lower(username) in ('bossg', 'samo', 'fardin')
+on conflict (profile_id) do nothing;
 
 create or replace function public.claim_welcome_packs()
 returns boolean

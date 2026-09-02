@@ -175,7 +175,7 @@ select
      from public.duelist_circle_formats
      where code = 'duelist_circle_classic_v1'),
     'duelist_circle_classic_v1 row not found'
-  ) || ' -- if is_active is not true, or format_eligible counts (see verify_cardpool_format_state.sql) do not match the calibrated 6,181-card pool, the Classic format has not been activated live yet. This is expected pre-go-live and is NOT a smoke-test failure by itself - it is a reminder to check before treating Draft/Shop as feature-complete.' as detail;
+  ) || ' -- if is_active is not true, or format_eligible counts (see verify_cardpool_format_state.sql) do not match the currently-accepted 6,204-card projected pool, the Classic format has not been activated live yet (6,204 is the approved-for-now Season 1 figure - see the release_stage_and_eligibility_diagnosis.sql report; it is intentionally not being forced back to the earlier 6,181 target). This is expected pre-go-live and is NOT a smoke-test failure by itself - it is a reminder to check before treating Draft/Shop as feature-complete.' as detail;
 
 -- ----------------------------------------------------------
 -- 9. WELCOME BONUS MARKERS PRESENT FOR bossg/samo/fardin

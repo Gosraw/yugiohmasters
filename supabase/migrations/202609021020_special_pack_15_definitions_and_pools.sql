@@ -73,6 +73,23 @@ begin;
 -- no other pack's card list is affected, and no already-granted
 -- card_instances are touched.
 --
+-- DESIGN CHANGE, ROUND 2 (2026-09-02, approved): the same review
+-- found two more Dark Magician support cards - Dark Magic Attack
+-- and Dedication through Light and Darkness - reverted from
+-- is_route_exclusive = true back to false in 202609020910. Both are
+-- explicit dark_magician archetype_cards members
+-- (202608301400_seed_archetype_registry.sql), the same membership
+-- this pack's archetype allow-list already used to include Thousand
+-- Knives (also dark_magician-tagged, also non-exclusive) - so both
+-- are added to arcane_circle below (280 -> 282 cards). A third card
+-- reverted in the same round, Eternal Soul, is deliberately NOT
+-- added here: it is not a registered dark_magician archetype_cards
+-- member anywhere, so there is no evidence it was ever part of this
+-- pack's approved curated pool - per instruction, a card is not
+-- force-added to a Special Pack it was never curated for. Eternal
+-- Soul remains obtainable through normal Draft/Shop via its own
+-- format_eligible flag, just not through this specific pack.
+--
 -- SAFETY
 -- Every pack definition and every pool row uses on conflict do
 -- nothing - re-running this migration never duplicates a pack or a
@@ -467,7 +484,7 @@ where c.name in (
   )
 on conflict (pack_definition_id, card_catalog_id) do nothing;
 
--- Arcane Circle (280 cards)
+-- Arcane Circle (282 cards)
 insert into public.shop_special_pack_pool_cards (pack_definition_id, card_catalog_id)
 select
   (select id from public.shop_special_pack_definitions where code = 'arcane_circle'),
@@ -753,7 +770,9 @@ where c.name in (
     'Maha Vailo',
     'Merlin',
     'Lemon Magician Girl',
-    'Chocolate Magician Girl'
+    'Chocolate Magician Girl',
+    'Dark Magic Attack',
+    'Dedication through Light and Darkness'
   )
 on conflict (pack_definition_id, card_catalog_id) do nothing;
 

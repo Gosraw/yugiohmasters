@@ -160,52 +160,62 @@ test("claim_welcome_packs() keeps its ON CONFLICT DO NOTHING idempotency guard i
 // ---------------------------------------------------------
 // 4. Special Pack pool exact-count safety net (this audit round's own patch)
 // ---------------------------------------------------------
-test("the combined deploy script still asserts the Special Pack pool is exactly 3980 rows at seed time", () => {
+test("the combined deploy script still asserts the Special Pack pool is exactly 3982 rows at seed time", () => {
   const sql = readMigration("supabase/manual_deploy/20260902_season1_release.sql");
   assert.match(
     sql,
-    /if v_pool_count <> 3980 then/,
-    "the exact-count seed-time assertion (added this audit round, Priority 9; updated 2026-09-02 from 3978 to 3980 when Lemon/Chocolate Magician Girl were restored to arcane_circle) is missing - without it, a card name in a pack's curated pool list that silently fails to resolve against card_catalog would go undetected until a player notices a Special Pack pulling fewer distinct cards than expected",
+    /if v_pool_count <> 3982 then/,
+    "the exact-count seed-time assertion (added this audit round, Priority 9; updated 2026-09-02 from 3978 to 3982 across two rounds of Dark Magician/Magician Girl support restored to arcane_circle) is missing - without it, a card name in a pack's curated pool list that silently fails to resolve against card_catalog would go undetected until a player notices a Special Pack pulling fewer distinct cards than expected",
   );
 });
 
-test("Lemon Magician Girl and Chocolate Magician Girl are configured as non-exclusive Dark Magician Stage 1 support (2026-09-02 design change)", () => {
+const NON_EXCLUSIVE_DARK_MAGICIAN_GRANTS = [
+  { name: "Lemon Magician Girl", stage: 1 },
+  { name: "Chocolate Magician Girl", stage: 1 },
+  { name: "Dark Magic Attack", stage: 2 },
+  { name: "Dedication through Light and Darkness", stage: 2 },
+  { name: "Eternal Soul", stage: 3 },
+];
+
+test("all 5 reverted Dark Magician support grants (2 rounds, 2026-09-02) are configured as non-exclusive", () => {
   const sql = readMigration(
     "supabase/migrations/202609020910_fix_dark_magician_and_cubic_route_data.sql",
   );
-  assert.match(
-    sql,
-    /where r\.code = 'dark_magician' and s\.stage_number = 1 and c\.name = 'Lemon Magician Girl'/,
-    "the Lemon Magician Girl Stage 1 support grant is missing from 202609020910",
-  );
-  assert.match(
-    sql,
-    /where r\.code = 'dark_magician' and s\.stage_number = 1 and c\.name = 'Chocolate Magician Girl'/,
-    "the Chocolate Magician Girl Stage 1 support grant is missing from 202609020910",
-  );
+  for (const { name, stage } of NON_EXCLUSIVE_DARK_MAGICIAN_GRANTS) {
+    const whereClause = `where r.code = 'dark_magician' and s.stage_number = ${stage} and c.name = '${name}'`;
+    const idx = sql.indexOf(whereClause);
+    assert.ok(idx !== -1, `the ${name} Stage ${stage} support grant is missing from 202609020910`);
+    const precedingSlice = sql.slice(Math.max(0, idx - 400), idx);
+    assert.match(
+      precedingSlice,
+      /select s\.id, c\.id, false, 1[\s\S]*$/,
+      `${name} must be granted with is_route_exclusive = false - approved design requires Dark Magician/Magician Girl support to remain obtainable through normal Draft/Shop/Packs; a Boss Path grant does not automatically make a card route-exclusive`,
+    );
+  }
   const grantBlockMatches = sql.match(/select s\.id, c\.id, (true|false), 1/g) ?? [];
   assert.strictEqual(
     grantBlockMatches.length,
-    2,
-    "expected exactly 2 boss_route_stage_grants inserts (Lemon + Chocolate) in this migration",
+    5,
+    "expected exactly 5 boss_route_stage_grants inserts in this migration (Lemon, Chocolate, Dark Magic Attack, Dedication through Light and Darkness, Eternal Soul)",
   );
   for (const m of grantBlockMatches) {
-    assert.match(
-      m,
-      /select s\.id, c\.id, false, 1/,
-      "Lemon/Chocolate Magician Girl must be granted with is_route_exclusive = false - approved design requires Magician Girls and their normal Spell/Trap support to remain obtainable through normal Draft/Shop/Packs; a Boss Path grant does not automatically make a card route-exclusive",
-    );
+    assert.match(m, /select s\.id, c\.id, false, 1/, `unexpected still-exclusive grant insert: ${m}`);
   }
 });
 
-test("Lemon Magician Girl and Chocolate Magician Girl are present in the arcane_circle Special Pack pool (2026-09-02 design change)", () => {
+test("Lemon/Chocolate Magician Girl, Dark Magic Attack, and Dedication through Light and Darkness are present in the arcane_circle Special Pack pool; Eternal Soul deliberately is not (2026-09-02 design change, 2 rounds)", () => {
   const sql = readMigration(
     "supabase/migrations/202609021020_special_pack_15_definitions_and_pools.sql",
   );
   assert.match(
     sql,
-    /'Lemon Magician Girl',\s*'Chocolate Magician Girl'/,
-    "Lemon Magician Girl / Chocolate Magician Girl are missing from the arcane_circle pool - they are ordinary, non-exclusive Magician Girl support within the curated pool/cutoff and must remain obtainable through Draft/Shop/Packs",
+    /'Lemon Magician Girl',\s*'Chocolate Magician Girl',\s*'Dark Magic Attack',\s*'Dedication through Light and Darkness'/,
+    "Lemon Magician Girl / Chocolate Magician Girl / Dark Magic Attack / Dedication through Light and Darkness are missing from the arcane_circle pool - all four are ordinary, non-exclusive Dark Magician/Magician Girl support (the latter two are explicit dark_magician archetype_cards members) and must remain obtainable through Draft/Shop/Packs",
+  );
+  assert.doesNotMatch(
+    sql,
+    /'Eternal Soul'/,
+    "Eternal Soul must NOT appear in any Special Pack pool - it is not a registered dark_magician archetype_cards member, so there is no evidence it was ever part of an approved curated pool; forcing it in would violate the 'do not force a card into a pack it was never curated for' instruction",
   );
 });
 

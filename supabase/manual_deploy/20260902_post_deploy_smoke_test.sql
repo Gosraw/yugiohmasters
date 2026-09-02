@@ -85,13 +85,13 @@ select
   (select count(*) from public.shop_special_pack_definitions) || ' pack definitions found (expected 15)' as detail;
 
 -- ---------------------------------------------------------
--- 4. 3980 SPECIAL PACK POOL MEMBERSHIPS (exact total, all 15 packs)
+-- 4. 3982 SPECIAL PACK POOL MEMBERSHIPS (exact total, all 15 packs)
 -- ---------------------------------------------------------
 select
-  '4. 3980 special pack pool rows' as check_name,
-  case when (select count(*) from public.shop_special_pack_pool_cards) = 3980
+  '4. 3982 special pack pool rows' as check_name,
+  case when (select count(*) from public.shop_special_pack_pool_cards) = 3982
        then 'PASS' else 'FAIL' end as status,
-  (select count(*) from public.shop_special_pack_pool_cards) || ' pool rows found across all 15 packs (expected exactly 3980 - independently re-derived by summing each pack''s literal card-name list in 202609021020; Lemon/Chocolate Magician Girl restored to arcane_circle per the 2026-09-02 design change, so NOT 3978 - see the audit report for why)' as detail;
+  (select count(*) from public.shop_special_pack_pool_cards) || ' pool rows found across all 15 packs (expected exactly 3982 - independently re-derived by summing each pack''s literal card-name list in 202609021020; Lemon/Chocolate Magician Girl, then Dark Magic Attack/Dedication through Light and Darkness, restored to arcane_circle across two rounds of the 2026-09-02 design change, so NOT 3978 - see the audit report for why)' as detail;
 
 -- ----------------------------------------------------------
 -- 5. ZERO STAGE-4 BOSS CARDS LEAKED INTO ANY SPECIAL PACK POOL

@@ -372,6 +372,43 @@ end $preflight_boss_reward_snapshot_notice$;
 -- only changes the boss_route_stage_grants CONFIGURATION governing
 -- future eligibility and Special Pack pool membership.
 --
+-- DESIGN CHANGE, ROUND 2 (2026-09-02, approved): reviewing the
+-- entire Dark Magician route for the same anti-pattern found three
+-- more Stage 2/3 support grants still hardcoded to
+-- is_route_exclusive = true in the original 202609011900 seed:
+-- Dark Magic Attack (Stage 2), Dedication through Light and
+-- Darkness (Stage 2), and Eternal Soul (Stage 3). None of the three
+-- is outside the curated pool/cutoff or was ever documented as an
+-- intentional route-only reward - Eternal Soul in particular is
+-- explicitly whitelisted in 202608301200_seed_2015_2018_legacy_
+-- support_whitelist.sql as normal Classic-format support, directly
+-- contradicting a route-exclusive flag. Per the same approved
+-- principle as round 1 above (a Boss Path grant does not by itself
+-- make a card route-exclusive), all three are set to
+-- is_route_exclusive = false below, using the same fix-forward
+-- insert-on-conflict-do-update shape as the Lemon/Chocolate fix
+-- (202609011900 is already-seeded data, corrected forward rather
+-- than edited in place). After this change every one of the 14
+-- Dark Magician route support grants (the original 12 plus
+-- Lemon/Chocolate) is is_route_exclusive = false - none remain.
+--
+-- Special Pack pool membership is handled separately in
+-- 202609021020, and NOT uniformly: Dark Magic Attack and Dedication
+-- through Light and Darkness are both explicit dark_magician
+-- archetype_cards members (202608301400_seed_archetype_registry.sql)
+-- - the same membership mechanism that already puts Thousand Knives
+-- (also dark_magician-tagged, also non-exclusive) into the
+-- arcane_circle pool - so both are added to arcane_circle. Eternal
+-- Soul is NOT a registered dark_magician archetype_cards member
+-- anywhere (it is only mentioned in that archetype's prose gap-
+-- analysis notes, and separately whitelisted for Classic-format
+-- draft eligibility, a different axis from Special Pack curation) -
+-- there is no evidence it was ever a candidate in arcane_circle's
+-- approved curated pool, so per instruction it is NOT added to any
+-- Special Pack. It remains obtainable through normal Draft/Shop via
+-- its own format_eligible flag, just not through this specific
+-- curated pack.
+--
 -- The plain "Dark Magician" card (previously Stage 3's evolution
 -- monster) is no longer an evolution stage in the corrected chain.
 -- CORRECTED 2026-09-02: an earlier draft of this migration re-added
@@ -461,6 +498,41 @@ from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
 where r.code = 'dark_magician' and s.stage_number = 1 and c.name = 'Chocolate Magician Girl'
+on conflict (stage_id, card_catalog_id) do update set
+  is_route_exclusive = excluded.is_route_exclusive,
+  quantity = excluded.quantity;
+
+-- ---- Dark Magician: Stage 2/3 support corrections (round 2) ----
+-- Reverts the three still-true is_route_exclusive flags found in
+-- 202609011900's original seed - see the DESIGN CHANGE, ROUND 2
+-- note above.
+
+insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
+select s.id, c.id, false, 1
+from public.boss_route_stages s
+join public.boss_routes r on r.id = s.route_id
+cross join public.card_catalog c
+where r.code = 'dark_magician' and s.stage_number = 2 and c.name = 'Dark Magic Attack'
+on conflict (stage_id, card_catalog_id) do update set
+  is_route_exclusive = excluded.is_route_exclusive,
+  quantity = excluded.quantity;
+
+insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
+select s.id, c.id, false, 1
+from public.boss_route_stages s
+join public.boss_routes r on r.id = s.route_id
+cross join public.card_catalog c
+where r.code = 'dark_magician' and s.stage_number = 2 and c.name = 'Dedication through Light and Darkness'
+on conflict (stage_id, card_catalog_id) do update set
+  is_route_exclusive = excluded.is_route_exclusive,
+  quantity = excluded.quantity;
+
+insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
+select s.id, c.id, false, 1
+from public.boss_route_stages s
+join public.boss_routes r on r.id = s.route_id
+cross join public.card_catalog c
+where r.code = 'dark_magician' and s.stage_number = 3 and c.name = 'Eternal Soul'
 on conflict (stage_id, card_catalog_id) do update set
   is_route_exclusive = excluded.is_route_exclusive,
   quantity = excluded.quantity;
@@ -4104,6 +4176,23 @@ end $verify$;
 -- no other pack's card list is affected, and no already-granted
 -- card_instances are touched.
 --
+-- DESIGN CHANGE, ROUND 2 (2026-09-02, approved): the same review
+-- found two more Dark Magician support cards - Dark Magic Attack
+-- and Dedication through Light and Darkness - reverted from
+-- is_route_exclusive = true back to false in 202609020910. Both are
+-- explicit dark_magician archetype_cards members
+-- (202608301400_seed_archetype_registry.sql), the same membership
+-- this pack's archetype allow-list already used to include Thousand
+-- Knives (also dark_magician-tagged, also non-exclusive) - so both
+-- are added to arcane_circle below (280 -> 282 cards). A third card
+-- reverted in the same round, Eternal Soul, is deliberately NOT
+-- added here: it is not a registered dark_magician archetype_cards
+-- member anywhere, so there is no evidence it was ever part of this
+-- pack's approved curated pool - per instruction, a card is not
+-- force-added to a Special Pack it was never curated for. Eternal
+-- Soul remains obtainable through normal Draft/Shop via its own
+-- format_eligible flag, just not through this specific pack.
+--
 -- SAFETY
 -- Every pack definition and every pool row uses on conflict do
 -- nothing - re-running this migration never duplicates a pack or a
@@ -4498,7 +4587,7 @@ where c.name in (
   )
 on conflict (pack_definition_id, card_catalog_id) do nothing;
 
--- Arcane Circle (280 cards)
+-- Arcane Circle (282 cards)
 insert into public.shop_special_pack_pool_cards (pack_definition_id, card_catalog_id)
 select
   (select id from public.shop_special_pack_definitions where code = 'arcane_circle'),
@@ -4784,7 +4873,9 @@ where c.name in (
     'Maha Vailo',
     'Merlin',
     'Lemon Magician Girl',
-    'Chocolate Magician Girl'
+    'Chocolate Magician Girl',
+    'Dark Magic Attack',
+    'Dedication through Light and Darkness'
   )
 on conflict (pack_definition_id, card_catalog_id) do nothing;
 
@@ -8480,24 +8571,24 @@ begin
   select count(*) into v_pool_count from public.shop_special_pack_pool_cards;
   -- Season 1 audit round-2 (2026-09-02) hardening: was previously
   -- just a "not empty" check. Strengthened to an exact-count
-  -- assertion against 3980 (not 3978), the independently-recounted
+  -- assertion against 3982 (not 3978), the independently-recounted
   -- true total after all pool corrections in this file - verified by
   -- re-summing every pack's `where c.name in (...)` literal list
-  -- directly against this file's own source text. 3980 restores the
-  -- Lemon/Chocolate Magician Girl removal from a prior round's
-  -- LIVE-SAFETY RECONCILIATION, per the later DESIGN CHANGE note
-  -- above: both cards are ordinary, non-exclusive Magician Girl
-  -- support and belong back in arcane_circle. A count below 3980
+  -- directly against this file's own source text. 3982 = 3978 + 4:
+  -- Lemon/Chocolate Magician Girl (round 1) and Dark Magic Attack /
+  -- Dedication through Light and Darkness (round 2) all restored to
+  -- arcane_circle after their is_route_exclusive flags were reverted
+  -- to false - see the DESIGN CHANGE notes above. A count below 3982
   -- means at least one listed card name failed to resolve against
-  -- card_catalog (silent join miss); a count above 3980 means an
+  -- card_catalog (silent join miss); a count above 3982 means an
   -- unexpected extra row was inserted somewhere. Either way, that is
   -- real information this deploy must not silently swallow.
   if v_pool_count = 0 then
     raise exception 'SPECIAL PACK SEED ABORTED: shop_special_pack_pool_cards is empty after seeding.';
   end if;
 
-  if v_pool_count <> 3980 then
-    raise exception 'SPECIAL PACK SEED ABORTED: expected exactly 3980 total pool rows across all 15 packs, found %. This means at least one card name in a pack''s pool list failed to resolve against card_catalog (or an unexpected extra row exists) - do not proceed without investigating which pack is short.', v_pool_count;
+  if v_pool_count <> 3982 then
+    raise exception 'SPECIAL PACK SEED ABORTED: expected exactly 3982 total pool rows across all 15 packs, found %. This means at least one card name in a pack''s pool list failed to resolve against card_catalog (or an unexpected extra row exists) - do not proceed without investigating which pack is short.', v_pool_count;
   end if;
 
   -- Real safety check: no pool row may reference a card that is any
@@ -8833,8 +8924,8 @@ begin
   end if;
 
   select count(*) into v_pool_total from public.shop_special_pack_pool_cards;
-  if v_pool_total <> 3980 then
-    raise exception 'POST-DEPLOY ABORTED: expected 3980 total shop_special_pack_pool_cards rows, found %. (Lemon/Chocolate Magician Girl were restored to arcane_circle per the 2026-09-02 design change - normal Magician Girl support must remain obtainable through Draft/Shop/Packs - bringing the total from 3978 back to 3980. See the deployment notes.)', v_pool_total;
+  if v_pool_total <> 3982 then
+    raise exception 'POST-DEPLOY ABORTED: expected 3982 total shop_special_pack_pool_cards rows, found %. (Lemon/Chocolate Magician Girl, then Dark Magic Attack/Dedication through Light and Darkness, were restored to arcane_circle across two rounds of the 2026-09-02 design change - normal Dark Magician/Magician Girl support must remain obtainable through Draft/Shop/Packs - bringing the total from 3978 to 3982. See the deployment notes.)', v_pool_total;
   end if;
 
   select count(*) into v_stage4_leaks
@@ -8857,7 +8948,7 @@ begin
     raise exception 'POST-DEPLOY ABORTED: % Special Pack pool row(s) reference an is_route_exclusive support card.', v_exclusive_leaks;
   end if;
 
-  raise notice 'POST-DEPLOY: 15 Special Pack definitions, % total pool rows, zero Stage-4 leaks, zero route-exclusive leaks (Lemon/Chocolate Magician Girl confirmed non-exclusive and correctly included in arcane_circle).', v_pool_total;
+  raise notice 'POST-DEPLOY: 15 Special Pack definitions, % total pool rows, zero Stage-4 leaks, zero route-exclusive leaks (Lemon/Chocolate Magician Girl, Dark Magic Attack, and Dedication through Light and Darkness confirmed non-exclusive and correctly included in arcane_circle; Eternal Soul confirmed non-exclusive but deliberately not curated into any Special Pack).', v_pool_total;
 end $post_special_packs$;
 
 do $post_dark_magician_starters$

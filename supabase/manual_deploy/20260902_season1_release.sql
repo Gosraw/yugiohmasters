@@ -351,6 +351,27 @@ end $preflight_boss_reward_snapshot_notice$;
 -- unaffected - they are already false in the original seed and stay
 -- that way; nothing about this reconciliation changes them.
 --
+-- DESIGN CHANGE (2026-09-02, supersedes the LIVE-SAFETY
+-- RECONCILIATION note above): approved design was revised again -
+-- Magician Girls and their normal Spell/Trap support MUST remain
+-- obtainable through normal Draft/Shop/Packs. A Boss Path grant does
+-- NOT automatically make a card route-exclusive: a card may be
+-- granted by a Boss Path stage AND still be part of the normal
+-- eligible pool if it otherwise belongs there (i.e. is not outside
+-- the curated pool/cutoff, and was not explicitly designed as a
+-- route-only reward). Lemon Magician Girl and Chocolate Magician
+-- Girl are both ordinary, non-exclusive Magician Girl support within
+-- the curated pool/cutoff - there was never a design reason for
+-- either to be route-only. Both grants below are reverted back to
+-- is_route_exclusive = false (their original, pre-reconciliation
+-- value), and both cards are restored to the arcane_circle Special
+-- Pack pool in 202609021020 (280 cards again - see that file's own
+-- updated note). This does NOT retroactively touch any already-
+-- granted card_instances (bossg's existing Berry/Lemon/Chocolate
+-- ownership is untouched) and does NOT replay any Boss stage - it
+-- only changes the boss_route_stage_grants CONFIGURATION governing
+-- future eligibility and Special Pack pool membership.
+--
 -- The plain "Dark Magician" card (previously Stage 3's evolution
 -- monster) is no longer an evolution stage in the corrected chain.
 -- CORRECTED 2026-09-02: an earlier draft of this migration re-added
@@ -425,7 +446,7 @@ where s.route_id = r.id
 -- ---- Dark Magician: Stage 1 support additions ----
 
 insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
-select s.id, c.id, true, 1
+select s.id, c.id, false, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
@@ -435,7 +456,7 @@ on conflict (stage_id, card_catalog_id) do update set
   quantity = excluded.quantity;
 
 insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
-select s.id, c.id, true, 1
+select s.id, c.id, false, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
@@ -4070,6 +4091,19 @@ end $verify$;
 -- assumptions) - this edit removes the leak at the source instead
 -- of relying on the deploy-time check to merely detect it.
 --
+-- DESIGN CHANGE (2026-09-02, supersedes the LIVE-SAFETY
+-- RECONCILIATION note directly above): approved design was revised
+-- again - Magician Girls and their normal Spell/Trap support MUST
+-- remain obtainable through normal Draft/Shop/Packs. Per
+-- 202609020910's own updated note, Lemon Magician Girl and
+-- Chocolate Magician Girl are ordinary, non-exclusive Magician Girl
+-- support within the curated pool/cutoff and have been reverted back
+-- to is_route_exclusive = false. Both cards are restored to the
+-- arcane_circle pool below (278 -> 280 cards, back to this pack's
+-- originally-computed size). This is a pure pool-membership change -
+-- no other pack's card list is affected, and no already-granted
+-- card_instances are touched.
+--
 -- SAFETY
 -- Every pack definition and every pool row uses on conflict do
 -- nothing - re-running this migration never duplicates a pack or a
@@ -4748,7 +4782,9 @@ where c.name in (
     'Droll & Lock Bird',
     'Dance Princess of the Ice Barrier',
     'Maha Vailo',
-    'Merlin'
+    'Merlin',
+    'Lemon Magician Girl',
+    'Chocolate Magician Girl'
   )
 on conflict (pack_definition_id, card_catalog_id) do nothing;
 
@@ -8444,22 +8480,24 @@ begin
   select count(*) into v_pool_count from public.shop_special_pack_pool_cards;
   -- Season 1 audit round-2 (2026-09-02) hardening: was previously
   -- just a "not empty" check. Strengthened to an exact-count
-  -- assertion against 3978 (not 3980), the independently-recounted
-  -- true total after all pool corrections in this file (including
-  -- the Lemon/Chocolate Magician Girl removal from arcane_circle) -
-  -- verified by re-summing every pack's `where c.name in (...)`
-  -- literal list directly against this file's own source text.
-  -- A count below 3978 means at least one listed card name failed
-  -- to resolve against card_catalog (silent join miss); a count
-  -- above 3978 means an unexpected extra row was inserted somewhere.
-  -- Either way, that is real information this deploy must not
-  -- silently swallow.
+  -- assertion against 3980 (not 3978), the independently-recounted
+  -- true total after all pool corrections in this file - verified by
+  -- re-summing every pack's `where c.name in (...)` literal list
+  -- directly against this file's own source text. 3980 restores the
+  -- Lemon/Chocolate Magician Girl removal from a prior round's
+  -- LIVE-SAFETY RECONCILIATION, per the later DESIGN CHANGE note
+  -- above: both cards are ordinary, non-exclusive Magician Girl
+  -- support and belong back in arcane_circle. A count below 3980
+  -- means at least one listed card name failed to resolve against
+  -- card_catalog (silent join miss); a count above 3980 means an
+  -- unexpected extra row was inserted somewhere. Either way, that is
+  -- real information this deploy must not silently swallow.
   if v_pool_count = 0 then
     raise exception 'SPECIAL PACK SEED ABORTED: shop_special_pack_pool_cards is empty after seeding.';
   end if;
 
-  if v_pool_count <> 3978 then
-    raise exception 'SPECIAL PACK SEED ABORTED: expected exactly 3978 total pool rows across all 15 packs, found %. This means at least one card name in a pack''s pool list failed to resolve against card_catalog (or an unexpected extra row exists) - do not proceed without investigating which pack is short.', v_pool_count;
+  if v_pool_count <> 3980 then
+    raise exception 'SPECIAL PACK SEED ABORTED: expected exactly 3980 total pool rows across all 15 packs, found %. This means at least one card name in a pack''s pool list failed to resolve against card_catalog (or an unexpected extra row exists) - do not proceed without investigating which pack is short.', v_pool_count;
   end if;
 
   -- Real safety check: no pool row may reference a card that is any
@@ -8795,8 +8833,8 @@ begin
   end if;
 
   select count(*) into v_pool_total from public.shop_special_pack_pool_cards;
-  if v_pool_total <> 3978 then
-    raise exception 'POST-DEPLOY ABORTED: expected 3978 total shop_special_pack_pool_cards rows, found %. (Lemon/Chocolate Magician Girl were removed from arcane_circle during pre-deploy reconciliation, bringing the total from 3980 to 3978 - see the deployment notes.)', v_pool_total;
+  if v_pool_total <> 3980 then
+    raise exception 'POST-DEPLOY ABORTED: expected 3980 total shop_special_pack_pool_cards rows, found %. (Lemon/Chocolate Magician Girl were restored to arcane_circle per the 2026-09-02 design change - normal Magician Girl support must remain obtainable through Draft/Shop/Packs - bringing the total from 3978 back to 3980. See the deployment notes.)', v_pool_total;
   end if;
 
   select count(*) into v_stage4_leaks
@@ -8816,10 +8854,10 @@ begin
     where brg.card_catalog_id = spc.card_catalog_id and brg.is_route_exclusive = true
   );
   if v_exclusive_leaks <> 0 then
-    raise exception 'POST-DEPLOY ABORTED: % Special Pack pool row(s) reference an is_route_exclusive support card (check Lemon/Chocolate Magician Girl in particular).', v_exclusive_leaks;
+    raise exception 'POST-DEPLOY ABORTED: % Special Pack pool row(s) reference an is_route_exclusive support card.', v_exclusive_leaks;
   end if;
 
-  raise notice 'POST-DEPLOY: 15 Special Pack definitions, % total pool rows, zero Stage-4 leaks, zero route-exclusive leaks (including the reconciled Lemon/Chocolate Magician Girl check).', v_pool_total;
+  raise notice 'POST-DEPLOY: 15 Special Pack definitions, % total pool rows, zero Stage-4 leaks, zero route-exclusive leaks (Lemon/Chocolate Magician Girl confirmed non-exclusive and correctly included in arcane_circle).', v_pool_total;
 end $post_special_packs$;
 
 do $post_dark_magician_starters$

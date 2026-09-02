@@ -41,9 +41,15 @@
 //   4. SPECIAL PACK POOL EXACT-COUNT SAFETY NET
 //      This audit round's own Priority 9 patch to the combined deploy
 //      script (raising the seed-time check from "pool not empty" to
-//      "pool is exactly 3978 rows") is itself a single line that could
+//      "pool is exactly N rows") is itself a single line that could
 //      be silently reverted or weakened by a future edit with no other
-//      signal. This test guards that the patch is still present.
+//      signal. This test guards that the patch is still present. The
+//      expected count is 3980 (updated 2026-09-02): Lemon/Chocolate
+//      Magician Girl were briefly removed from arcane_circle (3978)
+//      by a since-superseded LIVE-SAFETY RECONCILIATION, then restored
+//      by an explicit design change - normal Magician Girl support
+//      must remain obtainable through Draft/Shop/Packs regardless of
+//      also being a Boss Path grant.
 //
 //   5. DUELIST CIRCLE CLASSIC FORMAT STAYS OFF BY DEFAULT
 //      Priority 5's central finding: the curated 6,181-card Classic
@@ -154,12 +160,52 @@ test("claim_welcome_packs() keeps its ON CONFLICT DO NOTHING idempotency guard i
 // ---------------------------------------------------------
 // 4. Special Pack pool exact-count safety net (this audit round's own patch)
 // ---------------------------------------------------------
-test("the combined deploy script still asserts the Special Pack pool is exactly 3978 rows at seed time", () => {
+test("the combined deploy script still asserts the Special Pack pool is exactly 3980 rows at seed time", () => {
   const sql = readMigration("supabase/manual_deploy/20260902_season1_release.sql");
   assert.match(
     sql,
-    /if v_pool_count <> 3978 then/,
-    "the exact-count seed-time assertion (added this audit round, Priority 9) is missing - without it, a card name in a pack's curated pool list that silently fails to resolve against card_catalog would go undetected until a player notices a Special Pack pulling fewer distinct cards than expected",
+    /if v_pool_count <> 3980 then/,
+    "the exact-count seed-time assertion (added this audit round, Priority 9; updated 2026-09-02 from 3978 to 3980 when Lemon/Chocolate Magician Girl were restored to arcane_circle) is missing - without it, a card name in a pack's curated pool list that silently fails to resolve against card_catalog would go undetected until a player notices a Special Pack pulling fewer distinct cards than expected",
+  );
+});
+
+test("Lemon Magician Girl and Chocolate Magician Girl are configured as non-exclusive Dark Magician Stage 1 support (2026-09-02 design change)", () => {
+  const sql = readMigration(
+    "supabase/migrations/202609020910_fix_dark_magician_and_cubic_route_data.sql",
+  );
+  assert.match(
+    sql,
+    /where r\.code = 'dark_magician' and s\.stage_number = 1 and c\.name = 'Lemon Magician Girl'/,
+    "the Lemon Magician Girl Stage 1 support grant is missing from 202609020910",
+  );
+  assert.match(
+    sql,
+    /where r\.code = 'dark_magician' and s\.stage_number = 1 and c\.name = 'Chocolate Magician Girl'/,
+    "the Chocolate Magician Girl Stage 1 support grant is missing from 202609020910",
+  );
+  const grantBlockMatches = sql.match(/select s\.id, c\.id, (true|false), 1/g) ?? [];
+  assert.strictEqual(
+    grantBlockMatches.length,
+    2,
+    "expected exactly 2 boss_route_stage_grants inserts (Lemon + Chocolate) in this migration",
+  );
+  for (const m of grantBlockMatches) {
+    assert.match(
+      m,
+      /select s\.id, c\.id, false, 1/,
+      "Lemon/Chocolate Magician Girl must be granted with is_route_exclusive = false - approved design requires Magician Girls and their normal Spell/Trap support to remain obtainable through normal Draft/Shop/Packs; a Boss Path grant does not automatically make a card route-exclusive",
+    );
+  }
+});
+
+test("Lemon Magician Girl and Chocolate Magician Girl are present in the arcane_circle Special Pack pool (2026-09-02 design change)", () => {
+  const sql = readMigration(
+    "supabase/migrations/202609021020_special_pack_15_definitions_and_pools.sql",
+  );
+  assert.match(
+    sql,
+    /'Lemon Magician Girl',\s*'Chocolate Magician Girl'/,
+    "Lemon Magician Girl / Chocolate Magician Girl are missing from the arcane_circle pool - they are ordinary, non-exclusive Magician Girl support within the curated pool/cutoff and must remain obtainable through Draft/Shop/Packs",
   );
 });
 

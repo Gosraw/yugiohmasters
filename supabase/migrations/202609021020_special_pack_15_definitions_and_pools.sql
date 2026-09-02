@@ -60,6 +60,19 @@ begin;
 -- assumptions) - this edit removes the leak at the source instead
 -- of relying on the deploy-time check to merely detect it.
 --
+-- DESIGN CHANGE (2026-09-02, supersedes the LIVE-SAFETY
+-- RECONCILIATION note directly above): approved design was revised
+-- again - Magician Girls and their normal Spell/Trap support MUST
+-- remain obtainable through normal Draft/Shop/Packs. Per
+-- 202609020910's own updated note, Lemon Magician Girl and
+-- Chocolate Magician Girl are ordinary, non-exclusive Magician Girl
+-- support within the curated pool/cutoff and have been reverted back
+-- to is_route_exclusive = false. Both cards are restored to the
+-- arcane_circle pool below (278 -> 280 cards, back to this pack's
+-- originally-computed size). This is a pure pool-membership change -
+-- no other pack's card list is affected, and no already-granted
+-- card_instances are touched.
+--
 -- SAFETY
 -- Every pack definition and every pool row uses on conflict do
 -- nothing - re-running this migration never duplicates a pack or a
@@ -738,7 +751,9 @@ where c.name in (
     'Droll & Lock Bird',
     'Dance Princess of the Ice Barrier',
     'Maha Vailo',
-    'Merlin'
+    'Merlin',
+    'Lemon Magician Girl',
+    'Chocolate Magician Girl'
   )
 on conflict (pack_definition_id, card_catalog_id) do nothing;
 

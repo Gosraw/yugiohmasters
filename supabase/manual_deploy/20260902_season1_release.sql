@@ -217,6 +217,93 @@ begin
 end $preflight_snapshot_notice$;
 
 -- =========================================================
+-- Season 1 audit round-3 (2026-09-02) hardening: BOSS ROUTE
+-- REWARD-CARD PRESERVATION SNAPSHOT (ALL existing Boss Route
+-- participants, not just bossg/samo/fardin).
+--
+-- WHY
+-- This deploy corrects boss_route_stages / boss_route_stage_grants
+-- CONFIGURATION data (stage identities, duplicate support-grant
+-- removals) for several routes. _boss_route_grant_stage()
+-- (202609012000_boss_route_rpcs.sql) only ever grants a stage's
+-- cards ONCE per (player_boss_path_id, stage_number) - gated by the
+-- player_boss_stage_unlocks unique constraint, checked BEFORE any
+-- card_instances insert - and is only ever invoked from
+-- choose_boss_path(), unlock_second_third_boss_path(), or
+-- evolve_boss_stage(), all three player-initiated, idempotent, and
+-- gated on forward-only state transitions (current_stage can only
+-- advance by exactly 1 per call, and a repeat call for an
+-- already-reached stage is a verified no-op). Nothing in this
+-- database ever re-reads boss_route_stages/boss_route_stage_grants
+-- for an already-unlocked stage, and no trigger exists on either
+-- table (confirmed by exhaustive repo-wide audit, 2026-09-02) - so
+-- changing that configuration data cannot, by itself, grant, remove,
+-- or alter any existing player's card_instances. This snapshot is
+-- the independent, deploy-time proof of that claim: it captures
+-- every existing Boss Route participant's exact reward-card
+-- ownership before this script makes any changes; the POST-DEPLOY
+-- check re-derives the same thing afterward and aborts the whole
+-- deploy on any difference.
+--
+-- Boss Route reward cards are identified precisely as card_instances
+-- rows whose original_source_id points at one of that player's own
+-- player_boss_paths rows (set by _boss_route_grant_stage itself) -
+-- not merely by original_acquisition_type = 'achievement' alone,
+-- since that enum value could in principle be reused by a future,
+-- unrelated card-granting system; the source-id join keeps this
+-- check precisely scoped to Boss Route grants regardless.
+-- =========================================================
+
+create temporary table pre_deploy_boss_reward_snapshot on commit drop as
+select
+  pbp_all.profile_id,
+  p.username,
+  (
+    select string_agg(
+      format('%s:%s:%s:%s', pbp.route_slot, pbp.route_id, pbp.current_stage, coalesce(pbp.mastered_at::text, 'null')),
+      '|' order by pbp.route_slot
+    )
+    from public.player_boss_paths pbp
+    where pbp.profile_id = pbp_all.profile_id
+  ) as route_progress_signature,
+  (
+    select count(*)
+    from public.card_instances ci
+    join public.player_boss_paths pbp2 on pbp2.id = ci.original_source_id
+    where ci.original_acquisition_type = 'achievement'
+      and pbp2.profile_id = pbp_all.profile_id
+  ) as boss_reward_card_count,
+  (
+    select coalesce(
+      string_agg(format('%s:%s', x.card_catalog_id, x.card_count), '|' order by x.card_catalog_id),
+      ''
+    )
+    from (
+      select ci.card_catalog_id, count(*) as card_count
+      from public.card_instances ci
+      join public.player_boss_paths pbp2 on pbp2.id = ci.original_source_id
+      where ci.original_acquisition_type = 'achievement'
+        and pbp2.profile_id = pbp_all.profile_id
+      group by ci.card_catalog_id
+    ) x
+  ) as boss_reward_card_signature
+from (select distinct profile_id from public.player_boss_paths) pbp_all
+join public.profiles p on p.id = pbp_all.profile_id;
+
+do $preflight_boss_reward_snapshot_notice$
+declare
+  v_player_count int;
+  v_total_reward_cards int;
+begin
+  select count(*), coalesce(sum(boss_reward_card_count), 0)
+  into v_player_count, v_total_reward_cards
+  from pre_deploy_boss_reward_snapshot;
+
+  raise notice 'PRE-FLIGHT BOSS REWARD SNAPSHOT: % existing Boss Route participant(s) captured, % total Boss Route reward card(s) owned across all of them - this exact set must be byte-identical after the deploy.',
+    v_player_count, v_total_reward_cards;
+end $preflight_boss_reward_snapshot_notice$;
+
+-- =========================================================
 -- SECTION: 202609020910_fix_dark_magician_and_cubic_route_data.sql
 -- =========================================================
 
@@ -8862,6 +8949,87 @@ begin
 
   raise notice 'POST-DEPLOY: bossg/samo/fardin exact Boss Route and Initial Draft progress signatures confirmed UNCHANGED by this deploy.';
 end $post_unchanged_state$;
+
+-- =========================================================
+-- Season 1 audit round-3 (2026-09-02) hardening: BOSS ROUTE
+-- REWARD-CARD PRESERVATION CHECK (ALL existing Boss Route
+-- participants). Pairs with pre_deploy_boss_reward_snapshot above.
+--
+-- Deliberately does NOT read boss_route_stages or
+-- boss_route_stage_grants at all - only player_boss_paths (progress)
+-- and card_instances (actual owned cards) - so a pure route
+-- CONFIGURATION change made by this same deploy (stage-identity
+-- fixes, duplicate support-grant removals, etc.) can never trip this
+-- check. It fails only if an existing player's actual progress or
+-- actual owned reward cards changed, which must never happen from a
+-- configuration-only migration.
+-- =========================================================
+
+do $post_boss_reward_preservation$
+declare
+  v_changed_count int;
+  v_changed_detail text;
+  v_snapshot_player_count int;
+begin
+  select count(*) into v_snapshot_player_count from pre_deploy_boss_reward_snapshot;
+
+  select
+    count(*),
+    string_agg(
+      format(
+        '%s (route progress before="%s" after="%s"; reward count before=%s after=%s; reward cards before="%s" after="%s")',
+        snap.username,
+        snap.route_progress_signature, now_state.route_progress_signature,
+        snap.boss_reward_card_count, now_state.boss_reward_card_count,
+        snap.boss_reward_card_signature, now_state.boss_reward_card_signature
+      ),
+      '; '
+    )
+  into v_changed_count, v_changed_detail
+  from pre_deploy_boss_reward_snapshot snap
+  join lateral (
+    select
+      (
+        select string_agg(
+          format('%s:%s:%s:%s', pbp.route_slot, pbp.route_id, pbp.current_stage, coalesce(pbp.mastered_at::text, 'null')),
+          '|' order by pbp.route_slot
+        )
+        from public.player_boss_paths pbp
+        where pbp.profile_id = snap.profile_id
+      ) as route_progress_signature,
+      (
+        select count(*)
+        from public.card_instances ci
+        join public.player_boss_paths pbp2 on pbp2.id = ci.original_source_id
+        where ci.original_acquisition_type = 'achievement'
+          and pbp2.profile_id = snap.profile_id
+      ) as boss_reward_card_count,
+      (
+        select coalesce(
+          string_agg(format('%s:%s', x.card_catalog_id, x.card_count), '|' order by x.card_catalog_id),
+          ''
+        )
+        from (
+          select ci.card_catalog_id, count(*) as card_count
+          from public.card_instances ci
+          join public.player_boss_paths pbp2 on pbp2.id = ci.original_source_id
+          where ci.original_acquisition_type = 'achievement'
+            and pbp2.profile_id = snap.profile_id
+          group by ci.card_catalog_id
+        ) x
+      ) as boss_reward_card_signature
+  ) now_state on true
+  where now_state.route_progress_signature is distinct from snap.route_progress_signature
+     or now_state.boss_reward_card_count is distinct from snap.boss_reward_card_count
+     or now_state.boss_reward_card_signature is distinct from snap.boss_reward_card_signature;
+
+  if v_changed_count > 0 then
+    raise exception 'POST-DEPLOY ABORTED: % of % existing Boss Route participant(s) had their route progress or Boss Route reward-card ownership change during this deploy. This must NEVER happen from a boss_route_stages/boss_route_stage_grants CONFIGURATION change alone - existing rewards are grandfathered. Details: %', v_changed_count, v_snapshot_player_count, v_changed_detail;
+  end if;
+
+  raise notice 'POST-DEPLOY: all % existing Boss Route participant(s) confirmed to have IDENTICAL route progress and Boss Route reward-card ownership before and after this deploy - zero retroactive grants, zero losses.',
+    v_snapshot_player_count;
+end $post_boss_reward_preservation$;
 
 do $post_final_summary$
 begin

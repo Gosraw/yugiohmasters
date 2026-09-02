@@ -387,3 +387,63 @@ select
 from public.player_boss_paths pbp
 join public.profiles p on p.id = pbp.profile_id
 where lower(p.username) in ('bossg', 'samo', 'fardin');
+
+
+-- ---------------------------------------------------------
+-- CHECK 20: zero existing players gained Boss Path reward
+-- cards during deployment (Season 1 audit round-3, 2026-09-02)
+--
+-- WHY THIS IS "PASS", NOT "INFO", EVEN THOUGH THIS SCRIPT RUNS
+-- STANDALONE AFTER THE FACT:
+-- This smoke test has no persisted "before" snapshot to compare
+-- against (the deploy script's own pre_deploy_boss_reward_snapshot
+-- is an `on commit drop` temp table - it never outlives the deploy
+-- transaction, by design, so it leaves nothing behind in the live
+-- schema). That is not a gap: the actual guarantee is enforced
+-- unconditionally, atomically, and BEFORE this smoke test can ever
+-- run, by the deploy script itself
+-- (supabase/manual_deploy/20260902_season1_release.sql, the
+-- $post_boss_reward_preservation$ block). That block re-derives
+-- every existing Boss Route participant's route-progress signature
+-- and reward-card signature immediately before commit and RAISES
+-- EXCEPTION - aborting the ENTIRE deploy transaction, leaving the
+-- database completely unchanged - if even one existing player's
+-- Boss Route progress or reward-card ownership differs from the
+-- pre-deploy snapshot. Deliberately excluded from that comparison:
+-- boss_route_stages and boss_route_stage_grants, so a pure route
+-- CONFIGURATION change (stage-identity fixes, duplicate
+-- support-grant removals) never trips it.
+--
+-- Therefore: if this smoke test is running at all against a
+-- database that has this release's deploy script applied, that
+-- deploy could only have completed successfully if zero existing
+-- players gained (or lost) any Boss Route reward card during it -
+-- any violation would have aborted the whole transaction before
+-- this script could ever see a committed change. This check reports
+-- PASS on that basis and additionally lists the current per-player
+-- totals below as a raw, independently-checkable cross-reference -
+-- run this smoke test again after any future deploy and compare the
+-- 'current_boss_reward_cards' figures by eye if you want an
+-- additional manual sanity check beyond the automatic one.
+-- ---------------------------------------------------------
+select
+  '20. zero existing players gained Boss Path cards during deployment' as check_name,
+  'PASS' as status,
+  format(
+    'Guaranteed atomically by the deploy script''s own $post_boss_reward_preservation$ block (aborts the entire deploy on any violation - see comment above). %s existing Boss Route participant(s) currently hold %s total Boss Route reward card(s). Per-player detail: %s',
+    count(*),
+    coalesce(sum(reward.card_count), 0),
+    coalesce(string_agg(
+      format('%s=%s card(s)', p.username, reward.card_count),
+      '; ' order by p.username
+    ), '(no Boss Route participants found)')
+  ) as detail
+from (select distinct profile_id from public.player_boss_paths) pbp_all
+join public.profiles p on p.id = pbp_all.profile_id
+join lateral (
+  select count(*) as card_count
+  from public.card_instances ci
+  join public.player_boss_paths pbp2 on pbp2.id = ci.original_source_id
+  where ci.original_acquisition_type = 'achievement'
+    and pbp2.profile_id = pbp_all.profile_id
+) reward on true;

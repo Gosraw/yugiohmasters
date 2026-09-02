@@ -43,6 +43,23 @@ begin;
 -- safety check, not a re-statement of this migration's own python-
 -- side computation.
 --
+-- LIVE-SAFETY RECONCILIATION (2026-09-02, pre-deploy review):
+-- 'Lemon Magician Girl' and 'Chocolate Magician Girl' were
+-- originally included in the arcane_circle pool below, computed
+-- against 202609020910's ORIGINAL (buggy) is_route_exclusive =
+-- false value for both. Production already has both cards manually
+-- set to is_route_exclusive = true (202609020910 has been corrected
+-- to match, see that file's own reconciliation note), which means
+-- both cards are actually Boss-Route-exclusive and must not appear
+-- in any Special Pack pool. Both have been removed from
+-- arcane_circle's card list below (280 -> 278 cards); no other pack
+-- referenced either card. The do $verify$ block's live
+-- is_route_exclusive leak check would have caught this at deploy
+-- time regardless (that check re-derives exclusivity from the live
+-- boss_route_stage_grants table, not from this migration's own
+-- assumptions) - this edit removes the leak at the source instead
+-- of relying on the deploy-time check to merely detect it.
+--
 -- SAFETY
 -- Every pack definition and every pool row uses on conflict do
 -- nothing - re-running this migration never duplicates a pack or a
@@ -577,7 +594,6 @@ where c.name in (
     'Elemental Grace Doriado',
     'Ice Master',
     'Delg the Dark Monarch',
-    'Lemon Magician Girl',
     'Gambler of Legend',
     'Chaos Sorcerer',
     'Subterror Fiendess',
@@ -614,7 +630,6 @@ where c.name in (
     'Dogmatika Theo, the Iron Punch',
     'Fortune Lady Water',
     'Strategist of the Ice Barrier',
-    'Chocolate Magician Girl',
     'Royal Magical Library',
     'Number 78: Number Archive',
     'Fortune Fairy Chee',

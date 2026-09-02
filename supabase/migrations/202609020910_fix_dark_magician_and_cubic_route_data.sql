@@ -25,6 +25,25 @@ begin;
 -- update), so it is safe to run against a database that already
 -- has the old OR the manually-corrected data.
 --
+-- LIVE-SAFETY RECONCILIATION (2026-09-02, pre-deploy review):
+-- production already has Lemon Magician Girl and Chocolate
+-- Magician Girl as Stage 1 grants, both manually set
+-- is_route_exclusive = true. This file originally hardcoded both
+-- inserts to is_route_exclusive = false, which the `on conflict do
+-- update set is_route_exclusive = excluded.is_route_exclusive`
+-- clause would have silently flipped back to false on deploy -
+-- clobbering an intended live fix and, worse, reopening a Special
+-- Pack pool leak (both cards had been curated into the
+-- arcane_circle pool on the false assumption that they were
+-- ordinary, non-exclusive support - removed from that pool in
+-- 202609021020 as part of this same reconciliation). Both inserts
+-- below now use true, matching the confirmed-correct live state;
+-- the on-conflict clause is therefore idempotent in both directions
+-- (true -> true) rather than clobbering true -> false. Skilled Dark
+-- Magician / Old Vindictive Magician / Magical Dimension are
+-- unaffected - they are already false in the original seed and stay
+-- that way; nothing about this reconciliation changes them.
+--
 -- The plain "Dark Magician" card (previously Stage 3's evolution
 -- monster) is no longer an evolution stage in the corrected chain.
 -- CORRECTED 2026-09-02: an earlier draft of this migration re-added
@@ -99,7 +118,7 @@ where s.route_id = r.id
 -- ---- Dark Magician: Stage 1 support additions ----
 
 insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
-select s.id, c.id, false, 1
+select s.id, c.id, true, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c
@@ -109,7 +128,7 @@ on conflict (stage_id, card_catalog_id) do update set
   quantity = excluded.quantity;
 
 insert into public.boss_route_stage_grants (stage_id, card_catalog_id, is_route_exclusive, quantity)
-select s.id, c.id, false, 1
+select s.id, c.id, true, 1
 from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 cross join public.card_catalog c

@@ -2297,6 +2297,8 @@ declare
   v_expected int;
   v_actual int;
   v_mismatch record;
+  v_harpie_old_count int;
+  v_harpie_final_count int;
 begin
 
   with target_values (route_code, stage_number, card_name) as (
@@ -2434,8 +2436,16 @@ begin
       'BOSS ROUTE STAGE IDENTITY FIX ABORTED: % of % target (route, stage) cells do not match the final spec card after the update.', v_actual, v_expected;
   end if;
 
-  -- Confirm Dinosaur and Harpie were left untouched (still pointing
-  -- at their pre-existing seed cards, not silently altered).
+  -- Confirm Dinosaur is in a state this release recognizes. This
+  -- migration never touches dinosaur - its own stage-identity fix is
+  -- 202609020990, later in this script - so historically this guard
+  -- only ever expected the untouched old seed card. Production may
+  -- now have been partially updated by an earlier non-transactional
+  -- deploy attempt (one that did not roll back as a single
+  -- transaction), so 202609020990 may already have run successfully
+  -- against live before this combined re-run. Both the old seed card
+  -- and 202609020990's final card are therefore legitimate; anything
+  -- else is a real anomaly, not a partial deploy, and still aborts.
   select r.code, brs.stage_number
     into v_mismatch
   from public.boss_routes r
@@ -2443,32 +2453,53 @@ begin
   join public.card_catalog c on c.id = brs.evolution_card_catalog_id
   where r.code = 'dinosaur'
     and brs.stage_number = 4
-    and c.name <> 'Ultimate Conductor Tyranno';
+    and c.name not in ('Ultimate Conductor Tyranno', 'Transcendosaurus Gigantozowler');
 
   if found then
     raise exception
-      'BOSS ROUTE STAGE IDENTITY FIX ABORTED: dinosaur stage 4 was unexpectedly modified.';
+      'BOSS ROUTE STAGE IDENTITY FIX ABORTED: dinosaur stage 4 is neither the old seed card (Ultimate Conductor Tyranno) nor 202609020990''s final card (Transcendosaurus Gigantozowler) - unexpected state, investigate before deploying.';
   end if;
 
-  select r.code, brs.stage_number
-    into v_mismatch
+  -- Confirm Harpie is in a state this release recognizes: either the
+  -- full old seed chain, or the full final chain applied later in
+  -- this script by 202609021010 (legitimate if an earlier
+  -- non-transactional deploy attempt already ran it against live).
+  -- Unlike dinosaur, harpie's fix applies all 4 stages in a single
+  -- multi-row UPDATE statement with no unique-constraint collision
+  -- risk (see 202609021010's own header) - a single SQL statement is
+  -- always atomic in Postgres even outside an explicit transaction,
+  -- so that statement either leaves all 4 stages old or all 4 final,
+  -- never a per-stage mix. A mix can therefore only mean some other,
+  -- unrelated write touched harpie's rows - a real anomaly, not a
+  -- legitimate partial state from this release - and still aborts.
+  select
+    count(*) filter (
+      where (brs.stage_number = 1 and c.name = 'Harpie Lady')
+         or (brs.stage_number = 2 and c.name = 'Harpie Lady Sisters')
+         or (brs.stage_number = 3 and c.name = 'Harpie Queen')
+         or (brs.stage_number = 4 and c.name = 'Harpie''s Pet Dragon')
+    ),
+    count(*) filter (
+      where (brs.stage_number = 1 and c.name = 'Harpie Lady')
+         or (brs.stage_number = 2 and c.name = 'Harpie Channeler')
+         or (brs.stage_number = 3 and c.name = 'Harpie''s Pet Phantasmal Dragon')
+         or (brs.stage_number = 4 and c.name = 'Harpie''s Pet Dragon - Fearsome Fire Blast')
+    )
+    into v_harpie_old_count, v_harpie_final_count
   from public.boss_routes r
   join public.boss_route_stages brs on brs.route_id = r.id
   join public.card_catalog c on c.id = brs.evolution_card_catalog_id
-  where r.code = 'harpie'
-    and (
-      (brs.stage_number = 1 and c.name <> 'Harpie Lady') or
-      (brs.stage_number = 2 and c.name <> 'Harpie Lady Sisters') or
-      (brs.stage_number = 3 and c.name <> 'Harpie Queen') or
-      (brs.stage_number = 4 and c.name <> 'Harpie''s Pet Dragon')
-    );
+  where r.code = 'harpie';
 
-  if found then
+  if not (
+    (v_harpie_old_count = 4 and v_harpie_final_count = 0)
+    or (v_harpie_old_count = 0 and v_harpie_final_count = 4)
+  ) then
     raise exception
-      'BOSS ROUTE STAGE IDENTITY FIX ABORTED: harpie route was unexpectedly modified.';
+      'BOSS ROUTE STAGE IDENTITY FIX ABORTED: harpie route is neither fully at the old seed chain nor fully at the final spec chain (% of 4 stages match old, % of 4 match final) - unexpected/mixed state, investigate before deploying.', v_harpie_old_count, v_harpie_final_count;
   end if;
 
-  raise notice 'BOSS ROUTE STAGE IDENTITY FIX: 53 (route, stage) cells across 16 routes now match the final spec. dinosaur and harpie confirmed untouched.';
+  raise notice 'BOSS ROUTE STAGE IDENTITY FIX: 53 (route, stage) cells across 16 routes now match the final spec. dinosaur and harpie each confirmed to be either still at their pre-existing seed chain or already fully advanced to their own final chain (202609020990 / 202609021010 apply later in this script, and may already have run against live in an earlier partial deploy attempt) - neither shows a mixed or unrecognized state.';
 end $verify$;
 
 -- =========================================================

@@ -35,12 +35,6 @@ import type {
   MatchResultActionState,
 } from "@/app/actions/competitions";
 
-// =========================================================
-// TYPES (kept in this file so the server page has one place to
-// import shapes from - no separate types file for something this
-// small)
-// =========================================================
-
 export type TonightProfile = {
   id: string;
   username: string | null;
@@ -77,6 +71,7 @@ export type TonightBossPath = {
 
 type CompetitionTonightFlowProps = {
   competitionId: string;
+  currentUserId: string;
   matchFormat: "single_duel" | "best_of_3";
   currentRound: number | null;
   totalRounds: number | null;
@@ -85,10 +80,6 @@ type CompetitionTonightFlowProps = {
   bossPaths: TonightBossPath[];
 };
 
-// =========================================================
-// HELPERS
-// =========================================================
-
 function labelFor(
   profiles: TonightProfile[],
   profileId: string
@@ -96,20 +87,6 @@ function labelFor(
   const profile = profiles.find((p) => p.id === profileId);
   return profile?.duelist_name ?? profile?.username ?? "Duelist";
 }
-
-// =========================================================
-// BOSS PROGRESS - single Y/N event row
-//
-// A thin client-side wrapper around confirmBossAchievementEvent -
-// called directly (not as a <form action>) so this stays a simple
-// optimistic YES/NO toggle instead of a full form round-trip. The
-// RPC itself is idempotent (on conflict do nothing) and enforces
-// that the caller is the match's OPPONENT, so a rejection here
-// (e.g. logged in as the path owner instead of their opponent) is
-// shown inline rather than silently ignored - that authorization
-// rule is the existing, already-built confirmation system and is
-// intentionally left untouched.
-// =========================================================
 
 function BossEventRow({
   matchId,
@@ -208,16 +185,9 @@ function BossEventRow({
   );
 }
 
-// =========================================================
-// ONE MATCH'S STEP SEQUENCE
-//
-// Keyed by match.id from the parent so navigating to the next
-// match remounts this component fresh (phase resets to "pre")
-// instead of carrying over state from the previous match.
-// =========================================================
-
 function MatchWizard({
   competitionId,
+  currentUserId,
   match,
   matchFormat,
   profiles,
@@ -225,6 +195,7 @@ function MatchWizard({
   hasNextMatch,
 }: {
   competitionId: string;
+  currentUserId: string;
   match: TonightMatch;
   matchFormat: "single_duel" | "best_of_3";
   profiles: TonightProfile[];
@@ -248,15 +219,23 @@ function MatchWizard({
   const playerOneLabel = labelFor(profiles, match.player_one_id);
   const playerTwoLabel = labelFor(profiles, match.player_two_id);
 
-  const relevantBossPaths = bossPaths.filter(
-    (path) =>
-      path.profileId === match.player_one_id ||
-      path.profileId === match.player_two_id
-  );
+  const currentUserIsPlayer =
+    currentUserId === match.player_one_id || currentUserId === match.player_two_id;
 
-  const hasBossQuestions = relevantBossPaths.some(
-    (path) => path.events.length > 0
-  );
+  const opponentProfileId = currentUserIsPlayer
+    ? currentUserId === match.player_one_id
+      ? match.player_two_id
+      : match.player_one_id
+    : null;
+
+  const confirmableBossPaths = opponentProfileId
+    ? bossPaths.filter(
+        (path) =>
+          path.profileId === opponentProfileId && path.events.length > 0
+      )
+    : [];
+
+  const hasBossQuestions = confirmableBossPaths.length > 0;
 
   return (
     <div className="mt-4 panel p-4">
@@ -315,25 +294,23 @@ function MatchWizard({
             Boss Progress
           </p>
 
-          {relevantBossPaths
-            .filter((path) => path.events.length > 0)
-            .map((path) => (
-              <div key={path.id} className="space-y-1.5">
-                <p className="text-[11px] font-black text-zinc-400">
-                  {labelFor(profiles, path.profileId)} · {path.routeName}{" "}
-                  (Stage {path.currentStage})
-                </p>
+          {confirmableBossPaths.map((path) => (
+            <div key={path.id} className="space-y-1.5">
+              <p className="text-[11px] font-black text-zinc-400">
+                Confirm {labelFor(profiles, path.profileId)} · {path.routeName}{" "}
+                (Stage {path.currentStage})
+              </p>
 
-                {path.events.map((event) => (
-                  <BossEventRow
-                    key={event.id}
-                    matchId={match.id}
-                    playerBossPathId={path.id}
-                    event={event}
-                  />
-                ))}
-              </div>
-            ))}
+              {path.events.map((event) => (
+                <BossEventRow
+                  key={event.id}
+                  matchId={match.id}
+                  playerBossPathId={path.id}
+                  event={event}
+                />
+              ))}
+            </div>
+          ))}
 
           <button
             type="button"
@@ -381,13 +358,9 @@ function MatchWizard({
   );
 }
 
-// =========================================================
-// PAGE-LEVEL FLOW: picks the current match (or shows a "nothing
-// left to play" state) and hands it to MatchWizard.
-// =========================================================
-
 export function CompetitionTonightFlow({
   competitionId,
+  currentUserId,
   matchFormat,
   currentRound,
   matches,
@@ -447,6 +420,7 @@ export function CompetitionTonightFlow({
       <MatchWizard
         key={currentMatch.id}
         competitionId={competitionId}
+        currentUserId={currentUserId}
         match={currentMatch}
         matchFormat={matchFormat}
         profiles={profiles}

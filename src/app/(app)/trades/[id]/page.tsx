@@ -110,6 +110,12 @@ type CardCatalog = {
   // Track 6 (2026-08-27) - real Monster Type/Race from card_catalog
   // (indexed). See src/lib/card-race.ts.
   race: string | null;
+  archetype: string | null;
+  description: string | null;
+  attribute: string | null;
+  monster_type: string | null;
+  level: number | null;
+  rank: number | null;
   game_rarity: string | null;
   rarity_score: number | null;
   atk: number | null;
@@ -554,7 +560,7 @@ export default async function TradeDetailPage({
       } = await supabase
         .from("card_catalog")
         .select(
-          "id,name,image_url,card_type,race,game_rarity,rarity_score,atk,def"
+          "id,name,image_url,card_type,race,archetype,description,attribute,monster_type,level,rank,game_rarity,rarity_score,atk,def"
         )
         .in(
           "id",

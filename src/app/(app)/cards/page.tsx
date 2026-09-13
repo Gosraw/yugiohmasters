@@ -73,19 +73,30 @@ export default async function CardsPage({
     );
 
   if (q) {
-    // Name OR effect text OR archetype, case-insensitive - reuses this
-    // same query builder rather than a separate search service. Commas
-    // and parentheses are stripped before building the PostgREST
-    // .or() filter string below since those characters are part of
-    // its own filter grammar (comma separates conditions, parens are
-    // reserved) - safe to drop for a card-name/effect search, and
-    // avoids either a broken filter or a query-injection surface from
-    // unescaped user input.
-    const safeQ = q.replace(/[,()]/g, "");
+    // Multi-field search: every typed word must match somewhere on the
+    // card, but the words may live in different columns. That makes
+    // searches such as "machine", "dark spellcaster" and "quick effect"
+    // behave naturally instead of only matching the card name.
+    const terms = q
+      .replace(/[,()]/g, " ")
+      .trim()
+      .split(/\\s+/)
+      .filter(Boolean);
 
-    query = query.or(
-      `name.ilike.%${safeQ}%,description.ilike.%${safeQ}%,archetype.ilike.%${safeQ}%`
-    );
+    for (const term of terms) {
+      query = query.or(
+        [
+          `name.ilike.%${term}%`,
+          `description.ilike.%${term}%`,
+          `archetype.ilike.%${term}%`,
+          `race.ilike.%${term}%`,
+          `monster_type.ilike.%${term}%`,
+          `attribute.ilike.%${term}%`,
+          `card_type.ilike.%${term}%`,
+          `game_rarity.ilike.%${term}%`,
+        ].join(",")
+      );
+    }
   }
 
   if (rarity) {
@@ -265,7 +276,7 @@ export default async function CardsPage({
             <input
               name="q"
               defaultValue={q}
-              placeholder="Search name, effect text or archetype..."
+              placeholder="Search name, effect, archetype, type, attribute..."
               className="field pl-10"
             />
           </label>

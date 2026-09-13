@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { matchesRace } from "@/lib/card-race";
+import { matchesCardSearch } from "@/lib/card-search";
 
 // =========================================================
 // SHARED COLLECTION LOGIC
@@ -307,22 +308,9 @@ export function filterAndSortCollection(
   let result = groups;
 
   if (q) {
-    // Name OR effect text OR archetype, case-insensitive - matches
-    // the same three-field search the /cards catalog page uses, so
-    // "what matches a search" means one consistent thing everywhere
-    // in the app rather than a name-only search here and a wider one
-    // there.
-    result = result.filter((group) => {
-      const name = group.card.name.toLowerCase();
-      const description = group.card.description?.toLowerCase() ?? "";
-      const archetype = group.card.archetype?.toLowerCase() ?? "";
-
-      return (
-        name.includes(q) ||
-        description.includes(q) ||
-        archetype.includes(q)
-      );
-    });
+    result = result.filter((group) =>
+      matchesCardSearch(group.card, q)
+    );
   }
 
   if (rarity) {

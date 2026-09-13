@@ -24,6 +24,7 @@ import { DeckActionButton } from "@/components/deck-action-button";
 import { useDeckLiveComposition } from "@/components/deck-live-composition";
 import { MasterDuelBadge } from "@/components/master-duel-badge";
 import { MONSTER_RACES, matchesRace } from "@/lib/card-race";
+import { matchesCardSearch } from "@/lib/card-search";
 
 // Query param keys this browser mirrors its filters into, so
 // leaving the page (e.g. tapping a card to inspect it, or
@@ -59,6 +60,7 @@ export type DeckBrowserCard = {
     // here) the live composition summary. See CardCatalogItem in
     // decks/[id]/page.tsx for where these are fetched.
     archetype: string | null;
+    description: string | null;
     monster_type: string | null;
     attribute: string | null;
     // Track 5 (2026-08-27) - see src/lib/card-race.ts.
@@ -486,11 +488,10 @@ export function DeckCollectionBrowser({
 
             if (
               normalizedSearch &&
-              !card.name
-                .toLowerCase()
-                .includes(
-                  normalizedSearch
-                )
+              !matchesCardSearch(
+                card,
+                normalizedSearch
+              )
             ) {
               return false;
             }

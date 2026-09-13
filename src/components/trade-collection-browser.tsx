@@ -30,6 +30,7 @@ import {
   MONSTER_RACES,
   matchesRace,
 } from "@/lib/card-race";
+import { matchesCardSearch } from "@/lib/card-search";
 
 // =========================================================
 // TYPES
@@ -49,6 +50,30 @@ export type TradeBrowserCard = {
     // card_catalog (indexed). See src/lib/card-race.ts.
     race:
       | string
+      | null;
+
+    archetype:
+      | string
+      | null;
+
+    description:
+      | string
+      | null;
+
+    attribute:
+      | string
+      | null;
+
+    monster_type:
+      | string
+      | null;
+
+    level:
+      | number
+      | null;
+
+    rank:
+      | number
       | null;
 
     game_rarity:
@@ -319,11 +344,10 @@ export function TradeCollectionBrowser({
 
             if (
               normalizedSearch &&
-              !card.name
-                .toLowerCase()
-                .includes(
-                  normalizedSearch
-                )
+              !matchesCardSearch(
+                card,
+                normalizedSearch
+              )
             ) {
               return false;
             }

@@ -162,6 +162,10 @@ type CardCatalogItem = {
     | string
     | null;
 
+  description:
+    | string
+    | null;
+
   monster_type:
     | string
     | null;
@@ -823,7 +827,7 @@ export default async function DeckBuilderPage({
         "card_catalog"
       )
       .select(
-        "id,name,image_url,card_type,atk,def,game_rarity,rarity_score,format_eligible,master_duel_status,external_card_id,master_duel_card_id,archetype,monster_type,attribute,race,level,rank,link_rating"
+        "id,name,image_url,card_type,atk,def,game_rarity,rarity_score,format_eligible,master_duel_status,external_card_id,master_duel_card_id,archetype,description,monster_type,attribute,race,level,rank,link_rating"
       )
       .in(
         "id",

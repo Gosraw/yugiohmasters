@@ -523,27 +523,55 @@ export default async function TradeDetailPage({
   if (
     catalogIds.length > 0
   ) {
-    const {
-      data: catalogData,
-      error: catalogError,
-    } = await supabase
-      .from("card_catalog")
-      .select(
-        "id,name,image_url,card_type,race,game_rarity,rarity_score,atk,def"
-      )
-      .in(
-        "id",
-        catalogIds
-      );
+    // BossG currently has a much larger collection than the other
+    // players. Sending every catalog UUID through one PostgREST
+    // `.in("id", catalogIds)` filter can make the GET URL exceed
+    // the gateway/request-line limit, which surfaces in production
+    // only as React Server Components error #441.
+    //
+    // Fetch the catalog in bounded chunks instead. This keeps the
+    // trade page behaviour identical while making it safe for large
+    // collections and future growth.
+    const CATALOG_QUERY_CHUNK_SIZE =
+      75;
 
-    if (catalogError) {
-      throw new Error(
-        catalogError.message
+    for (
+      let offset = 0;
+      offset < catalogIds.length;
+      offset +=
+        CATALOG_QUERY_CHUNK_SIZE
+    ) {
+      const idsChunk =
+        catalogIds.slice(
+          offset,
+          offset +
+            CATALOG_QUERY_CHUNK_SIZE
+        );
+
+      const {
+        data: catalogData,
+        error: catalogError,
+      } = await supabase
+        .from("card_catalog")
+        .select(
+          "id,name,image_url,card_type,race,game_rarity,rarity_score,atk,def"
+        )
+        .in(
+          "id",
+          idsChunk
+        );
+
+      if (catalogError) {
+        throw new Error(
+          `Card catalog could not be loaded: ${catalogError.message}`
+        );
+      }
+
+      catalog.push(
+        ...((catalogData ??
+          []) as CardCatalog[])
       );
     }
-
-    catalog =
-      (catalogData ?? []) as CardCatalog[];
   }
 
   const cardMap =

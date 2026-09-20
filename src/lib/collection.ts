@@ -219,20 +219,33 @@ export async function fetchOwnedCollection(
   let catalogCards: CollectionCardCatalogItem[] = [];
 
   if (catalogIds.length > 0) {
-    const { data: catalogData, error: catalogError } = await supabase
-      .from("card_catalog")
-      .select(
-        "id,name,image_url,card_type,attribute,race,atk,def,game_rarity,rarity_score,master_duel_status,archetype,description"
-      )
-      .in("id", catalogIds);
+    // PostgREST encodes .in("id", [...]) in the request URL. Once a
+    // collection grows large enough, one giant id list can exceed the
+    // request/proxy URL limit and Supabase returns HTTP 400 Bad Request.
+    // Fetch the catalog in small batches instead. This is the same class
+    // of large-collection failure previously fixed on the trade page.
+    const CATALOG_BATCH_SIZE = 75;
 
-    if (catalogError) {
-      throw new Error(
-        `Kaartinformatie kon niet worden geladen: ${catalogError.message}`
+    for (let offset = 0; offset < catalogIds.length; offset += CATALOG_BATCH_SIZE) {
+      const batchIds = catalogIds.slice(offset, offset + CATALOG_BATCH_SIZE);
+
+      const { data: catalogData, error: catalogError } = await supabase
+        .from("card_catalog")
+        .select(
+          "id,name,image_url,card_type,attribute,race,atk,def,game_rarity,rarity_score,master_duel_status,archetype,description"
+        )
+        .in("id", batchIds);
+
+      if (catalogError) {
+        throw new Error(
+          `Kaartinformatie kon niet worden geladen: ${catalogError.message}`
+        );
+      }
+
+      catalogCards.push(
+        ...((catalogData ?? []) as CollectionCardCatalogItem[])
       );
     }
-
-    catalogCards = (catalogData ?? []) as CollectionCardCatalogItem[];
   }
 
   const cardMap = new Map(catalogCards.map((card) => [card.id, card]));

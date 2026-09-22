@@ -819,32 +819,51 @@ export default async function DeckBuilderPage({
     catalogIds.length >
     0
   ) {
-    const {
-      data: catalogData,
-      error: catalogError,
-    } = await supabase
-      .from(
-        "card_catalog"
-      )
-      .select(
-        "id,name,image_url,card_type,atk,def,game_rarity,rarity_score,format_eligible,master_duel_status,external_card_id,master_duel_card_id,archetype,description,monster_type,attribute,race,level,rank,link_rating"
-      )
-      .in(
-        "id",
-        catalogIds
-      );
+    // PostgREST serializes .in("id", [...]) into the request URL.
+    // Large collections can therefore exceed URL/proxy limits and
+    // return HTTP 400, which crashes this Server Component (React
+    // production error #441). Fetch in bounded batches instead.
+    const CATALOG_BATCH_SIZE = 75;
 
-    if (
-      catalogError
+    for (
+      let offset = 0;
+      offset < catalogIds.length;
+      offset += CATALOG_BATCH_SIZE
     ) {
-      throw new Error(
-        `Kaartinformatie kon niet worden geladen: ${catalogError.message}`
+      const batchIds =
+        catalogIds.slice(
+          offset,
+          offset + CATALOG_BATCH_SIZE
+        );
+
+      const {
+        data: catalogData,
+        error: catalogError,
+      } = await supabase
+        .from(
+          "card_catalog"
+        )
+        .select(
+          "id,name,image_url,card_type,atk,def,game_rarity,rarity_score,format_eligible,master_duel_status,external_card_id,master_duel_card_id,archetype,description,monster_type,attribute,race,level,rank,link_rating"
+        )
+        .in(
+          "id",
+          batchIds
+        );
+
+      if (
+        catalogError
+      ) {
+        throw new Error(
+          `Kaartinformatie kon niet worden geladen: ${catalogError.message}`
+        );
+      }
+
+      catalogCards.push(
+        ...((catalogData ??
+          []) as CardCatalogItem[])
       );
     }
-
-    catalogCards =
-      (catalogData ??
-        []) as CardCatalogItem[];
   }
 
   const cardMap =
@@ -1159,21 +1178,54 @@ export default async function DeckBuilderPage({
     .filter((group) => !deckCardIdSet.has(group.card.id))
     .map((group) => group.card.id);
 
-  const [{ data: deckMechRows }, { data: ownedMechRows }] = await Promise.all([
+  const { data: deckMechRows } =
     deckCardIds.length > 0
-      ? supabase
+      ? await supabase
           .from("card_mechanics")
           .select("card_catalog_id,tags")
           .in("card_catalog_id", deckCardIds)
-      : Promise.resolve({ data: [] as { card_catalog_id: string; tags: string[] }[] }),
-    ownedNotInDeckIds.length > 0
-      ? supabase
-          .from("card_mechanics")
-          .select("card_catalog_id,tags")
-          .in("card_catalog_id", ownedNotInDeckIds)
-          .overlaps("tags", DECK_DOCTOR_OWNED_TAGS)
-      : Promise.resolve({ data: [] as { card_catalog_id: string; tags: string[] }[] }),
-  ]);
+      : { data: [] as { card_catalog_id: string; tags: string[] }[] };
+
+  // BossG and other mature collections can contain hundreds of
+  // distinct owned cards. Keep this Deck Doctor lookup batched too,
+  // otherwise its .in(...) can hit the same PostgREST URL limit as
+  // the catalog query above.
+  const ownedMechRows: { card_catalog_id: string; tags: string[] }[] = [];
+  const MECHANICS_BATCH_SIZE = 75;
+
+  for (
+    let offset = 0;
+    offset < ownedNotInDeckIds.length;
+    offset += MECHANICS_BATCH_SIZE
+  ) {
+    const batchIds =
+      ownedNotInDeckIds.slice(
+        offset,
+        offset + MECHANICS_BATCH_SIZE
+      );
+
+    const {
+      data: batchRows,
+      error: batchError,
+    } = await supabase
+      .from("card_mechanics")
+      .select("card_catalog_id,tags")
+      .in("card_catalog_id", batchIds)
+      .overlaps("tags", DECK_DOCTOR_OWNED_TAGS);
+
+    if (batchError) {
+      throw new Error(
+        `Deck Doctor data kon niet worden geladen: ${batchError.message}`
+      );
+    }
+
+    ownedMechRows.push(
+      ...((batchRows ?? []) as {
+        card_catalog_id: string;
+        tags: string[];
+      }[])
+    );
+  }
 
   const deckMechanicsByCardId = new Map<string, DeckDoctorMechanics>();
   for (const row of (deckMechRows ?? []) as {

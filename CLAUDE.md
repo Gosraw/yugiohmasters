@@ -142,6 +142,24 @@ the owner's Mac (Cowork-style), some things to know:
   considering a change done — editing only the cloud sandbox's clone
   does not update what the owner will actually commit/push.
 
+## 2.0 workflow (started 2026-10-12)
+
+- Local working copy: `~/Projects/duelist-circle` (the old
+  `~/Downloads/yugioh-friends-league` clone is retired — don't work
+  there anymore).
+- 2.0 work happens on the `v2` branch. `main` stays what's live on
+  `yugiohmasters.vercel.app`; Vercel builds a separate preview URL for
+  `v2` pushes. Only merge `v2` into `main` when the owner says 2.0 is
+  ready to go live.
+- `v2` shares the **same production Supabase database** as `main`.
+  Any migration applied for 2.0 hits real players immediately, even
+  before `v2` is merged — make DB changes backwards-compatible with
+  the live `main` app, and confirm with the owner before applying.
+- `backup/mac-local-2026-10-12` on GitHub holds changes that only
+  existed in the old Downloads clone (one unpushed commit, edited
+  manual_deploy SQL, reports). Not yet reviewed against `main` — check
+  before reusing anything from it.
+
 ## Where things are
 
 - `src/app/(app)/` — the logged-in app: Home dashboard (`page.tsx`),

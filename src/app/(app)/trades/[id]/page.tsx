@@ -522,7 +522,7 @@ export default async function TradeDetailPage({
     ),
   ];
 
-  let catalog:
+  const catalog:
     CardCatalog[] =
     [];
 

@@ -216,7 +216,7 @@ export async function fetchOwnedCollection(
     ...new Set(instances.map((instance) => instance.card_catalog_id)),
   ];
 
-  let catalogCards: CollectionCardCatalogItem[] = [];
+  const catalogCards: CollectionCardCatalogItem[] = [];
 
   if (catalogIds.length > 0) {
     // PostgREST encodes .in("id", [...]) in the request URL. Once a

@@ -811,7 +811,7 @@ export default async function DeckBuilderPage({
     ),
   ];
 
-  let catalogCards:
+  const catalogCards:
     CardCatalogItem[] =
     [];
 

@@ -24,17 +24,46 @@
 -- area explicitly documents activating the format as "a separate,
 -- deliberate operator decision" (see docs/SEASON_1_RUNBOOK.md,
 -- which frames it as a manual admin SQL command run directly against
--- the live database, outside the deploy pipeline). This sandbox has
--- no live database access, so it is NOT POSSIBLE to determine from
--- the repo alone whether this activation step has already been
--- performed live at some point, or whether Draft/Shop/Deckbuilder
--- are still running on the ORIGINAL, much broader eligibility rule
--- from 202608190005 (every card except Synchro/Pendulum/Link/Skill
--- Cards/Tokens - no era cutoff at all).
+-- the live database, outside the deploy pipeline).
 --
--- This script answers that question directly and safely: it makes
--- no writes, so it is safe to run against live at any time,
--- including before or after go-live, as many times as needed.
+-- CONFIRMED LIVE (2026-09-02): duelist_circle_formats.season_1 IS
+-- active (release_cutoff 2020-12-31); duelist_circle_classic_v1 is
+-- still inactive (release_cutoff 2014-12-31). card_catalog currently
+-- reports 8,954 of 13,931 rows as format_eligible = true - far above
+-- the 6,181-card intended Classic pool, and not season_1-shaped
+-- either. Separate diagnostics (supabase/manual_deploy/20260902_
+-- release_stage_and_eligibility_diagnosis.sql) trace this to
+-- card_catalog.release_stage never having been populated, combined
+-- with the current 8,954 figure matching the ORIGINAL, much broader
+-- eligibility rule from 202608190005 (every card except Synchro/
+-- Pendulum/Link/Skill Cards/Tokens - no era cutoff at all) rather
+-- than any output of recompute_format_eligibility().
+--
+-- This script answers the "what is currently eligible, and is it
+-- internally consistent" question directly and safely: it makes no
+-- writes, so it is safe to run against live at any time, as many
+-- times as needed.
+--
+-- 2026-09-02 CORRECTIONS TO THIS SCRIPT (read-only, no data changed):
+--   - Section 4 had an operator-precedence bug: the WHERE clause
+--     parsed as "(format_eligible = true AND card_type ilike
+--     '%fusion%') OR card_type ilike '%xyz%' OR ... ", which leaked
+--     every Xyz/Synchro/Pendulum/Link card in the WHOLE catalog into
+--     the report regardless of format_eligible. Fixed by
+--     parenthesizing the mechanic-type conditions so format_eligible
+--     ANDs across all of them.
+--   - Section 5's two "leak" checks only measured overlap between
+--     the static format_eligible flag and the Stage 4 / route-
+--     exclusive tables. That overlap is expected and is NOT itself
+--     evidence of leakage, because pick_shop_pack_card() and
+--     create_next_draft_offer() apply the Stage 4 / route-exclusive
+--     exclusion as a SEPARATE filter on top of format_eligible - a
+--     card can be format_eligible = true and still never be offered
+--     through Draft or Shop. Section 5 is now split into 5A
+--     (relabeled as a flag-overlap check, informational only) and
+--     5B (a new, real leak check against actual card_instances rows
+--     filtered to original_acquisition_type in ('draft','shop') -
+--     i.e. whether the runtime exclusion has actually held).
 -- =========================================================
 
 -- ---------------------------------------------------------
@@ -68,7 +97,9 @@ from public.card_catalog;
 -- means Draft/Shop are still running the old, broader,
 -- no-era-cutoff rule from 202608190005, and every card of this
 -- round's careful cardpool/rarity calibration work is currently
--- inert for real players.
+-- inert for real players. Live production currently shows 8,954 -
+-- see the header note above and the dedicated release_stage
+-- diagnostic script for why.
 
 -- ---------------------------------------------------------
 -- 3. RARITY DISTRIBUTION ACROSS THE CURRENTLY-ELIGIBLE POOL
@@ -99,17 +130,27 @@ order by
 -- ---------------------------------------------------------
 -- 4. EXTRA DECK MECHANIC COMPOSITION OF THE ELIGIBLE POOL
 --    (Fusion + Xyz allowed; Synchro/Pendulum/Link/Illusion excluded)
+--
+-- FIXED 2026-09-02: the mechanic-type conditions are now
+-- parenthesized as a single group, so format_eligible = true ANDs
+-- across ALL of them. The original version parsed as
+-- "(format_eligible = true AND fusion) OR xyz OR synchro OR
+-- pendulum OR link", which leaked every Xyz/Synchro/Pendulum/Link
+-- card in the entire catalog into this report, regardless of
+-- format_eligible.
 -- ---------------------------------------------------------
 select
   card_type,
   count(*) as card_count
 from public.card_catalog
 where format_eligible = true
-  and card_type ilike '%fusion%'
-   or card_type ilike '%xyz%'
-   or card_type ilike '%synchro%'
-   or card_type ilike '%pendulum%'
-   or card_type ilike '%link%'
+  and (
+    card_type ilike '%fusion%'
+    or card_type ilike '%xyz%'
+    or card_type ilike '%synchro%'
+    or card_type ilike '%pendulum%'
+    or card_type ilike '%link%'
+  )
 group by card_type
 order by card_count desc;
 
@@ -122,14 +163,22 @@ order by card_count desc;
 -- more basic regression).
 
 -- ---------------------------------------------------------
--- 5. STAGE 4 BOSS / ROUTE-EXCLUSIVE LEAK CHECK AGAINST THE
---    CURRENTLY-ELIGIBLE POOL (should always be zero, independent
---    of format activation - Draft/Shop apply this exclusion as an
---    ADDITIONAL filter on top of format_eligible, not a substitute
---    for it)
+-- 5A. FORMAT_ELIGIBLE / BOSS-ROUTE FLAG OVERLAP (INFORMATIONAL
+--     ONLY - NOT ITSELF A LEAK)
+--
+-- RELABELED 2026-09-02. This only checks whether a card's static
+-- format_eligible flag happens to be true for a card that is also a
+-- Stage 4 boss evolution or a route-exclusive grant. That overlap,
+-- by itself, is NOT evidence of leakage: pick_shop_pack_card() and
+-- create_next_draft_offer() apply the Stage 4 / route-exclusive
+-- exclusion as a SEPARATE filter on top of format_eligible, so a
+-- card can correctly show format_eligible = true here and still
+-- never actually be offered through Draft or Shop. A nonzero count
+-- below is expected and does not by itself indicate a bug - see
+-- Section 5B for the real, evidence-based leak check.
 -- ---------------------------------------------------------
 select
-  count(*) as stage4_leak_count
+  count(*) as format_eligible_and_stage4_flag_overlap
 from public.card_catalog c
 where c.format_eligible = true
   and exists (
@@ -139,7 +188,7 @@ where c.format_eligible = true
   );
 
 select
-  count(*) as route_exclusive_leak_count
+  count(*) as format_eligible_and_route_exclusive_flag_overlap
 from public.card_catalog c
 where c.format_eligible = true
   and exists (
@@ -148,8 +197,46 @@ where c.format_eligible = true
       and brg.is_route_exclusive = true
   );
 
--- Both should be 0. A nonzero count here is a real, independent bug
--- regardless of format-engine activation state (this exclusion is
--- applied separately by pick_shop_pack_card / create_next_draft_offer
--- at pull/offer time - this query just checks the underlying flag
--- combination those functions rely on is never contradictory).
+-- A nonzero count above is expected and NOT a bug on its own - it
+-- only means some boss/route cards are also flagged as generally
+-- format-eligible. Only Section 5B below, which looks at actual
+-- card_instances acquired via draft or shop, can show a real leak.
+
+-- ---------------------------------------------------------
+-- 5B. REAL LEAK CHECK: HAS ANY PLAYER ACTUALLY ACQUIRED A STAGE 4
+--     OR ROUTE-EXCLUSIVE CARD THROUGH DRAFT OR SHOP?
+--
+-- NEW 2026-09-02. This checks actual card_instances rows - i.e.
+-- whether pick_shop_pack_card() / create_next_draft_offer()'s
+-- exclusion has actually held in practice - rather than the static
+-- format_eligible flag checked in 5A. Both counts should be 0. A
+-- nonzero count here IS a real, independent bug: it means a Stage 4
+-- boss card or a route-exclusive card was actually handed out
+-- through Draft or Shop despite the exclusion those functions are
+-- supposed to enforce, regardless of format-engine activation state
+-- and regardless of what Section 5A shows.
+-- ---------------------------------------------------------
+select
+  count(*) as stage4_cards_actually_acquired_via_draft_or_shop
+from public.card_instances ci
+where ci.original_acquisition_type in ('draft', 'shop')
+  and exists (
+    select 1 from public.boss_route_stages brs
+    where brs.evolution_card_catalog_id = ci.card_catalog_id
+      and brs.stage_number = 4
+  );
+
+select
+  count(*) as route_exclusive_cards_actually_acquired_via_draft_or_shop
+from public.card_instances ci
+where ci.original_acquisition_type in ('draft', 'shop')
+  and exists (
+    select 1 from public.boss_route_stage_grants brg
+    where brg.card_catalog_id = ci.card_catalog_id
+      and brg.is_route_exclusive = true
+  );
+
+-- Both should be 0. A nonzero count here means real players hold
+-- real card_instances of boss-exclusive cards acquired through the
+-- wrong channel - independent of format-engine activation state,
+-- and independent of whatever Section 5A shows.

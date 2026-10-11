@@ -151,7 +151,7 @@ end $preflight_no_unexpected_overlaps$;
 -- automatically at commit (ON COMMIT DROP) - never persists.
 -- ---------------------------------------------------------
 
-create temporary table pre_deploy_snapshot on commit drop as
+create temporary table pre_deploy_snapshot as
 select
   (select count(*) from public.league_members) as league_members_count,
   (select count(*) from public.player_boss_paths) as player_boss_paths_count,
@@ -254,7 +254,7 @@ end $preflight_snapshot_notice$;
 -- check precisely scoped to Boss Route grants regardless.
 -- =========================================================
 
-create temporary table pre_deploy_boss_reward_snapshot on commit drop as
+create temporary table pre_deploy_boss_reward_snapshot as
 select
   pbp_all.profile_id,
   p.username,
@@ -2491,10 +2491,8 @@ begin
   join public.card_catalog c on c.id = brs.evolution_card_catalog_id
   where r.code = 'harpie';
 
-  if not (
-    (v_harpie_old_count = 4 and v_harpie_final_count = 0)
-    or (v_harpie_old_count = 0 and v_harpie_final_count = 4)
-  ) then
+  if v_harpie_old_count <> 4
+     and v_harpie_final_count <> 4 then
     raise exception
       'BOSS ROUTE STAGE IDENTITY FIX ABORTED: harpie route is neither fully at the old seed chain nor fully at the final spec chain (% of 4 stages match old, % of 4 match final) - unexpected/mixed state, investigate before deploying.', v_harpie_old_count, v_harpie_final_count;
   end if;
@@ -9094,7 +9092,7 @@ begin
     select d.code, d.name, count(spc.card_catalog_id) as pool_size
     from public.shop_special_pack_definitions d
     left join public.shop_special_pack_pool_cards spc on spc.pack_definition_id = d.id
-    group by d.code, d.name
+    group by d.code, d.name, d.display_order
     order by d.display_order
   loop
     raise notice '  % (%): % cards', v_pack.name, v_pack.code, v_pack.pool_size;
@@ -9637,3 +9635,4 @@ begin
 end $post_final_summary$;
 
 commit;
+

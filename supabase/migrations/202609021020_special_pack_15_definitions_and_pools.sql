@@ -4504,7 +4504,7 @@ begin
     select d.code, d.name, count(spc.card_catalog_id) as pool_size
     from public.shop_special_pack_definitions d
     left join public.shop_special_pack_pool_cards spc on spc.pack_definition_id = d.id
-    group by d.code, d.name
+    group by d.code, d.name, d.display_order
     order by d.display_order
   loop
     raise notice '  % (%): % cards', v_pack.name, v_pack.code, v_pack.pool_size;

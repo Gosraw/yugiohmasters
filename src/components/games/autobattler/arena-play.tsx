@@ -811,7 +811,7 @@ export function ArenaPlay({
   // ---- render ----
   return (
     <div
-      className="fixed inset-0 z-[55] flex h-[100dvh] w-full select-none flex-col overflow-hidden bg-[#03050f] text-zinc-100 [-webkit-touch-callout:none]"
+      className="fixed inset-0 z-[55] flex h-[100dvh] w-full select-none flex-col overflow-hidden overscroll-none bg-[#03050f] text-zinc-100 [-webkit-touch-callout:none]"
       style={{
         backgroundImage:
           "radial-gradient(ellipse 60rem 28rem at 50% -10%, rgba(242,196,90,.12), transparent 70%), radial-gradient(ellipse 50rem 30rem at 50% 115%, rgba(44,69,144,.3), transparent 70%)",
@@ -830,7 +830,7 @@ export function ArenaPlay({
               </div>
             )
           : (
-              <div className="mx-auto flex h-full w-full max-w-md flex-col gap-2 overflow-y-auto px-3 pb-[max(.75rem,env(safe-area-inset-bottom))] pt-[max(.5rem,env(safe-area-inset-top))]">
+              <div className="mx-auto flex h-full w-full max-w-md flex-col gap-2 overflow-y-auto overscroll-contain px-3 pb-[max(.75rem,env(safe-area-inset-bottom))] pt-[max(.5rem,env(safe-area-inset-top))]">
                 {/* ---- header ---- */}
                 <div className="flex items-center gap-2">
                   <button
@@ -1758,14 +1758,14 @@ function Sheet({
 }) {
   return (
     <div
-      className="fixed inset-0 z-[72] flex items-end justify-center bg-black/60 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[72] flex items-end justify-center overscroll-none bg-black/60 backdrop-blur-[2px]"
       role="dialog"
       aria-modal="true"
       aria-label={title}
       onClick={onClose}
     >
       <div
-        className="panel relative max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-b-none p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        className="panel relative max-h-[85dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-b-none p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
         onClick={(event) => event.stopPropagation()}
       >
         {

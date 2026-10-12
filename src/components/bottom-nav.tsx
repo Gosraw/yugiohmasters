@@ -193,7 +193,7 @@ export function BottomNav({
                       ? "page"
                       : undefined
                   }
-                  className={`group relative flex min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl px-1 pb-1 pt-2 transition-colors duration-150 active:scale-[0.94] motion-reduce:transition-none motion-reduce:active:scale-100 ${
+                  className={`group relative flex min-w-0 cursor-pointer flex-col items-center justify-center gap-1 select-none rounded-xl px-1 pb-1 pt-2 transition-colors [-webkit-touch-callout:none] duration-150 active:scale-[0.94] motion-reduce:transition-none motion-reduce:active:scale-100 ${
                     active
                       ? "text-[#f2c45a]"
                       : "text-[#8f93a8] hover:text-[#ece6d6]"

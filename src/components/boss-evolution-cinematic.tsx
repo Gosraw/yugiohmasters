@@ -176,7 +176,7 @@ export function BossEvolutionCinematic({
       role="dialog"
       aria-modal="true"
       aria-label={`Evolution complete: Stage ${stageNumber}, ${newCard.name}`}
-      className="dc-evo-backdrop fixed inset-0 z-[90] flex flex-col items-center justify-center overflow-hidden bg-[#03050f] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]"
+      className="dc-evo-backdrop fixed inset-0 z-[90] flex flex-col items-center justify-center overflow-hidden overscroll-none bg-[#03050f] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]"
     >
       {/* Arena */}
       <div

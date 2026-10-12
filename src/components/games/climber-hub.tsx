@@ -439,7 +439,7 @@ export function ClimberHub({
         : null;
 
     return (
-      <div className="fixed inset-0 z-[55] flex h-[100dvh] items-center justify-center overflow-y-auto bg-[rgb(3_5_15/.94)] px-5 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+      <div className="fixed inset-0 z-[55] flex h-[100dvh] items-center justify-center overflow-y-auto overscroll-contain bg-[rgb(3_5_15/.94)] px-5 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
         <div className="spell-glow left-1/2 top-1/3 h-72 w-72 -translate-x-1/2" />
 
         <div className="panel arena-frame relative w-full max-w-sm p-6 text-center">

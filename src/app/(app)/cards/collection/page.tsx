@@ -1063,7 +1063,7 @@ export default async function CollectionPage({
 
         <form
           method="get"
-          className="panel fixed inset-x-0 bottom-0 z-50 hidden max-h-[85vh] flex-col overflow-y-auto rounded-t-3xl p-4 peer-checked/filters:flex sm:static sm:z-auto sm:mt-6 sm:flex sm:max-h-none sm:overflow-visible sm:rounded-2xl sm:p-5"
+          className="panel fixed inset-x-0 bottom-0 z-50 hidden max-h-[85dvh] flex-col overflow-y-auto rounded-t-3xl p-4 peer-checked/filters:flex sm:static sm:z-auto sm:mt-6 sm:flex sm:max-h-none sm:overflow-visible sm:rounded-2xl sm:p-5"
         >
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm font-black text-amber-300">

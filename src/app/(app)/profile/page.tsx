@@ -19,6 +19,7 @@ import {
   Swords,
   Trophy,
   UserRound,
+  Vote,
   Zap,
 } from "lucide-react";
 
@@ -52,6 +53,10 @@ import {
 import {
   getPrimaryBossIdentity,
 } from "@/lib/boss-identity";
+
+import {
+  getPendingCardVoteCount,
+} from "@/lib/attention-items";
 
 import {
   InstallAppCard,
@@ -435,6 +440,14 @@ export default async function ProfilePage() {
 
   const leagueId =
     membership.league_id;
+
+  // 2.0 card pool vote (/vote)
+  const pendingCardVotes =
+    await getPendingCardVoteCount(
+      supabase,
+      userId,
+      leagueId
+    );
 
   // ======================================================
   // BOSS MONSTERS
@@ -1177,6 +1190,41 @@ export default async function ProfilePage() {
             )
           )}
         </section>
+
+        {/* ==================================================
+            CARD VOTE (2.0 card pool vote)
+        ================================================== */}
+
+        <Link
+          href="/vote"
+          className="panel group mt-4 flex min-h-16 items-center gap-3.5 p-4 transition-all hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-300/[0.07] text-amber-300">
+            <Vote
+              size={18}
+            />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-base font-bold text-amber-100">
+              Card Vote
+            </p>
+
+            <p className="text-xs text-zinc-500">
+              {pendingCardVotes > 0
+                ? `${pendingCardVotes} card${pendingCardVotes === 1 ? "" : "s"} waiting for your vote`
+                : "Rate the card pool and see the results"}
+            </p>
+          </div>
+
+          {pendingCardVotes > 0 && (
+            <span className="shrink-0 rounded-full border border-amber-300/40 bg-amber-300/15 px-2.5 py-1 text-xs font-black text-amber-100">
+              {
+                pendingCardVotes
+              }
+            </span>
+          )}
+        </Link>
 
         {/* ==================================================
             BOSS ROUTE (Season 1 - the real, currently-evolving

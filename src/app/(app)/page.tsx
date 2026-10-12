@@ -41,7 +41,9 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  cardVoteAttentionItem,
   computeAttentionItems,
+  getPendingCardVoteCount,
 } from "@/lib/attention-items";
 
 import {
@@ -566,6 +568,21 @@ export default async function DashboardPage() {
     trades,
     userId
   );
+
+  // 2.0 card pool vote: shows up here until you voted on every card.
+  const cardVoteItem = cardVoteAttentionItem(
+    await getPendingCardVoteCount(
+      supabase,
+      userId,
+      leagueId
+    )
+  );
+
+  if (cardVoteItem) {
+    actionItems.push(
+      cardVoteItem
+    );
+  }
 
   // ======================================================
   // UI

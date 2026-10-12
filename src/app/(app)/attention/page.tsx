@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Repeat2,
   Swords,
+  Vote,
 } from "lucide-react";
 
 import {
@@ -29,6 +30,7 @@ const KIND_ICON = {
   challenge: Swords,
   confirm: CheckCircle2,
   trade: Repeat2,
+  vote: Vote,
 };
 
 export default async function AttentionPage() {

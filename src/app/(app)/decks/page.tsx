@@ -239,7 +239,7 @@ export default async function DecksPage() {
     return (
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="panel p-6">
-          Geen league gevonden.
+          No league found.
         </div>
       </main>
     );
@@ -277,7 +277,7 @@ export default async function DecksPage() {
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="panel p-6">
           <p className="font-bold text-red-300">
-            Decks konden niet worden geladen.
+            Decks could not be loaded.
           </p>
 
           <p className="mt-2 text-sm text-zinc-500">
@@ -328,7 +328,7 @@ export default async function DecksPage() {
       return (
         <main className="mx-auto max-w-6xl px-4 py-8">
           <div className="panel p-6">
-            Deckkaarten konden niet worden geladen.
+            Deck cards could not be loaded.
           </div>
         </main>
       );

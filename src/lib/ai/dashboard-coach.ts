@@ -105,33 +105,33 @@ export function findingToDashboardInsight(
     case "NORMAL_SUMMON_COMPETITION":
       return {
         insightType: "normal_summon_competition",
-        summary: "Veel kaarten concurreren om je Normal Summon.",
+        summary: "Many cards compete for your Normal Summon.",
       };
     case "GY_PAYOFF_WITHOUT_SETUP":
       return {
         insightType: "gy_imbalance",
         summary:
-          "Je hebt meerdere GY-payoffs, maar weinig betrouwbare manieren om ze naar de Graveyard te krijgen.",
+          "You have several GY payoffs, but few reliable ways to get cards into the Graveyard.",
       };
     case "GY_SETUP_WITHOUT_PAYOFF":
       return {
         insightType: "gy_imbalance",
         summary:
-          "Je stuurt kaarten naar de Graveyard, maar hebt nog geen kaart die dat verzilvert.",
+          "You send cards to the Graveyard, but have no card yet that cashes in on it.",
       };
     case "UNSUPPORTED_EXTRA_DECK_CARD": {
       const cardId = finding.involvedCardIds[0];
-      const cardName = (cardId && cardNameById?.get(cardId)) || "Deze kaart";
+      const cardName = (cardId && cardNameById?.get(cardId)) || "This card";
       return {
         insightType: "extra_deck_opportunity",
-        summary: `${cardName} in je Extra Deck heeft nog geen bekende manier om het veld te bereiken.`,
+        summary: `${cardName} in your Extra Deck has no known way to reach the field yet.`,
       };
     }
     case "OWNED_IMPROVEMENT":
       return {
         insightType: "owned_improvement",
         summary:
-          "Een kaart die je al bezit lost een gat in je actieve deck op.",
+          "A card you already own fills a gap in your active deck.",
       };
     default:
       return null;

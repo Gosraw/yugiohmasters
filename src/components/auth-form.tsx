@@ -30,10 +30,10 @@ export function AuthForm({
       </label>
       {state.error && <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{state.error}</p>}
       <button disabled={pending} className="primary-button w-full">
-        {pending ? "Bezig..." : signup ? "Create account" : "Enter the arena"}
+        {pending ? "Working..." : signup ? "Create account" : "Enter the arena"}
       </button>
       <p className="text-center text-sm text-zinc-400">
-        {signup ? "Al een account?" : "Nieuw hier?"}{" "}
+        {signup ? "Already have an account?" : "New here?"}{" "}
         <Link className="text-amber-300 hover:text-amber-200" href={signup ? "/login" : "/signup"}>
           {signup ? "Login" : "Create account"}
         </Link>

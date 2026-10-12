@@ -60,7 +60,7 @@ export default async function NewTradePage() {
     return (
       <main className="mx-auto max-w-5xl px-4 py-8">
         <div className="panel p-6">
-          Geen league gevonden.
+          No league found.
         </div>
       </main>
     );
@@ -174,8 +174,8 @@ export default async function NewTradePage() {
         </h1>
 
         <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-          Kies een speler uit je league. Daarna bouwen we samen een trade met
-          echte fysieke kaarten uit jullie Collections.
+          Pick a player from your league. Then you build a trade together
+          with real physical cards from your Collections.
         </p>
       </header>
 
@@ -194,13 +194,12 @@ export default async function NewTradePage() {
             </p>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">
-              Je kiest eerst een trade partner. Daarna selecteer je kaarten die
-              jij aanbiedt en kaarten die je van de andere speler wilt
-              ontvangen. Kaarten worden niet gereserveerd - dezelfde kaart mag
-              gewoon in een deck blijven zitten of in meerdere trades tegelijk
-              worden aangeboden. Pas op het moment dat iemand de trade
-              accepteert, wordt live gecontroleerd of de kaarten nog echt van
-              de juiste speler zijn en wisselt de eigendom daadwerkelijk.
+              First you pick a trade partner. Then you select the cards you
+              offer and the cards you want to receive from the other player.
+              Cards are not reserved - the same card can stay in a deck or be
+              offered in several trades at once. Only when someone accepts the
+              trade is it checked live that the cards still belong to the right
+              player, and only then does ownership actually change.
             </p>
           </div>
         </div>
@@ -238,7 +237,7 @@ export default async function NewTradePage() {
             </h3>
 
             <p className="mt-2 text-sm text-zinc-500">
-              Er zijn nog geen andere spelers in deze league.
+              There are no other players in this league yet.
             </p>
           </div>
         ) : (

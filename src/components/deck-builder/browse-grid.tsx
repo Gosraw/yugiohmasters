@@ -18,6 +18,10 @@ import {
 } from "./quantity-stepper";
 
 import {
+  CopyLimitBadge,
+} from "./copy-limit-badge";
+
+import {
   largeImage,
   type BuilderCard,
 } from "./types";
@@ -70,7 +74,8 @@ const CardTile = memo(function CardTile({
   onOpen: (cardId: string) => void;
 }) {
   const legal =
-    card.format_eligible;
+    card.deck_legal &&
+    card.copy_limit !== 0;
 
   return (
     <li
@@ -118,12 +123,18 @@ const CardTile = memo(function CardTile({
         )}
       </button>
 
-      <p
-        className="truncate px-0.5 text-[11px] font-bold leading-4 text-zinc-200"
-        title={card.name}
-      >
-        {card.name}
-      </p>
+      <div className="flex min-w-0 items-center gap-1 px-0.5">
+        <p
+          className="min-w-0 flex-1 truncate text-[11px] font-bold leading-4 text-zinc-200"
+          title={card.name}
+        >
+          {card.name}
+        </p>
+
+        <CopyLimitBadge
+          limit={card.copy_limit}
+        />
+      </div>
 
       <QuantityStepper
         name={card.name}

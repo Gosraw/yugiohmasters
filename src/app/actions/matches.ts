@@ -411,7 +411,7 @@ export async function createMatchChallenge(
       "none"
   ) {
     throw new Error(
-      "League Duels mogen geen wager hebben."
+      "League Duels can't have a wager."
     );
   }
 

@@ -29,6 +29,10 @@ import {
 } from "./quantity-stepper";
 
 import {
+  CopyLimitBadge,
+} from "./copy-limit-badge";
+
+import {
   largeImage,
   sectionForCardType,
   type BuilderCard,
@@ -115,7 +119,10 @@ export function CardDetailSheet({
             count={count}
             owned={card.copies.length}
             canAdd={canAdd}
-            legal={card.format_eligible}
+            legal={
+              card.deck_legal &&
+              card.copy_limit !== 0
+            }
             editable={editable}
             size="large"
             onAdd={() =>
@@ -150,7 +157,7 @@ export function CardDetailSheet({
                 height={614}
                 sizes="(min-width: 640px) 192px, 152px"
                 className={`aspect-[421/614] h-auto w-full object-cover ${
-                  card.format_eligible
+                  card.deck_legal
                     ? ""
                     : "grayscale"
                 }`}
@@ -196,7 +203,12 @@ export function CardDetailSheet({
                 }
               />
 
-              {!card.format_eligible && (
+              <CopyLimitBadge
+                limit={card.copy_limit}
+                size="md"
+              />
+
+              {!card.deck_legal && (
                 <span className="rounded-full border border-red-400/40 bg-red-950/80 px-2 py-0.5 text-[10px] font-black uppercase text-red-200">
                   Not format legal
                 </span>

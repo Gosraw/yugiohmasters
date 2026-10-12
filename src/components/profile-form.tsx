@@ -151,7 +151,7 @@ export function ProfileForm({
 
             text:
               result.success ??
-              "Profiel opgeslagen.",
+              "Profile saved.",
           });
         } catch (
           error
@@ -164,7 +164,7 @@ export function ProfileForm({
               error instanceof
               Error
                 ? error.message
-                : "Profiel opslaan mislukt.",
+                : "Could not save your profile.",
           });
         }
       }

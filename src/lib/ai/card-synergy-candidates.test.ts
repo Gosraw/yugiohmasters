@@ -70,21 +70,27 @@ describe("generateSynergyCandidates", () => {
     expect(candidates[0].reasons.every((r) => r.detail.length > 0)).toBe(true);
   });
 
-  it("3. a Forbidden/unavailable Master Duel status candidate is never suggested", () => {
+  it("3. a not-in-Master-Duel candidate is never suggested (MD Forbidden is fine)", () => {
     const target = card({
       id: "t1",
       name: "Sender",
       description: "Send 1 card from your Deck to the Graveyard.",
     });
-    const candidate = card({
+    const unavailable = card({
       id: "c1",
+      name: "Missing Payoff",
+      description: "If a card is in your Graveyard: draw 1 card.",
+      master_duel_status: "not_available",
+    });
+    const mdForbidden = card({
+      id: "c2",
       name: "Banned Payoff",
       description: "If a card is in your Graveyard: draw 1 card.",
       master_duel_status: "forbidden",
     });
 
-    const candidates = generateSynergyCandidates(target, [candidate]);
-    expect(candidates).toHaveLength(0);
+    const candidates = generateSynergyCandidates(target, [unavailable, mdForbidden]);
+    expect(candidates.map((c) => c.card.id)).toEqual(["c2"]);
   });
 });
 

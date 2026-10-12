@@ -883,7 +883,7 @@ export default async function ShopPage({
     !profileData
   ) {
     throw new Error(
-      "Profiel kon niet worden geladen."
+      "Could not load your profile."
     );
   }
 

@@ -404,6 +404,35 @@ export default async function ProfilePage() {
   const profile =
     profileData as Profile;
 
+  // Permanent titles (Season Path final tier, mini game wins, later
+  // season champion) - public.profile_titles.
+  const {
+    data: titleRows,
+  } = await supabase
+    .from(
+      "profile_titles"
+    )
+    .select(
+      "id,title,season_number"
+    )
+    .eq(
+      "profile_id",
+      userId
+    )
+    .order(
+      "granted_at",
+      {
+        ascending: true,
+      }
+    );
+
+  const earnedTitles =
+    (titleRows ?? []) as {
+      id: string;
+      title: string;
+      season_number: number | null;
+    }[];
+
   // ======================================================
   // LEAGUE
   // ======================================================
@@ -432,7 +461,7 @@ export default async function ProfilePage() {
     return (
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="panel p-6">
-          Geen league gevonden.
+          No league found.
         </div>
       </main>
     );
@@ -1044,6 +1073,39 @@ export default async function ProfilePage() {
                 {profile.custom_title ??
                   "League Duelist"}
               </p>
+
+              {earnedTitles.length > 0 && (
+                <ul
+                  aria-label="Earned titles"
+                  className="mt-3 flex flex-wrap gap-2"
+                >
+                  {earnedTitles.map(
+                    (earned) => (
+                      <li
+                        key={earned.id}
+                        data-testid="earned-title"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-[11px] font-black tracking-wide text-amber-100"
+                      >
+                        <Medal
+                          size={12}
+                          className="text-amber-300"
+                        />
+
+                        {earned.title}
+
+                        {earned.season_number !== null && (
+                          <span className="text-[10px] font-bold text-amber-200/60">
+                            S
+                            {
+                              earned.season_number
+                            }
+                          </span>
+                        )}
+                      </li>
+                    )
+                  )}
+                </ul>
+              )}
 
               {profile.catchphrase && (
                 <p className="mt-4 max-w-xl text-lg font-semibold italic leading-7 text-zinc-300">

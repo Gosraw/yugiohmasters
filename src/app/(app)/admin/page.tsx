@@ -25,7 +25,7 @@ export default async function AdminPage() {
     <main className="mx-auto max-w-2xl px-4 py-6">
       <p className="text-xs font-bold tracking-[.25em] text-amber-300">ADMIN MODE</p>
       <h1 className="gold-text mt-1 text-3xl font-black">League settings</h1>
-      <p className="mt-2 text-sm text-zinc-400">Centrale configuratie. Geen gameplay-magic-numbers verspreid door de app.</p>
+      <p className="mt-2 text-sm text-zinc-400">Central configuration. No gameplay magic numbers scattered through the app.</p>
       <div className="mt-6 space-y-3">
         {settings?.map((setting) => (
           <form action={updateSetting} key={setting.key} className="panel p-4">

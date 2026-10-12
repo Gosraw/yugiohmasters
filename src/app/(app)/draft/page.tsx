@@ -123,7 +123,7 @@ export default async function DraftPage() {
     return (
       <main className="mx-auto max-w-5xl px-4 py-8">
         <div className="panel p-6">
-          Geen league gevonden.
+          No league found.
         </div>
       </main>
     );
@@ -199,7 +199,7 @@ export default async function DraftPage() {
     return (
       <main className="mx-auto max-w-5xl px-4 py-8">
         <div className="panel p-6">
-          Draft kon niet worden geladen.
+          The draft could not be loaded.
         </div>
       </main>
     );
@@ -241,7 +241,7 @@ export default async function DraftPage() {
       return (
         <main className="mx-auto max-w-5xl px-4 py-8">
           <div className="panel p-6">
-            Draftstatus kon niet worden gecontroleerd.
+            Could not check your draft status.
           </div>
         </main>
       );
@@ -269,10 +269,10 @@ export default async function DraftPage() {
             </h1>
 
             <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-zinc-400">
-              Je Initial Draft is voltooid.
-              De kaarten die je hebt gekozen
-              zijn permanent toegevoegd aan
-              je Collection.
+              Your Initial Draft is complete.
+              The cards you picked have been
+              permanently added to your
+              Collection.
             </p>
 
             <div className="mx-auto mt-6 grid max-w-lg grid-cols-3 gap-3">
@@ -352,14 +352,14 @@ export default async function DraftPage() {
           </h2>
 
           <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">
-            Iedere speler draft
-            60 Main Pool-kaarten,
-            2 Fusion Monsters en
+            Every player drafts
+            60 Main Pool cards,
+            2 Fusion Monsters and
             2 XYZ Monsters.
-            Iedere ronde wordt eerst
-            één rarity gerold, waarna
-            je één van drie kaarten
-            van die rarity kiest.
+            Each round first rolls
+            a rarity, then you pick
+            one of three cards of
+            that rarity.
           </p>
 
           <div className="mt-5 grid grid-cols-3 gap-3">
@@ -439,8 +439,8 @@ export default async function DraftPage() {
     return (
       <main className="mx-auto max-w-5xl px-4 py-8">
         <div className="panel p-6">
-          Je bent geen deelnemer
-          aan deze draft.
+          You are not a participant
+          in this draft.
         </div>
       </main>
     );
@@ -528,7 +528,7 @@ export default async function DraftPage() {
     return (
       <main className="mx-auto max-w-5xl px-4 py-8">
         <div className="panel p-6">
-          Draft offer kon niet worden geladen.
+          The draft offer could not be loaded.
         </div>
       </main>
     );
@@ -640,7 +640,7 @@ export default async function DraftPage() {
     return (
       <main className="mx-auto max-w-5xl px-4 py-8">
         <div className="panel p-6">
-          Draftopties konden niet worden geladen.
+          The draft options could not be loaded.
         </div>
       </main>
     );
@@ -684,7 +684,7 @@ export default async function DraftPage() {
       return (
         <main className="mx-auto max-w-5xl px-4 py-8">
           <div className="panel p-6">
-            Kaartinformatie kon niet worden geladen.
+            Card details could not be loaded.
           </div>
         </main>
       );
@@ -808,8 +808,8 @@ export default async function DraftPage() {
         </div>
 
         <p className="mt-3 text-xs text-zinc-500">
-          Kies één kaart. Klik op Details om
-          de kaart groter te bekijken.
+          Pick one card. Tap Details to see
+          the card bigger.
         </p>
       </header>
 

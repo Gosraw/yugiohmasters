@@ -420,7 +420,7 @@ export default async function CollectionPage({
       <main className="mx-auto max-w-7xl px-4 py-6">
         <div className="panel p-5">
           <p className="font-bold text-red-300">
-            Collection kon niet worden geladen.
+            Collection could not be loaded.
           </p>
 
           <p className="mt-2 text-sm text-zinc-500">

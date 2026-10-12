@@ -309,7 +309,7 @@ async function getUnlockedAchievementIds(
     !membership
   ) {
     throw new Error(
-      "League niet gevonden."
+      "League not found."
     );
   }
 
@@ -337,7 +337,7 @@ async function getUnlockedAchievementIds(
     !profile
   ) {
     throw new Error(
-      "Profiel kon niet worden geladen."
+      "Could not load your profile."
     );
   }
 
@@ -815,7 +815,7 @@ export async function updateProfile(
   if (!parsed.success) {
     return {
       error:
-        "Controleer de profielvelden.",
+        "Check the profile fields.",
     };
   }
 
@@ -898,7 +898,7 @@ export async function updateProfile(
   if (error) {
     return {
       error:
-        `Profiel opslaan mislukt: ${error.message}`,
+        `Could not save your profile: ${error.message}`,
     };
   }
 
@@ -906,7 +906,7 @@ export async function updateProfile(
 
   return {
     success:
-      "Profiel opgeslagen.",
+      "Profile saved.",
   };
 }
 
@@ -950,7 +950,7 @@ export async function equipAchievementTitle(
       "prestige"
   ) {
     throw new Error(
-      "Deze achievement ontgrendelt geen titel."
+      "This achievement doesn't unlock a title."
     );
   }
 
@@ -971,7 +971,7 @@ export async function equipAchievementTitle(
     )
   ) {
     throw new Error(
-      "Deze titel heb je nog niet ontgrendeld."
+      "You haven't unlocked this title yet."
     );
   }
 
@@ -993,7 +993,7 @@ export async function equipAchievementTitle(
 
   if (error) {
     throw new Error(
-      `Titel equippen mislukt: ${error.message}`
+      `Could not equip the title: ${error.message}`
     );
   }
 
@@ -1030,7 +1030,7 @@ export async function unequipAchievementTitle() {
 
   if (error) {
     throw new Error(
-      `Titel verwijderen mislukt: ${error.message}`
+      `Could not remove the title: ${error.message}`
     );
   }
 
@@ -1132,7 +1132,7 @@ export async function chooseBossMonster(
     !membership
   ) {
     throw new Error(
-      "League membership niet gevonden."
+      "League membership not found."
     );
   }
 
@@ -1168,7 +1168,7 @@ export async function chooseBossMonster(
 
     if (draftError) {
       throw new Error(
-        `Initial Draft starten mislukt: ${draftError.message}`
+        `Could not start the Initial Draft: ${draftError.message}`
       );
     }
   }

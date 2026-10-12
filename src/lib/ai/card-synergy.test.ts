@@ -203,7 +203,7 @@ describe("card synergy - candidate generation + AI explanation", () => {
     expect(grouped.owned.map((c) => c.card.id)).not.toContain("c7b");
   });
 
-  it("8. Forbidden card is excluded from suggestions", () => {
+  it("8. Master Duel Forbidden card is still suggested (Unlimited rooms)", () => {
     const target = card({
       id: "t8",
       name: "GY Sender",
@@ -218,7 +218,8 @@ describe("card synergy - candidate generation + AI explanation", () => {
 
     const results = generateSynergyCandidates(target, [forbiddenPayoff], {});
 
-    expect(results).toHaveLength(0);
+    expect(results).toHaveLength(1);
+    expect(results[0].masterDuelNote).toBeNull();
   });
 
   it("9. Not-in-Master-Duel (not_available / unknown) cards are excluded", () => {
@@ -254,11 +255,11 @@ describe("card synergy - candidate generation + AI explanation", () => {
 
     expect(results.some((r) => r.card.id === "c9a")).toBe(false);
     expect(results.some((r) => r.card.id === "c9b")).toBe(false);
-    // Limited IS offerable (conservative rule allows limited/semi_limited/
-    // unlimited) but must carry a note mentioning the restriction.
+    // Limited IS offerable (Unlimited rooms ignore the MD banlist), and
+    // nothing alarming is attached to it.
     const limitedResult = results.find((r) => r.card.id === "c9c");
     expect(limitedResult).toBeDefined();
-    expect(limitedResult?.masterDuelNote).toMatch(/Limited/);
+    expect(limitedResult?.masterDuelNote).toBeNull();
   });
 
   it("10. missing AI key produces a clean deterministic fallback, never throws", async () => {

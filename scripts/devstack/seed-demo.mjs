@@ -74,7 +74,10 @@ export async function ensurePlayableCatalog() {
   try {
     const [{ missing }] = await sql`select count(*)::int as missing from public.card_catalog where game_rarity is null`;
 
-    await sql`update public.card_catalog set master_duel_status = 'unlimited' where master_duel_status = 'unknown' or master_duel_status is null`;
+    // The 151 Classic v2 catalog additions (202610121030) stay
+    // 'unknown' on purpose - scripts/sql-tests/32 checks that, and
+    // they are never format_eligible locally anyway.
+    await sql`update public.card_catalog set master_duel_status = 'unlimited' where (master_duel_status = 'unknown' or master_duel_status is null) and coalesce(format_exclusion_reason, '') not like 'Classic v2 catalog addition%'`;
 
     if (missing === 0) {
       return 0;

@@ -44,7 +44,7 @@ export async function purchaseRotationCard(
   if (!rotationCardId) {
     redirect(
       `/shop?error=${safeMessage(
-        "Shop card ontbreekt."
+        "Shop card missing."
       )}`
     );
   }
@@ -82,7 +82,7 @@ export async function purchaseRotationCard(
 
   redirect(
     `/shop?success=${safeMessage(
-      "Kaart gekocht en toegevoegd aan je Collection."
+      "Card bought and added to your Collection."
     )}`
   );
 }
@@ -115,7 +115,7 @@ export async function purchasePack(
   ) {
     redirect(
       `/shop?error=${safeMessage(
-        "Ongeldig pack."
+        "Invalid pack."
       )}`
     );
   }
@@ -147,7 +147,7 @@ export async function purchasePack(
     redirect(
       `/shop?error=${safeMessage(
         error?.message ??
-          "Pack kon niet worden geopend."
+          "The pack could not be opened."
       )}`
     );
   }
@@ -205,7 +205,7 @@ export async function redeemPackVoucher(
   ) {
     redirect(
       `/shop?error=${safeMessage(
-        "Voucher is ongeldig."
+        "This voucher is invalid."
       )}`
     );
   }
@@ -237,7 +237,7 @@ export async function redeemPackVoucher(
     redirect(
       `/shop?error=${safeMessage(
         error?.message ??
-          "Voucher kon niet worden gebruikt."
+          "The voucher could not be used."
       )}`
     );
   }

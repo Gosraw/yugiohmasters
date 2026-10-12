@@ -23,6 +23,10 @@ import {
 } from "./quantity-stepper";
 
 import {
+  CopyLimitBadge,
+} from "./copy-limit-badge";
+
+import {
   EXTRA_MAX,
   MAIN_MAX,
   MAIN_MIN,
@@ -105,7 +109,7 @@ const DeckRow = memo(function DeckRow({
             sizes="48px"
             loading="lazy"
             className={`aspect-[421/614] h-auto w-full object-cover ${
-              card.format_eligible
+              card.deck_legal
                 ? ""
                 : "grayscale"
             }`}
@@ -122,11 +126,15 @@ const DeckRow = memo(function DeckRow({
         </p>
 
         <p className="mt-0.5 flex items-center gap-1.5 truncate text-[11px] text-zinc-400">
-          {!card.format_eligible && (
+          {!card.deck_legal && (
             <span className="font-black uppercase text-red-300">
               Not legal ·
             </span>
           )}
+
+          <CopyLimitBadge
+            limit={card.copy_limit}
+          />
 
           <span className="truncate">
             {cardSubtitle(
@@ -134,9 +142,9 @@ const DeckRow = memo(function DeckRow({
             )}
           </span>
 
-          {card.master_duel_status &&
-            card.master_duel_status !==
-              "unlimited" && (
+          {/* Unlimited rooms: only "not in Master Duel" is worth a badge. */}
+          {card.master_duel_status ===
+            "not_available" && (
               <MasterDuelBadge
                 status={
                   card.master_duel_status
@@ -152,7 +160,10 @@ const DeckRow = memo(function DeckRow({
           count={count}
           owned={card.copies.length}
           canAdd={canAdd}
-          legal={card.format_eligible}
+          legal={
+            card.deck_legal &&
+            card.copy_limit !== 0
+          }
           editable={editable}
           size="row"
           onAdd={() =>
@@ -286,11 +297,23 @@ export function DeckList({
   const notLegal =
     cards.filter(
       (card) =>
-        !card.format_eligible &&
+        !card.deck_legal &&
         (countByCard.get(
           card.id
         ) ?? 0) > 0
     ).length;
+
+  // Over our own banlist (a limit tightened after the cards went in).
+  const overLimit =
+    cards.filter(
+      (card) =>
+        card.deck_legal &&
+        card.copy_limit !== null &&
+        (countByCard.get(
+          card.id
+        ) ?? 0) >
+          card.copy_limit
+    );
 
   const row = (card: BuilderCard) => (
     <DeckRow
@@ -325,6 +348,27 @@ export function DeckList({
             {notLegal} card{notLegal === 1 ? " is" : "s are"} no longer
             format-legal. Swap {notLegal === 1 ? "it" : "them"} out
             before your next league duel.
+          </p>
+        </div>
+      )}
+
+      {overLimit.length > 0 && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-red-300/20 bg-red-300/[0.05] p-3 text-xs leading-5 text-red-100">
+          <ShieldAlert
+            size={16}
+            className="mt-0.5 shrink-0 text-red-300"
+          />
+          <p>
+            Over the format limit:{" "}
+            {overLimit
+              .map(
+                (card) =>
+                  card.copy_limit === 0
+                    ? `${card.name} (Forbidden)`
+                    : `${card.name} (max ${card.copy_limit})`
+              )
+              .join(", ")}
+            . Remove the extra copies before marking the deck Ready.
           </p>
         </div>
       )}

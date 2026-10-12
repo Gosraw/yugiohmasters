@@ -38,7 +38,7 @@ export default async function OnboardingPage() {
           </h1>
 
           <p className="mt-2 text-sm text-zinc-500">
-            De privéleague is vol of kon niet worden geïnitialiseerd. Probeer het later opnieuw, of vraag de league owner om hulp.
+            The private league is full or could not be set up. Try again later, or ask the league owner for help.
           </p>
         </section>
       </main>
@@ -70,18 +70,18 @@ export default async function OnboardingPage() {
           />
 
           <h1 className="mt-4 text-2xl font-black">
-            Boss Monster is al gekozen
+            Boss Monster already chosen
           </h1>
 
           <p className="mt-2 text-sm text-zinc-500">
-            Je hebt deze stap al afgerond.
+            You already finished this step.
           </p>
 
           <Link
             href="/"
             className="primary-button mt-5 inline-flex items-center justify-center"
           >
-            Ga naar Home
+            Go to Home
           </Link>
         </section>
       </main>
@@ -126,14 +126,14 @@ export default async function OnboardingPage() {
         </h1>
 
         <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-500">
-          Dit is jouw identiteit in de league - een visitekaartje, geen echte kaart. Deze keuze voegt niets toe aan je Collection en kan later niet meer worden veranderd.
+          This is your identity in the league - a calling card, not a real card. This choice adds nothing to your Collection and can&apos;t be changed later.
         </p>
 
         {!bosses ||
         bosses.length ===
           0 ? (
           <div className="panel mt-8 p-8 text-center text-sm text-zinc-500">
-            Er zijn nog geen Boss Monsters beschikbaar. Vraag de league owner om er een aan te maken.
+            No Boss Monsters are available yet. Ask the league owner to create one.
           </div>
         ) : (
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">

@@ -340,6 +340,40 @@ export default async function PerksPage() {
       []) as Claim[];
 
   // ======================================================
+  // WEEKLY CAP (perk_config + perk_dp_this_week, 202610121100)
+  // ======================================================
+
+  const [
+    {
+      data: perkConfig,
+    },
+    {
+      data: earnedThisWeekData,
+    },
+  ] = await Promise.all([
+    supabase
+      .from("perk_config")
+      .select("weekly_dp_cap")
+      .maybeSingle(),
+    supabase.rpc(
+      "perk_dp_this_week",
+      {
+        target_profile_id:
+          userId,
+      }
+    ),
+  ]);
+
+  const weeklyCap =
+    (perkConfig?.weekly_dp_cap ??
+      null) as number | null;
+
+  const earnedThisWeek =
+    Number(
+      earnedThisWeekData ?? 0
+    );
+
+  // ======================================================
   // PROFILES
   // ======================================================
 
@@ -450,6 +484,9 @@ export default async function PerksPage() {
         kind: "already_claimed";
       }
     | {
+        kind: "over_cap";
+      }
+    | {
         kind: "ineligible";
       };
 
@@ -508,6 +545,18 @@ export default async function PerksPage() {
     if (alreadyClaimed) {
       return {
         kind: "already_claimed",
+      };
+    }
+
+    // Display mirror of the cap check in approve_achievement_claim.
+    if (
+      weeklyCap !== null &&
+      earnedThisWeek +
+        achievement.dp_value >
+        weeklyCap
+    ) {
+      return {
+        kind: "over_cap",
       };
     }
 
@@ -577,6 +626,43 @@ export default async function PerksPage() {
             <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
               Turn real chores and treats into real Duel Points. No photos, no receipts - a claim is only as good as another duelist being willing to approve it. Max one paid-out claim per achievement per week (once, for one-time achievements), and you can never approve your own claim.
             </p>
+
+            {weeklyCap !== null && (
+              <div
+                data-testid="perk-weekly-cap"
+                className="mt-5 max-w-sm"
+              >
+                <div className="flex items-baseline justify-between gap-3 text-xs font-black">
+                  <span className="uppercase tracking-wider text-zinc-400">
+                    Weekly perk cap
+                  </span>
+
+                  <span
+                    className={
+                      earnedThisWeek >=
+                      weeklyCap
+                        ? "text-red-300"
+                        : "text-amber-200"
+                    }
+                  >
+                    {earnedThisWeek} / {weeklyCap} DP this week
+                  </span>
+                </div>
+
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-amber-300"
+                    style={{
+                      width: `${weeklyCap > 0 ? Math.min(100, (earnedThisWeek / weeklyCap) * 100) : 100}%`,
+                    }}
+                  />
+                </div>
+
+                <p className="mt-1.5 text-[11px] leading-5 text-zinc-500">
+                  Resets every Monday (Amsterdam time).
+                </p>
+              </div>
+            )}
           </div>
         </header>
 
@@ -704,6 +790,18 @@ export default async function PerksPage() {
                           "weekly"
                             ? "Claimed this week"
                             : "Already claimed"}
+                        </div>
+                      )}
+
+                      {state.kind ===
+                        "over_cap" && (
+                        <div className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-black text-zinc-400">
+                          <Ban
+                            size={
+                              12
+                            }
+                          />
+                          Over this week&apos;s cap
                         </div>
                       )}
 

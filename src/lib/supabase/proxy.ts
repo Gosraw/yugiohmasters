@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublicEnv } from "./env";
+import { onboardingRedirectPath } from "./onboarding-gate";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -128,32 +129,13 @@ export async function updateSession(request: NextRequest) {
     // the page render normally rather than redirect-looping on a
     // state this gate cannot resolve.
     if (leagueId && !onboardingExemptPath) {
-      const { data: bossPath } = await supabase
-        .from("player_boss_paths")
-        .select("id")
-        .eq("profile_id", userId)
-        .eq("route_slot", 1)
-        .limit(1)
-        .maybeSingle();
+      const gatePath = await onboardingRedirectPath(supabase, userId);
 
-      if (!bossPath) {
+      if (gatePath) {
+        const [gatePathname, gateQuery] = gatePath.split("?");
         const url = request.nextUrl.clone();
-        url.pathname = "/boss/select";
-        url.searchParams.set("slot", "1");
-        return NextResponse.redirect(url);
-      }
-
-      const { data: completedDraft } = await supabase
-        .from("draft_players")
-        .select("id")
-        .eq("profile_id", userId)
-        .eq("status", "completed")
-        .limit(1)
-        .maybeSingle();
-
-      if (!completedDraft) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/draft";
+        url.pathname = gatePathname;
+        url.search = gateQuery ? `?${gateQuery}` : "";
         return NextResponse.redirect(url);
       }
     }

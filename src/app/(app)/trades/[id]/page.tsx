@@ -1158,9 +1158,9 @@ export default async function TradeDetailPage({
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-zinc-500">
-                  Je moet minimaal één kaart of Duel Points aanbieden. Requested cards zijn optioneel.
-                  Kaarten worden niet gelockt - dezelfde fysieke kaart mag in meerdere pending trades tegelijk zitten.
-                  Bij Accept wordt live gecontroleerd of jullie de aangeboden en gevraagde kaarten nog echt bezitten.
+                  You must offer at least one card or some Duel Points. Requested cards are optional.
+                  Cards are not locked - the same physical card can be in several pending trades at once.
+                  On Accept it is checked live that you both still own the offered and requested cards.
                 </p>
 
                 <form

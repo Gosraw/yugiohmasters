@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeUsername, usernameToAuthEmail } from "@/lib/auth/username";
+import { onboardingRedirectPath } from "@/lib/supabase/onboarding-gate";
 
 export type AuthActionState = { error?: string };
 
@@ -17,16 +18,20 @@ export async function login(
   formData: FormData,
 ): Promise<AuthActionState> {
   const parsed = credentialsSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: "Controleer je username en password." };
+  if (!parsed.success) return { error: "Check your username and password." };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: usernameToAuthEmail(parsed.data.username),
     password: parsed.data.password,
   });
 
-  if (error) return { error: "Login mislukt. Controleer je gegevens." };
-  redirect("/");
+  if (error) return { error: "Login failed. Check your username and password." };
+
+  // A Server Action redirect renders "/" in this same response
+  // without passing the proxy, so send a not-yet-onboarded player
+  // straight to their onboarding step here.
+  redirect((await onboardingRedirectPath(supabase, data.user.id)) ?? "/");
 }
 
 export async function signup(
@@ -35,7 +40,7 @@ export async function signup(
 ): Promise<AuthActionState> {
   const parsed = credentialsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    return { error: "Username: 3-24 tekens. Password: minimaal 8 tekens." };
+    return { error: "Username: 3-24 characters. Password: at least 8 characters." };
   }
 
   const username = normalizeUsername(parsed.data.username);
@@ -49,16 +54,16 @@ export async function signup(
   if (error) {
     return {
       error: error.message.includes("already")
-        ? "Deze username bestaat al."
-        : "Account aanmaken mislukt.",
+        ? "This username is already taken."
+        : "Could not create the account.",
     };
   }
 
-  // Season 1: the mandatory onboarding gate in src/lib/supabase/proxy.ts
-  // takes over from here (Boss Path selection, then the Initial
-  // Draft) - it fires on the very next authenticated request no
-  // matter what path is requested, so landing on / is enough.
-  redirect("/");
+  // Season 1 onboarding: a brand new player always starts at Boss
+  // Path select (the proxy ensures league membership on that
+  // request). Redirecting to "/" here would render Home in the same
+  // Server Action response without passing the proxy's gate.
+  redirect("/boss/select?slot=1");
 }
 
 export async function logout() {

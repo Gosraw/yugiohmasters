@@ -14,10 +14,10 @@
 // discard/banish pair, a material level/rank match, or explicit
 // Spell/Trap archetype support).
 //
-// Master Duel eligibility is enforced here (conservative rule -
-// only unlimited/semi_limited/limited are offerable, mirrors
-// src/lib/master-duel.ts) so nothing downstream (AI layer, UI) can
-// accidentally recommend a Forbidden/Not Available/Unknown card.
+// Master Duel eligibility is enforced here (Unlimited-room rule,
+// mirrors src/lib/master-duel.ts: only cards that don't exist in
+// Master Duel, or have no status at all, are dropped) so nothing
+// downstream (AI layer, UI) can recommend an unplayable card.
 // =========================================================
 
 import {

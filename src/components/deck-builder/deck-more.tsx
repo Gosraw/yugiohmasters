@@ -84,9 +84,21 @@ import {
 
 export function readyReasons(
   mainCount: number,
-  extraCount: number
+  extraCount: number,
+  overLimit: {
+    name: string;
+    limit: number;
+  }[] = []
 ): string[] {
   const reasons: string[] = [];
+
+  for (const card of overLimit) {
+    reasons.push(
+      card.limit === 0
+        ? `Remove ${card.name} - it is Forbidden in this format.`
+        : `${card.name} is limited to ${card.limit} per deck - remove the extra copies.`
+    );
+  }
 
   if (mainCount < 40) {
     const short =
@@ -308,7 +320,23 @@ export function DeckMore({
   const reasons =
     readyReasons(
       mainCount,
-      extraCount
+      extraCount,
+      cards
+        .filter(
+          (card) =>
+            card.copy_limit !== null &&
+            (countByCard.get(
+              card.id
+            ) ?? 0) >
+              card.copy_limit
+        )
+        .map(
+          (card) => ({
+            name: card.name,
+            limit:
+              card.copy_limit ?? 0,
+          })
+        )
     );
 
   const canBeReady =
@@ -520,8 +548,8 @@ export function DeckMore({
 
               {derived.masterDuel.ready ? (
                 <p className="mt-1 text-xs leading-5 text-zinc-400">
-                  Every card in this deck is Master Duel legal at its
-                  current copy count.
+                  Every card in this deck exists in Master Duel, so it
+                  works in an Unlimited Duel Room.
                 </p>
               ) : (
                 <ul className="mt-2 space-y-1 text-xs leading-5 text-zinc-300">

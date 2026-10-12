@@ -16,7 +16,8 @@
 // has, and a short notice explains why.
 //
 // The database stays the source of truth for every rule; the checks
-// here (format legal, a free copy left, Main/Extra not full) only
+// here (deck legal, our copy limit, a free copy left, Main/Extra not
+// full) only
 // avoid sending taps that are certain to fail.
 // =========================================================
 
@@ -255,10 +256,26 @@ export function createDeckStore({
         return;
       }
 
-      if (!card.format_eligible) {
+      if (!card.deck_legal) {
         say(`${card.name} isn't legal in the current format.`);
         emit();
         return;
+      }
+
+      if (card.copy_limit !== null) {
+        const inDeckCount = snapshot.countByCard.get(card.id) ?? 0;
+
+        if (card.copy_limit === 0) {
+          say(`${card.name} is Forbidden in the Duelist Circle format.`);
+          emit();
+          return;
+        }
+
+        if (inDeckCount >= card.copy_limit) {
+          say(`${card.name} is limited to ${card.copy_limit} per deck.`, "info");
+          emit();
+          return;
+        }
       }
 
       const section = sectionForCardType(card.card_type);

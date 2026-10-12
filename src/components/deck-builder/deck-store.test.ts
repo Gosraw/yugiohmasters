@@ -34,6 +34,8 @@ function makeCard(id: string, copies: number, overrides: Partial<BuilderCard> = 
       copyNumber: index + 1,
       locked: false,
     })),
+    deck_legal: true,
+    copy_limit: null,
     ...overrides,
   };
 }
@@ -192,5 +194,40 @@ describe("builder card wire format", () => {
       image: null,
       copies: [],
     });
+  });
+
+  it("stops at our own copy limit and refuses Forbidden cards without a server call", async () => {
+    const add = vi.fn(async () => ({ ok: true as const }));
+    const store = createDeckStore({
+      deckId: "deck",
+      cards: [makeCard("lim", 3, { copy_limit: 1 }), makeCard("ban", 3, { copy_limit: 0 })],
+      initialInDeck: [],
+      mutators: { add, remove: vi.fn() },
+    });
+
+    store.add("lim");
+    store.add("lim");
+    store.add("ban");
+    await flush();
+
+    expect(store.getSnapshot().countByCard.get("lim")).toBe(1);
+    expect(store.getSnapshot().countByCard.get("ban")).toBeUndefined();
+    expect(add).toHaveBeenCalledTimes(1);
+    expect(store.getSnapshot().notice?.text).toMatch(/Forbidden/);
+  });
+
+  it("lets a deck-legal Boss-route card in even when it is not format_eligible", async () => {
+    const add = vi.fn(async () => ({ ok: true as const }));
+    const store = createDeckStore({
+      deckId: "deck",
+      cards: [makeCard("boss", 1, { format_eligible: false, deck_legal: true })],
+      initialInDeck: [],
+      mutators: { add, remove: vi.fn() },
+    });
+
+    store.add("boss");
+    await flush();
+
+    expect(add).toHaveBeenCalledTimes(1);
   });
 });

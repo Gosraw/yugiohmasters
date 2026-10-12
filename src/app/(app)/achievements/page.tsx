@@ -355,7 +355,7 @@ export default async function AchievementsPage() {
     return (
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="panel p-6">
-          Geen league gevonden.
+          No league found.
         </div>
       </main>
     );
@@ -387,7 +387,7 @@ export default async function AchievementsPage() {
     !profileData
   ) {
     throw new Error(
-      "Profiel kon niet worden geladen."
+      "Could not load your profile."
     );
   }
 

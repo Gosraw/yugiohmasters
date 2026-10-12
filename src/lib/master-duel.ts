@@ -3,14 +3,17 @@
 //
 // Single source of truth for how a `card_catalog.master_duel_status`
 // value maps to a display label and to a deck-legality copy limit.
-// Mirrors the CONSERVATIVE eligibility rule already enforced in SQL
-// by is_master_duel_offerable() (see
-// supabase/migrations/202608220020_master_duel_compatibility.sql
-// and 202608230021_shop_v2_refresh_and_specials.sql) - offerable
-// ONLY for unlimited/semi_limited/limited. This file must stay in
-// sync with that SQL function if it's ever changed; it does not
-// call the database, it just mirrors the same conservative rule for
-// UI/deck-validation purposes.
+//
+// 2.0 rule (Unlimited Duel Rooms): the group plays Master Duel with
+// the Forbidden/Limited setting on "Unlimited", so the Master Duel
+// banlist does NOT apply. Only 'not_available' (the card does not
+// exist in Master Duel) blocks a card. Forbidden / Limited /
+// Semi-Limited in Master Duel are all fine; OUR own banlist
+// (public.duelist_circle_card_limits) decides deck copies.
+//
+// Mirrors the SQL is_master_duel_offerable() from
+// supabase/migrations/202610121000_master_duel_unlimited_rooms.sql
+// - keep the two in sync. This file does not call the database.
 // =========================================================
 
 // Widened to plain `string | null | undefined` rather than a
@@ -31,10 +34,9 @@ export type MasterDuelStatusMeta = {
   status: string;
   label: string;
   shortLabel: string;
-  // Max copies of this card allowed in a Master-Duel-legal deck.
-  // null = "not applicable" (forbidden/not_available/unknown all
-  // resolve to 0 - a deck containing any copy of one of these is
-  // not Master Duel ready).
+  // Max copies of this card in a deck as far as Master Duel
+  // (Unlimited rooms) is concerned: 3 for every card that exists in
+  // Master Duel, 0 for not_available.
   copyLimit: 0 | 1 | 2 | 3;
   tone:
     | "legal"
@@ -43,57 +45,62 @@ export type MasterDuelStatusMeta = {
     | "unknown";
 };
 
+// The Master Duel list status is kept only as an "In Master Duel"
+// signal: every status that means "the card exists in Master Duel"
+// shares the same calm, legal look, so nothing alarming is shown
+// for cards that are Forbidden/Limited on the MD list.
+const IN_MASTER_DUEL: Omit<
+  MasterDuelStatusMeta,
+  "status"
+> = {
+  label: "In Master Duel",
+  shortLabel: "In MD",
+  copyLimit: 3,
+  tone: "legal",
+};
+
 const STATUS_META: Record<
   string,
   MasterDuelStatusMeta
 > = {
   unlimited: {
     status: "unlimited",
-    label: "Master Duel Legal",
-    shortLabel: "Legal",
-    copyLimit: 3,
-    tone: "legal",
+    ...IN_MASTER_DUEL,
   },
 
   semi_limited: {
     status: "semi_limited",
-    label: "Semi-Limited · Max 2",
-    shortLabel: "Semi-Limited 2",
-    copyLimit: 2,
-    tone: "restricted",
+    ...IN_MASTER_DUEL,
   },
 
   limited: {
     status: "limited",
-    label: "Limited · Max 1",
-    shortLabel: "Limited 1",
-    copyLimit: 1,
-    tone: "restricted",
+    ...IN_MASTER_DUEL,
   },
 
   forbidden: {
     status: "forbidden",
-    label: "Forbidden in Master Duel",
-    shortLabel: "Forbidden",
-    copyLimit: 0,
-    tone: "blocked",
+    ...IN_MASTER_DUEL,
   },
 
   not_available: {
     status: "not_available",
     label: "Not in Master Duel",
-    shortLabel: "Not Available",
+    shortLabel: "Not in MD",
     copyLimit: 0,
     tone: "blocked",
   },
 };
 
+// Never checked against Master Duel. The server only lets such a
+// card into the format through a curated include, so it is not
+// treated as a deck problem here - just shown as unchecked.
 const UNKNOWN_META: MasterDuelStatusMeta =
   {
     status: "unknown",
-    label: "Master Duel Status Unknown",
-    shortLabel: "Unknown",
-    copyLimit: 0,
+    label: "Master Duel Status Unchecked",
+    shortLabel: "MD Unchecked",
+    copyLimit: 3,
     tone: "unknown",
   };
 
@@ -110,14 +117,21 @@ export function getMasterDuelStatusMeta(
   return STATUS_META[status];
 }
 
-// Same rule as the SQL is_master_duel_offerable() function -
-// offerable only for unlimited/semi_limited/limited.
+// Same rule as the SQL is_master_duel_offerable() (Unlimited
+// rooms): true for unlimited/semi_limited/limited/forbidden/unknown,
+// false for not_available and for null/unrecognised values.
 export function isMasterDuelOfferable(
   status: MasterDuelStatus
 ): boolean {
+  if (!status) {
+    return false;
+  }
+
   return (
-    getMasterDuelStatusMeta(status)
-      .copyLimit > 0
+    status === "unknown" ||
+    (status in STATUS_META &&
+      STATUS_META[status]
+        .copyLimit > 0)
   );
 }
 
@@ -127,10 +141,8 @@ export function isMasterDuelOfferable(
 // Counts copies per catalog card across a deck's cards
 // (Main + Extra combined - the copy limit applies to the
 // whole deck, not per section) and reports every card that
-// breaks the conservative Master Duel rule: any Forbidden or
-// Not Available or Unknown-status card present at all, or a
-// Limited/Semi-Limited/Unlimited card present in more copies
-// than its status allows.
+// can't be played in a Master Duel Unlimited room: a Not in
+// Master Duel card present at all, or any card above 3 copies.
 // =========================================================
 
 export type MasterDuelDeckCardInput =
@@ -158,10 +170,6 @@ function issueMessage(
   meta: MasterDuelStatusMeta,
   ownedCount: number
 ): string {
-  if (meta.status === "forbidden") {
-    return `${card.name} is Forbidden in Master Duel.`;
-  }
-
   if (
     meta.status ===
     "not_available"
@@ -169,11 +177,7 @@ function issueMessage(
     return `${card.name} is not available in Master Duel.`;
   }
 
-  if (meta.status === "unknown") {
-    return `${card.name}'s Master Duel status hasn't been checked yet.`;
-  }
-
-  return `${card.name} exceeds its Master Duel copy limit (${ownedCount} owned, max ${meta.copyLimit}).`;
+  return `${card.name} has ${ownedCount} copies - Master Duel allows max ${meta.copyLimit}.`;
 }
 
 /**

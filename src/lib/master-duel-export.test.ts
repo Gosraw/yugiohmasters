@@ -91,18 +91,19 @@ describe("buildMasterDuelChecklist", () => {
         name: "Ash Blossom",
         count: 2,
         section: "main",
-        masterDuelStatusLabel: "Legal",
+        masterDuelStatusLabel: "In MD",
       },
       {
         name: "Accesscode Talker",
         count: 1,
         section: "extra",
-        masterDuelStatusLabel: "Limited 1",
+        // Unlimited rooms: MD Limited is just "In MD", nothing alarming.
+        masterDuelStatusLabel: "In MD",
       },
     ]);
-    expect(result.checklistText).toContain("2x Ash Blossom (Legal)");
+    expect(result.checklistText).toContain("2x Ash Blossom (In MD)");
     expect(result.checklistText).toContain(
-      "1x Accesscode Talker (Limited 1)"
+      "1x Accesscode Talker (In MD)"
     );
   });
 });

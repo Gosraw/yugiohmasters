@@ -29,8 +29,8 @@ export default function NewDeckPage() {
         </h1>
 
         <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">
-          Geef je deck een naam. Daarna kun je kaarten uit je eigen
-          Collection toevoegen.
+          Give your deck a name. Then you can add cards from your own
+          Collection.
         </p>
       </header>
 
@@ -54,7 +54,7 @@ export default function NewDeckPage() {
               name="name"
               required
               maxLength={80}
-              placeholder="Bijv. Dark Magician Control"
+              placeholder="E.g. Dark Magician Control"
               className="field mt-2"
             />
           </label>
@@ -65,8 +65,8 @@ export default function NewDeckPage() {
             </p>
 
             <p className="mt-2 text-sm leading-6 text-zinc-500">
-              Main Deck: 40–60 kaarten. Extra Deck: maximaal 15 kaarten
-              en alleen Fusion + XYZ Monsters.
+              Main Deck: 40–60 cards. Extra Deck: up to 15 cards,
+              Fusion + XYZ Monsters only.
             </p>
           </div>
 

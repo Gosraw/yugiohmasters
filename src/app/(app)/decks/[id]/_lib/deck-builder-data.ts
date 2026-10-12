@@ -51,7 +51,7 @@ type InstanceRow = {
 type CatalogRow =
   Omit<
     BuilderCard,
-    "image" | "copies"
+    "image" | "copies" | "deck_legal" | "copy_limit"
   > & {
     image_url: string | null;
     image_url_small: string | null;
@@ -202,6 +202,12 @@ export async function loadBuilderCards(
         )
     );
 
+  const rules =
+    await loadDeckRules(
+      supabase,
+      catalogRows
+    );
+
   const cardsById =
     new Map<string, BuilderCard>();
 
@@ -212,6 +218,11 @@ export async function loadBuilderCards(
       ...rest
     } = row;
 
+    const exempt =
+      rules.exemptIds.has(
+        row.id
+      );
+
     cardsById.set(
       row.id,
       {
@@ -220,6 +231,15 @@ export async function loadBuilderCards(
           image_url_small ??
           image_url,
         copies: [],
+        deck_legal:
+          row.format_eligible ||
+          exempt,
+        copy_limit:
+          exempt
+            ? null
+            : rules.limits.get(
+                row.id
+              ) ?? null,
       }
     );
   }
@@ -246,6 +266,283 @@ export async function loadBuilderCards(
         b.name
       )
   );
+}
+
+type ActiveFormat = {
+  id: string;
+  code: string;
+  boss_route_exempt: boolean;
+};
+
+/**
+ * Display-side mirror of the database's deck rules for the ACTIVE
+ * format (the database stays the source of truth and refuses
+ * anything that breaks them):
+ *   - limits: duelist_circle_card_limits rows (our own banlist),
+ *     like duelist_circle_deck_copy_limit().
+ *   - exemptIds: cards that are deck legal without being
+ *     format_eligible because the format has boss_route_exempt, like
+ *     is_duelist_circle_deck_legal(): a Boss evolution monster or a
+ *     route-exclusive grant, not not_available, not excluded. Exempt
+ *     cards also have no copy limit.
+ * No active format = no limits and no exemptions.
+ */
+async function loadDeckRules(
+  supabase: Supabase,
+  catalogRows: CatalogRow[]
+): Promise<{
+  limits: Map<string, number>;
+  exemptIds: Set<string>;
+}> {
+  const limits =
+    new Map<string, number>();
+
+  const exemptIds =
+    new Set<string>();
+
+  const {
+    data: format,
+    error: formatError,
+  } = await supabase
+    .from("duelist_circle_formats")
+    .select(
+      "id,code,boss_route_exempt"
+    )
+    .eq(
+      "is_active",
+      true
+    )
+    .limit(1)
+    .maybeSingle<ActiveFormat>();
+
+  if (formatError) {
+    throw new Error(
+      formatError.message
+    );
+  }
+
+  if (
+    !format ||
+    catalogRows.length === 0
+  ) {
+    return {
+      limits,
+      exemptIds,
+    };
+  }
+
+  const ids =
+    catalogRows.map(
+      (row) =>
+        row.id
+    );
+
+  const limitRows =
+    await fetchInBatches<string, {
+      card_catalog_id: string;
+      max_copies: number;
+    }>(
+      ids,
+      (
+        batch,
+        from,
+        to
+      ) => supabase
+        .from("duelist_circle_card_limits")
+        .select(
+          "card_catalog_id,max_copies"
+        )
+        .eq(
+          "format_code",
+          format.code
+        )
+        .in(
+          "card_catalog_id",
+          batch
+        )
+        .order(
+          "card_catalog_id",
+          {
+            ascending: true,
+          }
+        )
+        .range(
+          from,
+          to
+        )
+    );
+
+  if (!format.boss_route_exempt) {
+    for (const row of limitRows) {
+      limits.set(
+        row.card_catalog_id,
+        row.max_copies
+      );
+    }
+
+    return {
+      limits,
+      exemptIds,
+    };
+  }
+
+  const [
+    stageRows,
+    grantRows,
+    excludeRows,
+  ] = await Promise.all([
+    fetchInBatches<string, {
+      evolution_card_catalog_id: string;
+    }>(
+      ids,
+      (
+        batch,
+        from,
+        to
+      ) => supabase
+        .from("boss_route_stages")
+        .select(
+          "evolution_card_catalog_id"
+        )
+        .in(
+          "evolution_card_catalog_id",
+          batch
+        )
+        .order(
+          "evolution_card_catalog_id",
+          {
+            ascending: true,
+          }
+        )
+        .range(
+          from,
+          to
+        )
+    ),
+    fetchInBatches<string, {
+      card_catalog_id: string;
+    }>(
+      ids,
+      (
+        batch,
+        from,
+        to
+      ) => supabase
+        .from("boss_route_stage_grants")
+        .select(
+          "card_catalog_id"
+        )
+        .eq(
+          "is_route_exclusive",
+          true
+        )
+        .in(
+          "card_catalog_id",
+          batch
+        )
+        .order(
+          "card_catalog_id",
+          {
+            ascending: true,
+          }
+        )
+        .range(
+          from,
+          to
+        )
+    ),
+    fetchInBatches<string, {
+      card_catalog_id: string;
+    }>(
+      ids,
+      (
+        batch,
+        from,
+        to
+      ) => supabase
+        .from("format_card_overrides")
+        .select(
+          "card_catalog_id"
+        )
+        .eq(
+          "format_id",
+          format.id
+        )
+        .eq(
+          "override_type",
+          "exclude"
+        )
+        .in(
+          "card_catalog_id",
+          batch
+        )
+        .order(
+          "card_catalog_id",
+          {
+            ascending: true,
+          }
+        )
+        .range(
+          from,
+          to
+        )
+    ),
+  ]);
+
+  const excluded =
+    new Set(
+      excludeRows.map(
+        (row) =>
+          row.card_catalog_id
+      )
+    );
+
+  const statusById =
+    new Map(
+      catalogRows.map(
+        (row) => [
+          row.id,
+          row.master_duel_status,
+        ]
+      )
+    );
+
+  for (const id of [
+    ...stageRows.map(
+      (row) =>
+        row.evolution_card_catalog_id
+    ),
+    ...grantRows.map(
+      (row) =>
+        row.card_catalog_id
+    ),
+  ]) {
+    if (
+      !excluded.has(id) &&
+      statusById.get(id) !==
+        "not_available"
+    ) {
+      exemptIds.add(id);
+    }
+  }
+
+  for (const row of limitRows) {
+    if (
+      !exemptIds.has(
+        row.card_catalog_id
+      )
+    ) {
+      limits.set(
+        row.card_catalog_id,
+        row.max_copies
+      );
+    }
+  }
+
+  return {
+    limits,
+    exemptIds,
+  };
 }
 
 export async function loadDeckInstanceIds(

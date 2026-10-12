@@ -41,7 +41,7 @@ export async function startInitialDraft() {
     !membership
   ) {
     throw new Error(
-      "League membership niet gevonden."
+      "League membership not found."
     );
   }
 
@@ -91,7 +91,7 @@ export async function createNextDraftOffer(
 
   if (!draftPlayerId) {
     throw new Error(
-      "Draft player ontbreekt."
+      "Draft player missing."
     );
   }
 
@@ -118,7 +118,7 @@ export async function createNextDraftOffer(
     !player
   ) {
     throw new Error(
-      "Draft player niet gevonden."
+      "Draft player not found."
     );
   }
 
@@ -127,7 +127,7 @@ export async function createNextDraftOffer(
     userId
   ) {
     throw new Error(
-      "Je kunt geen kaarten genereren voor een andere speler."
+      "You can't generate cards for another player."
     );
   }
 
@@ -210,7 +210,7 @@ export async function pickDraftCard(
     !optionId
   ) {
     throw new Error(
-      "Draftkeuze ontbreekt."
+      "Draft choice missing."
     );
   }
 
@@ -244,7 +244,7 @@ export async function pickDraftCard(
     !offer
   ) {
     throw new Error(
-      "Deze draftkeuze is niet meer actief."
+      "This draft choice is no longer active."
     );
   }
 
@@ -274,7 +274,7 @@ export async function pickDraftCard(
     !draftPlayer
   ) {
     throw new Error(
-      "Draft player niet gevonden."
+      "Draft player not found."
     );
   }
 
@@ -283,7 +283,7 @@ export async function pickDraftCard(
     userId
   ) {
     throw new Error(
-      "Je kunt niet voor een andere speler kiezen."
+      "You can't pick for another player."
     );
   }
 
@@ -352,7 +352,7 @@ export async function pickDraftCard(
     !updatedPlayer
   ) {
     throw new Error(
-      "Draftvoortgang kon niet worden geladen."
+      "Could not load your draft progress."
     );
   }
 
@@ -396,7 +396,7 @@ export async function pickDraftCard(
 
   if (nextOfferError) {
     throw new Error(
-      `De kaart is gekozen, maar de volgende draftkeuze kon niet worden gemaakt: ${nextOfferError.message}`
+      `The card was picked, but the next draft choice could not be created: ${nextOfferError.message}`
     );
   }
 

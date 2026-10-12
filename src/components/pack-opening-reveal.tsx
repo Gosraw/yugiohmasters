@@ -1057,8 +1057,8 @@ export function PackOpeningReveal({
                 }
                 aria-label={
                   flipped
-                    ? "Volgende kaart"
-                    : "Kaart onthullen"
+                    ? "Next card"
+                    : "Reveal card"
                 }
                 className="group block w-full cursor-pointer disabled:cursor-wait"
               >

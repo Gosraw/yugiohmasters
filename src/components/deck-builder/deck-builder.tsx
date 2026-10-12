@@ -219,6 +219,25 @@ export function DeckBuilder({
           }
         }
 
+        // "Addable", not just free: a card that isn't deck legal or
+        // already sits at our own copy limit gets a disabled +.
+        if (!card.deck_legal) {
+          count = 0;
+        } else if (
+          card.copy_limit !== null
+        ) {
+          count = Math.min(
+            count,
+            Math.max(
+              0,
+              card.copy_limit -
+                (snapshot.countByCard.get(
+                  card.id
+                ) ?? 0)
+            )
+          );
+        }
+
         free.set(
           card.id,
           count
@@ -226,7 +245,7 @@ export function DeckBuilder({
       }
 
       return free;
-    }, [cards, snapshot.inDeck]);
+    }, [cards, snapshot.inDeck, snapshot.countByCard]);
 
   const deckSignature =
     useMemo(

@@ -79,7 +79,7 @@ export default async function TradeBinderPage() {
     return (
       <main className="mx-auto max-w-5xl px-4 py-8">
         <div className="panel p-6">
-          Geen league gevonden.
+          No league found.
         </div>
       </main>
     );

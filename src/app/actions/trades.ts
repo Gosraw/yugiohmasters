@@ -33,7 +33,7 @@ export async function createTrade(
 
   if (!receiverId) {
     throw new Error(
-      "Trade partner ontbreekt."
+      "Trade partner missing."
     );
   }
 
@@ -42,7 +42,7 @@ export async function createTrade(
     userId
   ) {
     throw new Error(
-      "Je kunt niet met jezelf ruilen."
+      "You can't trade with yourself."
     );
   }
 
@@ -64,7 +64,7 @@ export async function createTrade(
     !membership
   ) {
     throw new Error(
-      "League niet gevonden."
+      "League not found."
     );
   }
 
@@ -89,7 +89,7 @@ export async function createTrade(
     !receiverMembership
   ) {
     throw new Error(
-      "Deze speler zit niet in jouw league."
+      "This player is not in your league."
     );
   }
 
@@ -115,7 +115,7 @@ export async function createTrade(
 
   if (!tradeId) {
     throw new Error(
-      "Trade kon niet worden aangemaakt."
+      "The trade could not be created."
     );
   }
 
@@ -165,7 +165,7 @@ export async function addTradeItem(
     !cardInstanceId
   ) {
     throw new Error(
-      "Trade of kaart ontbreekt."
+      "Trade or card missing."
     );
   }
 
@@ -239,7 +239,7 @@ export async function removeTradeItem(
     !tradeItemId
   ) {
     throw new Error(
-      "Trade item ontbreekt."
+      "Trade item missing."
     );
   }
 
@@ -307,7 +307,7 @@ export async function setTradeDp(
 
   if (!tradeId) {
     throw new Error(
-      "Trade ontbreekt."
+      "Trade missing."
     );
   }
 
@@ -322,7 +322,7 @@ export async function setTradeDp(
     dpRequested < 0
   ) {
     throw new Error(
-      "Ongeldig Duel Points bedrag."
+      "Invalid Duel Points amount."
     );
   }
 
@@ -388,7 +388,7 @@ export async function submitTrade(
 
   if (!tradeId) {
     throw new Error(
-      "Trade ontbreekt."
+      "Trade missing."
     );
   }
 
@@ -397,7 +397,7 @@ export async function submitTrade(
     1000
   ) {
     throw new Error(
-      "Bericht mag maximaal 1000 tekens bevatten."
+      "Messages can be at most 1000 characters."
     );
   }
 
@@ -460,7 +460,7 @@ export async function acceptTrade(
 
   if (!tradeId) {
     throw new Error(
-      "Trade ontbreekt."
+      "Trade missing."
     );
   }
 
@@ -526,7 +526,7 @@ export async function declineTrade(
 
   if (!tradeId) {
     throw new Error(
-      "Trade ontbreekt."
+      "Trade missing."
     );
   }
 
@@ -579,7 +579,7 @@ export async function cancelTrade(
 
   if (!tradeId) {
     throw new Error(
-      "Trade ontbreekt."
+      "Trade missing."
     );
   }
 
@@ -637,7 +637,7 @@ export async function counterTrade(
 
   if (!tradeId) {
     throw new Error(
-      "Trade ontbreekt."
+      "Trade missing."
     );
   }
 
@@ -660,7 +660,7 @@ export async function counterTrade(
 
   if (!newTradeId) {
     throw new Error(
-      "Counter-offer kon niet worden aangemaakt."
+      "The counter-offer could not be created."
     );
   }
 

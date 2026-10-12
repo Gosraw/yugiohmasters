@@ -41,13 +41,11 @@ test.afterAll(async () => {
   await closeDb();
 });
 
-// BUG: proxy.ts sits in the repo root, but because the app lives in
-// src/app, Next.js 16 only loads src/proxy.ts - the root file is never
-// run (in dev AND in production builds). So the onboarding gate in
-// src/lib/supabase/proxy.ts never redirects anyone: a new player can
-// use the whole app without choosing a Boss Path or drafting.
-// Un-fixme once proxy.ts is moved to src/proxy.ts.
-test.fixme("the onboarding gate sends a new player to Boss Path select, then the draft", async ({ page }) => {
+// The onboarding gate in src/lib/supabase/proxy.ts (run by
+// src/proxy.ts) sends a new player to Boss Path select first.
+// (Was a fixme while proxy.ts sat in the repo root, where Next.js 16
+// never ran it - fixed in deefb21.)
+test("the onboarding gate sends a new player to Boss Path select, then the draft", async ({ page }) => {
   test.skip(await isOnboarded(FRESH_USER), `${FRESH_USER} is already onboarded`);
 
   await login(page, FRESH_USER);
@@ -71,8 +69,8 @@ test("a new player completes onboarding through the real UI", async ({ page }) =
   await login(page, FRESH_USER);
 
   // ---- 1. Boss Path select ----
-  // (Opened directly: the gate that should send us here doesn't run,
-  // see the fixme above.)
+  // (Opened directly with slot=1; the gate test above checks the
+  // redirect itself.)
   if (!(await hasBossPath(FRESH_USER))) {
     await page.goto("/boss/select?slot=1");
 
@@ -171,10 +169,9 @@ test("a new player completes onboarding through the real UI", async ({ page }) =
   await expectLedgerMatchesBalance(FRESH_USER);
 });
 
-// BUG: same root cause as above - claim_welcome_packs() is only ever
-// called from the proxy, which never runs, so new players never get
-// their 3 welcome packs. Un-fixme once proxy.ts is moved.
-test.fixme("the 3 welcome packs are granted automatically, exactly once", async ({ page }) => {
+// claim_welcome_packs() is called by the proxy on the first request
+// after onboarding.
+test("the 3 welcome packs are granted automatically, exactly once", async ({ page }) => {
   await login(page, FRESH_USER);
   await page.goto("/");
   await page.goto("/shop");
@@ -187,8 +184,8 @@ test("the new player opens the three welcome packs in the Shop", async ({ page }
 
   const id = await profileId(FRESH_USER);
 
-  // Stand in for the proxy (see fixme above): grant the welcome packs
-  // with the same RPC, as the player.
+  // The proxy already granted them; calling the same RPC twice more
+  // as the player must not grant anything extra.
   claimWelcomePacks(FRESH_USER);
   claimWelcomePacks(FRESH_USER);
 

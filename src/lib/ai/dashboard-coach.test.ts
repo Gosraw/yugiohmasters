@@ -183,7 +183,7 @@ describe("findingToDashboardInsight", () => {
   it("5. maps NORMAL_SUMMON_COMPETITION to the exact product-spec tone example", () => {
     const mapped = findingToDashboardInsight(finding({ type: "NORMAL_SUMMON_COMPETITION" }));
     expect(mapped?.insightType).toBe("normal_summon_competition");
-    expect(mapped?.summary).toBe("Veel kaarten concurreren om je Normal Summon.");
+    expect(mapped?.summary).toBe("Many cards compete for your Normal Summon.");
   });
 
   it("6. maps GY_PAYOFF_WITHOUT_SETUP to the gy_imbalance type with plain, non-jargon language", () => {
@@ -236,7 +236,7 @@ describe("findingToDashboardInsight", () => {
     const mapped = findingToDashboardInsight(
       finding({ type: "UNSUPPORTED_EXTRA_DECK_CARD", involvedCardIds: ["card-99"] })
     );
-    expect(mapped?.summary).toContain("Deze kaart");
+    expect(mapped?.summary).toContain("This card");
   });
 });
 
@@ -264,7 +264,7 @@ describe("getOrRefreshDashboardCoachInsights", () => {
         profile_id: USER_ID,
         league_id: LEAGUE_ID,
         insight_type: "normal_summon_competition",
-        deterministic_summary: "Veel kaarten concurreren om je Normal Summon.",
+        deterministic_summary: "Many cards compete for your Normal Summon.",
         confidence: "medium",
         evidence: {},
         ai_explanation: null,
@@ -284,7 +284,7 @@ describe("getOrRefreshDashboardCoachInsights", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].deterministicSummary).toBe(
-      "Veel kaarten concurreren om je Normal Summon."
+      "Many cards compete for your Normal Summon."
     );
 
     const mechanicsQueries = mock.calls.filter((c) => c.table === "card_mechanics");

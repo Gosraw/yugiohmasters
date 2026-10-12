@@ -37,7 +37,27 @@ export type BuilderCard = {
   master_duel_card_id: number | null;
   // Owned copies, lowest copy number first.
   copies: BuilderCopy[];
+  // May a copy go into a deck? format_eligible, or a Boss-route card
+  // when the active format has boss_route_exempt (same rule as
+  // is_duelist_circle_deck_legal() in the database).
+  deck_legal: boolean;
+  // Our own banlist for the active format
+  // (duelist_circle_card_limits): 0 = Forbidden, 1/2 = max copies,
+  // null = no extra limit (3 like any card).
+  copy_limit: number | null;
 };
+
+/**
+ * Short badge text for our own banlist, or null when the card has no
+ * extra limit.
+ */
+export function copyLimitLabel(limit: number | null): string | null {
+  if (limit === null || limit >= 3) {
+    return null;
+  }
+
+  return limit === 0 ? "Forbidden" : `Max ${limit}`;
+}
 
 export type BuilderDeck = {
   id: string;
@@ -104,6 +124,8 @@ export type BuilderCardWire = [
   masterDuelCardId: number | null,
   // "<instance id>:<copy number>[:L]" joined with ","  (L = locked)
   copies: string,
+  deckLegal: 0 | 1,
+  copyLimit: number | null,
 ];
 
 export function encodeBuilderCard(card: BuilderCard): BuilderCardWire {
@@ -128,6 +150,8 @@ export function encodeBuilderCard(card: BuilderCard): BuilderCardWire {
     card.external_card_id,
     card.master_duel_card_id,
     card.copies.map((copy) => `${copy.id}:${copy.copyNumber}${copy.locked ? ":L" : ""}`).join(","),
+    card.deck_legal ? 1 : 0,
+    card.copy_limit,
   ];
 }
 
@@ -153,6 +177,8 @@ export function decodeBuilderCard(wire: BuilderCardWire): BuilderCard {
     external_card_id,
     master_duel_card_id,
     copies,
+    deck_legal,
+    copy_limit,
   ] = wire;
 
   return {
@@ -186,5 +212,7 @@ export function decodeBuilderCard(wire: BuilderCardWire): BuilderCard {
           };
         })
       : [],
+    deck_legal: deck_legal === 1,
+    copy_limit,
   };
 }

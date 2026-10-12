@@ -193,7 +193,7 @@ export default async function NewTradeWithPlayerPage({
         </h1>
 
         <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-          Start een draft trade. Daarna kun je jouw kaarten aanbieden en kaarten van deze speler aanvragen.
+          Start a draft trade. Then you can offer your cards and request cards from this player.
         </p>
       </header>
 
@@ -240,19 +240,19 @@ export default async function NewTradeWithPlayerPage({
 
             <div className="mt-3 space-y-2 text-sm leading-6 text-zinc-500">
               <p>
-                Je trade wordt eerst als Draft aangemaakt.
+                Your trade is created as a Draft first.
               </p>
 
               <p>
-                Daarna kies je fysieke kaarten uit jouw Collection die je aanbiedt.
+                Then you pick the physical cards from your Collection that you offer.
               </p>
 
               <p>
-                Je kunt ook fysieke kaarten uit de Collection van {playerName(profile)} selecteren die je wilt ontvangen.
+                You can also select physical cards from {playerName(profile)}&apos;s Collection that you want to receive.
               </p>
 
               <p>
-                Er wordt niets gereserveerd door alleen te versturen - dezelfde kaart mag in meerdere trades tegelijk zitten. Pas bij Accept wordt live gecontroleerd of de kaarten nog echt van de juiste speler zijn.
+                Sending reserves nothing - the same card can be in several trades at once. Only on Accept is it checked live that the cards still belong to the right player.
               </p>
             </div>
           </div>

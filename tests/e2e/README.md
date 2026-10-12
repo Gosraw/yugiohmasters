@@ -141,16 +141,16 @@ production-exact.
 
 See the `test.fixme(...)` blocks; each has a comment with the cause.
 
-1. **`proxy.ts` is never loaded – onboarding gate, welcome packs and
-   league bootstrap never run** (`proxy.ts:1`). The app lives in
-   `src/app`, and Next.js 16 only looks for the proxy next to `app/`,
-   i.e. `src/proxy.ts` (`node_modules/next/dist/build/index.js:695`,
-   `.../router-utils/setup-dev-bundler.js:270`). Repro: log in and open
-   `/login` → 200 instead of a redirect to `/`; a player without Boss
-   Path/draft can use every page; `claim_welcome_packs()` (only called
-   from `src/lib/supabase/proxy.ts:122`) never runs, so new players get
-   no welcome packs. Fix: move `proxy.ts` to `src/proxy.ts`. Fixme
-   tests in `01-onboarding.spec.ts`.
+1. **`proxy.ts` was never loaded (fixed on v2).** The proxy sat in the
+   repo root; Next.js 16 only loads `src/proxy.ts` when the app lives
+   in `src/app`, so the onboarding gate, league bootstrap and
+   `claim_welcome_packs()` never ran. Moved in `deefb21`. A follow-up
+   found by the un-fixme'd gate test: a Server Action `redirect("/")`
+   renders Home in the same response without passing the proxy, so a
+   new player still landed on Home right after login/signup. The
+   login/signup actions now pick the onboarding step themselves
+   (`src/lib/supabase/onboarding-gate.ts`, shared with the proxy). Both
+   former fixme tests in `01-onboarding.spec.ts` are live again.
 2. **Shop DP spending was missing from the DP ledger (live; fixed on
    v2).** `purchase_shop_pack` / `purchase_shop_rotation_card` subtract
    `profiles.duel_points` directly and never insert a

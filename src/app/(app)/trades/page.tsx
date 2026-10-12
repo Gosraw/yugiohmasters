@@ -526,7 +526,7 @@ export default async function TradesPage() {
     return (
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="panel p-6">
-          Geen league gevonden.
+          No league found.
         </div>
       </main>
     );
@@ -586,7 +586,7 @@ export default async function TradesPage() {
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="panel p-6">
           <p className="font-bold text-red-300">
-            Trades konden niet worden geladen.
+            Trades could not be loaded.
           </p>
 
           <p className="mt-2 text-sm text-zinc-500">

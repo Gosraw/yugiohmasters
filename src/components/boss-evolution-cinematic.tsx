@@ -25,6 +25,10 @@ import {
   SandParticles,
 } from "@/components/millennium-glyphs";
 
+import {
+  play,
+} from "@/lib/sound";
+
 // =========================================================
 // BOSS EVOLUTION CINEMATIC (2.0)
 //
@@ -126,6 +130,11 @@ export function BossEvolutionCinematic({
       router,
       searchParams,
     ]);
+
+  useEffect(() => {
+    play("rise");
+    play("evolution", 1800);
+  }, []);
 
   useEffect(() => {
     if (!open) {

@@ -28,6 +28,10 @@ import {
   type RewardMoment,
 } from "@/app/actions/wallet";
 
+import {
+  play,
+} from "@/lib/sound";
+
 // =========================================================
 // REWARD POP-UP (2.0)
 //
@@ -214,6 +218,10 @@ function RewardCard({
       EXIT_MS
     );
   }, [onDone]);
+
+  useEffect(() => {
+    play("coins");
+  }, [moment]);
 
   useEffect(() => {
     const timer =

@@ -55,6 +55,10 @@ import {
 } from "@/lib/games/autobattler/units";
 
 import {
+  play,
+} from "@/lib/sound";
+
+import {
   ARENA_SAVE_KEY,
   ArenaPlay,
   clearSavedArenaRun,
@@ -299,6 +303,8 @@ export function ArenaHub({
       submit: null,
       runId: playing.runId,
     };
+
+    play(finish.state.victory ? "victory" : "gameOver");
 
     setPlaying(null);
     setFinished(target);

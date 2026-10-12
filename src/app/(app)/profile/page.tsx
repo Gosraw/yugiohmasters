@@ -63,6 +63,10 @@ import {
 } from "@/components/install-app-card";
 
 import {
+  SoundToggle,
+} from "@/components/sound-toggle";
+
+import {
   computeRivalSummaries,
   currentStreak,
   getLeagueProfiles,
@@ -1853,6 +1857,10 @@ export default async function ProfilePage() {
             </div>
           </div>
         </section>
+
+        <div className="mt-6">
+          <SoundToggle />
+        </div>
 
         <div className="mt-6">
           <InstallAppCard />

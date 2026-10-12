@@ -51,6 +51,11 @@ import {
   generateLegendaryFlavor,
 } from "@/lib/shop/legendary-flavor";
 
+import {
+  play,
+  preloadSounds,
+} from "@/lib/sound";
+
 // =========================================================
 // RARITY-SCALED REVEAL EFFECTS
 //
@@ -581,6 +586,9 @@ export function PackOpeningReveal({
       return;
     }
 
+    preloadSounds(["seal", "whoosh", "chime"]);
+    play("unseal");
+
     pulls.forEach((pull) => {
       if (
         pull.card.image_url
@@ -901,6 +909,7 @@ export function PackOpeningReveal({
   // Legendary's cinematic has actually finished (see
   // handleSlotClick and the CONTINUE button in the render below).
   function advanceToNextPull() {
+    play("whoosh");
     setStaggerFrom(revealed);
     setFlipped(false);
     setImageLoaded(false);
@@ -934,6 +943,11 @@ export function PackOpeningReveal({
 
       const isLegendary =
         currentRank === 6;
+
+      play("seal");
+      play(isLegendary ? "boom" : currentRank >= 4 ? "chime" : "whoosh", isLegendary ? 900 : 350);
+      if (isLegendary) play("legendary", 1600);
+      else if (currentRank === 5) play("secretRare", 700);
 
       // Failsafe: always unlock even if something goes wrong,
       // so a broken card/animation can never soft-lock the

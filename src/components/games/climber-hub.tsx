@@ -44,6 +44,10 @@ import type {
 } from "@/lib/games/climber-engine";
 
 import {
+  play,
+} from "@/lib/sound";
+
+import {
   ClimberPlay,
   clearSavedRun,
   readSavedRun,
@@ -343,6 +347,8 @@ export function ClimberHub({
       }
     ) => {
       if (!activeRun) return;
+
+      play("gameOver");
 
       setPhase({
         kind: "submitting",

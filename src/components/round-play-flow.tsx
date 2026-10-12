@@ -28,6 +28,10 @@ import {
   requestRewardCheck,
 } from "@/components/reward-popup";
 
+import {
+  play,
+} from "@/lib/sound";
+
 // =========================================================
 // ROUND PLAY FLOW (2.0 "This Round")
 //
@@ -267,6 +271,8 @@ export function RoundPlayFlow({
         loserName,
         roundComplete,
       });
+
+      play(roundComplete ? "roundComplete" : "chime");
 
       requestRewardCheck();
       router.refresh();

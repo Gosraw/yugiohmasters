@@ -128,8 +128,25 @@ Strong cards are fine; **unfair cards are not**.
 - **Climber** (Doodle Jump-like): your Boss climbs the Millennium
   pyramid; platforms = cards, power-ups = spells (Monster Reborn = extra
   life), obstacles = traps. Highest climb wins.
-- **Auto battler**: shared shop pool per run (Battlegrounds-like), vs
-  computer Bosses only; leaderboard = how far you get.
+- **Auto battler "Shadow Arena"** (decided 2026-10-12): shared shop pool
+  per run, 12 waves, 20 LP; async ghost boards of friends + Boss waves
+  (last wave always a Boss); Fusion recipes + Xyz (1 gold, once/turn).
+  Combat = **3-lane castle battlefield**: castle HP = Life Points,
+  monsters per lane in ATK (marches) or DEF (wall), Traps set face-down
+  per lane.
+  Council advice adopted: luck only in what you're offered (shop,
+  discovers, which ghost, which face-down trap) - **no randomness inside
+  combat**; scout shows the opponent's lanes with face-down trap icons;
+  per-lane "why" recap after each wave; walls decay (no DEF-vs-DEF
+  stalemate); ghost boards versioned separately from engine balance;
+  tap-to-place, big ATK/DEF numbers, full card on long-press, red glow
+  on an undefended lane; staged unlocks (traps wave 3, Fusion/Xyz wave
+  4); only march / clash / big trap flip animations + 2x / Skip.
+  Not doing: outcome forecast (kills thinking), in-combat trap response.
+  Later, after a week of play by the 3 friends: "Field Spell of the
+  day" per lane (Umi, Yami, Sogen...). Success test: "did you know why
+  you lost? fooled by a trap? had to think hard?"
+
 - Daily challenge: same seed for everyone, 1 attempt. Weekly board:
   unlimited practice, best score counts.
 - Rewards **only via leaderboard placement** (daily/weekly winners).

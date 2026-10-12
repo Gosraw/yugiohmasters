@@ -69,7 +69,7 @@ function LifePointsCounter({
       <p
         className={`mt-2 text-center text-6xl font-black tabular-nums ${accentClasses.text}`}
       >
-        {lp}
+        {lp.toLocaleString("en-US")}
       </p>
 
       <div className="mt-5 flex items-center justify-center gap-3">

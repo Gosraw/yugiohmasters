@@ -5,6 +5,13 @@ import { requireUser } from "@/lib/supabase/queries";
 import { getLeagueIdForUser } from "@/lib/league-stats";
 import { getAttentionItems } from "@/lib/attention-items";
 import { TabTransition } from "@/components/tab-transition";
+import { OnboardedCookieReset } from "@/components/onboarded-cookie-reset";
+import {
+  ONBOARDED_COOKIE,
+  getCurrentSeasonNumber,
+  parseOnboardedCookieValue,
+} from "@/lib/onboarded-cookie";
+import { cookies } from "next/headers";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // requireUser() redirects unauthenticated visitors on its own (via
@@ -13,9 +20,30 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { supabase, userId } = await requireUser();
 
   let attentionCount = 0;
+  let staleOnboardedCookie = false;
+
+  const onboarded = parseOnboardedCookieValue(
+    (await cookies()).get(ONBOARDED_COOKIE)?.value,
+  );
 
   try {
-    const leagueId = await getLeagueIdForUser(supabase, userId);
+    // The season number is only needed to validate the proxy's
+    // "onboarded" cookie; it loads in parallel with the league.
+    const [leagueId, seasonNumber] = await Promise.all([
+      getLeagueIdForUser(supabase, userId),
+      onboarded ? getCurrentSeasonNumber(supabase) : Promise.resolve(null),
+    ]);
+
+    // Stale cookie (e.g. right after a season reset: no league yet,
+    // or a new season): clear it so the proxy re-runs the gate now.
+    staleOnboardedCookie = Boolean(
+      onboarded &&
+        (onboarded.userId !== userId ||
+          !leagueId ||
+          onboarded.leagueId !== leagueId ||
+          onboarded.seasonNumber !== seasonNumber),
+    );
+
     const items = await getAttentionItems(supabase, userId, leagueId);
     attentionCount = items.length;
   } catch {
@@ -25,6 +53,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <>
+      {staleOnboardedCookie && <OnboardedCookieReset />}
       <ActionFeedbackBanner />
       <RewardPopup userId={userId} />
       <div className="pb-24">

@@ -196,6 +196,8 @@ Dat zet alles terug naar het moment van de back-up.
 | `202610121630_admin_config_editor.sql` | Admin-only `admin_set_config_value` for the real economy config (fixed key list). | config |
 | `202610121640_welcome_bonus_label.sql` | Welcome vouchers labelled 'Welcome bonus' (season-agnostic). | vouchers |
 | `202610121650_standard_pack_name.sql` | Display name of pack `normal` → 'Standard Pack' (codes unchanged). | shop |
+| `202610121700_trade_privacy_season_start_bounty_wording.sql` | Draft trades visible only to their creator (+ `save_trade_draft_message`), one-transaction `start_season_competition`, clearer reversed-bounty wording. On old main, the sender's link to a counter still in draft shows a 404. | trades, competitions |
+| `202610121710_boss_stage1_achievements_english.sql` | Translates the 9 Dutch stage-1 Boss achievement labels. | boss achievements |
 
 **Backwards compatibility.** These migrations share the production database with the live `main` app.
 `202610121000` takes effect immediately: Master Duel-forbidden cards that are already `format_eligible` become offerable in the live draft and shop.

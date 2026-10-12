@@ -645,7 +645,7 @@ export default async function PerksPage() {
                         : "text-amber-200"
                     }
                   >
-                    {earnedThisWeek} / {weeklyCap} DP this week
+                    {earnedThisWeek.toLocaleString("en-US")} / {weeklyCap.toLocaleString("en-US")} DP this week
                   </span>
                 </div>
 
@@ -722,7 +722,7 @@ export default async function PerksPage() {
                             }
                           />
                           {
-                            achievement.dp_value
+                            achievement.dp_value.toLocaleString("en-US")
                           }{" "}
                           DP
                         </span>
@@ -906,7 +906,7 @@ export default async function PerksPage() {
 
                           <p className="mt-0.5 text-xs text-zinc-600">
                             {achievement
-                              ? `${achievement.dp_value} DP`
+                              ? `${achievement.dp_value.toLocaleString("en-US")} DP`
                               : ""}{" "}
                             · Submitted{" "}
                             {formatDate(

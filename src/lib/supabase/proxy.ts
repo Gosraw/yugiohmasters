@@ -2,9 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublicEnv } from "./env";
 import { onboardingRedirectPath } from "./onboarding-gate";
-
-const ONBOARDED_COOKIE = "dc_onboarded";
-const ONBOARDED_MAX_AGE = 60 * 15;
+import { isMissingDetailPage } from "./missing-detail";
+import {
+  ONBOARDED_COOKIE,
+  ONBOARDED_MAX_AGE,
+  buildOnboardedCookieValue,
+  getCurrentSeasonNumber,
+} from "@/lib/onboarded-cookie";
 
 // A redirect that keeps any auth cookies Supabase just refreshed.
 function redirectWithCookies(
@@ -93,6 +97,28 @@ export async function updateSession(request: NextRequest) {
   const publicOnboardingPath =
     publicPath || pathname.startsWith("/api/") || pathname === "/league-full";
 
+  // Normal "let the page render" exit. A full page load of a detail
+  // page whose id doesn't exist gets the 404 page with a REAL 404
+  // status here (see missing-detail.ts for why the page can't).
+  const finish = async () => {
+    if (
+      data?.claims &&
+      !publicOnboardingPath &&
+      (await isMissingDetailPage(request, supabase, data.claims.sub as string))
+    ) {
+      const notFoundUrl = request.nextUrl.clone();
+      notFoundUrl.pathname = "/__not-found";
+      notFoundUrl.search = "";
+
+      const notFound = NextResponse.rewrite(notFoundUrl, { status: 404 });
+      response.cookies.getAll().forEach((cookie) => notFound.cookies.set(cookie));
+
+      return notFound;
+    }
+
+    return response;
+  };
+
   const onboardingExemptPath =
     pathname.startsWith("/boss") ||
     pathname.startsWith("/draft") ||
@@ -119,9 +145,11 @@ export async function updateSession(request: NextRequest) {
     // skips the membership / welcome-pack / gate queries (~150 ms on
     // every request before). It only skips UX redirects - every
     // rule still lives in the database - and it expires after
-    // ONBOARDED_MAX_AGE, so e.g. a season reset is picked up again.
-    if (request.cookies.get(ONBOARDED_COOKIE)?.value === userId) {
-      return response;
+    // ONBOARDED_MAX_AGE. Its value also carries the league id and
+    // season number; (app)/layout.tsx clears it as soon as those no
+    // longer match (season reset), so the gate re-runs right away.
+    if (request.cookies.get(ONBOARDED_COOKIE)?.value?.startsWith(`${userId}:`)) {
+      return finish();
     }
 
     const { data: membership } = await supabase
@@ -151,7 +179,7 @@ export async function updateSession(request: NextRequest) {
     // Unknown bootstrap failure: render normally rather than
     // redirect-loop on a state this gate cannot resolve.
     if (!leagueId) {
-      return response;
+      return finish();
     }
 
     // Welcome bonus vouchers - claim_welcome_packs() is idempotent
@@ -168,10 +196,12 @@ export async function updateSession(request: NextRequest) {
         return redirectWithCookies(request, response, gatePath);
       }
 
-      return response;
+      return finish();
     }
 
-    response.cookies.set(ONBOARDED_COOKIE, userId, {
+    const seasonNumber = await getCurrentSeasonNumber(supabase);
+
+    response.cookies.set(ONBOARDED_COOKIE, buildOnboardedCookieValue(userId, leagueId, seasonNumber), {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
@@ -180,5 +210,5 @@ export async function updateSession(request: NextRequest) {
     });
   }
 
-  return response;
+  return finish();
 }

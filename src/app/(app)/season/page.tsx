@@ -147,7 +147,7 @@ export default async function SeasonPage() {
                 </span>
                 {status.complete
                   ? "Path complete"
-                  : `${status.xpForTier - status.xpIntoTier} XP to tier ${status.nextTier?.tier}`}
+                  : `${(status.xpForTier - status.xpIntoTier).toLocaleString("en-US")} XP to tier ${status.nextTier?.tier}`}
               </p>
             </div>
 
@@ -155,7 +155,7 @@ export default async function SeasonPage() {
               <GoalProgressBar
                 size="md"
                 percent={status.percentTotal}
-                label={`Season Path: ${status.xp} XP`}
+                label={`Season Path: ${status.xp.toLocaleString("en-US")} XP`}
               />
             </div>
 
@@ -219,7 +219,7 @@ export default async function SeasonPage() {
                   </span>
 
                   <span className="font-semibold tabular-nums text-gold">
-                    +{source.xp} XP
+                    +{source.xp.toLocaleString("en-US")} XP
                   </span>
                 </li>
               )
@@ -268,7 +268,7 @@ export default async function SeasonPage() {
                   </span>
 
                   <span className="shrink-0 font-semibold tabular-nums text-gold">
-                    +{event.xp} XP
+                    +{event.xp.toLocaleString("en-US")} XP
                   </span>
                 </li>
               )

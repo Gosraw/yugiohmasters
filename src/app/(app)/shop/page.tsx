@@ -1472,7 +1472,7 @@ export default async function ShopPage({
 
               <p className="flex items-baseline gap-1 text-2xl font-black text-cyan-100 sm:mt-3 sm:block sm:text-4xl">
                 {
-                  profile.duel_points
+                  profile.duel_points.toLocaleString("en-US")
                 }
 
                 <span className="text-xs font-black uppercase tracking-wider text-cyan-300 sm:mt-1 sm:block">
@@ -1753,7 +1753,7 @@ export default async function ShopPage({
 
                           <p className="mt-1 text-xl font-black text-cyan-100">
                             {
-                              pack.price_dp
+                              pack.price_dp.toLocaleString("en-US")
                             }{" "}
                             <span className="text-xs text-cyan-300">
                               DP
@@ -1777,7 +1777,7 @@ export default async function ShopPage({
                           {pack.price_dp >=
                           CONFIRM_SPEND_DP ? (
                             <ConfirmSubmitButton
-                              confirmMessage={`Open a ${pack.name} for ${pack.price_dp.toLocaleString()} DP?`}
+                              confirmMessage={`Open a ${pack.name} for ${pack.price_dp.toLocaleString("en-US")} DP?`}
                               disabled={
                                 !canAfford
                               }
@@ -1980,7 +1980,7 @@ export default async function ShopPage({
                               className={`mt-1 text-2xl font-black ${accent.text}`}
                             >
                               {
-                                special.price_dp
+                                special.price_dp.toLocaleString("en-US")
                               }{" "}
                               <span className="text-xs font-black text-zinc-500">
                                 DP
@@ -2009,7 +2009,7 @@ export default async function ShopPage({
                             />
 
                             <ConfirmSubmitButton
-                              confirmMessage={`Open this Special Pack for ${special.price_dp.toLocaleString()} DP?`}
+                              confirmMessage={`Open this Special Pack for ${special.price_dp.toLocaleString("en-US")} DP?`}
                               disabled={
                                 profile.duel_points <
                                 special.price_dp
@@ -2261,7 +2261,7 @@ export default async function ShopPage({
 
                             <p className="mt-1 text-lg font-black text-cyan-100">
                               {
-                                slot.price_dp
+                                slot.price_dp.toLocaleString("en-US")
                               }{" "}
                               <span className="text-[9px] text-cyan-300">
                                 DP
@@ -2423,7 +2423,7 @@ export default async function ShopPage({
                     <p className="text-sm font-black text-cyan-200">
                       {purchase.dp_spent >
                       0
-                        ? `-${purchase.dp_spent} DP`
+                        ? `-${purchase.dp_spent.toLocaleString("en-US")} DP`
                         : "Voucher"}
                     </p>
                   </div>

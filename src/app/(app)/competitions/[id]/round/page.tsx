@@ -562,11 +562,11 @@ export default async function CompetitionRoundPage({
             </span>
 
             <span className="font-bold text-emerald-300">
-              Win +{economy.match_win_dp} DP
+              Win +{economy.match_win_dp.toLocaleString("en-US")} DP
             </span>
 
             <span className="font-bold text-zinc-400">
-              Loss +{economy.match_loss_dp} DP
+              Loss +{economy.match_loss_dp.toLocaleString("en-US")} DP
             </span>
           </div>
         )}

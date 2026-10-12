@@ -323,7 +323,7 @@ function WagerBadge({
       <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/20 bg-cyan-300/[0.07] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-cyan-200">
         <Zap size={10} />
 
-        {match.wager_dp_amount} DP Wager
+        {match.wager_dp_amount.toLocaleString("en-US")} DP Wager
       </span>
     );
   }
@@ -1325,11 +1325,11 @@ export default async function MatchesPage({
             {seasonDp && (
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-1 text-[10px] font-black text-emerald-200">
-                  WIN +{seasonDp.win} DP
+                  WIN +{seasonDp.win.toLocaleString("en-US")} DP
                 </span>
 
                 <span className="rounded-full border border-zinc-500/20 bg-zinc-500/[0.05] px-3 py-1 text-[10px] font-black text-zinc-300">
-                  LOSS +{seasonDp.loss} DP
+                  LOSS +{seasonDp.loss.toLocaleString("en-US")} DP
                 </span>
               </div>
             )}

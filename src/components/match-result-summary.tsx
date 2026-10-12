@@ -158,7 +158,7 @@ export function MatchResultSummary({
               className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-bold text-zinc-300"
             >
               {award.profileName}{" "}
-              <span className="text-amber-300">+{award.amount} DP</span>
+              <span className="text-amber-300">+{award.amount.toLocaleString("en-US")} DP</span>
             </span>
           ))}
         </div>
@@ -180,7 +180,7 @@ export function MatchResultSummary({
                 <span className="font-bold">{total.profileName}</span>
                 {total.duelPoints > 0 && (
                   <span className="text-amber-200">
-                    +{total.duelPoints} DP
+                    +{total.duelPoints.toLocaleString("en-US")} DP
                   </span>
                 )}
                 {total.vouchers.map((v, i) => (
@@ -232,7 +232,7 @@ export function MatchResultSummary({
                       </span>
                       {total.duelPoints > 0 && (
                         <span className="text-amber-200">
-                          +{total.duelPoints} DP
+                          +{total.duelPoints.toLocaleString("en-US")} DP
                         </span>
                       )}
                       {total.vouchers.map((v, i) => (

@@ -496,6 +496,7 @@ export async function setTradeDp(
 ) {
   const {
     supabase,
+    userId,
   } = await requireUser();
 
   const tradeId =
@@ -537,6 +538,43 @@ export async function setTradeDp(
       backPath,
       "Duel Points must be 0 or more."
     );
+  }
+
+  // The offer can't be more than you have right now (submit and
+  // accept check this again live - this just says so up front).
+  if (
+    dpOffered > 0
+  ) {
+    const {
+      data: profile,
+    } = await supabase
+      .from(
+        "profiles"
+      )
+      .select(
+        "duel_points"
+      )
+      .eq(
+        "id",
+        userId
+      )
+      .maybeSingle();
+
+    const balance =
+      Number(
+        profile?.duel_points ?? 0
+      );
+
+    if (
+      Math.floor(
+        dpOffered
+      ) > balance
+    ) {
+      fail(
+        backPath,
+        `You only have ${balance.toLocaleString("en-US")} DP, so you can't offer more than that.`
+      );
+    }
   }
 
   const {
@@ -635,6 +673,22 @@ export async function submitTrade(
   );
 
   if (error) {
+    // Keep what the player typed: save it on the draft so the
+    // textarea is pre-filled when the page comes back. Best effort -
+    // a failure here must not hide the real error below.
+    if (message) {
+      await supabase.rpc(
+        "save_trade_draft_message",
+        {
+          target_trade_id:
+            tradeId,
+
+          trade_message:
+            message,
+        }
+      );
+    }
+
     // Cards are never reserved by a draft, so a draft can go stale
     // between when it was built and when it's sent (one of its
     // cards moved on via another trade, or got locked as a wager).

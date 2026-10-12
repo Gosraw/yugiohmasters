@@ -559,7 +559,7 @@ export default async function BossPathDetailPage({
                           14
                         }
                       />
-                      {ownerDp.toLocaleString()}
+                      {ownerDp.toLocaleString("en-US")}
                     </p>
                   </div>
                 )}
@@ -593,7 +593,7 @@ export default async function BossPathDetailPage({
                 <Coins
                   size={13}
                 />
-                {dpToMasterTotal.toLocaleString()} DP to Stage 4
+                {dpToMasterTotal.toLocaleString("en-US")} DP to Stage 4
               </p>
             </div>
           )}
@@ -660,7 +660,7 @@ export default async function BossPathDetailPage({
                             13
                           }
                         />
-                        {stage.dp_cost_to_reach.toLocaleString()}{" "}
+                        {stage.dp_cost_to_reach.toLocaleString("en-US")}{" "}
                         DP
                       </span>
                     )}
@@ -788,7 +788,7 @@ export default async function BossPathDetailPage({
                             14
                           }
                         />
-                        {stage.dp_cost_to_reach.toLocaleString()}{" "}
+                        {stage.dp_cost_to_reach.toLocaleString("en-US")}{" "}
                         DP
                       </span>
                     )}
@@ -823,7 +823,7 @@ export default async function BossPathDetailPage({
                       />
 
                       <ConfirmSubmitButton
-                        confirmMessage={`Evolve to Stage ${stageNumber}${stage?.dp_cost_to_reach != null ? ` for ${stage.dp_cost_to_reach.toLocaleString()} DP` : ""}? This spends your Duel Points and can't be undone.`}
+                        confirmMessage={`Evolve to Stage ${stageNumber}${stage?.dp_cost_to_reach != null ? ` for ${stage.dp_cost_to_reach.toLocaleString("en-US")} DP` : ""}? This spends your Duel Points and can't be undone.`}
                         pendingLabel="Evolving..."
                         disabled={
                           !canEvolve
@@ -848,7 +848,7 @@ export default async function BossPathDetailPage({
                             {(
                               stage.dp_cost_to_reach -
                               ownerDp
-                            ).toLocaleString()}{" "}
+                            ).toLocaleString("en-US")}{" "}
                             more DP. Season round duels earn DP.
                           </p>
                         )}

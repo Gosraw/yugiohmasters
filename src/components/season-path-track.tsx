@@ -131,7 +131,7 @@ export function SeasonPathTrack({
                   <div className="mt-2 flex items-center gap-2">
                     <GoalProgressBar
                       percent={status.percentToNext}
-                      label={`Tier ${tier.tier}: ${status.xpIntoTier} of ${status.xpForTier} XP`}
+                      label={`Tier ${tier.tier}: ${status.xpIntoTier.toLocaleString("en-US")} of ${status.xpForTier.toLocaleString("en-US")} XP`}
                     />
 
                     <span className="shrink-0 text-[11px] tabular-nums text-zinc-400">

@@ -528,7 +528,7 @@ export default async function TradeBinderDetailPage({
       {filteredCards.length > 0 && (
         <p className="mt-4 text-xs text-zinc-500">
           {filteredCards.length === totalUniqueCount && !show
-            ? `${filteredCards.length} cards`
+            ? `${filteredCards.length.toLocaleString("en-US")} cards`
             : `${filteredCards.length} card${filteredCards.length === 1 ? "" : "s"} shown`}
           {pageCount > 1 ? ` · page ${page} of ${pageCount}` : ""}
         </p>

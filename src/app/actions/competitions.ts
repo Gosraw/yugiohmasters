@@ -1096,9 +1096,10 @@ export async function distributeCompetitionRewardsV2(
 // different days, ~39 rounds a season. One admin tap: every league
 // member is entered, single duels, round robin, the chosen number of
 // rounds is scheduled up front (meetings_per_pairing = rounds), and
-// the admin lands on the "This Round" screen. Reuses
-// create_competition_v2 / add_competition_player_v2 /
-// generate_round_robin_matches_v2 exactly like the manual form.
+// the admin lands on the "This Round" screen. start_season_competition
+// runs create_competition_v2 / mark_competition_as_season /
+// add_competition_player_v2 / generate_round_robin_matches_v2 (the
+// same steps as the manual form) in one database transaction.
 // =========================================================
 
 export async function startSeasonCompetition(
@@ -1139,8 +1140,8 @@ export async function startSeasonCompetition(
     rounds < 1 ||
     rounds > SEASON_MAX_ROUNDS
   ) {
-    throw new Error(
-      `Rounds must be between 1 and ${SEASON_MAX_ROUNDS}.`
+    redirect(
+      `/competitions?error=${encodeURIComponent(`Rounds must be between 1 and ${SEASON_MAX_ROUNDS}.`)}`
     );
   }
 
@@ -1160,8 +1161,8 @@ export async function startSeasonCompetition(
     );
 
   if (memberError) {
-    throw new Error(
-      memberError.message
+    redirect(
+      `/competitions?error=${encodeURIComponent(memberError.message)}`
     );
   }
 
@@ -1173,8 +1174,8 @@ export async function startSeasonCompetition(
   );
 
   if (playerIds.length < 2) {
-    throw new Error(
-      "Need at least 2 league members to start the season."
+    redirect(
+      `/competitions?error=${encodeURIComponent("Need at least 2 league members to start the season.")}`
     );
   }
 
@@ -1209,8 +1210,8 @@ export async function startSeasonCompetition(
     .maybeSingle();
 
   if (openSeasonError) {
-    throw new Error(
-      openSeasonError.message
+    redirect(
+      `/competitions?error=${encodeURIComponent(openSeasonError.message)}`
     );
   }
 
@@ -1220,84 +1221,30 @@ export async function startSeasonCompetition(
     );
   }
 
+  // One transaction (202610121700): create + flag as season + enter
+  // every member + schedule. If any step fails nothing is left
+  // behind - before, a failed season flag left an orphan draft.
   const {
     data: competitionId,
-    error: createError,
+    error: startError,
   } = await supabase.rpc(
-    "create_competition_v2",
+    "start_season_competition",
     {
       target_league_id:
         leagueId,
       target_name:
         name,
-      target_meetings_per_pairing:
+      target_rounds:
         rounds,
-      target_match_format:
-        "single_duel",
     }
   );
 
-  if (createError) {
-    throw new Error(
-      createError.message
-    );
-  }
-
-  if (!competitionId) {
-    throw new Error(
-      "The competition could not be created."
-    );
-  }
-
-  const {
-    error: markError,
-  } = await supabase.rpc(
-    "mark_competition_as_season",
-    {
-      target_competition_id:
-        competitionId,
-    }
-  );
-
-  if (markError) {
+  if (
+    startError ||
+    !competitionId
+  ) {
     redirect(
-      `/competitions?error=${encodeURIComponent(markError.message)}`
-    );
-  }
-
-  for (const profileId of playerIds) {
-    const {
-      error: addPlayerError,
-    } = await supabase.rpc(
-      "add_competition_player_v2",
-      {
-        target_competition_id:
-          competitionId,
-        target_profile_id:
-          profileId,
-      }
-    );
-
-    if (addPlayerError) {
-      throw new Error(
-        addPlayerError.message
-      );
-    }
-  }
-
-  const {
-    error: scheduleError,
-  } = await supabase.rpc(
-    "generate_round_robin_matches_v2",
-    {
-      target_competition_id:
-        competitionId,
-    }
-  );
-
-  if (scheduleError) {
-    throw new Error(
-      scheduleError.message
+      `/competitions?error=${encodeURIComponent(startError?.message ?? "The season could not be started.")}`
     );
   }
 

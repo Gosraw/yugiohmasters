@@ -1099,7 +1099,7 @@ export function DeckBuilder({
 
           {cards.length > 0 && (
             <p className="mt-4 text-center text-[11px] text-zinc-500">
-              {cards.length} different cards · {totalOwnedCopies} copies owned
+              {cards.length.toLocaleString("en-US")} different cards · {totalOwnedCopies.toLocaleString("en-US")} copies owned
             </p>
           )}
         </section>

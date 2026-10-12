@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -53,10 +54,6 @@ export type TradeBrowserCard = {
       | null;
 
     archetype:
-      | string
-      | null;
-
-    description:
       | string
       | null;
 
@@ -236,6 +233,61 @@ function FilterButton({
 // COMPONENT
 // =========================================================
 
+// Effect text is not part of the page (it was ~300 KB). It is
+// fetched once per trade - shared by both browsers on the page - the
+// first time someone focuses or types in a search box.
+const cardTextRequests =
+  new Map<string, Promise<Record<string, string>>>();
+
+function loadTradeCardTexts(
+  tradeId: string
+) {
+  let request =
+    cardTextRequests.get(
+      tradeId
+    );
+
+  if (!request) {
+    request =
+      fetch(
+        `/trades/${tradeId}/card-text`
+      )
+        .then(
+          async (response) => {
+            if (!response.ok) {
+              throw new Error(
+                String(
+                  response.status
+                )
+              );
+            }
+
+            const data =
+              (await response.json()) as {
+                texts: Record<string, string>;
+              };
+
+            return data.texts;
+          }
+        )
+        .catch((error) => {
+          // Allow a retry on the next focus.
+          cardTextRequests.delete(
+            tradeId
+          );
+
+          throw error;
+        });
+
+    cardTextRequests.set(
+      tradeId,
+      request
+    );
+  }
+
+  return request;
+}
+
 export function TradeCollectionBrowser({
   tradeId,
   cards,
@@ -260,6 +312,60 @@ export function TradeCollectionBrowser({
     setSearch,
   ] =
     useState("");
+
+  const [
+    cardTexts,
+    setCardTexts,
+  ] =
+    useState<Record<string, string> | null>(
+      null
+    );
+
+  const [
+    wantsCardTexts,
+    setWantsCardTexts,
+  ] =
+    useState(false);
+
+  useEffect(() => {
+    if (
+      !wantsCardTexts ||
+      cardTexts
+    ) {
+      return;
+    }
+
+    let cancelled =
+      false;
+
+    loadTradeCardTexts(
+      tradeId
+    )
+      .then((texts) => {
+        if (!cancelled) {
+          setCardTexts(
+            texts
+          );
+        }
+      })
+      .catch(() => {
+        // Name / type / archetype search still works without it.
+        if (!cancelled) {
+          setWantsCardTexts(
+            false
+          );
+        }
+      });
+
+    return () => {
+      cancelled =
+        true;
+    };
+  }, [
+    cardTexts,
+    tradeId,
+    wantsCardTexts,
+  ]);
 
   const [
     category,
@@ -351,7 +457,13 @@ export function TradeCollectionBrowser({
             if (
               normalizedSearch &&
               !matchesCardSearch(
-                card,
+                {
+                  ...card,
+                  description:
+                    cardTexts?.[
+                      card.id
+                    ] ?? null,
+                },
                 normalizedSearch
               )
             ) {
@@ -487,6 +599,7 @@ export function TradeCollectionBrowser({
       return result;
     }, [
       availability,
+      cardTexts,
       cards,
       category,
       race,
@@ -593,15 +706,24 @@ export function TradeCollectionBrowser({
             value={
               search
             }
+            onFocus={() =>
+              setWantsCardTexts(
+                true
+              )
+            }
             onChange={(
               event
-            ) =>
+            ) => {
+              setWantsCardTexts(
+                true
+              );
+
               setSearch(
                 event
                   .target
                   .value
-              )
-            }
+              );
+            }}
             placeholder="Search cards..."
             className="field w-full pl-10 pr-10"
           />
@@ -1199,7 +1321,7 @@ export function TradeCollectionBrowser({
         <div className="mt-4 flex flex-col items-center gap-2">
           <p className="text-xs text-zinc-500">
             Showing {visibleCards.length} of{" "}
-            {filteredCards.length} cards - search to find a card faster.
+            {filteredCards.length.toLocaleString("en-US")} cards - search to find a card faster.
           </p>
 
           <button

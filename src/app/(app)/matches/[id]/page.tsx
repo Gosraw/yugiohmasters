@@ -259,17 +259,17 @@ function escrowLabel(
 ) {
   switch (escrow.status) {
     case "won":
-      return `${escrow.amount} DP stake · won`;
+      return `${escrow.amount.toLocaleString("en-US")} DP stake · won`;
 
     case "lost":
-      return `${escrow.amount} DP stake · lost`;
+      return `${escrow.amount.toLocaleString("en-US")} DP stake · lost`;
 
     case "refunded":
-      return `${escrow.amount} DP stake · refunded`;
+      return `${escrow.amount.toLocaleString("en-US")} DP stake · refunded`;
 
     case "funded":
     default:
-      return `${escrow.amount} DP funded`;
+      return `${escrow.amount.toLocaleString("en-US")} DP funded`;
   }
 }
 
@@ -1519,11 +1519,11 @@ export default async function MatchDetailPage({
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-1 text-[10px] font-black text-emerald-200">
-                    WIN +{competitionDp.win} DP
+                    WIN +{competitionDp.win.toLocaleString("en-US")} DP
                   </span>
 
                   <span className="rounded-full border border-zinc-500/20 bg-zinc-500/[0.05] px-3 py-1 text-[10px] font-black text-zinc-300">
-                    LOSS +{competitionDp.loss} DP
+                    LOSS +{competitionDp.loss.toLocaleString("en-US")} DP
                   </span>
                 </div>
               </>

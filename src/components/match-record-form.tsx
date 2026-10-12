@@ -349,7 +349,7 @@ export function MatchRecordForm({
             {wagerType === "dp" ? (
               <label className="block">
                 <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
-                  Stake per player (you have {duelPoints.toLocaleString()} DP)
+                  Stake per player (you have {duelPoints.toLocaleString("en-US")} DP)
                 </span>
 
                 <input

@@ -1,6 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import {
+  notFound,
+  redirect,
+} from "next/navigation";
+
+import {
+  withFeedback,
+} from "@/lib/safe-return-to";
 
 import {
   fetchAllPages,
@@ -116,7 +123,6 @@ type CardCatalog = {
   // (indexed). See src/lib/card-race.ts.
   race: string | null;
   archetype: string | null;
-  description: string | null;
   attribute: string | null;
   monster_type: string | null;
   level: number | null;
@@ -363,6 +369,18 @@ function SelectedCardTile({
   );
 }
 
+// A data hiccup while loading the trade: back to the trade list with
+// a friendly banner instead of the app-wide crash screen.
+function tradeLoadFailed(): never {
+  redirect(
+    withFeedback(
+      "/trades",
+      "error",
+      "This trade could not be loaded right now. Please try again."
+    )
+  );
+}
+
 export default async function TradeDetailPage({
   params,
 }: {
@@ -415,6 +433,31 @@ export default async function TradeDetailPage({
     trade.status === "draft" &&
     isSender;
 
+  // A counter-offer is private to its creator while it is still a
+  // draft (RLS), so only link to it once this player can open it.
+  let counterVisible =
+    false;
+
+  if (
+    trade.superseded_by
+  ) {
+    const {
+      data: counterData,
+    } = await supabase
+      .from("trades")
+      .select("id")
+      .eq(
+        "id",
+        trade.superseded_by
+      )
+      .maybeSingle();
+
+    counterVisible =
+      Boolean(
+        counterData
+      );
+  }
+
   const {
     data: profileData,
     error: profileError,
@@ -432,9 +475,7 @@ export default async function TradeDetailPage({
     );
 
   if (profileError) {
-    throw new Error(
-      profileError.message
-    );
+    tradeLoadFailed();
   }
 
   const profiles =
@@ -474,9 +515,7 @@ export default async function TradeDetailPage({
     );
 
   if (tradeItemError) {
-    throw new Error(
-      tradeItemError.message
-    );
+    tradeLoadFailed();
   }
 
   const tradeItems =
@@ -533,10 +572,8 @@ export default async function TradeDetailPage({
           to
         )
     );
-  } catch (error) {
-    throw new Error(
-      `Collections could not be loaded: ${(error as Error).message}`
-    );
+  } catch {
+    tradeLoadFailed();
   }
 
   const catalogIds = [
@@ -563,7 +600,7 @@ export default async function TradeDetailPage({
       ) => supabase
         .from("card_catalog")
         .select(
-          "id,name,image_url,card_type,race,archetype,description,attribute,monster_type,level,rank,game_rarity,rarity_score,atk,def"
+          "id,name,image_url,card_type,race,archetype,attribute,monster_type,level,rank,game_rarity,rarity_score,atk,def"
         )
         .in(
           "id",
@@ -577,10 +614,8 @@ export default async function TradeDetailPage({
           to
         )
     );
-  } catch (error) {
-    throw new Error(
-      `Card catalog could not be loaded: ${(error as Error).message}`
-    );
+  } catch {
+    tradeLoadFailed();
   }
 
   const cardMap =
@@ -829,7 +864,7 @@ export default async function TradeDetailPage({
 
     if (dp > 0) {
       parts.push(
-        `${dp} DP`
+        `${dp.toLocaleString("en-US")} DP`
       );
     }
 
@@ -932,7 +967,7 @@ export default async function TradeDetailPage({
                 : "nothing"}
               {trade.dp_offered >
                 0 &&
-                ` + ${trade.dp_offered} DP`}
+                ` + ${trade.dp_offered.toLocaleString("en-US")} DP`}
             </strong>{" "}
             in exchange for{" "}
             <strong className="text-cyan-200">
@@ -947,7 +982,7 @@ export default async function TradeDetailPage({
                 : "nothing"}
               {trade.dp_requested >
                 0 &&
-                ` + ${trade.dp_requested} DP`}
+                ` + ${trade.dp_requested.toLocaleString("en-US")} DP`}
             </strong>{" "}
             from{" "}
             <strong className="text-cyan-200">
@@ -961,7 +996,20 @@ export default async function TradeDetailPage({
 
         {trade.status ===
           "declined" &&
-          trade.superseded_by && (
+          trade.superseded_by &&
+          !counterVisible && (
+            <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-zinc-500">
+              <Shuffle
+                size={14}
+              />
+              A counter-offer is being prepared.
+            </p>
+          )}
+
+        {trade.status ===
+          "declined" &&
+          trade.superseded_by &&
+          counterVisible && (
             <Link
               href={`/trades/${trade.superseded_by}`}
               className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-violet-300 transition hover:text-violet-200"
@@ -1007,7 +1055,7 @@ export default async function TradeDetailPage({
               />
               +{" "}
               {
-                trade.dp_offered
+                trade.dp_offered.toLocaleString("en-US")
               }{" "}
               Duel Points
             </span>
@@ -1059,7 +1107,7 @@ export default async function TradeDetailPage({
               />
               +{" "}
               {
-                trade.dp_requested
+                trade.dp_requested.toLocaleString("en-US")
               }{" "}
               Duel Points
             </span>
@@ -1109,8 +1157,8 @@ export default async function TradeDetailPage({
               <p className="mt-2 text-sm leading-6 text-zinc-500">
                 Sweeten the deal with Duel Points on either side. You have{" "}
                 <strong className="text-amber-200">
-                  {sender?.duel_points ??
-                    0}{" "}
+                  {(sender?.duel_points ??
+                    0).toLocaleString("en-US")}{" "}
                   DP
                 </strong>
                 {" "}available.
@@ -1135,6 +1183,11 @@ export default async function TradeDetailPage({
                     type="number"
                     name="dp_offered"
                     min={0}
+                    max={Math.max(
+                      sender?.duel_points ??
+                        0,
+                      trade.dp_offered
+                    )}
                     step={1}
                     defaultValue={
                       trade.dp_offered
@@ -1210,6 +1263,10 @@ export default async function TradeDetailPage({
                     name="message"
                     rows={3}
                     maxLength={1000}
+                    defaultValue={
+                      trade.message ??
+                      ""
+                    }
                     placeholder="Optional message..."
                     className="field resize-y"
                   />

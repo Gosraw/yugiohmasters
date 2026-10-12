@@ -310,7 +310,7 @@ export default async function BossPathSelectPage({
             description={
               cost === null
                 ? "Your first route is free. Pick the legend you want to become — you'll grind it through four evolution stages over the season."
-                : `Unlocking this slot costs ${cost.toLocaleString()} DP, charged once. Stage 1 is granted immediately after.`
+                : `Unlocking this slot costs ${cost.toLocaleString("en-US")} DP, charged once. Stage 1 is granted immediately after.`
             }
             action={
               <div className="rounded-xl border border-amber-300/20 bg-amber-300/[0.06] px-4 py-2.5 text-right">
@@ -322,7 +322,7 @@ export default async function BossPathSelectPage({
                   <Coins
                     size={16}
                   />
-                  {duelPoints.toLocaleString()}
+                  {duelPoints.toLocaleString("en-US")}
                 </p>
               </div>
             }
@@ -502,7 +502,7 @@ export default async function BossPathSelectPage({
 
                                     <p className="text-xs font-black text-zinc-200">
                                       {routePrices.has(stageNumber)
-                                        ? `${routePrices.get(stageNumber)?.toLocaleString()} DP`
+                                        ? `${routePrices.get(stageNumber)?.toLocaleString("en-US")} DP`
                                         : "—"}
                                     </p>
                                   </div>
@@ -569,7 +569,7 @@ export default async function BossPathSelectPage({
                               </SubmitButton>
                             ) : (
                               <ConfirmSubmitButton
-                                confirmMessage={`Unlock ${route.name} as Boss Route slot ${slot} for ${cost.toLocaleString()} DP? This spends your Duel Points and can't be undone.`}
+                                confirmMessage={`Unlock ${route.name} as Boss Route slot ${slot} for ${cost.toLocaleString("en-US")} DP? This spends your Duel Points and can't be undone.`}
                                 pendingLabel="Unlocking..."
                                 disabled={
                                   disabled
@@ -581,7 +581,7 @@ export default async function BossPathSelectPage({
                                     15
                                   }
                                 />
-                                {`Unlock for ${cost.toLocaleString()} DP`}
+                                {`Unlock for ${cost.toLocaleString("en-US")} DP`}
                               </ConfirmSubmitButton>
                             )}
                           </form>

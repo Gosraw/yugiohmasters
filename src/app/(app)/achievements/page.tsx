@@ -1227,7 +1227,7 @@ export default async function AchievementsPage() {
             </p>
 
             <p className="mt-1 text-2xl font-black text-cyan-200">
-              {profile.duel_points}
+              {profile.duel_points.toLocaleString("en-US")}
             </p>
           </div>
 

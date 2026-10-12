@@ -1200,7 +1200,7 @@ export default async function ProfilePage() {
                   />
 
                   {
-                    profile.duel_points
+                    profile.duel_points.toLocaleString("en-US")
                   }{" "}
                   DP
                 </span>
@@ -1793,7 +1793,7 @@ export default async function ProfilePage() {
 
             <p className="mt-2 text-3xl font-black text-cyan-200">
               {
-                profile.duel_points
+                profile.duel_points.toLocaleString("en-US")
               }
             </p>
           </div>

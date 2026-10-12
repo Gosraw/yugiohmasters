@@ -242,7 +242,7 @@ export default async function BossHubPage() {
                     size={16}
                   />
 
-                  {duelPoints.toLocaleString()}
+                  {duelPoints.toLocaleString("en-US")}
                 </p>
               </div>
             }
@@ -372,7 +372,7 @@ export default async function BossHubPage() {
                         />
                         Stage{" "}
                         {path.current_stage + 1}:{" "}
-                        {nextPrice.toLocaleString()} DP
+                        {nextPrice.toLocaleString("en-US")} DP
                         {duelPoints >= nextPrice
                           ? " — ready to evolve"
                           : ""}
@@ -435,7 +435,7 @@ export default async function BossHubPage() {
                       {cost ===
                       null
                         ? "Free — your first Boss Route"
-                        : `Unlock for ${cost.toLocaleString()} DP`}
+                        : `Unlock for ${cost.toLocaleString("en-US")} DP`}
                     </p>
 
                     <Link

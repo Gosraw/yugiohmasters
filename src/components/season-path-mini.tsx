@@ -65,7 +65,7 @@ export function SeasonPathMini({
           label={
             status.complete
               ? "Season Path complete"
-              : `Tier ${status.nextTier?.tier}: ${status.xpIntoTier} of ${status.xpForTier} XP`
+              : `Tier ${status.nextTier?.tier}: ${status.xpIntoTier.toLocaleString("en-US")} of ${status.xpForTier.toLocaleString("en-US")} XP`
           }
         />
       </span>
@@ -74,7 +74,7 @@ export function SeasonPathMini({
         <span className="tabular-nums">
           {status.complete
             ? `${status.xp.toLocaleString("en-US")} XP · complete`
-            : `${status.xpIntoTier} / ${status.xpForTier} XP`}
+            : `${status.xpIntoTier.toLocaleString("en-US")} / ${status.xpForTier.toLocaleString("en-US")} XP`}
         </span>
 
         {nextReward ? (

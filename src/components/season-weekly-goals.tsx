@@ -104,8 +104,8 @@ export function SeasonWeeklyGoals({
                       </p>
 
                       <p className="shrink-0 text-[11px] font-semibold text-gold">
-                        +{item.dpReward} DP
-                        {goalXp > 0 ? ` · +${goalXp} XP` : ""}
+                        +{item.dpReward.toLocaleString("en-US")} DP
+                        {goalXp > 0 ? ` · +${goalXp.toLocaleString("en-US")} XP` : ""}
                       </p>
                     </div>
 

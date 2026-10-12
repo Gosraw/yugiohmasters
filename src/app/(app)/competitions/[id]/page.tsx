@@ -1158,7 +1158,7 @@ export default async function CompetitionDetailPage({
                     />
 
                     {
-                      reward.duel_points
+                      reward.duel_points.toLocaleString("en-US")
                     }{" "}
                     DP
                   </span>
@@ -2250,7 +2250,7 @@ export default async function CompetitionDetailPage({
                           {totals.dpTotal > 0 && (
                             <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-amber-200">
                               <Coins size={10} />+
-                              {totals.dpTotal} DP
+                              {totals.dpTotal.toLocaleString("en-US")} DP
                             </span>
                           )}
 

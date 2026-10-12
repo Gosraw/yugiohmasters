@@ -44,6 +44,8 @@ import {
   BOARD_MAX,
   MAX_WAVES,
   START_HEALTH,
+  SUMMON_UNLOCK_WAVE,
+  TRAP_UNLOCK_WAVE,
   type RunState,
 } from "@/lib/games/autobattler/engine";
 
@@ -379,9 +381,10 @@ export function ArenaHub({
       </h1>
 
       <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-400">
-        Recruit monsters from a shared shop, build synergies, then watch them fight
-        {MAX_WAVES} waves on their own: your friends&apos; boards and computer
-        Bosses. You have {START_HEALTH} health and a turn timer. How far can you get?
+        Recruit monsters, set traps and place them in three lanes, then watch them
+        march on the enemy castle across {MAX_WAVES} waves: your friends&apos; boards
+        and computer Bosses. Your castle has {START_HEALTH} Life Points for the whole
+        run. How far can you get?
       </p>
 
       {
@@ -640,7 +643,7 @@ function Rules() {
         <p>
           <strong className="text-amber-100">Board:</strong> up to {BOARD_MAX} units. When the
           timer runs out (or you press Fight) your board battles the wave on its own.
-          Units attack left to right, each picking a random target (Guardians first).
+          Combat has no dice: the same boards always play out the same way.
         </p>
 
         <p>
@@ -650,22 +653,39 @@ function Rules() {
         </p>
 
         <p>
-          <strong className="text-amber-100">Fusion &amp; Xyz:</strong> two monsters of the
-          same Level (3-8) can be overlaid into an Xyz monster, and classic pairs (Dark
-          Magician + Buster Blader, Red-Eyes + Summoned Skull, ...) can be fused. Both are
-          free: the two monsters are the price, and half of the stats they gained carry over.
+          <strong className="text-amber-100">Lanes:</strong> up to 3 monsters per lane. ATTACK
+          monsters march toward the enemy castle and fight the first enemy they meet; one that
+          reaches the castle hits it (bigger Levels hit harder). DEFENSE monsters stay as a
+          wall near your castle with double DEF (triple for Guardians) and strike back at half
+          ATK. Tap a monster to switch; a lane nobody guards glows red. When the fighting
+          stops, every lane only one side still holds chips the other castle for 1.
+        </p>
+
+        <p>
+          <strong className="text-amber-100">Traps</strong> (from wave {TRAP_UNLOCK_WAVE}): one
+          face-down per lane. Each springs once per combat (Mirror Force, Sakuretsu Armor,
+          Magic Cylinder, Waboku, ...) and stays set for the next waves.
+        </p>
+
+        <p>
+          <strong className="text-amber-100">Fusion &amp; Xyz</strong> (from wave{" "}
+          {SUMMON_UNLOCK_WAVE}): classic pairs (Dark Magician + Buster Blader, Red-Eyes +
+          Summoned Skull, ...) fuse for free; two monsters of the same Level (3-8) overlay
+          into an Xyz for 1 gold, once per turn. Half of the stats the materials gained carry
+          over.
         </p>
 
         <p>
           <strong className="text-amber-100">Friends:</strong> every board you finish a turn
           with is saved. When a run starts, friends who played before you are locked in as
-          that run&apos;s opponents (one per wave); waves nobody has reached yet are Bosses.
+          that run&apos;s opponents (one per wave, with their lanes and traps); waves nobody
+          has reached yet are Bosses, and the last wave is always a Boss.
         </p>
 
         <p>
-          <strong className="text-amber-100">Losing</strong> a wave costs health (wave tier +
-          1 per enemy left, a Boss counts 2). At 0 health the run ends. Score = waves
-          survived, then health left. Survive all {MAX_WAVES} waves for a perfect run.
+          <strong className="text-amber-100">Castle damage</strong> per wave is capped (4 /
+          7 / 10 as the waves grow). At 0 Life Points the run ends. Score = waves survived,
+          then Life Points left. Survive all {MAX_WAVES} waves for a perfect run.
         </p>
 
         <div>

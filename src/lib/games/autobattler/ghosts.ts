@@ -17,7 +17,8 @@ import {
 // per turn with pickGhosts() and freezes that list with the run
 // (arena_run_ghosts). The browser gets exactly that list; the
 // server replay loads exactly that list again. Turns without a
-// ghost fall back to the computer Boss wave.
+// ghost fall back to the computer Boss wave; the last wave is
+// always a Boss.
 //
 // Pure + deterministic: same seed + same candidates = same ghosts.
 // =========================================================
@@ -51,7 +52,7 @@ export function pickGhosts(
     if (
       !Number.isInteger(candidate.turn) ||
       candidate.turn < 1 ||
-      candidate.turn > MAX_WAVES
+      candidate.turn >= MAX_WAVES
     ) {
       continue;
     }
@@ -82,7 +83,8 @@ export function pickGhosts(
 
   const picks: GhostAssignment[] = [];
 
-  for (let turn = 1; turn <= MAX_WAVES; turn++) {
+  // The last wave is always a Boss (same finale for everyone).
+  for (let turn = 1; turn < MAX_WAVES; turn++) {
     for (let k = 0; k < friends.length; k++) {
       const index =
         (next + k) % friends.length;
@@ -139,6 +141,12 @@ export function ghostTableFromRows(
             ? (row.board as {
                 units?: unknown;
               }).units
+            : null,
+        traps:
+          typeof row.board === "object" && row.board !== null
+            ? (row.board as {
+                traps?: unknown;
+              }).traps
             : null,
       };
     }

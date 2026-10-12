@@ -2,15 +2,19 @@ import {
   applyAction,
   createRun,
   fusionOptions,
+  isTrapId,
   xyzOptions,
   BOARD_MAX,
   MAX_TIER,
+  OVERLAY_COST,
+  TRAP_MAX,
   UNIT_COST,
   type GhostBoard,
   type Run,
 } from "./engine";
 
 import {
+  TRAP_BY_ID,
   UNIT_BY_ID,
   type UnitDef,
 } from "./units";
@@ -95,6 +99,13 @@ function summonSpecials(
 
     const crowded =
       state.board.length + state.bench.length >= BOARD_MAX;
+
+    if (
+      state.overlayUsed ||
+      state.gold < OVERLAY_COST
+    ) {
+      return;
+    }
 
     const xyz =
       xyzOptions(state).find(
@@ -184,6 +195,26 @@ export function playBotTurn(
           return;
         }
 
+        // Traps: worth it once the board stands (free zone only).
+        if (isTrapId(id)) {
+          if (
+            state.traps.length >= TRAP_MAX ||
+            state.board.length < 3
+          ) {
+            return;
+          }
+
+          const trapValue =
+            6 + (TRAP_BY_ID.get(id)?.tier ?? 1) * 4;
+
+          if (trapValue > bestValue) {
+            bestValue = trapValue;
+            bestSlot = slot;
+          }
+
+          return;
+        }
+
         const def =
           UNIT_BY_ID.get(id) as UnitDef;
 
@@ -201,7 +232,10 @@ export function playBotTurn(
       bestSlot >= 0 &&
       state.gold >= UNIT_COST
     ) {
-      if (state.board.length < BOARD_MAX) {
+      if (
+        state.board.length < BOARD_MAX ||
+        isTrapId(state.shop[bestSlot] as string)
+      ) {
         if (act(run, `b${bestSlot}`)) {
           continue;
         }
@@ -260,26 +294,16 @@ export function playBotTurn(
     break;
   }
 
-  // Taunts to the front, then by health.
+  // Guardians hold their lane as DEFENSE walls.
   if (smart) {
-    const order =
-      [...state.board].sort(
-        (a, b) => {
-          const ta =
-            (UNIT_BY_ID.get(a.id) as UnitDef).ability === "taunt" ? 1 : 0;
+    for (const unit of state.board) {
+      const guardian =
+        (UNIT_BY_ID.get(unit.id) as UnitDef).ability === "taunt";
 
-          const tb =
-            (UNIT_BY_ID.get(b.id) as UnitDef).ability === "taunt" ? 1 : 0;
-
-          return tb - ta || b.hp - a.hp;
-        }
-      );
-
-    order.forEach(
-      (unit, position) => {
-        act(run, `m${unit.uid}.${position}`);
+      if (guardian !== unit.def) {
+        act(run, `t${unit.uid}`);
       }
-    );
+    }
   }
 
   return applyAction(

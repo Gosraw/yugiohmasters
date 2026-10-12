@@ -13,6 +13,7 @@ import {
 import {
   fusionOptions,
   xyzOptions,
+  OVERLAY_COST,
   type RunState,
   type Unit,
 } from "@/lib/games/autobattler/engine";
@@ -54,11 +55,25 @@ function defOf(
   return UNIT_BY_ID.get(id) as UnitDef;
 }
 
+/** Why an Overlay can't happen right now (null = it can). */
+function overlayBlock(
+  state: RunState
+) {
+  return state.overlayUsed
+    ? "One Overlay per turn: used."
+    : state.gold < OVERLAY_COST
+      ? `Overlay needs ${OVERLAY_COST} gold.`
+      : null;
+}
+
 /** How many Fusion / Xyz summons are possible right now. */
 export function summonCount(
   state: RunState
 ) {
-  return fusionOptions(state).length + xyzOptions(state).length;
+  return (
+    fusionOptions(state).length +
+    (overlayBlock(state) ? 0 : xyzOptions(state).length)
+  );
 }
 
 export function SummonPanel({
@@ -70,6 +85,9 @@ export function SummonPanel({
 }) {
   const fusions =
     fusionOptions(state);
+
+  const blocked =
+    overlayBlock(state);
 
   const xyz =
     xyzOptions(state);
@@ -216,17 +234,17 @@ export function SummonPanel({
                   </p>
 
                   <p className="text-[11px] leading-4 text-zinc-400">
-                    Pick two Level {option.rank} monsters · {ABILITY_LABEL[result.ability]}
+                    {blocked ?? `Pick two Level ${option.rank} monsters`} · {ABILITY_LABEL[result.ability]}
                   </p>
                 </div>
 
                 <button
                   type="button"
-                  disabled={chosen.length !== 2}
+                  disabled={chosen.length !== 2 || blocked !== null}
                   onClick={() => onSummon(`x${chosen[0]}.${chosen[1]}`)}
                   className="primary-button min-h-11 shrink-0 px-3 text-sm disabled:opacity-50"
                 >
-                  Overlay
+                  Overlay {OVERLAY_COST}
                 </button>
               </div>
 
@@ -269,8 +287,9 @@ export function SummonPanel({
       )}
 
       <p className="text-[11px] leading-4 text-zinc-500">
-        Free: the materials are the price. The new monster keeps half of the stats they
-        had gained.
+        Fusion is free and Overlay costs {OVERLAY_COST} gold (once per turn): the
+        materials are the real price. The new monster keeps half of the stats they had
+        gained.
       </p>
     </div>
   );

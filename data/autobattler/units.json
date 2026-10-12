@@ -1723,6 +1723,98 @@
    ]
   }
  ],
+ "traps": [
+  {
+   "id": "trap-hole",
+   "name": "Trap Hole",
+   "tier": 1,
+   "effect": "destroy_min_atk",
+   "trigger": "enter",
+   "value": 5,
+   "img": "https://images.ygoprodeck.com/images/cards_small/4206964.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/4206964.jpg"
+  },
+  {
+   "id": "negate-attack",
+   "name": "Negate Attack",
+   "tier": 1,
+   "effect": "bounce",
+   "trigger": "enter",
+   "value": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/14315573.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/14315573.jpg"
+  },
+  {
+   "id": "waboku",
+   "name": "Waboku",
+   "tier": 2,
+   "effect": "no_castle_damage",
+   "trigger": "castle",
+   "value": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/12607053.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/12607053.jpg"
+  },
+  {
+   "id": "sakuretsu-armor",
+   "name": "Sakuretsu Armor",
+   "tier": 2,
+   "effect": "destroy",
+   "trigger": "enter",
+   "value": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/56120475.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/56120475.jpg"
+  },
+  {
+   "id": "magic-cylinder",
+   "name": "Magic Cylinder",
+   "tier": 3,
+   "effect": "reflect",
+   "trigger": "enter",
+   "value": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/62279055.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/62279055.jpg"
+  },
+  {
+   "id": "call-of-the-haunted",
+   "name": "Call of the Haunted",
+   "tier": 3,
+   "effect": "revive",
+   "trigger": "death",
+   "value": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/97077563.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/97077563.jpg"
+  },
+  {
+   "id": "mirror-force",
+   "name": "Mirror Force",
+   "tier": 4,
+   "effect": "destroy_two",
+   "trigger": "enter",
+   "value": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/44095762.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/44095762.jpg"
+  },
+  {
+   "id": "dimensional-prison",
+   "name": "Dimensional Prison",
+   "tier": 5,
+   "effect": "banish",
+   "trigger": "enter",
+   "value": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/70342110.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/70342110.jpg"
+  },
+  {
+   "id": "torrential-tribute",
+   "name": "Torrential Tribute",
+   "tier": 6,
+   "effect": "wipe_lane",
+   "trigger": "enter",
+   "value": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/53582587.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/53582587.jpg"
+  }
+ ],
  "routes": [
   {
    "code": "chaos_bls",

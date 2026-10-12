@@ -83,6 +83,29 @@ export type FusionRecipe = {
   materials: FusionMaterial[];
 };
 
+export type TrapEffect =
+  | "destroy_min_atk"
+  | "bounce"
+  | "no_castle_damage"
+  | "destroy"
+  | "reflect"
+  | "revive"
+  | "destroy_two"
+  | "banish"
+  | "wipe_lane";
+
+/** A Trap Card: set face-down on one lane, triggers once per combat. */
+export type TrapDef = {
+  id: string;
+  name: string;
+  tier: number;
+  effect: TrapEffect;
+  trigger: "enter" | "death" | "castle";
+  value: number;
+  img: string;
+  art: string | null;
+};
+
 export type BossRouteUnit = {
   name: string;
   attribute: string | null;
@@ -108,6 +131,7 @@ const data =
     units: UnitDef[];
     specials: UnitDef[];
     fusions: FusionRecipe[];
+    traps: TrapDef[];
     routes: BossRoute[];
   };
 
@@ -121,6 +145,43 @@ export const SPECIALS: readonly UnitDef[] =
 
 export const FUSIONS: readonly FusionRecipe[] =
   data.fusions;
+
+/** Trap Cards (in the shop pool next to the units). */
+export const TRAPS: readonly TrapDef[] =
+  data.traps;
+
+export const TRAP_BY_ID: ReadonlyMap<string, TrapDef> =
+  new Map(
+    TRAPS.map(
+      (trap) => [trap.id, trap]
+    )
+  );
+
+/** One-line rules text for a trap in the lane game. */
+export function trapText(
+  trap: Pick<TrapDef, "effect" | "value">
+) {
+  switch (trap.effect) {
+    case "destroy_min_atk":
+      return `The first enemy attacker with ${trap.value}+ ATK that enters your half of this lane is destroyed.`;
+    case "bounce":
+      return "The first enemy attacker that enters your half of this lane is sent back to its start.";
+    case "no_castle_damage":
+      return "Your castle takes no damage from this lane this combat.";
+    case "destroy":
+      return "The first enemy attacker that enters your half of this lane is destroyed.";
+    case "reflect":
+      return "The first enemy attacker that enters your half of this lane is sent back, and its castle damage hits the enemy castle.";
+    case "revive":
+      return "The first of your monsters destroyed in this lane comes back with full DEF.";
+    case "destroy_two":
+      return "When an enemy attacker enters your half of this lane, destroy it and the next enemy attacker in this lane.";
+    case "banish":
+      return "The first enemy attacker that enters your half of this lane is banished (no Reborn, no Last Will).";
+    case "wipe_lane":
+      return "When an enemy attacker enters your half of this lane, destroy EVERY monster in this lane (yours too).";
+  }
+}
 
 export const XYZ_BY_RANK: ReadonlyMap<number, UnitDef> =
   new Map(
@@ -196,13 +257,13 @@ export function abilityText(
 ) {
   switch (ability) {
     case "taunt":
-      return "Guardian: enemies must attack this first.";
+      return "Guardian: in DEF position it is a wall with triple DEF.";
     case "shield":
       return "Spellbound: the first hit it takes deals no damage.";
     case "revive":
       return "Reborn: the first time it dies, it returns with 1 health.";
     case "pierce":
-      return "Pierce: excess damage hits the enemy next to its target.";
+      return "Pierce: excess damage hits the enemy behind its target, or the castle.";
     case "rally": {
       const group =
         extra?.rallyBy === "tribe"
@@ -222,7 +283,7 @@ export function abilityText(
     case "ascend":
       return `Ascend: at the end of your turn, gain +${power}/+${power}.`;
     case "ambush":
-      return `Ambush: at the start of combat, deal ${power} damage to a random enemy.`;
+      return `Ambush: at the start of combat, deal ${power} damage to the front enemy in its lane (or a random enemy).`;
   }
 }
 

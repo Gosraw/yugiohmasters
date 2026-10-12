@@ -1,4 +1,4 @@
--- Shadow Arena ghosts (migration 202610121300):
+-- Shadow Arena ghosts (migrations 202610121300 + 202610121310 board schema):
 --  * record_arena_snapshots stores a VALIDATED run's boards only
 --  * arena_ghost_candidates returns league-mates' boards (not yours)
 --  * assign_arena_ghosts freezes a copy once, rejects own / wrong
@@ -6,6 +6,9 @@
 --  * players can read league snapshots + their own frozen ghosts,
 --    never write; the RPCs are service-role only
 --  * auto_battler max score = 122012
+
+-- Start from no stored boards (rolled back with the test).
+delete from public.arena_board_snapshots;
 
 create function pg_temp.arena_run(target_username text, target_status text)
 returns uuid
@@ -56,15 +59,16 @@ begin
       pg_temp.uid_of('bossg'),
       boss_run,
       '[{"turn":1,"board":{"units":[{"id":"kuriboh","atk":1,"hp":5,"golden":false}]}},
-        {"turn":2,"board":{"units":[{"id":"sangan","atk":2,"hp":2,"golden":true}]}}]'::jsonb
+        {"turn":2,"board":{"units":[{"id":"sangan","atk":2,"hp":2,"golden":true}]}}]'::jsonb,
+      2
     ),
     2,
-    'validated run stores 2 boards'
+    'validated run stores 2 boards (schema 2)'
   );
 
   refused := false;
   begin
-    perform public.record_arena_snapshots(pg_temp.uid_of('samo'), samo_run, '[]'::jsonb);
+    perform public.record_arena_snapshots(pg_temp.uid_of('samo'), samo_run, '[]'::jsonb, 2);
   exception when others then
     refused := true;
   end;
@@ -72,20 +76,26 @@ begin
 
   refused := false;
   begin
-    perform public.record_arena_snapshots(pg_temp.uid_of('samo'), boss_run, '[]'::jsonb);
+    perform public.record_arena_snapshots(pg_temp.uid_of('samo'), boss_run, '[]'::jsonb, 2);
   exception when others then
     refused := true;
   end;
   perform pg_temp.assert_true(refused, 'cannot store boards for someone else''s run');
 
   perform pg_temp.assert_eq(
-    (select count(*)::integer from public.arena_ghost_candidates(pg_temp.uid_of('samo'), samo_run)),
+    (select count(*)::integer from public.arena_ghost_candidates(pg_temp.uid_of('samo'), samo_run, 2)),
     2,
     'samo sees 2 candidate boards (bossg turns 1-2)'
   );
 
   perform pg_temp.assert_eq(
-    (select count(*)::integer from public.arena_ghost_candidates(pg_temp.uid_of('bossg'), boss_open)),
+    (select count(*)::integer from public.arena_ghost_candidates(pg_temp.uid_of('samo'), samo_run, 1)),
+    0,
+    'schema-2 boards are hidden from a server that only reads schema 1'
+  );
+
+  perform pg_temp.assert_eq(
+    (select count(*)::integer from public.arena_ghost_candidates(pg_temp.uid_of('bossg'), boss_open, 2)),
     0,
     'your own boards are never your candidates'
   );
@@ -181,7 +191,7 @@ begin
 
   refused := false;
   begin
-    perform public.record_arena_snapshots(pg_temp.uid_of('samo'), samo_run, '[]'::jsonb);
+    perform public.record_arena_snapshots(pg_temp.uid_of('samo'), samo_run, '[]'::jsonb, 2);
   exception when insufficient_privilege then
     refused := true;
   end;

@@ -9,6 +9,7 @@ import {
 
 import {
   describeScore,
+  foeFor,
   resolveCombat,
   runScore,
   turnSeconds,
@@ -20,9 +21,6 @@ import {
   pickGhosts,
 } from "./ghosts";
 
-import {
-  createPrng,
-} from "../prng";
 
 // Balance report (not a correctness test). Run with:
 //   AB_BALANCE=1 npx vitest run src/lib/games/autobattler/balance.test.ts
@@ -31,23 +29,37 @@ import {
 // 2. Ghost runs: every bot fights boards recorded from OTHER bot
 //    runs (4 "friends"), picked like the server does.
 // Run length = 70% of every turn timer + combat playback
-// (~1.5 beats per frame, beat as in arena-combat.tsx) + 3s.
+// (~0.3s per tick, as in arena-combat.tsx) + 3s per turn.
 
 const RUNS = 300;
 
-function playbackSeconds(
-  frames: number
+/** Ticks the fight of `turn` lasted (re-simulated with frames). */
+function ticksOf(
+  run: ReturnType<typeof playBotRun>,
+  turn: number
 ) {
-  const beat =
-    Math.max(
-      130,
-      Math.min(
-        310,
-        Math.floor(7500 / Math.max(1, frames))
-      )
+  const snapshot =
+    run.state.snapshots.find(
+      (s) => s.turn === turn
     );
 
-  return (250 + frames * beat * 1.5) / 1000;
+  if (!snapshot) {
+    return 0;
+  }
+
+  return resolveCombat(
+    snapshot.units.map(
+      (unit, index) => ({
+        ...unit,
+        uid: index + 1,
+      })
+    ),
+    foeFor(run.state, turn),
+    true,
+    snapshot.traps
+  ).frames.filter(
+    (frame) => frame.ev.k === "tick"
+  ).length;
 }
 
 function report(
@@ -62,6 +74,8 @@ function report(
 
   let fusions = 0;
   let xyz = 0;
+  let traps = 0;
+  let ghostFights = 0;
 
   for (let i = 0; i < RUNS; i++) {
     const run =
@@ -79,35 +93,17 @@ function report(
       seconds += turnSeconds(wave.wave) * 0.7 + 3;
     }
 
-    // Re-run the fights with frames to time the playback.
-    for (const snapshot of run.state.snapshots) {
-      const frames =
-        resolveCombat(
-          snapshot.units.map(
-            (unit, index) => ({
-              ...unit,
-              uid: index + 1,
-            })
-          ),
-          {
-            kind: "boss",
-            wave: snapshot.turn,
-            route: "x",
-            routeName: "x",
-            tier: 1,
-            units: [],
-          },
-          createPrng("t"),
-          true
-        ).frames.length;
-
-      seconds += playbackSeconds(Math.max(frames, 12));
+    // Combat playback: ~0.3s per tick (arena-combat.tsx) + 1.5s.
+    for (const wave of run.state.history) {
+      seconds += 1.5 + ticksOf(run, wave.wave) * 0.3;
     }
 
     minutes.push(seconds / 60);
 
     fusions += run.state.log.filter((action) => action.startsWith("c")).length;
     xyz += run.state.log.filter((action) => action.startsWith("x")).length;
+    traps += run.state.snapshots.reduce((sum, snapshot) => sum + snapshot.traps.length, 0) / Math.max(1, run.state.snapshots.length);
+    ghostFights += run.state.history.filter((wave) => wave.route === "ghost").length;
   }
 
   waves.sort((a, b) => a - b);
@@ -126,7 +122,9 @@ function report(
     "| minutes median", minutes[Math.floor(RUNS / 2)].toFixed(1),
     "max", minutes[RUNS - 1].toFixed(1),
     "| fusions/run", (fusions / RUNS).toFixed(2),
-    "xyz/run", (xyz / RUNS).toFixed(2)
+    "xyz/run", (xyz / RUNS).toFixed(2),
+    "| traps set (avg)", (traps / RUNS).toFixed(2),
+    "| ghost fights/run", (ghostFights / RUNS).toFixed(2)
   );
 
   console.log("  losses by wave", lossesAt.slice(1).join(" "));
@@ -177,6 +175,7 @@ describe.skipIf(!process.env.AB_BALANCE)("balance report", () => {
                 id,
                 name: `Friend ${f}`,
                 units: snapshot.units,
+                traps: snapshot.traps,
               });
 
               return {

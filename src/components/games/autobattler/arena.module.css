@@ -144,6 +144,72 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ---- 3-lane battlefield (lane-board.tsx, arena-combat.tsx) ---- */
+
+/* A small Egyptian temple / castle: pylon + gate. */
+.castle {
+  position: relative;
+  display: inline-block;
+  width: 22px;
+  height: 16px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #f2c45a, #8a6420);
+  clip-path: polygon(8% 100%, 18% 0, 82% 0, 92% 100%);
+}
+
+.castle::after {
+  content: "";
+  position: absolute;
+  left: 38%;
+  right: 38%;
+  bottom: 0;
+  height: 55%;
+  background: #120c05;
+  border-radius: 3px 3px 0 0;
+}
+
+/* Stone path with faint marching chevrons. */
+.lanePath {
+  background:
+    repeating-linear-gradient(0deg, rgba(242, 196, 90, .05) 0 2px, transparent 2px 26px),
+    linear-gradient(180deg, rgba(90, 72, 48, .45), rgba(52, 42, 30, .5));
+  box-shadow: inset 0 0 0 1px rgba(242, 196, 90, .12), inset 0 0 18px rgba(0, 0, 0, .5);
+}
+
+.marcher {
+  transition: top 260ms linear;
+}
+
+.summonGlow {
+  animation: summon-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes summon-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(192, 132, 252, .35); }
+  50% { box-shadow: 0 0 18px rgba(192, 132, 252, .8); }
+}
+
+.shake {
+  animation: shake 320ms ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+.trapFlip {
+  animation: trap-flip 520ms cubic-bezier(.2, .9, .3, 1.2) both;
+}
+
+@keyframes trap-flip {
+  from { opacity: 0; transform: perspective(600px) rotateY(90deg) scale(.8); }
+  to { opacity: 1; transform: perspective(600px) rotateY(0) scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .float {
     animation: float-fade 900ms linear forwards;
@@ -167,8 +233,15 @@
   .banner,
   .timerLow,
   .shimmer,
-  .summonRise {
+  .summonRise,
+  .shake,
+  .trapFlip,
+  .summonGlow {
     animation: none;
+  }
+
+  .marcher {
+    transition: none;
   }
 
   /* No flash: just the card, faded in and out. */

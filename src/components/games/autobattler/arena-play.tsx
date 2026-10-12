@@ -1,18 +1,17 @@
 "use client";
 
 import {
-  ChevronLeft,
-  ChevronRight,
   ChevronsUp,
   Coins,
-  Eye,
   Heart,
   Layers,
   Lock,
   LogOut,
   RefreshCw,
+  Shield,
   Snowflake,
   Sparkles,
+  Sword,
   Swords,
   Timer,
   Trash2,
@@ -26,43 +25,46 @@ import {
   useState,
 } from "react";
 
-import type {
-  PointerEvent as ReactPointerEvent,
-} from "react";
-
 import {
   applyAction,
   boardSynergies,
+  damageCap,
   foeFor,
   foeName,
   ghostIds,
   isGhostFoe,
+  isTrapId,
+  laneCounts,
   restoreRun,
   runScore,
   turnSeconds,
   BENCH_MAX,
   BOARD_MAX,
-  DAMAGE_CAP,
   ENGINE_VERSION,
+  LANE_MAX,
   MAX_TIER,
   MAX_WAVES,
   ROLL_COST,
   SELL_VALUE,
   START_HEALTH,
+  SUMMON_UNLOCK_WAVE,
+  TRAP_UNLOCK_WAVE,
   UNIT_COST,
   type CombatResult,
   type GhostBoard,
   type Run,
   type RunState,
+  type TrapCard,
   type Unit,
 } from "@/lib/games/autobattler/engine";
 
 import {
   ABILITY_LABEL,
   SYNERGY_TEXT,
+  TRAP_BY_ID,
   UNIT_BY_ID,
   abilityText,
-  type Ability,
+  trapText,
   type SynergyKey,
   type UnitDef,
 } from "@/lib/games/autobattler/units";
@@ -72,15 +74,21 @@ import {
 } from "./arena-combat";
 
 import {
+  CardFrame,
+} from "./card-frame";
+
+import {
+  LANE_NAMES,
+  LaneBoard,
+  ScoutField,
+} from "./lane-board";
+
+import {
   SummonFlash,
   SummonPanel,
   summonCount,
   type SummonMoment,
 } from "./summon";
-
-import {
-  UnitTile,
-} from "./unit-tile";
 
 import styles from "./arena.module.css";
 
@@ -92,16 +100,17 @@ import styles from "./arena.module.css";
 // the server replays later - and the log is saved to
 // localStorage after each action, so a killed tab can resume.
 //
-// Controls (phone first, all targets >= 44px):
-//   - tap a shop card, then Buy (or tap it again)
-//   - tap a unit, then tap a board slot to move / play it there
-//   - or drag: shop -> board buys, unit -> board slot moves,
-//     unit -> the sell zone (over the shop) sells
+// Controls (phone first, all targets >= 44px, no drag needed):
+//   - tap a shop card -> the lanes light up -> tap a lane to buy
+//     it straight into that lane (or "Buy" in the detail bar)
+//   - tap a bench card / your trap -> tap a lane to place it
+//   - tap a placed monster: flip ATTACK <-> DEFENSE
+//   - hold a placed monster: its card, lane buttons, sell
 // =========================================================
 
-// v2: engine v2 (ghosts, 12 waves). An old v1 save is simply
-// never read again (that run can't be submitted anymore anyway).
-export const ARENA_SAVE_KEY = "dc.shadowArena.run.v2";
+// v3: lanes. An older save is simply never read again (that run
+// can't be submitted anymore anyway).
+export const ARENA_SAVE_KEY = "dc.shadowArena.run.v3";
 
 export type SavedArenaRun = {
   runId: string;
@@ -179,31 +188,18 @@ type Selection =
       uid: number;
     }
   | {
+      kind: "trap";
+      uid: number;
+    }
+  | {
       kind: "syn";
       key: SynergyKey;
     }
   | null;
 
-type DragSource =
-  | {
-      kind: "shop";
-      slot: number;
-    }
-  | {
-      kind: "unit";
-      uid: number;
-    };
-
-type DragState = {
-  source: DragSource;
-  pointerId: number;
-  startX: number;
-  startY: number;
-  x: number;
-  y: number;
-  active: boolean;
-  img: string;
-  name: string;
+type Toast = {
+  text: string;
+  tone: "error" | "info";
 };
 
 type Props = {
@@ -219,22 +215,15 @@ type Props = {
   onLeave: () => void;
 };
 
+const UNLOCKS: Record<number, string> = {
+  [TRAP_UNLOCK_WAVE]: "Traps unlocked: buy one and set it face-down on a lane.",
+  [SUMMON_UNLOCK_WAVE]: "Fusion & Xyz unlocked: watch for the glowing button.",
+};
+
 function clone(
   state: RunState
 ): RunState {
   return structuredClone(state);
-}
-
-function defOf(
-  unit: Unit
-) {
-  return UNIT_BY_ID.get(unit.id) as UnitDef;
-}
-
-function unitAbilities(
-  def: UnitDef
-): Ability[] {
-  return [def.ability];
 }
 
 export function ArenaPlay({
@@ -259,7 +248,6 @@ export function ArenaPlay({
   const [combat, setCombat] =
     useState<{
       result: CombatResult;
-      routeName: string;
       healthBefore: number;
     } | null>(null);
 
@@ -270,7 +258,7 @@ export function ArenaPlay({
     useState(openedAt);
 
   const [toast, setToast] =
-    useState<string | null>(null);
+    useState<Toast | null>(null);
 
   const [scoutOpen, setScoutOpen] =
     useState(false);
@@ -283,12 +271,6 @@ export function ArenaPlay({
 
   const [confirmLeave, setConfirmLeave] =
     useState(false);
-
-  const [drag, setDrag] =
-    useState<DragState | null>(null);
-
-  const dragRef =
-    useRef<DragState | null>(null);
 
   const endingRef =
     useRef(false);
@@ -326,8 +308,11 @@ export function ArenaPlay({
   }, [seed, initialActions, ghosts]);
 
   const flash = useCallback(
-    (message: string) => {
-      setToast(message);
+    (text: string, tone: Toast["tone"] = "error") => {
+      setToast({
+        text,
+        tone,
+      });
 
       if (toastTimer.current) {
         window.clearTimeout(toastTimer.current);
@@ -336,7 +321,7 @@ export function ArenaPlay({
       toastTimer.current =
         window.setTimeout(
           () => setToast(null),
-          1800
+          tone === "info" ? 3200 : 1800
         );
     },
     []
@@ -387,7 +372,6 @@ export function ArenaPlay({
         setSummonOpen(false);
         setCombat({
           result: outcome.combat,
-          routeName: outcome.combat.foe,
           healthBefore,
         });
       }
@@ -492,221 +476,21 @@ export function ArenaPlay({
         return;
       }
 
+      const unlock =
+        UNLOCKS[run.state.turn];
+
+      if (unlock) {
+        flash(unlock, "info");
+      }
+
       const t =
         Date.now();
 
       setNow(t);
       setDeadline(t + turnSeconds(run.state.turn) * 1000);
     },
-    [onFinished]
+    [flash, onFinished]
   );
-
-  // ---- drag & drop ----
-  const performDrop = useCallback(
-    (source: DragSource, target: string | null) => {
-      const run =
-        runRef.current;
-
-      if (
-        !run ||
-        !target
-      ) {
-        return;
-      }
-
-      const state =
-        run.state;
-
-      if (target === "sell") {
-        if (source.kind === "unit") {
-          act(`s${source.uid}`);
-          setSelected(null);
-        }
-
-        return;
-      }
-
-      const [zone, raw] =
-        target.split(":");
-
-      const index =
-        Number(raw ?? 0);
-
-      if (source.kind === "shop") {
-        if (
-          zone !== "board" &&
-          zone !== "bench"
-        ) {
-          return;
-        }
-
-        const boardBefore =
-          state.board.length;
-
-        if (!act(`b${source.slot}`)) {
-          return;
-        }
-
-        setSelected(null);
-
-        // Bought straight onto the board: slide it to the slot it
-        // was dropped on.
-        if (
-          zone === "board" &&
-          state.board.length === boardBefore + 1
-        ) {
-          const bought =
-            state.board[state.board.length - 1];
-
-          const position =
-            Math.min(
-              index,
-              state.board.length - 1
-            );
-
-          if (position !== state.board.length - 1) {
-            act(`m${bought.uid}.${position}`);
-          }
-        }
-
-        return;
-      }
-
-      const onBoard =
-        state.board.findIndex(
-          (unit) => unit.uid === source.uid
-        );
-
-      if (zone === "board") {
-        if (onBoard >= 0) {
-          const position =
-            Math.min(
-              index,
-              state.board.length - 1
-            );
-
-          if (position !== onBoard) {
-            act(`m${source.uid}.${position}`);
-          }
-        } else {
-          act(`p${source.uid}.${Math.min(index, state.board.length)}`);
-        }
-
-        setSelected(null);
-      }
-    },
-    [act]
-  );
-
-  useEffect(() => {
-    if (!drag) {
-      return;
-    }
-
-    const move = (
-      event: PointerEvent
-    ) => {
-      const current =
-        dragRef.current;
-
-      if (
-        !current ||
-        event.pointerId !== current.pointerId
-      ) {
-        return;
-      }
-
-      const distance =
-        Math.abs(event.clientX - current.startX) + Math.abs(event.clientY - current.startY);
-
-      const next: DragState = {
-        ...current,
-        x: event.clientX,
-        y: event.clientY,
-        active: current.active || distance > 10,
-      };
-
-      dragRef.current = next;
-
-      setDrag(next);
-    };
-
-    const up = (
-      event: PointerEvent
-    ) => {
-      const current =
-        dragRef.current;
-
-      if (
-        !current ||
-        event.pointerId !== current.pointerId
-      ) {
-        return;
-      }
-
-      dragRef.current = null;
-
-      setDrag(null);
-
-      if (!current.active) {
-        return;
-      }
-
-      const element =
-        document.elementFromPoint(
-          event.clientX,
-          event.clientY
-        );
-
-      const target =
-        element?.closest<HTMLElement>("[data-drop]")?.dataset.drop ?? null;
-
-      performDrop(
-        current.source,
-        target
-      );
-    };
-
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", up);
-
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      window.removeEventListener("pointercancel", up);
-    };
-  }, [drag, performDrop]);
-
-  const startDrag = (
-    event: ReactPointerEvent,
-    source: DragSource,
-    img: string,
-    name: string
-  ) => {
-    if (
-      event.button !== 0 ||
-      combat
-    ) {
-      return;
-    }
-
-    const state: DragState = {
-      source,
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      x: event.clientX,
-      y: event.clientY,
-      active: false,
-      img,
-      name,
-    };
-
-    dragRef.current = state;
-
-    setDrag(state);
-  };
 
   if (!view) {
     return (
@@ -731,65 +515,6 @@ export function ArenaPlay({
       view.turn
     );
 
-  const nextIsGhost =
-    isGhostFoe(nextFoe);
-
-  // One list for the scout strip + sheet (Boss or friend's board).
-  const scoutUnits =
-    isGhostFoe(nextFoe)
-      ? nextFoe.units.map(
-          (unit) => {
-            const def =
-              UNIT_BY_ID.get(unit.id) as UnitDef;
-
-            return {
-              name: def.name,
-              img: def.img,
-              atk: unit.atk,
-              hp: unit.hp,
-              boss: false,
-              golden: unit.golden,
-              text: abilityText(
-                def.ability,
-                def.power * (unit.golden ? 2 : 1),
-                {
-                  rallyBy: def.rallyBy,
-                  tribe: def.tribe,
-                  attribute: def.attribute,
-                }
-              ),
-            };
-          }
-        )
-      : nextFoe.units.map(
-          (unit) => ({
-            name: unit.name,
-            img: unit.img,
-            atk: unit.atk,
-            hp: unit.hp,
-            boss: unit.boss,
-            golden: false,
-            text:
-              unit.keywords.length > 0
-                ? unit.keywords
-                    .map(
-                      (keyword) => abilityText(keyword, unit.power)
-                    )
-                    .join(" ")
-                : "No ability.",
-          })
-        );
-
-  const damageCap =
-    view.turn <= 3
-      ? DAMAGE_CAP[0]
-      : view.turn <= 6
-        ? DAMAGE_CAP[1]
-        : DAMAGE_CAP[2];
-
-  const summons =
-    summonCount(view);
-
   const synergies =
     boardSynergies(view.board)
       .filter(
@@ -806,111 +531,113 @@ export function ArenaPlay({
         ) ?? null
       : null;
 
-  const selectedOnBoard =
-    selectedUnit
-      ? view.board.some(
-          (unit) => unit.uid === selectedUnit.uid
-        )
-      : false;
+  const selectedTrap =
+    selected?.kind === "trap"
+      ? view.traps.find(
+          (trap) => trap.uid === selected.uid
+        ) ?? null
+      : null;
 
   const selectedShopId =
     selected?.kind === "shop"
       ? view.shop[selected.slot] ?? null
       : null;
 
-  const draggingOwnUnit =
-    drag?.active === true &&
-    drag.source.kind === "unit";
+  const placing =
+    selectedShopId !== null ||
+    selectedUnit !== null ||
+    selectedTrap !== null;
 
-  const tapShop = (
-    slot: number
-  ) => {
-    if (
-      selected?.kind === "shop" &&
-      selected.slot === slot
-    ) {
-      if (act(`b${slot}`)) {
-        setSelected(null);
-      }
-
-      return;
-    }
-
-    setSelected({
-      kind: "shop",
-      slot,
-    });
-  };
-
-  const tapBoardSlot = (
-    index: number,
-    unit: Unit | undefined
-  ) => {
-    if (selectedUnit) {
-      if (
-        unit &&
-        unit.uid === selectedUnit.uid
-      ) {
-        setSelected(null);
-
-        return;
-      }
-
-      if (selectedOnBoard) {
-        act(`m${selectedUnit.uid}.${Math.min(index, view.board.length - 1)}`);
-        setSelected(null);
-
-        return;
-      }
-
-      // From the bench onto the board.
-      act(`p${selectedUnit.uid}.${Math.min(index, view.board.length)}`);
-      setSelected(null);
-
-      return;
-    }
-
-    if (
-      selected?.kind === "shop" &&
-      !unit
-    ) {
-      performDrop(
-        {
-          kind: "shop",
-          slot: selected.slot,
-        },
-        `board:${index}`
-      );
-
-      return;
-    }
-
-    if (unit) {
-      setSelected({
-        kind: "unit",
-        uid: unit.uid,
-      });
-    }
-  };
-
-  const tapBench = (
-    unit: Unit
-  ) => {
-    if (selectedUnit?.uid === unit.uid) {
-      setSelected(null);
-
-      return;
-    }
-
-    setSelected({
-      kind: "unit",
-      uid: unit.uid,
-    });
-  };
+  const summons =
+    view.turn >= SUMMON_UNLOCK_WAVE
+      ? summonCount(view)
+      : 0;
 
   const lowTime =
     deadline !== null &&
     secondsLeft <= 10;
+
+  /** The tapped lane receives whatever is selected. */
+  const tapLane = (
+    lane: number
+  ) => {
+    const run =
+      runRef.current;
+
+    if (!run) {
+      return;
+    }
+
+    if (selected?.kind === "shop") {
+      const id =
+        view.shop[selected.slot];
+
+      if (!id) {
+        return;
+      }
+
+      const trap =
+        isTrapId(id);
+
+      const before =
+        trap ? run.state.traps.length : run.state.board.length;
+
+      const bought =
+        act(`b${selected.slot}`);
+
+      setSelected(null);
+
+      if (!bought) {
+        return;
+      }
+
+      if (trap) {
+        const card =
+          run.state.traps[run.state.traps.length - 1];
+
+        if (
+          run.state.traps.length > before &&
+          card.lane !== lane
+        ) {
+          act(`m${card.uid}.${lane}`);
+        }
+
+        return;
+      }
+
+      // Bought straight onto the board: move it to that lane.
+      if (run.state.board.length > before) {
+        const unit =
+          run.state.board[run.state.board.length - 1];
+
+        if (
+          unit.lane !== lane &&
+          laneCounts(run.state.board)[lane] < LANE_MAX
+        ) {
+          act(`m${unit.uid}.${lane}`);
+        }
+      }
+
+      return;
+    }
+
+    if (selectedTrap) {
+      act(`m${selectedTrap.uid}.${lane}`);
+      setSelected(null);
+
+      return;
+    }
+
+    if (selectedUnit) {
+      const onBoard =
+        view.board.some(
+          (unit) => unit.uid === selectedUnit.uid
+        );
+
+      act(onBoard ? `m${selectedUnit.uid}.${lane}` : `p${selectedUnit.uid}.${lane}`);
+      setSelected(null);
+    }
+  };
 
   // ---- render ----
   return (
@@ -924,10 +651,10 @@ export function ArenaPlay({
       {
         combat
           ? (
-              <div className="mx-auto flex h-full w-full max-w-md flex-col pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+              <div className="mx-auto flex h-full w-full max-w-md flex-col pt-[env(safe-area-inset-top)]">
                 <ArenaCombat
                   combat={combat.result}
-                  routeName={combat.routeName}
+                  routeName={combat.result.foe}
                   healthBefore={combat.healthBefore}
                   onDone={combatDone}
                 />
@@ -986,7 +713,7 @@ export function ArenaPlay({
                     />
                     {view.health}
                     <span className="text-[11px] font-semibold text-rose-200/60">
-                      /{START_HEALTH}
+                      /{START_HEALTH} LP
                     </span>
                   </div>
 
@@ -1033,54 +760,12 @@ export function ArenaPlay({
                   </button>
                 </div>
 
-                {/* ---- next wave (scout) ---- */}
-                <button
-                  type="button"
-                  onClick={() => setScoutOpen(true)}
-                  className="flex min-h-[3.25rem] items-center gap-2 rounded-xl border border-red-400/20 bg-red-950/25 px-2.5 py-1.5 text-left active:scale-[.99]"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[10px] font-bold uppercase tracking-[.18em] text-red-300/80">
-                      Next: wave {view.turn}{nextIsGhost ? " · friend" : ""}
-                    </span>
-
-                    <span className="block truncate text-[13px] font-semibold text-zinc-100">
-                      {foeName(nextFoe)}
-                    </span>
-                  </span>
-
-                  <span className="flex -space-x-2">
-                    {scoutUnits.slice(0, 5).map(
-                      (unit, i) => (
-                        <span
-                          key={`${unit.name}-${i}`}
-                          className={`relative h-8 w-8 overflow-hidden rounded-full border-2 bg-[#0b1024] ${unit.boss ? "border-red-400" : unit.golden ? "border-amber-300" : "border-[#03050f]"}`}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={unit.img}
-                            alt=""
-                            className={styles.art}
-                            draggable={false}
-                          />
-                        </span>
-                      )
-                    )}
-                  </span>
-
-                  <Eye
-                    size={16}
-                    className="shrink-0 text-red-200/70"
-                    aria-label="Scout"
-                  />
-                </button>
-
                 {/* ---- shop ---- */}
                 <section
                   aria-label="Shop"
-                  className="relative rounded-2xl border border-[rgb(242_196_90/.18)] bg-[linear-gradient(180deg,rgba(18,26,56,.8),rgba(10,14,34,.85))] p-2"
+                  className="rounded-2xl border border-[rgb(242_196_90/.18)] bg-[linear-gradient(180deg,rgba(18,26,56,.8),rgba(10,14,34,.85))] p-2"
                 >
-                  <div className="mb-2 flex items-center gap-1.5">
+                  <div className="mb-1.5 flex items-center gap-1.5">
                     <p className="flex-1 text-[11px] font-bold uppercase tracking-[.18em] text-amber-200/80">
                       Shop · {UNIT_COST}
                       <Coins
@@ -1139,91 +824,86 @@ export function ArenaPlay({
                   <div
                     className="grid gap-1.5"
                     style={{
-                      gridTemplateColumns: `repeat(${Math.max(3, view.shop.length)}, minmax(0, 1fr))`,
+                      gridTemplateColumns: `repeat(${Math.max(4, view.shop.length)}, minmax(0, 1fr))`,
                     }}
                   >
                     {view.shop.map(
                       (id, slot) => {
-                        const def =
-                          id ? UNIT_BY_ID.get(id) : null;
-
-                        if (!def) {
+                        if (!id) {
                           return (
                             <div
                               key={`shop-${slot}`}
-                              className="aspect-square rounded-lg border border-dashed border-white/10"
+                              className="aspect-[59/86] rounded-[5px] border border-dashed border-white/10"
                             />
                           );
                         }
 
-                        const isSelected =
-                          selected?.kind === "shop" &&
-                          selected.slot === slot;
+                        const unit =
+                          UNIT_BY_ID.get(id);
+
+                        const trap =
+                          TRAP_BY_ID.get(id);
 
                         return (
                           <button
-                            key={`shop-${slot}-${def.id}`}
+                            key={`shop-${slot}-${id}`}
                             type="button"
-                            onClick={() => tapShop(slot)}
-                            onPointerDown={(event) =>
-                              startDrag(
-                                event,
-                                {
-                                  kind: "shop",
-                                  slot,
-                                },
-                                def.img,
-                                def.name
+                            onClick={() =>
+                              setSelected(
+                                selected?.kind === "shop" && selected.slot === slot
+                                  ? null
+                                  : {
+                                      kind: "shop",
+                                      slot,
+                                    }
                               )
                             }
-                            aria-label={`${def.name}, tier ${def.tier}, ${def.atk} attack ${def.hp} health. ${ABILITY_LABEL[def.ability]}.`}
-                            className={`relative touch-none pb-1 transition active:scale-95 ${view.gold < UNIT_COST ? "opacity-60" : ""} ${drag?.active && drag.source.kind === "shop" && drag.source.slot === slot ? "opacity-30" : ""}`}
+                            aria-label={
+                              unit
+                                ? `${unit.name}, tier ${unit.tier}, ${unit.atk} ATK ${unit.hp} DEF, ${ABILITY_LABEL[unit.ability]}`
+                                : `Trap: ${trap?.name}`
+                            }
+                            className={`relative transition active:scale-95 ${view.gold < UNIT_COST ? "opacity-60" : ""}`}
                           >
-                            <UnitTile
-                              name={def.name}
-                              img={def.img}
-                              atk={def.atk}
-                              hp={def.hp}
-                              tier={def.tier}
-                              abilities={unitAbilities(def)}
-                              taunt={def.ability === "taunt"}
-                              selected={isSelected}
-                              size="md"
+                            <CardFrame
+                              id={id}
+                              selected={selected?.kind === "shop" && selected.slot === slot}
                             />
                           </button>
                         );
                       }
                     )}
                   </div>
+                </section>
 
+                {/* ---- synergies + Fusion/Xyz ---- */}
+                <div className="flex min-h-9 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
                   {
-                    draggingOwnUnit
+                    summons > 0
                       ? (
-                          <div
-                            data-drop="sell"
-                            className="absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-red-400/70 bg-red-950/85 text-sm font-black text-red-100"
+                          <button
+                            type="button"
+                            onClick={() => setSummonOpen(true)}
+                            className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-fuchsia-300/60 bg-[linear-gradient(90deg,rgba(168,85,247,.35),rgba(56,130,246,.35))] px-3 text-xs font-black text-fuchsia-50 ${styles.summonGlow}`}
                           >
-                            <Trash2
-                              size={18}
+                            <Layers
+                              size={14}
                               aria-hidden
                             />
-                            Drop to sell (+{SELL_VALUE})
-                          </div>
+                            Fusion / Xyz
+                            <span className="rounded bg-white/20 px-1 tabular-nums">
+                              {summons}
+                            </span>
+                          </button>
                         )
                       : null
                   }
-                </section>
 
-                {/* ---- synergies ---- */}
-                <div
-                  className="flex min-h-7 gap-1 overflow-x-auto [scrollbar-width:none]"
-                  aria-label="Synergies"
-                >
                   {
-                    synergies.length === 0
+                    synergies.length === 0 && summons === 0
                       ? (
-                          <p className="text-[11px] leading-7 text-zinc-500">
-                            3 units of one attribute or type = a synergy bonus.
+                          <p className="text-[11px] text-zinc-500">
+                            3 monsters of one attribute or type = a synergy bonus.
                           </p>
                         )
                       : synergies.map(
@@ -1237,7 +917,7 @@ export function ArenaPlay({
                                   key: syn.key,
                                 })
                               }
-                              className={`flex h-7 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold ${
+                              className={`flex h-9 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold ${
                                 syn.level === 2
                                   ? "border-amber-200 bg-amber-300/30 text-amber-50"
                                   : syn.level === 1
@@ -1255,115 +935,42 @@ export function ArenaPlay({
                   }
                 </div>
 
-                {/* ---- Fusion / Xyz ---- */}
-                {
-                  summons > 0
-                    ? (
-                        <button
-                          type="button"
-                          onClick={() => setSummonOpen(true)}
-                          className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-fuchsia-300/40 bg-[linear-gradient(90deg,rgba(168,85,247,.22),rgba(56,130,246,.22))] px-3 text-sm font-black text-fuchsia-50 shadow-[0_0_18px_rgba(168,85,247,.25)] active:scale-[.98]"
-                        >
-                          <Layers
-                            size={16}
-                            aria-hidden
-                          />
-                          Polymerization / Overlay
-                          <span className="rounded-md bg-white/15 px-1.5 text-xs tabular-nums">
-                            {summons}
-                          </span>
-                        </button>
-                      )
-                    : null
-                }
+                {/* ---- battlefield ---- */}
+                <LaneBoard
+                  view={view}
+                  foe={nextFoe}
+                  foeLabel={foeName(nextFoe)}
+                  placing={placing}
+                  selectedUid={selectedUnit?.uid ?? selectedTrap?.uid ?? null}
+                  onTapUnit={(unit) => {
+                    if (placing && selectedUnit?.uid !== unit.uid) {
+                      tapLane(unit.lane);
 
-                {/* ---- board ---- */}
-                <section aria-label="Your board">
-                  <p className="mb-1 flex items-center justify-between text-[11px] font-bold uppercase tracking-[.18em] text-zinc-400">
-                    <span>
-                      Board {view.board.length}/{BOARD_MAX}
-                    </span>
+                      return;
+                    }
 
-                    <span className="normal-case tracking-normal text-zinc-500">
-                      Left attacks first
-                    </span>
-                  </p>
-
-                  <div className="grid grid-cols-7 gap-1 rounded-2xl border border-amber-300/15 bg-amber-950/10 p-1.5">
-                    {Array.from(
-                      {
-                        length: BOARD_MAX,
-                      },
-                      (_, index) => {
-                        const unit =
-                          view.board[index];
-
-                        const def =
-                          unit ? defOf(unit) : null;
-
-                        const targetable =
-                          (selectedUnit !== null && unit?.uid !== selectedUnit.uid) ||
-                          (selected?.kind === "shop" && !unit);
-
-                        return (
-                          <button
-                            key={unit ? `u-${unit.uid}` : `slot-${index}`}
-                            type="button"
-                            data-drop={`board:${index}`}
-                            onClick={() => tapBoardSlot(index, unit)}
-                            onPointerDown={
-                              unit && def
-                                ? (event) =>
-                                    startDrag(
-                                      event,
-                                      {
-                                        kind: "unit",
-                                        uid: unit.uid,
-                                      },
-                                      def.img,
-                                      def.name
-                                    )
-                                : undefined
-                            }
-                            aria-label={
-                              unit && def
-                                ? `${def.name}${unit.golden ? " (golden)" : ""}, ${unit.atk} attack ${unit.hp} health, position ${index + 1}`
-                                : `Empty board slot ${index + 1}`
-                            }
-                            className={`relative min-h-11 touch-none pb-1 transition active:scale-95 ${drag?.active && drag.source.kind === "unit" && drag.source.uid === unit?.uid ? "opacity-30" : ""}`}
-                          >
-                            {
-                              unit && def
-                                ? (
-                                    <UnitTile
-                                      name={def.name}
-                                      img={def.img}
-                                      atk={unit.atk}
-                                      hp={unit.hp}
-                                      tier={def.tier}
-                                      golden={unit.golden}
-                                      abilities={unitAbilities(def)}
-                                      taunt={def.ability === "taunt"}
-                                      selected={selectedUnit?.uid === unit.uid}
-                                      size="sm"
-                                    />
-                                  )
-                                : (
-                                    <div
-                                      className={`aspect-square w-full rounded-lg border border-dashed ${
-                                        targetable
-                                          ? "border-amber-300/60 bg-amber-300/10"
-                                          : "border-white/10"
-                                      }`}
-                                    />
-                                  )
-                            }
-                          </button>
-                        );
-                      }
-                    )}
-                  </div>
-                </section>
+                    setSelected(null);
+                    act(`t${unit.uid}`);
+                  }}
+                  onHoldUnit={(unit) =>
+                    setSelected({
+                      kind: "unit",
+                      uid: unit.uid,
+                    })
+                  }
+                  onTapTrap={(trap) =>
+                    setSelected(
+                      selectedTrap?.uid === trap.uid
+                        ? null
+                        : {
+                            kind: "trap",
+                            uid: trap.uid,
+                          }
+                    )
+                  }
+                  onTapLane={tapLane}
+                  onScout={() => setScoutOpen(true)}
+                />
 
                 {/* ---- bench ---- */}
                 {
@@ -1371,45 +978,37 @@ export function ArenaPlay({
                     ? (
                         <section aria-label="Bench">
                           <p className="mb-1 text-[11px] font-bold uppercase tracking-[.18em] text-zinc-400">
-                            Bench {view.bench.length}/{BENCH_MAX}
+                            Bench {view.bench.length}/{BENCH_MAX} · tap, then tap a lane
                           </p>
 
-                          <div
-                            className="grid grid-cols-7 gap-1"
-                            data-drop="bench:0"
-                          >
+                          <div className="grid grid-cols-6 gap-1.5">
                             {view.bench.map(
                               (unit) => {
                                 const def =
-                                  defOf(unit);
+                                  UNIT_BY_ID.get(unit.id) as UnitDef;
 
                                 return (
                                   <button
                                     key={`b-${unit.uid}`}
                                     type="button"
-                                    onClick={() => tapBench(unit)}
-                                    onPointerDown={(event) =>
-                                      startDrag(
-                                        event,
-                                        {
-                                          kind: "unit",
-                                          uid: unit.uid,
-                                        },
-                                        def.img,
-                                        def.name
+                                    onClick={() =>
+                                      setSelected(
+                                        selectedUnit?.uid === unit.uid
+                                          ? null
+                                          : {
+                                              kind: "unit",
+                                              uid: unit.uid,
+                                            }
                                       )
                                     }
-                                    aria-label={`${def.name} on the bench, ${unit.atk} attack ${unit.hp} health`}
-                                    className="relative min-h-11 touch-none pb-1 active:scale-95"
+                                    aria-label={`${def.name} on the bench, ${unit.atk} ATK ${unit.hp} DEF`}
+                                    className="min-h-11 active:scale-95"
                                   >
-                                    <UnitTile
-                                      name={def.name}
-                                      img={def.img}
+                                    <CardFrame
+                                      id={unit.id}
                                       atk={unit.atk}
                                       hp={unit.hp}
-                                      tier={def.tier}
                                       golden={unit.golden}
-                                      abilities={unitAbilities(def)}
                                       selected={selectedUnit?.uid === unit.uid}
                                       size="sm"
                                     />
@@ -1428,26 +1027,9 @@ export function ArenaPlay({
                   view={view}
                   selected={selected}
                   selectedUnit={selectedUnit}
-                  selectedOnBoard={selectedOnBoard}
+                  selectedTrap={selectedTrap}
                   selectedShopId={selectedShopId}
-                  onBuy={(slot) => {
-                    if (act(`b${slot}`)) {
-                      setSelected(null);
-                    }
-                  }}
-                  onSell={(uid) => {
-                    if (act(`s${uid}`)) {
-                      setSelected(null);
-                    }
-                  }}
-                  onPlay={(uid) => {
-                    if (act(`p${uid}.${view.board.length}`)) {
-                      setSelected(null);
-                    }
-                  }}
-                  onMove={(uid, position) => {
-                    act(`m${uid}.${position}`);
-                  }}
+                  act={act}
                   onClose={() => setSelected(null)}
                 />
 
@@ -1468,31 +1050,6 @@ export function ArenaPlay({
             )
       }
 
-      {/* ---- drag ghost ---- */}
-      {
-        drag?.active
-          ? (
-              <div
-                aria-hidden
-                className="pointer-events-none fixed z-[70] w-14 -translate-x-1/2 -translate-y-1/2 rotate-3 opacity-90 drop-shadow-[0_8px_18px_rgba(0,0,0,.6)]"
-                style={{
-                  left: drag.x,
-                  top: drag.y,
-                }}
-              >
-                <div className="relative aspect-square overflow-hidden rounded-lg border-2 border-amber-200">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={drag.img}
-                    alt=""
-                    className={styles.art}
-                  />
-                </div>
-              </div>
-            )
-          : null
-      }
-
       {/* ---- toast ---- */}
       {
         toast
@@ -1501,8 +1058,14 @@ export function ArenaPlay({
                 role="status"
                 className="pointer-events-none fixed inset-x-0 top-20 z-[75] flex justify-center px-4"
               >
-                <p className="rounded-full border border-red-300/40 bg-red-950/90 px-4 py-2 text-sm font-semibold text-red-100 shadow-lg">
-                  {toast}
+                <p
+                  className={`rounded-full border px-4 py-2 text-center text-sm font-semibold shadow-lg ${
+                    toast.tone === "info"
+                      ? "border-amber-200/50 bg-[#1a1408]/95 text-amber-100"
+                      : "border-red-300/40 bg-red-950/90 text-red-100"
+                  }`}
+                >
+                  {toast.text}
                 </p>
               </div>
             )
@@ -1528,23 +1091,14 @@ export function ArenaPlay({
                           key={`${id}-${i}`}
                           type="button"
                           onClick={() => act(`d${i}`)}
-                          className="rounded-xl border border-amber-300/30 bg-amber-300/5 p-2 pb-3 text-left active:scale-95"
+                          className="rounded-xl border border-amber-300/30 bg-amber-300/5 p-2 text-left active:scale-95"
                         >
-                          <UnitTile
-                            name={def.name}
-                            img={def.img}
-                            atk={def.atk}
-                            hp={def.hp}
-                            tier={def.tier}
-                            abilities={unitAbilities(def)}
+                          <CardFrame
+                            id={id}
                             size="lg"
                           />
 
-                          <span className="mt-2.5 block truncate text-xs font-bold text-amber-100">
-                            {def.name}
-                          </span>
-
-                          <span className="block text-[11px] leading-4 text-zinc-400">
+                          <span className="mt-1.5 block text-[11px] leading-4 text-zinc-400">
                             {ABILITY_LABEL[def.ability]}
                           </span>
                         </button>
@@ -1564,45 +1118,13 @@ export function ArenaPlay({
               <Sheet
                 title={`Wave ${view.turn}: ${foeName(nextFoe)}`}
                 subtitle={
-                  nextIsGhost
-                    ? `A friend's board from their own run, with their synergies. Lose and you take ${nextFoe.tier} damage + 1 per enemy left standing (max ${damageCap}).`
-                    : `Lose and you take ${nextFoe.tier} damage + 1 per enemy left standing (Boss counts 2, max ${damageCap}).`
+                  `${isGhostFoe(nextFoe) ? "A friend's board from their own run. " : ""}Their attackers march down; whatever reaches your castle costs LP (max ${damageCap(view.turn)} this wave).`
                 }
                 onClose={() => setScoutOpen(false)}
               >
-                <ul className="grid gap-1.5">
-                  {scoutUnits.map(
-                    (unit, i) => (
-                      <li
-                        key={`${unit.name}-${i}`}
-                        className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[.03] p-2"
-                      >
-                        <div className="w-11 shrink-0 pb-1">
-                          <UnitTile
-                            name={unit.name}
-                            img={unit.img}
-                            atk={unit.atk}
-                            hp={unit.hp}
-                            boss={unit.boss}
-                            golden={unit.golden}
-                            size="sm"
-                          />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-zinc-100">
-                            {unit.boss ? "BOSS · " : unit.golden ? "Golden " : ""}
-                            {unit.name}
-                          </p>
-
-                          <p className="text-xs leading-4 text-zinc-400">
-                            {unit.text}
-                          </p>
-                        </div>
-                      </li>
-                    )
-                  )}
-                </ul>
+                <ScoutField
+                  foe={nextFoe}
+                />
               </Sheet>
             )
           : null
@@ -1614,7 +1136,7 @@ export function ArenaPlay({
           ? (
               <Sheet
                 title="Fusion & Xyz"
-                subtitle="Polymerization fuses a classic pair. Overlay turns two monsters of the same Level into an Xyz of that Rank."
+                subtitle="Polymerization fuses a classic pair (free). Overlay turns two monsters of the same Level into an Xyz of that Rank (1 gold, once per turn)."
                 onClose={() => setSummonOpen(false)}
               >
                 <SummonPanel
@@ -1674,30 +1196,54 @@ export function ArenaPlay({
 }
 
 // ---------------------------------------------------------
-// Detail panel: what the selected thing is and what you can do.
+// Detail bar: what the selected thing is and what you can do.
 // ---------------------------------------------------------
+
+function LaneButtons({
+  current,
+  onPick,
+}: {
+  current: number | null;
+  onPick: (lane: number) => void;
+}) {
+  return (
+    <>
+      {LANE_NAMES.map(
+        (name, lane) => (
+          <button
+            key={name}
+            type="button"
+            onClick={() => onPick(lane)}
+            aria-pressed={current === lane}
+            className={`min-h-11 min-w-11 rounded-xl border px-2.5 text-xs font-bold ${
+              current === lane
+                ? "border-amber-200 bg-amber-300/20 text-amber-50"
+                : "border-white/15 bg-white/5 text-zinc-200"
+            }`}
+          >
+            {name}
+          </button>
+        )
+      )}
+    </>
+  );
+}
 
 function DetailPanel({
   view,
   selected,
   selectedUnit,
-  selectedOnBoard,
+  selectedTrap,
   selectedShopId,
-  onBuy,
-  onSell,
-  onPlay,
-  onMove,
+  act,
   onClose,
 }: {
   view: RunState;
   selected: Selection;
   selectedUnit: Unit | null;
-  selectedOnBoard: boolean;
+  selectedTrap: TrapCard | null;
   selectedShopId: string | null;
-  onBuy: (slot: number) => void;
-  onSell: (uid: number) => void;
-  onPlay: (uid: number) => void;
-  onMove: (uid: number, position: number) => void;
+  act: (action: string) => boolean;
   onClose: () => void;
 }) {
   if (selected?.kind === "syn") {
@@ -1723,6 +1269,76 @@ function DetailPanel({
     );
   }
 
+  const trapId =
+    selectedTrap?.id ??
+    (selectedShopId && isTrapId(selectedShopId) ? selectedShopId : null);
+
+  if (trapId) {
+    const trap =
+      TRAP_BY_ID.get(trapId);
+
+    return (
+      <div className="relative flex gap-3 rounded-2xl border border-pink-300/25 bg-black/30 p-3 pr-12">
+        <CloseButton
+          onClick={onClose}
+        />
+
+        <div className="w-14 shrink-0">
+          <CardFrame
+            id={trapId}
+          />
+        </div>
+
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-pink-100">
+            {trap?.name}
+          </p>
+
+          <p className="mt-0.5 text-xs leading-5 text-zinc-300">
+            {trap ? trapText(trap) : ""} Triggers once per combat; it stays set.
+          </p>
+
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {
+              selectedTrap
+                ? (
+                    <>
+                      <LaneButtons
+                        current={selectedTrap.lane}
+                        onPick={(lane) => {
+                          act(`m${selectedTrap.uid}.${lane}`);
+                        }}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (act(`s${selectedTrap.uid}`)) {
+                            onClose();
+                          }
+                        }}
+                        className="flex min-h-11 items-center gap-1 rounded-xl border border-red-300/30 bg-red-500/10 px-3 text-xs font-bold text-red-100"
+                      >
+                        <Trash2
+                          size={13}
+                          aria-hidden
+                        />
+                        +{SELL_VALUE}
+                      </button>
+                    </>
+                  )
+                : (
+                    <p className="text-[11px] text-amber-200/80">
+                      Tap a lane to buy and set it there.
+                    </p>
+                  )
+            }
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const def =
     selectedUnit
       ? UNIT_BY_ID.get(selectedUnit.id)
@@ -1738,9 +1354,9 @@ function DetailPanel({
           className="mb-0.5 mr-1 inline text-amber-300"
           aria-hidden
         />
-        Tap a card to inspect it. Drag from the shop to the board to buy, drag a unit
-        onto the shop to sell. 3 copies merge into a golden unit; 2 of the same Level
-        can become an Xyz.
+        Tap a shop card, then a lane. Tap a monster on the field to switch
+        ATTACK (marches) and DEFENSE (a wall with double DEF); hold it for more.
+        Open lanes glow red.
       </p>
     );
   }
@@ -1748,130 +1364,158 @@ function DetailPanel({
   const golden =
     selectedUnit?.golden ?? false;
 
-  const power =
-    def.power * (golden ? 2 : 1);
-
-  const boardIndex =
-    selectedUnit
-      ? view.board.findIndex(
-          (unit) => unit.uid === selectedUnit.uid
-        )
-      : -1;
+  const onBoard =
+    selectedUnit !== null &&
+    view.board.some(
+      (unit) => unit.uid === selectedUnit.uid
+    );
 
   return (
-    <div className="relative rounded-2xl border border-amber-300/20 bg-black/30 p-3 pr-12">
+    <div className="relative flex gap-3 rounded-2xl border border-amber-300/20 bg-black/30 p-3 pr-12">
       <CloseButton
         onClick={onClose}
       />
 
-      <p className="truncate text-sm font-bold text-amber-100">
-        {golden ? "Golden " : ""}
-        {def.name}
-      </p>
+      <div className="w-14 shrink-0">
+        <CardFrame
+          id={def.id}
+          atk={selectedUnit?.atk}
+          hp={selectedUnit?.hp}
+          golden={golden}
+        />
+      </div>
 
-      <p className="text-[11px] text-zinc-400">
-        {def.kind === "xyz" ? `Xyz Rank ${def.rank}` : def.kind === "fusion" ? "Fusion" : `Tier ${def.tier} · Level ${def.level}`} · {def.attribute}
-        {def.tribe ? ` · ${def.tribe}` : ""} ·{" "}
-        <span className="font-bold text-amber-200">
-          {selectedUnit?.atk ?? def.atk}
-        </span>
-        /
-        <span className="font-bold text-rose-300">
-          {selectedUnit?.hp ?? def.hp}
-        </span>
-      </p>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-bold text-amber-100">
+          {golden ? "Golden " : ""}
+          {def.name}
+        </p>
 
-      <p className="mt-1 text-xs leading-5 text-zinc-200">
-        {abilityText(
-          def.ability,
-          power,
+        <p className="text-[11px] text-zinc-400">
+          {def.kind === "xyz" ? `Xyz Rank ${def.rank}` : def.kind === "fusion" ? "Fusion" : `Tier ${def.tier} · Level ${def.level}`} · {def.attribute}
+          {def.tribe ? ` · ${def.tribe}` : ""}
+        </p>
+
+        <p className="mt-0.5 text-xs leading-5 text-zinc-200">
+          {abilityText(
+            def.ability,
+            def.power * (golden ? 2 : 1),
+            {
+              rallyBy: def.rallyBy,
+              tribe: def.tribe,
+              attribute: def.attribute,
+            }
+          )}
+        </p>
+
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {
-            rallyBy: def.rallyBy,
-            tribe: def.tribe,
-            attribute: def.attribute,
+            selected?.kind === "shop"
+              ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (act(`b${selected.slot}`)) {
+                          onClose();
+                        }
+                      }}
+                      disabled={view.gold < UNIT_COST}
+                      className="primary-button flex min-h-11 items-center gap-1.5 px-4 py-2 text-sm disabled:opacity-50"
+                    >
+                      <Coins
+                        size={14}
+                        aria-hidden
+                      />
+                      Buy {UNIT_COST}
+                    </button>
+
+                    <p className="self-center text-[11px] text-amber-200/80">
+                      or tap a lane
+                    </p>
+                  </>
+                )
+              : null
           }
-        )}
-      </p>
 
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {
-          selected?.kind === "shop"
-            ? (
-                <button
-                  type="button"
-                  onClick={() => onBuy(selected.slot)}
-                  disabled={view.gold < UNIT_COST}
-                  className="primary-button flex min-h-11 items-center gap-1.5 px-4 py-2 text-sm disabled:opacity-50"
-                >
-                  <Coins
-                    size={14}
-                    aria-hidden
-                  />
-                  Buy for {UNIT_COST}
-                </button>
-              )
-            : null
-        }
-
-        {
-          selectedUnit
-            ? (
-                <>
-                  {
-                    selectedOnBoard
-                      ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => onMove(selectedUnit.uid, boardIndex - 1)}
-                              disabled={boardIndex <= 0}
-                              aria-label="Move left"
-                              className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-zinc-200 disabled:opacity-40"
-                            >
-                              <ChevronLeft
-                                size={18}
+          {
+            selectedUnit && onBoard
+              ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => act(`t${selectedUnit.uid}`)}
+                      className="flex min-h-11 items-center gap-1 rounded-xl border border-sky-300/40 bg-sky-400/10 px-3 text-xs font-bold text-sky-100"
+                    >
+                      {
+                        selectedUnit.def
+                          ? (
+                              <Shield
+                                size={13}
                                 aria-hidden
                               />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => onMove(selectedUnit.uid, boardIndex + 1)}
-                              disabled={boardIndex >= view.board.length - 1}
-                              aria-label="Move right"
-                              className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-zinc-200 disabled:opacity-40"
-                            >
-                              <ChevronRight
-                                size={18}
+                            )
+                          : (
+                              <Sword
+                                size={13}
                                 aria-hidden
                               />
-                            </button>
-                          </>
-                        )
-                      : (
-                          <button
-                            type="button"
-                            onClick={() => onPlay(selectedUnit.uid)}
-                            disabled={view.board.length >= BOARD_MAX}
-                            className="primary-button min-h-11 px-4 py-2 text-sm disabled:opacity-50"
-                          >
-                            Play to board
-                          </button>
-                        )
-                  }
+                            )
+                      }
+                      {selectedUnit.def ? "DEF" : "ATK"}
+                    </button>
 
+                    <LaneButtons
+                      current={selectedUnit.lane}
+                      onPick={(lane) => {
+                        act(`m${selectedUnit.uid}.${lane}`);
+                      }}
+                    />
+                  </>
+                )
+              : selectedUnit
+                ? (
+                    <LaneButtons
+                      current={null}
+                      onPick={(lane) => {
+                        if (act(`p${selectedUnit.uid}.${lane}`)) {
+                          onClose();
+                        }
+                      }}
+                    />
+                  )
+                : null
+          }
+
+          {
+            selectedUnit
+              ? (
                   <button
                     type="button"
-                    onClick={() => onSell(selectedUnit.uid)}
-                    className="flex min-h-11 items-center gap-1.5 rounded-xl border border-red-300/30 bg-red-500/10 px-3 text-sm font-bold text-red-100"
+                    onClick={() => {
+                      if (act(`s${selectedUnit.uid}`)) {
+                        onClose();
+                      }
+                    }}
+                    className="flex min-h-11 items-center gap-1 rounded-xl border border-red-300/30 bg-red-500/10 px-3 text-xs font-bold text-red-100"
                   >
                     <Trash2
-                      size={14}
+                      size={13}
                       aria-hidden
                     />
-                    Sell +{SELL_VALUE}
+                    +{SELL_VALUE}
                   </button>
-                </>
+                )
+              : null
+          }
+        </div>
+
+        {
+          selectedUnit && !onBoard && view.board.length >= BOARD_MAX
+            ? (
+                <p className="mt-1 text-[11px] text-zinc-500">
+                  The field is full ({BOARD_MAX}): sell one first.
+                </p>
               )
             : null
         }

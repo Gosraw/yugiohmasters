@@ -5,10 +5,6 @@ import {
 } from "vitest";
 
 import {
-  createPrng,
-} from "../prng";
-
-import {
   applyAction,
   bossWave,
   createRun,
@@ -17,12 +13,16 @@ import {
   restoreRun,
   runScore,
   validateRun,
+  castleDamage,
+  foeFor,
+  laneCounts,
   BOARD_MAX,
   ENGINE_VERSION,
   MAX_WAVES,
   START_HEALTH,
   type BossUnitSpec,
   type BossWave,
+  type GhostTrap,
   type Run,
   type Unit,
 } from "./engine";
@@ -47,7 +47,9 @@ function unitOf(
   id: string,
   atk?: number,
   hp?: number,
-  golden = false
+  golden = false,
+  lane = 1,
+  defense = false
 ): Unit {
   const def =
     UNIT_BY_ID.get(id);
@@ -64,6 +66,8 @@ function unitOf(
     atk: atk ?? def.atk,
     hp: hp ?? def.hp,
     golden,
+    lane,
+    def: defense,
   };
 }
 
@@ -71,7 +75,10 @@ function enemy(
   atk: number,
   hp: number,
   keywords: BossUnitSpec["keywords"] = [],
-  power = 1
+  power = 1,
+  lane = 1,
+  def = false,
+  level = 4
 ): BossUnitSpec {
   return {
     name: "Dummy",
@@ -81,12 +88,16 @@ function enemy(
     boss: false,
     keywords,
     power,
+    level,
+    lane,
+    def,
   };
 }
 
 function wave(
   units: BossUnitSpec[],
-  number = 1
+  number = 1,
+  traps: GhostTrap[] = []
 ): BossWave {
   return {
     wave: number,
@@ -94,19 +105,28 @@ function wave(
     routeName: "Test",
     tier: 1,
     units,
+    traps,
   };
 }
 
 function fight(
   board: Unit[],
   foes: BossUnitSpec[],
-  seed = "fight"
+  seed = "fight",
+  options: {
+    mine?: GhostTrap[];
+    theirs?: GhostTrap[];
+    wave?: number;
+  } = {}
 ) {
   return resolveCombat(
     board,
-    wave(foes),
-    createPrng(seed),
-    true
+    {
+      ...wave(foes, options.wave ?? 1, options.theirs ?? []),
+      routeName: seed,
+    },
+    true,
+    options.mine ?? []
   );
 }
 
@@ -398,7 +418,7 @@ describe("replay validation", () => {
         )
           .slice(0, BOARD_MAX)
           .map(
-            (unit) => unitOf(unit.id, 999, 999)
+            (unit, i) => unitOf(unit.id, 999, 999, false, i % 3)
           );
 
       applyAction(run, "e");
@@ -586,7 +606,7 @@ describe("shop", () => {
     expect(run.state.board[0].atk).toBe(500 + ascend.power);
   });
 
-  it("a full board sends buys to the bench; play moves them over", () => {
+  it("a full board sends buys to the bench; play puts them in a lane", () => {
     const run =
       createRun("bench");
 
@@ -599,17 +619,14 @@ describe("shop", () => {
       )
         .slice(0, BOARD_MAX)
         .map(
-          (unit) => unitOf(unit.id)
+          (unit, i) => unitOf(unit.id, undefined, undefined, false, [1, 0, 2][i % 3])
         );
 
     run.state.gold = 10;
 
-    const shopId =
-      taunt;
-
     forceShop(
       run,
-      [shopId]
+      [taunt]
     );
 
     expect(applyAction(run, "b0").ok).toBe(true);
@@ -620,63 +637,159 @@ describe("shop", () => {
 
     expect(applyAction(run, `p${benchUid}.0`).ok).toBe(false);
 
-    applyAction(run, `s${run.state.board[3].uid}`);
+    // Free a slot in the right lane: the mid lane is still full.
+    const right =
+      run.state.board.find(
+        (unit) => unit.lane === 2
+      )!;
 
-    expect(applyAction(run, `p${benchUid}.0`).ok).toBe(true);
-    expect(run.state.board[0].uid).toBe(benchUid);
+    applyAction(run, `s${right.uid}`);
+
+    expect(applyAction(run, `p${benchUid}.1`).ok).toBe(false);
+    expect(applyAction(run, `p${benchUid}.3`).ok).toBe(false);
+    expect(applyAction(run, `p${benchUid}.2`).ok).toBe(true);
+    expect(run.state.board.find((unit) => unit.uid === benchUid)?.lane).toBe(2);
     expect(run.state.bench).toHaveLength(0);
   });
 
-  it("moves reorder the board", () => {
+  it("buys fill the emptiest lane (mid first); max 3 per lane", () => {
+    const run =
+      createRun("lanes");
+
+    run.state.gold = 99;
+
+    const ids =
+      UNITS.filter(
+        (unit) => unit.tier === 1
+      ).slice(0, 7);
+
+    for (const unit of ids) {
+      forceShop(run, [unit.id]);
+
+      expect(applyAction(run, "b0").ok).toBe(true);
+    }
+
+    expect(laneCounts(run.state.board)).toEqual([2, 3, 2]);
+    expect(run.state.board.slice(0, 3).map((unit) => unit.lane)).toEqual([1, 0, 2]);
+  });
+
+  it("move changes lane (or goes to the front of its own lane)", () => {
     const run =
       createRun("move");
 
     const a =
-      unitOf(idWith("taunt"));
+      unitOf(idWith("taunt"), undefined, undefined, false, 1);
 
     const b =
-      unitOf(idWith("pierce"));
+      unitOf(idWith("pierce"), undefined, undefined, false, 1);
 
-    run.state.board = [a, b];
+    run.state.board = [b, a];
 
+    expect(applyAction(run, `m${b.uid}.1`).ok).toBe(true);
+    expect(run.state.board.map((unit) => unit.uid)).toEqual([a.uid, b.uid]);
     expect(applyAction(run, `m${b.uid}.0`).ok).toBe(true);
-    expect(run.state.board.map((unit) => unit.uid)).toEqual([b.uid, a.uid]);
+    expect(b.lane).toBe(0);
     expect(applyAction(run, `m${b.uid}.5`).ok).toBe(false);
+  });
+
+  it("t toggles ATTACK / DEFENSE on the board only", () => {
+    const run =
+      createRun("toggle");
+
+    const a =
+      unitOf(idWith("taunt"));
+
+    run.state.board = [a];
+
+    expect(applyAction(run, `t${a.uid}`).ok).toBe(true);
+    expect(a.def).toBe(true);
+    expect(applyAction(run, `t${a.uid}`).ok).toBe(true);
+    expect(a.def).toBe(false);
+    expect(applyAction(run, "t9999").ok).toBe(false);
+  });
+
+  it("traps: bought into a free zone (mid first), moved, sold; 3 max", () => {
+    const run =
+      createRun("traps");
+
+    run.state.gold = 99;
+
+    for (const id of ["trap-hole", "waboku", "sakuretsu-armor"]) {
+      forceShop(run, [id]);
+
+      expect(applyAction(run, "b0").ok).toBe(true);
+    }
+
+    expect(run.state.traps.map((trap) => trap.lane)).toEqual([1, 0, 2]);
+    expect(run.state.board).toHaveLength(0);
+
+    forceShop(run, ["mirror-force"]);
+
+    const full =
+      applyAction(run, "b0");
+
+    expect(full.ok).toBe(false);
+
+    const [hole, waboku] =
+      run.state.traps;
+
+    // Moving onto an occupied lane swaps the two traps.
+    expect(applyAction(run, `m${hole.uid}.0`).ok).toBe(true);
+    expect(hole.lane).toBe(0);
+    expect(waboku.lane).toBe(1);
+
+    const pool =
+      run.state.pool["trap-hole"];
+
+    expect(applyAction(run, `s${hole.uid}`).ok).toBe(true);
+    expect(run.state.traps).toHaveLength(2);
+    expect(run.state.pool["trap-hole"]).toBe(pool + 1);
   });
 });
 
 // ---------------------------------------------------------
-// combat abilities
+// lane combat
 // ---------------------------------------------------------
 
-describe("combat", () => {
+describe("lane combat", () => {
   const plain =
     UNITS.find(
-      (unit) => unit.ability === "taunt" && unit.tribe === "Machine"
+      (unit) => unit.ability === "pierce" && unit.attribute !== "WIND" && unit.tribe !== "Warrior" && unit.tribe !== "Dragon"
     )!.id;
 
-  it("an empty board loses, and damage is capped early", () => {
+  const ticks = (
+    outcome: ReturnType<typeof fight>
+  ) =>
+    outcome.frames.filter(
+      (frame) => frame.ev.k === "tick"
+    );
+
+  it("an attacker marches its empty lane one tile per tick and hits the castle", () => {
+    const mine =
+      unitOf(plain, 3, 5, false, 0);
+
     const outcome =
       fight(
-        [],
-        [enemy(5, 5)]
+        [mine],
+        [enemy(0, 50, [], 1, 2, true)]
       );
 
-    expect(outcome.result).toBe("loss");
-    expect(outcome.damage).toBe(2);
+    const ys =
+      ticks(outcome)
+        .map(
+          (frame) => frame.mine.find((unit) => unit.uid === mine.uid)?.y
+        )
+        .filter(
+          (y) => y !== undefined
+        );
+
+    expect(ys.slice(0, 3)).toEqual([2, 3, 4]);
+    // Their wall still holds lane 2 at the end: 1 chip damage.
+    expect(outcome.dealt).toBe(castleDamage(UNIT_BY_ID.get(plain)!.level, false, false));
+    expect(outcome.damage).toBe(1);
   });
 
-  it("two units that cannot hurt each other tie", () => {
-    const outcome =
-      fight(
-        [unitOf(plain, 0, 5)],
-        [enemy(0, 5)]
-      );
-
-    expect(outcome.result).toBe("tie");
-  });
-
-  it("mutual destruction is a tie", () => {
+  it("front units that meet clash simultaneously", () => {
     const outcome =
       fight(
         [unitOf(plain, 5, 5)],
@@ -684,239 +797,302 @@ describe("combat", () => {
       );
 
     expect(outcome.result).toBe("tie");
+    expect(outcome.damage).toBe(0);
+    expect(outcome.dealt).toBe(0);
   });
 
-  it("Guardian (taunt) must be attacked first", () => {
-    for (let i = 0; i < 20; i++) {
-      const outcome =
-        fight(
-          [unitOf(plain, 1, 50)],
-          [
-            enemy(0, 100),
-            enemy(0, 100, ["taunt"]),
-            enemy(0, 100),
-          ],
-          `taunt-${i}`
-        );
-
-      const firstAttack =
-        outcome.frames.find(
-          (frame) => frame.ev.k === "attack" && frame.ev.src < 10000
-        );
-
-      expect(firstAttack?.ev).toMatchObject({
-        dst: 10001,
-      });
-    }
-  });
-
-  it("Spellbound (shield) absorbs exactly one hit", () => {
-    const outcome =
-      fight(
-        [unitOf(plain, 1, 3)],
-        [enemy(2, 100, ["shield"])]
-      );
-
-    const foeHp =
-      outcome.frames.map(
-        (frame) => frame.foe[0]?.hp
-      );
-
-    // The first exchange (either side attacking) popped the
-    // shield: health is still 100 after it.
-    const firstHit =
-      outcome.frames.findIndex(
-        (frame) => frame.ev.k === "attack"
-      );
-
-    expect(outcome.frames[firstHit].foe[0].shield).toBe(false);
-    expect(foeHp[firstHit]).toBe(100);
-  });
-
-  it("Reborn returns once with 1 health", () => {
-    const outcome =
-      fight(
-        [unitOf(plain, 10, 100)],
-        [enemy(1, 5, ["revive"])]
-      );
-
-    const revived =
-      outcome.frames.some(
-        (frame) => frame.foe[0]?.hp === 1
-      );
-
-    expect(revived).toBe(true);
-    expect(outcome.result).toBe("win");
-  });
-
-  it("Pierce sends excess damage to the neighbour", () => {
-    const pierce =
-      UNITS.find(
-        (unit) => unit.ability === "pierce" && unit.attribute !== "WIND"
-      )!.id;
+  it("a DEFENSE wall stays put, has double DEF and blocks its lane", () => {
+    const wall =
+      unitOf(plain, 4, 10, false, 1, true);
 
     const outcome =
       fight(
-        [unitOf(pierce, 10, 100)],
-        [
-          enemy(0, 4, ["taunt"]),
-          enemy(0, 50),
-        ]
+        [wall],
+        [enemy(3, 100)]
       );
-
-    const afterFirst =
-      outcome.frames.find(
-        (frame) => frame.ev.k === "attack"
-      )!;
-
-    // 10 damage into a 4-health Guardian: 6 carries over.
-    expect(afterFirst.foe).toHaveLength(1);
-    expect(afterFirst.foe[0].hp).toBe(44);
-  });
-
-  it("Venom destroys whatever it damages", () => {
-    const outcome =
-      fight(
-        [unitOf(plain, 1, 100)],
-        [enemy(1, 1000, ["venom"])]
-      );
-
-    expect(outcome.result).toBe("loss");
-  });
-
-  it("Double Attack swings twice", () => {
-    const double =
-      UNITS.find(
-        (unit) => unit.ability === "double"
-      )!.id;
-
-    const outcome =
-      fight(
-        [unitOf(double, 1, 100)],
-        [enemy(0, 100), enemy(0, 100)],
-        "double"
-      );
-
-    const attacks =
-      outcome.frames.filter(
-        (frame) => frame.ev.k === "attack" && frame.ev.src < 10000
-      );
-
-    // The first player turn has two consecutive attack frames by the same unit.
-    expect(attacks.length).toBeGreaterThanOrEqual(2);
 
     const first =
-      outcome.frames.findIndex(
-        (frame) => frame.ev.k === "attack"
-      );
+      outcome.frames[0].mine[0];
 
-    expect(outcome.frames[first].ev).toMatchObject({
-      k: "attack",
-    });
-    expect(outcome.frames[first + 1].ev).toMatchObject({
-      k: "attack",
-      src: (outcome.frames[first].ev as { src: number }).src,
-    });
-  });
+    expect(first.maxHp).toBe(20);
+    expect(first.y).toBe(1);
 
-  it("Last Will buffs a random ally; Summon leaves a token", () => {
-    const outcome =
-      fight(
-        [unitOf(plain, 50, 500)],
-        [
-          enemy(1, 1, ["lastwill"], 4),
-          enemy(1, 30),
-        ]
-      );
+    for (const frame of ticks(outcome)) {
+      const alive =
+        frame.mine.find((unit) => unit.uid === wall.uid);
 
-    const buffed =
-      outcome.frames.some(
-        (frame) => frame.foe.some((unit) => unit.atk === 5 && unit.maxHp === 34)
-      );
-
-    expect(buffed).toBe(true);
-
-    const spawn =
-      fight(
-        [unitOf(plain, 50, 500)],
-        [enemy(1, 1, ["spawn"], 3)]
-      );
-
-    expect(
-      spawn.frames.some(
-        (frame) => frame.foe.some((unit) => unit.token && unit.atk === 3)
-      )
-    ).toBe(true);
-  });
-
-  it("Summon does nothing on a full board", () => {
-    const foes =
-      Array.from(
-        {
-          length: BOARD_MAX,
-        },
-        () => enemy(0, 1, ["spawn"], 2)
-      );
-
-    const outcome =
-      fight(
-        [unitOf(plain, 1, 999)],
-        foes
-      );
-
-    for (const frame of outcome.frames) {
-      expect(frame.foe.length).toBeLessThanOrEqual(BOARD_MAX);
+      if (alive) {
+        expect(alive.y).toBe(1);
+        expect(frame.castle[0]).toBe(0);
+      }
     }
+
+    // It struck back at half ATK (2): the attacker lost health.
+    const foe =
+      outcome.frames[outcome.frames.length - 1].foe[0];
+
+    expect(foe === undefined || foe.hp < 100).toBe(true);
   });
 
-  it("Ambush hits before any attack", () => {
+  it("Guardian walls get triple DEF", () => {
     const outcome =
       fight(
-        [unitOf(plain, 1, 100)],
-        [enemy(1, 3, ["ambush"], 3)]
+        [unitOf(idWith("taunt"), 1, 10, false, 1, true)],
+        [enemy(0, 1, [], 1, 0, true)]
       );
 
-    expect(outcome.frames[1].ev.k).toBe("ambush");
-    expect(outcome.frames[1].mine[0].hp).toBe(97);
+    expect(outcome.frames[0].mine[0].maxHp).toBe(30);
   });
 
-  it("attribute synergy: 3 EARTH units get +1/+2", () => {
-    const earth =
-      UNITS.filter(
-        (unit) => unit.attribute === "EARTH" && unit.ability === "taunt"
+  it("castle damage per combat is capped by wave", () => {
+    const swarm =
+      [0, 0, 1, 1, 2, 2, 1].map(
+        (lane) => enemy(1, 1, [], 1, lane, false, 12)
       );
 
-    const extraEarth =
-      UNITS.filter(
-        (unit) => unit.attribute === "EARTH" && unit.ability === "pierce"
-      );
+    expect(fight([], swarm).damage).toBe(4);
+    expect(fight([], swarm, "w5", { wave: 5 }).damage).toBe(7);
+    expect(fight([], swarm, "w9", { wave: 9 }).damage).toBe(10);
+    expect(fight([], swarm).result).toBe("loss");
+  });
 
-    const ids =
-      [...earth, ...extraEarth].slice(0, 3);
-
-    expect(ids).toHaveLength(3);
-
-    const board =
-      ids.map(
-        (def) => unitOf(def.id, 1, 10)
-      );
-
+  it("Pierce spills excess damage into the castle when nobody stands behind", () => {
     const outcome =
       fight(
-        board,
+        [unitOf(plain, 10, 50)],
+        [enemy(0, 2), enemy(0, 50, [], 1, 2, true)]
+      );
+
+    expect(outcome.dealt).toBeGreaterThanOrEqual(1);
+  });
+
+  it("Spellbound absorbs one hit, Venom destroys, Reborn returns once", () => {
+    const shieldId =
+      idWith("shield");
+
+    const shielded =
+      fight(
+        [unitOf(plain, 2, 1, false, 0, true)],
+        [enemy(0, 3, ["shield"], 1, 0)]
+      );
+
+    expect(ticks(shielded).some((frame) => frame.ev.k === "tick" && frame.ev.hits.some((h) => h.amt === 0))).toBe(true);
+
+    const venom =
+      fight(
+        [unitOf(idWith("venom"), 1, 50)],
         [enemy(0, 999)]
       );
 
-    const start =
-      outcome.frames[0].mine;
+    expect(venom.frames[venom.frames.length - 1].foe).toHaveLength(0);
 
-    for (const unit of start) {
-      expect(unit.hp).toBeGreaterThanOrEqual(12);
-      expect(unit.atk).toBeGreaterThanOrEqual(2);
-    }
+    const reborn =
+      fight(
+        [unitOf(plain, 5, 1)],
+        [enemy(1, 5, ["revive"])]
+      );
+
+    const foeUids =
+      new Set(
+        ticks(reborn).flatMap(
+          (frame) => frame.foe.map((unit) => `${unit.uid}:${unit.hp}`)
+        )
+      );
+
+    expect([...foeUids].some((key) => key.endsWith(":1"))).toBe(true);
+    expect(shieldId).toBeTruthy();
   });
 
-  it("Boss waves grow and stay within the board limit", () => {
+  it("stalemates end: all-DEF vs all-DEF stops at once, held lanes chip", () => {
+    const outcome =
+      fight(
+        [unitOf(plain, 3, 9, false, 0, true)],
+        [enemy(3, 9, [], 1, 2, true)]
+      );
+
+    expect(outcome.frames.filter((frame) => frame.ev.k === "tick").length).toBeLessThanOrEqual(1);
+    expect(outcome.damage).toBe(1);
+    expect(outcome.dealt).toBe(1);
+    expect(outcome.recap).toEqual([
+      "Left: You held the lane",
+      "Mid: Quiet",
+      "Right: They held the lane",
+    ]);
+
+    // A 0-ATK attacker stuck on a 0-counter wall: ends after STALL_TICKS.
+    const stuck =
+      fight(
+        [unitOf(plain, 0, 9)],
+        [enemy(1, 99, [], 1, 1, true)]
+      );
+
+    expect(stuck.frames.filter((frame) => frame.ev.k === "tick").length).toBeLessThan(20);
+  });
+
+  it("every death carries its cause; the recap names traps and breakthroughs", () => {
+    const outcome =
+      fight(
+        [unitOf(plain, 9, 9, false, 0)],
+        [enemy(9, 9, [], 1, 1)],
+        "t",
+        {
+          mine: [
+            {
+              id: "sakuretsu-armor",
+              lane: 1,
+            },
+          ],
+        }
+      );
+
+    const deaths =
+      outcome.frames.flatMap(
+        (frame) => (frame.ev.k === "tick" ? frame.ev.deaths : [])
+      );
+
+    expect(deaths).toEqual([expect.objectContaining({ side: 1, lane: 1, by: "sakuretsu-armor" })]);
+    expect(outcome.recap[0]).toMatch(/^Left: .* broke through, -\d+ LP to their castle/);
+    expect(outcome.recap[1]).toBe("Mid: Your Sakuretsu Armor destroyed an attacker");
+  });
+
+  it("is deterministic for the same input", () => {
+    const board = [
+      unitOf(plain, 4, 6, false, 0),
+      unitOf(idWith("ambush"), 3, 4, false, 1),
+    ];
+
+    const foes = [
+      enemy(3, 6, ["lastwill"], 2, 0),
+      enemy(2, 9, ["spawn"], 2, 1),
+    ];
+
+    expect(fight(board, foes, "same")).toEqual(fight(board, foes, "same"));
+  });
+});
+
+// ---------------------------------------------------------
+// traps
+// ---------------------------------------------------------
+
+describe("traps", () => {
+  const plain =
+    UNITS.find(
+      (unit) => unit.ability === "pierce" && unit.attribute !== "WIND" && unit.tribe !== "Warrior" && unit.tribe !== "Dragon"
+    )!.id;
+
+  const flipsOf = (
+    outcome: ReturnType<typeof fight>
+  ) =>
+    outcome.frames.flatMap(
+      (frame) => (frame.ev.k === "tick" ? frame.ev.traps : [])
+    );
+
+  const set = (
+    id: string,
+    lane = 1
+  ) => [
+    {
+      id,
+      lane,
+    },
+  ];
+
+  it("Sakuretsu Armor destroys the first attacker entering your half", () => {
+    const outcome =
+      fight([], [enemy(9, 9)], "t", { mine: set("sakuretsu-armor") });
+
+    expect(flipsOf(outcome)).toEqual([expect.objectContaining({ side: 0, id: "sakuretsu-armor", lane: 1 })]);
+    expect(outcome.damage).toBe(0);
+  });
+
+  it("Trap Hole needs 5+ ATK", () => {
+    expect(flipsOf(fight([], [enemy(4, 9)], "t", { mine: set("trap-hole") }))).toHaveLength(0);
+    expect(flipsOf(fight([], [enemy(5, 9)], "t", { mine: set("trap-hole") }))).toHaveLength(1);
+  });
+
+  it("Negate Attack sends the attacker back to its start", () => {
+    const outcome =
+      fight([], [enemy(1, 9)], "t", { mine: set("negate-attack") });
+
+    const flipped =
+      outcome.frames.find(
+        (frame) => frame.ev.k === "tick" && frame.ev.traps.length > 0
+      )!;
+
+    expect(flipped.foe[0].y).toBe(1);
+  });
+
+  it("Magic Cylinder bounces the attacker and burns the enemy castle", () => {
+    const outcome =
+      fight([], [enemy(1, 9, [], 1, 1, false, 8)], "t", { mine: set("magic-cylinder") });
+
+    expect(outcome.dealt).toBe(castleDamage(8, false, false));
+  });
+
+  it("Waboku: no castle damage from that lane", () => {
+    const outcome =
+      fight([], [enemy(1, 9)], "t", { mine: set("waboku") });
+
+    expect(outcome.damage).toBe(0);
+    expect(flipsOf(outcome)).toHaveLength(1);
+
+    const other =
+      fight([], [enemy(1, 9, [], 1, 0)], "t", { mine: set("waboku") });
+
+    expect(other.damage).toBeGreaterThan(0);
+  });
+
+  it("Call of the Haunted revives your first destroyed monster in that lane", () => {
+    const outcome =
+      fight([unitOf(plain, 1, 3)], [enemy(5, 50)], "t", { mine: set("call-of-the-haunted") });
+
+    expect(flipsOf(outcome)).toEqual([expect.objectContaining({ id: "call-of-the-haunted" })]);
+  });
+
+  it("Mirror Force destroys two attackers in the lane", () => {
+    const outcome =
+      fight([], [enemy(1, 9), enemy(1, 9)], "t", { mine: set("mirror-force") });
+
+    expect(flipsOf(outcome)[0].dst).toHaveLength(2);
+    expect(outcome.damage).toBe(0);
+  });
+
+  it("Dimensional Prison banishes: no Reborn", () => {
+    const outcome =
+      fight([], [enemy(1, 9, ["revive"])], "t", { mine: set("dimensional-prison") });
+
+    expect(outcome.damage).toBe(0);
+    expect(outcome.frames[outcome.frames.length - 1].foe).toHaveLength(0);
+  });
+
+  it("Torrential Tribute wipes every monster in the lane, yours too", () => {
+    const outcome =
+      fight([unitOf(plain, 1, 50, false, 1, true)], [enemy(1, 9)], "t", { mine: set("torrential-tribute") });
+
+    expect(flipsOf(outcome)[0].dst).toHaveLength(2);
+    expect(outcome.frames[outcome.frames.length - 1].mine).toHaveLength(0);
+  });
+
+  it("enemy traps hit your attackers, once per combat", () => {
+    const outcome =
+      fight(
+        [unitOf(plain, 9, 9), unitOf(plain, 9, 9)],
+        [enemy(0, 1, [], 1, 0, true)],
+        "t",
+        { theirs: set("sakuretsu-armor") }
+      );
+
+    expect(flipsOf(outcome)).toEqual([expect.objectContaining({ side: 1 })]);
+    expect(outcome.dealt).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------
+// waves
+// ---------------------------------------------------------
+
+describe("waves", () => {
+  it("Boss waves grow, fit the lanes, and set traps later on", () => {
     const order =
       createRun("waves").state.bossOrder;
 
@@ -934,10 +1110,36 @@ describe("combat", () => {
 
       expect(bw.units.length).toBeGreaterThan(0);
       expect(bw.units.length).toBeLessThanOrEqual(BOARD_MAX);
+      expect(Math.max(...laneCounts(bw.units))).toBeLessThanOrEqual(3);
       expect(total).toBeGreaterThanOrEqual(previous);
+      expect(bw.traps.length).toBe(w >= MAX_WAVES ? 3 : w >= 8 ? 2 : w >= 5 ? 1 : 0);
 
       previous = total;
     }
+  });
+
+  it("the last wave is always a Boss, even with a ghost for it", () => {
+    const ghost = {
+      id: "g",
+      name: "x",
+      units: [
+        {
+          id: UNITS[0].id,
+          atk: 1,
+          hp: 1,
+          golden: false,
+          lane: 1,
+          def: false,
+        },
+      ],
+      traps: [],
+    };
+
+    const run =
+      createRun("finale", new Array(MAX_WAVES).fill(ghost));
+
+    expect(foeFor(run.state, 1).kind).toBe("ghost");
+    expect(foeFor(run.state, MAX_WAVES).kind).toBe("boss");
   });
 
   it("the combat result names the wave that was fought", () => {

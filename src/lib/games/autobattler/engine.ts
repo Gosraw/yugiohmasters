@@ -7,6 +7,8 @@ import {
   FUSIONS,
   ROUTES,
   ROUTE_BY_CODE,
+  TRAPS,
+  TRAP_BY_ID,
   UNITS,
   UNIT_BY_ID,
   XYZ_BY_RANK,
@@ -15,6 +17,7 @@ import {
   type CombatKeyword,
   type FusionMaterial,
   type SynergyKey,
+  type TrapDef,
   type Tribe,
   type UnitDef,
 } from "./units";
@@ -24,41 +27,77 @@ import {
 // (no DOM, no Date, no Math.random).
 //
 // The browser plays it live; the server action replays the
-// recorded action log from the same seed and only trusts the
-// score the replay produces. Everything random draws from the
-// seeded PRNG (src/lib/games/prng.ts):
+// recorded action log from the same seed (and the ghost list the
+// server froze for the run) and only trusts the replayed score.
+// Everything random draws from the seeded PRNG (../prng.ts):
 //   `${seed}:shop`           every shop roll / discover, in order
 //   `${seed}:bosses`         the order of the Boss waves
-//   `${seed}:combat:${turn}` target picks inside one combat
-// Only integer math is used, so V8 and JavaScriptCore agree.
+// Combat itself has NO randomness: every target is a fixed rule
+// (luck lives in shop rolls, discovers, which ghost / Boss you
+// meet and which trap lies face-down). Only integer math is used,
+// so V8 and JavaScriptCore agree.
+//
+// v3 (phase 2): a 3-LANE CASTLE BATTLEFIELD. Each side has a
+// castle at its end of three lanes; your castle's HP is your
+// health for the whole run. Board monsters stand in a lane
+// (max 3 per lane, 7 in total) in ATTACK or DEFENSE position.
+// Combat is a fixed tick simulation:
+//   1. clash: the front monsters of both sides that stand next
+//      to each other in a lane hit each other (simultaneously);
+//   2. move: ATTACK monsters step one tile toward the enemy
+//      castle (blocked by any monster in front of them); one that
+//      steps into the castle deals its castle damage and leaves.
+// DEFENSE monsters never move: a wall near your castle with
+// double DEF (triple with Guardian) that strikes back at half ATK.
+// Trap Cards are set on a lane (max 1 per lane) and trigger once
+// per combat (they stay for later turns). When nobody can attack
+// any more (or nothing happened for STALL_TICKS ticks) the fight
+// ends and every lane held by only one side chips the other
+// castle for 1. The castle damage you take in one combat is
+// capped per wave (DAMAGE_CAP). Traps unlock on wave
+// TRAP_UNLOCK_WAVE, Fusion / Xyz on SUMMON_UNLOCK_WAVE.
 //
 // Action log: an array of short strings, one per player action.
-//   b<slot>        buy the unit in shop slot <slot>
-//   s<uid>         sell unit <uid> (board or bench)
-//   p<uid>.<pos>   play bench unit <uid> onto the board at <pos>
-//   m<uid>.<pos>   move board unit <uid> to <pos>
+//   b<slot>        buy the unit / trap in shop slot <slot>
+//   s<uid>         sell unit or trap <uid>
+//   p<uid>.<lane>  play bench unit <uid> into lane 0-2
+//   m<uid>.<lane>  move board unit (or trap) <uid> to lane 0-2
+//                  (its own lane: to the front of that lane)
+//   t<uid>         toggle ATTACK / DEFENSE position
 //   r              refresh the shop (1 gold)
 //   f              freeze / unfreeze the shop
 //   u              upgrade the shop tier
 //   d<i>           pick discover option <i> (after a triple)
 //   x<a>.<b>       Overlay: units <a> + <b> (same Level) -> Xyz
-//   c<r>.<a>[.<b>] Polymerization: fusion recipe <r> from <a>(,<b>)
+//                  (1 gold, once per turn)
+//   c<r>.<a>[.<b>] Polymerization: fusion recipe <r> (free)
 //   e              end the turn -> combat vs this wave's opponent
 //
-// Opponents (v2): a league-mate's "ghost" board when the server
-// assigned one for that turn when the run started (frozen with
-// the run, see ghosts.ts), otherwise the wave's computer Boss.
-// After every shop phase the board is recorded in
-// state.snapshots; the server stores those (from ITS replay)
-// as ghosts for friends once the run validates.
-//
-// Fusion / Xyz cost no gold (the materials are the price): the
-// materials leave the run for good (not back to the pool) and
-// the new monster keeps half of the stats they had gained.
+// Opponents: a league-mate's "ghost" board (units, lanes,
+// positions, traps) when the server assigned one for that turn
+// when the run started (see ghosts.ts), otherwise the wave's
+// computer Boss. The LAST wave is always a Boss.
 // =========================================================
 
-/** v2 (2026-10-12): 12 waves, ghosts, Fusion + Xyz. */
-export const ENGINE_VERSION = 2;
+/** v3 (2026-10-12): lanes, castles, positions, traps. */
+export const ENGINE_VERSION = 3;
+
+/**
+ * Shape of a stored ghost board, separate from ENGINE_VERSION so
+ * balance changes don't empty the friends' ghost pool.
+ *   1 = units only (engine v2), auto-laid-out when read
+ *   2 = units with lane + position, plus traps
+ */
+export const BOARD_SCHEMA = 2;
+
+/** First wave with traps in the shop. */
+export const TRAP_UNLOCK_WAVE = 3;
+
+/** First wave with Polymerization / Overlay. */
+export const SUMMON_UNLOCK_WAVE = 4;
+
+/** A fight with no change for this many ticks ends (stalemate). */
+export const STALL_TICKS = 3;
 
 export const MAX_WAVES = 12;
 
@@ -66,9 +105,24 @@ export const START_HEALTH = 20;
 
 export const BOARD_MAX = 7;
 
+export const LANES = 3;
+
+/** Monsters per lane, per side. */
+export const LANE_MAX = 3;
+
+/** Tiles between the castles: 1..LANE_LEN (castles at 0 and LANE_LEN + 1). */
+export const LANE_LEN = 8;
+
+/** Tiles 1..HALF are your half of a lane. */
+export const HALF = 4;
+
 export const BENCH_MAX = 5;
 
+export const TRAP_MAX = LANES;
+
 export const UNIT_COST = 3;
+
+export const OVERLAY_COST = 1;
 
 export const SELL_VALUE = 1;
 
@@ -110,20 +164,39 @@ export const COPIES_PER_TIER = [
   3,
 ];
 
+/** Copies of every trap in the pool, per trap tier. */
+export const TRAP_COPIES = [
+  0,
+  3,
+  3,
+  3,
+  2,
+  2,
+  2,
+];
+
 /** Hard cap per turn: bounds the server replay cost. */
 export const MAX_ACTIONS_PER_TURN = 200;
 
 export const MAX_LOG_ACTIONS =
   MAX_WAVES * MAX_ACTIONS_PER_TURN;
 
-const MAX_COMBAT_STEPS = 400;
+/** Combat length cap (ticks). */
+export const MAX_TICKS = 40;
 
-/** Max damage of one lost fight: waves 1-3, 4-6, 7+. */
+/** Max castle damage of one combat: waves 1-3, 4-6, 7+. */
 export const DAMAGE_CAP = [
   4,
   7,
   10,
 ] as const;
+
+/** Lane fill order for automatic placement: mid, left, right. */
+const LANE_ORDER = [
+  1,
+  0,
+  2,
+];
 
 /** Shop-phase timer (seconds) for a turn. */
 export function turnSeconds(
@@ -146,16 +219,26 @@ export function waveTier(
   );
 }
 
+export function damageCap(
+  wave: number
+) {
+  return wave <= 3
+    ? DAMAGE_CAP[0]
+    : wave <= 6
+      ? DAMAGE_CAP[1]
+      : DAMAGE_CAP[2];
+}
+
 /** Total enemy stats (attack + health) of a Boss wave. */
 export function bossBudget(
   wave: number
 ) {
   // Hand-tuned with the greedy bot (balance.test.ts): median
-  // ~wave 9, a full clear of all 12 only now and then.
+  // ~wave 8-9, a full clear of all 12 only now and then.
   const table = [
     0,
-    4, 7, 13, 21, 31, 43, 56, 72, 92, 118,
-    152, 196,
+    4, 7, 13, 20, 29, 39, 51, 66, 86, 108,
+    138, 176,
   ];
 
   return table[Math.min(wave, MAX_WAVES)];
@@ -171,6 +254,17 @@ export type Unit = {
   atk: number;
   hp: number;
   golden: boolean;
+  /** 0 left, 1 mid, 2 right (board only). */
+  lane: number;
+  /** DEFENSE position (a wall that does not march). */
+  def: boolean;
+};
+
+/** A Trap Card you own, set face-down on a lane. */
+export type TrapCard = {
+  uid: number;
+  id: string;
+  lane: number;
 };
 
 export type WaveRecord = {
@@ -189,6 +283,13 @@ export type GhostUnit = {
   atk: number;
   hp: number;
   golden: boolean;
+  lane: number;
+  def: boolean;
+};
+
+export type GhostTrap = {
+  id: string;
+  lane: number;
 };
 
 /** A league-mate's recorded board, frozen into a run at start. */
@@ -198,12 +299,14 @@ export type GhostBoard = {
   /** The friend's duelist name. */
   name: string;
   units: GhostUnit[];
+  traps: GhostTrap[];
 };
 
-/** Your board as it went into the fight of `turn`. */
+/** Your board (and traps) as it went into the fight of `turn`. */
 export type BoardSnapshot = {
   turn: number;
   units: GhostUnit[];
+  traps: GhostTrap[];
 };
 
 export type RunState = {
@@ -218,10 +321,12 @@ export type RunState = {
   frozen: boolean;
   board: Unit[];
   bench: Unit[];
+  traps: TrapCard[];
   pool: Record<string, number>;
   discover: string[] | null;
   discoverQueue: number;
   nextUid: number;
+  overlayUsed: boolean;
   wins: number;
   losses: number;
   ties: number;
@@ -255,6 +360,57 @@ export type CombatSnap = {
   boss: boolean;
   token: boolean;
   kw: CombatKeyword[];
+  lane: number;
+  /** Tile 1..LANE_LEN, counted from YOUR castle (both sides). */
+  y: number;
+  def: boolean;
+};
+
+export type TrapSnap = {
+  lane: number;
+  id: string;
+  used: boolean;
+};
+
+export type HitCause =
+  | "attack"
+  | "counter"
+  | "pierce"
+  | "ambush"
+  | "fire";
+
+export type CombatHit = {
+  src: number;
+  dst: number;
+  amt: number;
+  cause: HitCause;
+};
+
+export type CastleHit = {
+  /** The side whose castle is hit (0 = yours). */
+  side: 0 | 1;
+  lane: number;
+  amt: number;
+  /** -1 for "lane held" chip damage at the end. */
+  src: number;
+  cause: "breakthrough" | "pierce" | "reflect" | "held";
+};
+
+export type CombatDeath = {
+  uid: number;
+  side: 0 | 1;
+  lane: number;
+  /** "battle", "venom", or the trap id that destroyed it. */
+  by: string;
+  src: number;
+};
+
+export type TrapFlip = {
+  /** The side that owns the trap (0 = yours). */
+  side: 0 | 1;
+  lane: number;
+  id: string;
+  dst: number[];
 };
 
 export type CombatEvent =
@@ -268,20 +424,26 @@ export type CombatEvent =
       amt: number;
     }
   | {
-      k: "attack";
-      src: number;
-      dst: number;
+      k: "tick";
+      hits: CombatHit[];
+      castle: CastleHit[];
+      traps: TrapFlip[];
+      deaths: CombatDeath[];
     }
   | {
       k: "end";
       result: "win" | "loss" | "tie";
       damage: number;
+      dealt: number;
     };
 
 export type CombatFrame = {
   ev: CombatEvent;
   mine: CombatSnap[];
   foe: CombatSnap[];
+  traps: [TrapSnap[], TrapSnap[]];
+  /** Castle damage so far (capped): [yours, theirs]. */
+  castle: [number, number];
 };
 
 export type CombatResult = {
@@ -290,6 +452,10 @@ export type CombatResult = {
   foe: string;
   result: "win" | "loss" | "tie";
   damage: number;
+  dealt: number;
+  cap: number;
+  /** One line per lane (left, mid, right): what happened there. */
+  recap: string[];
   frames: CombatFrame[];
 };
 
@@ -328,10 +494,120 @@ function shuffledBossOrder(
   return codes.slice(0, MAX_WAVES);
 }
 
+function laneOf(
+  value: unknown
+) {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) < LANES
+    ? (value as number)
+    : 1;
+}
+
+/** Units + traps of a recorded board, cleaned up (ghosts, snapshots). */
+function normalizeBoard(
+  rawUnits: unknown,
+  rawTraps: unknown
+): {
+  units: GhostUnit[];
+  traps: GhostTrap[];
+} {
+  const units: GhostUnit[] = [];
+
+  const perLane = [
+    0,
+    0,
+    0,
+  ];
+
+  const list =
+    Array.isArray(rawUnits) ? rawUnits.slice(0, BOARD_MAX) : [];
+
+  // Schema 1 (no lanes yet): spread over the lanes, sturdy
+  // units (DEF well above ATK, or Guardians) become walls.
+  const legacy =
+    list.length > 0 &&
+    list.every(
+      (item) => typeof item === "object" && item !== null && !("lane" in item)
+    );
+
+  let autoIndex = 0;
+
+  for (const item of list) {
+    const unit =
+      item as Partial<GhostUnit> | null;
+
+    if (
+      !unit ||
+      typeof unit.id !== "string" ||
+      !UNIT_BY_ID.has(unit.id) ||
+      !Number.isInteger(unit.atk) ||
+      !Number.isInteger(unit.hp)
+    ) {
+      continue;
+    }
+
+    const known =
+      UNIT_BY_ID.get(unit.id) as UnitDef;
+
+    let lane =
+      legacy
+        ? LANE_ORDER[autoIndex % LANES]
+        : laneOf(unit.lane);
+
+    autoIndex += 1;
+
+    if (perLane[lane] >= LANE_MAX) {
+      lane = LANE_ORDER.find((l) => perLane[l] < LANE_MAX) as number;
+    }
+
+    perLane[lane] += 1;
+
+    units.push({
+      id: unit.id,
+      atk: Math.min(9999, Math.max(0, unit.atk as number)),
+      hp: Math.min(9999, Math.max(1, unit.hp as number)),
+      golden: unit.golden === true,
+      lane,
+      def: legacy
+        ? known.ability === "taunt" || (unit.hp as number) >= (unit.atk as number) * 2
+        : unit.def === true,
+    });
+  }
+
+  const traps: GhostTrap[] = [];
+
+  for (const item of Array.isArray(rawTraps) ? rawTraps.slice(0, TRAP_MAX) : []) {
+    const trap =
+      item as Partial<GhostTrap> | null;
+
+    if (
+      !trap ||
+      typeof trap.id !== "string" ||
+      !TRAP_BY_ID.has(trap.id)
+    ) {
+      continue;
+    }
+
+    const lane =
+      laneOf(trap.lane);
+
+    if (!traps.some((t) => t.lane === lane)) {
+      traps.push({
+        id: trap.id,
+        lane,
+      });
+    }
+  }
+
+  return {
+    units,
+    traps,
+  };
+}
+
 /**
  * Clean up a ghost list (from the server or the browser): index
- * turn - 1, unknown units dropped, numbers clamped. Both the
- * browser and the server replay run this, so they agree.
+ * turn - 1, unknown cards dropped, numbers clamped, lanes fixed.
+ * Both the browser and the server replay run this, so they agree.
  */
 export function normalizeGhosts(
   input: unknown
@@ -345,8 +621,9 @@ export function normalizeGhosts(
 
   input.forEach(
     (entry, index) => {
+      // The last wave is always a Boss.
       if (
-        index >= MAX_WAVES ||
+        index >= MAX_WAVES - 1 ||
         typeof entry !== "object" ||
         entry === null
       ) {
@@ -358,42 +635,24 @@ export function normalizeGhosts(
           id?: unknown;
           name?: unknown;
           units?: unknown;
+          traps?: unknown;
         };
 
       if (
         typeof raw.id !== "string" ||
         raw.id.length === 0 ||
-        raw.id.length > 64 ||
-        !Array.isArray(raw.units)
+        raw.id.length > 64
       ) {
         return;
       }
 
-      const units: GhostUnit[] = [];
+      const board =
+        normalizeBoard(
+          raw.units,
+          raw.traps
+        );
 
-      for (const item of raw.units.slice(0, BOARD_MAX)) {
-        const unit =
-          item as Partial<GhostUnit> | null;
-
-        if (
-          !unit ||
-          typeof unit.id !== "string" ||
-          !UNIT_BY_ID.has(unit.id) ||
-          !Number.isInteger(unit.atk) ||
-          !Number.isInteger(unit.hp)
-        ) {
-          continue;
-        }
-
-        units.push({
-          id: unit.id,
-          atk: Math.min(9999, Math.max(0, unit.atk as number)),
-          hp: Math.min(9999, Math.max(1, unit.hp as number)),
-          golden: unit.golden === true,
-        });
-      }
-
-      if (units.length === 0) {
+      if (board.units.length === 0) {
         return;
       }
 
@@ -403,7 +662,7 @@ export function normalizeGhosts(
           typeof raw.name === "string" && raw.name.trim()
             ? raw.name.trim().slice(0, 40)
             : "A friend",
-        units,
+        ...board,
       };
     }
   );
@@ -434,6 +693,11 @@ export function createRun(
       COPIES_PER_TIER[unit.tier];
   }
 
+  for (const trap of TRAPS) {
+    pool[trap.id] =
+      TRAP_COPIES[trap.tier];
+  }
+
   const state: RunState = {
     seed,
     turn: 1,
@@ -446,10 +710,12 @@ export function createRun(
     frozen: false,
     board: [],
     bench: [],
+    traps: [],
     pool,
     discover: null,
     discoverQueue: 0,
     nextUid: 1,
+    overlayUsed: false,
     wins: 0,
     losses: 0,
     ties: 0,
@@ -487,19 +753,10 @@ export function runScore(
 export function describeScore(
   score: number
 ) {
-  const survived =
-    Math.floor(score / 10000);
-
-  const health =
-    Math.floor((score % 10000) / 100);
-
-  const wins =
-    score % 100;
-
   return {
-    survived,
-    health,
-    wins,
+    survived: Math.floor(score / 10000),
+    health: Math.floor((score % 10000) / 100),
+    wins: score % 100,
   };
 }
 
@@ -507,25 +764,66 @@ export function describeScore(
 // Shop
 // ---------------------------------------------------------
 
+type ShopCard = {
+  id: string;
+  tier: number;
+  trap: boolean;
+};
+
+/** Shop pool order: units, then traps (fixed, so draws are stable). */
+const SHOP_CARDS: readonly ShopCard[] = [
+  ...UNITS.map(
+    (unit) => ({
+      id: unit.id,
+      tier: unit.tier,
+      trap: false,
+    })
+  ),
+  ...TRAPS.map(
+    (trap) => ({
+      id: trap.id,
+      tier: trap.tier,
+      trap: true,
+    })
+  ),
+];
+
+export function isTrapId(
+  id: string
+) {
+  return TRAP_BY_ID.has(id);
+}
+
 function drawFromPool(
   run: Run,
   minTier: number,
   maxTier: number,
-  exclude?: Set<string>
+  options: {
+    exclude?: Set<string>;
+    unitsOnly?: boolean;
+  } = {}
 ): string | null {
   const {
     pool,
   } = run.state;
 
+  const noTraps =
+    options.unitsOnly ||
+    run.state.turn < TRAP_UNLOCK_WAVE;
+
+  const usable = (
+    card: ShopCard
+  ) =>
+    card.tier >= minTier &&
+    card.tier <= maxTier &&
+    !(noTraps && card.trap) &&
+    !options.exclude?.has(card.id);
+
   let total = 0;
 
-  for (const unit of UNITS) {
-    if (
-      unit.tier >= minTier &&
-      unit.tier <= maxTier &&
-      !exclude?.has(unit.id)
-    ) {
-      total += pool[unit.id];
+  for (const card of SHOP_CARDS) {
+    if (usable(card)) {
+      total += pool[card.id];
     }
   }
 
@@ -536,22 +834,18 @@ function drawFromPool(
   let pick =
     run.shopRng.int(0, total - 1);
 
-  for (const unit of UNITS) {
-    if (
-      unit.tier < minTier ||
-      unit.tier > maxTier ||
-      exclude?.has(unit.id)
-    ) {
+  for (const card of SHOP_CARDS) {
+    if (!usable(card)) {
       continue;
     }
 
-    if (pick < pool[unit.id]) {
-      pool[unit.id] -= 1;
+    if (pick < pool[card.id]) {
+      pool[card.id] -= 1;
 
-      return unit.id;
+      return card.id;
     }
 
-    pick -= pool[unit.id];
+    pick -= pool[card.id];
   }
 
   return null;
@@ -606,6 +900,8 @@ function newUnit(
     atk: def.atk,
     hp: def.hp,
     golden: false,
+    lane: 1,
+    def: false,
   };
 
   state.nextUid += 1;
@@ -647,12 +943,50 @@ function triggerRally(
   }
 }
 
+export function laneCounts(
+  board: Pick<Unit, "lane">[]
+) {
+  const counts = [
+    0,
+    0,
+    0,
+  ];
+
+  for (const unit of board) {
+    counts[unit.lane] += 1;
+  }
+
+  return counts;
+}
+
+/** The emptiest lane with room (ties: mid, left, right). */
+function pickLane(
+  board: Unit[]
+) {
+  const counts =
+    laneCounts(board);
+
+  let best = -1;
+
+  for (const lane of LANE_ORDER) {
+    if (
+      counts[lane] < LANE_MAX &&
+      (best < 0 || counts[lane] < counts[best])
+    ) {
+      best = lane;
+    }
+  }
+
+  return best;
+}
+
 /** Board if there is room (Rally triggers), else bench. */
 function placeUnit(
   state: RunState,
   unit: Unit
 ) {
   if (state.board.length < BOARD_MAX) {
+    unit.lane = pickLane(state.board);
     state.board.push(unit);
 
     triggerRally(
@@ -729,52 +1063,70 @@ function checkTriples(
       atk: copies.reduce((sum, unit) => sum + unit.atk, 0) - def.atk,
       hp: copies.reduce((sum, unit) => sum + unit.hp, 0) - def.hp,
       golden: true,
+      lane: 1,
+      def: false,
     };
 
     state.nextUid += 1;
 
-    const copyUids =
-      new Set(
-        copies.map(
-          (unit) => unit.uid
-        )
-      );
-
-    const boardIndex =
-      state.board.findIndex(
-        (unit) => copyUids.has(unit.uid)
-      );
-
-    if (boardIndex >= 0) {
-      state.board[boardIndex] = golden;
-
-      state.board =
-        state.board.filter(
-          (unit) => !copyUids.has(unit.uid)
-        );
-
-      state.bench =
-        state.bench.filter(
-          (unit) => !copyUids.has(unit.uid)
-        );
-    } else {
-      const benchIndex =
-        state.bench.findIndex(
-          (unit) => copyUids.has(unit.uid)
-        );
-
-      state.bench[benchIndex] = golden;
-
-      state.bench =
-        state.bench.filter(
-          (unit) => !copyUids.has(unit.uid)
-        );
-    }
+    replaceUnits(
+      state,
+      copies,
+      golden
+    );
 
     state.discoverQueue += 1;
   }
 
   openDiscover(run);
+}
+
+/**
+ * Put `result` where the first of `materials` stood (the leftmost
+ * on the board keeps its lane + position, else the bench slot) and
+ * remove the materials.
+ */
+function replaceUnits(
+  state: RunState,
+  materials: Unit[],
+  result: Unit
+) {
+  const uids =
+    new Set(
+      materials.map(
+        (unit) => unit.uid
+      )
+    );
+
+  const boardIndex =
+    state.board.findIndex(
+      (unit) => uids.has(unit.uid)
+    );
+
+  if (boardIndex >= 0) {
+    result.lane = state.board[boardIndex].lane;
+    result.def = state.board[boardIndex].def;
+    state.board[boardIndex] = result;
+  } else {
+    const benchIndex =
+      state.bench.findIndex(
+        (unit) => uids.has(unit.uid)
+      );
+
+    state.bench[benchIndex] = result;
+  }
+
+  state.board =
+    state.board.filter(
+      (unit) => !uids.has(unit.uid)
+    );
+
+  state.bench =
+    state.bench.filter(
+      (unit) => !uids.has(unit.uid)
+    );
+
+  return boardIndex >= 0;
 }
 
 function openDiscover(
@@ -807,7 +1159,10 @@ function openDiscover(
           run,
           tier,
           tier,
-          taken
+          {
+            exclude: taken,
+            unitsOnly: true,
+          }
         );
 
       if (!id) {
@@ -907,6 +1262,15 @@ function findUnit(
   return null;
 }
 
+/** First free trap lane (mid, left, right), or -1. */
+function freeTrapLane(
+  state: RunState
+) {
+  return LANE_ORDER.find(
+    (lane) => !state.traps.some((trap) => trap.lane === lane)
+  ) ?? -1;
+}
+
 // ---------------------------------------------------------
 // Fusion + Xyz
 // ---------------------------------------------------------
@@ -916,6 +1280,13 @@ export function xyzForLevel(
   level: number
 ): UnitDef | null {
   return XYZ_BY_RANK.get(level) ?? null;
+}
+
+/** Fusion / Xyz monster (not in the shop pool, never triples). */
+export function isSpecialUnit(
+  unit: Pick<Unit, "id">
+) {
+  return UNIT_BY_ID.get(unit.id)?.kind !== undefined;
 }
 
 function canBeXyzMaterial(
@@ -955,12 +1326,7 @@ function matchesMaterial(
   );
 }
 
-/**
- * Replace the materials with the new monster: it takes the board
- * slot of the leftmost material on the board (else the bench slot
- * of the first one) and keeps half of the stats the materials had
- * gained above their base stats.
- */
+/** Materials -> the new monster (keeps half of their gained stats). */
 function summonSpecial(
   run: Run,
   resultId: string,
@@ -990,44 +1356,19 @@ function summonSpecial(
     atk: def.atk + Math.floor(bonusAtk / 2),
     hp: def.hp + Math.floor(bonusHp / 2),
     golden: false,
+    lane: 1,
+    def: false,
   };
 
   state.nextUid += 1;
 
-  const uids =
-    new Set(
-      materials.map(
-        (unit) => unit.uid
-      )
-    );
-
-  const boardIndex =
-    state.board.findIndex(
-      (unit) => uids.has(unit.uid)
-    );
-
-  if (boardIndex >= 0) {
-    state.board[boardIndex] = result;
-  } else {
-    const benchIndex =
-      state.bench.findIndex(
-        (unit) => uids.has(unit.uid)
-      );
-
-    state.bench[benchIndex] = result;
-  }
-
-  state.board =
-    state.board.filter(
-      (unit) => !uids.has(unit.uid)
-    );
-
-  state.bench =
-    state.bench.filter(
-      (unit) => !uids.has(unit.uid)
-    );
-
-  if (boardIndex >= 0) {
+  if (
+    replaceUnits(
+      state,
+      materials,
+      result
+    )
+  ) {
     triggerRally(
       state,
       result
@@ -1045,6 +1386,18 @@ function overlay(
   const {
     state,
   } = run;
+
+  if (state.turn < SUMMON_UNLOCK_WAVE) {
+    return `Overlay unlocks on wave ${SUMMON_UNLOCK_WAVE}.`;
+  }
+
+  if (state.overlayUsed) {
+    return "Only one Overlay per turn.";
+  }
+
+  if (state.gold < OVERLAY_COST) {
+    return "Not enough gold.";
+  }
 
   if (uidA === uidB) {
     return "Pick two different units.";
@@ -1077,6 +1430,9 @@ function overlay(
     return "Overlay needs two monsters of the same Level.";
   }
 
+  state.gold -= OVERLAY_COST;
+  state.overlayUsed = true;
+
   summonSpecial(
     run,
     (xyzForLevel(level) as UnitDef).id,
@@ -1097,6 +1453,10 @@ function fuse(
   const {
     state,
   } = run;
+
+  if (state.turn < SUMMON_UNLOCK_WAVE) {
+    return `Polymerization unlocks on wave ${SUMMON_UNLOCK_WAVE}.`;
+  }
 
   const recipe =
     FUSIONS[recipeIndex];
@@ -1185,7 +1545,6 @@ export function fusionOptions(
             .filter(
               (unit) => !used.has(unit.uid) && matchesMaterial(unit, material)
             )
-            // Spare golden units and big stats where possible.
             .sort(
               (x, y) => Number(x.golden) - Number(y.golden) || x.atk + x.hp - (y.atk + y.hp) || x.uid - y.uid
             );
@@ -1248,13 +1607,6 @@ export function xyzOptions(
     );
 }
 
-/** Fusion / Xyz monster (not in the shop pool, never triples). */
-export function isSpecialUnit(
-  unit: Pick<Unit, "id">
-) {
-  return UNIT_BY_ID.get(unit.id)?.kind !== undefined;
-}
-
 // ---------------------------------------------------------
 // Boss waves
 // ---------------------------------------------------------
@@ -1267,6 +1619,9 @@ export type BossUnitSpec = {
   boss: boolean;
   keywords: CombatKeyword[];
   power: number;
+  level: number;
+  lane: number;
+  def: boolean;
 };
 
 export type BossWave = {
@@ -1276,6 +1631,7 @@ export type BossWave = {
   routeName: string;
   tier: number;
   units: BossUnitSpec[];
+  traps: GhostTrap[];
 };
 
 function splitStats(
@@ -1301,6 +1657,37 @@ function splitStats(
     atk,
     hp: Math.max(1, budget - atk),
   };
+}
+
+/** Boss traps: one from wave 5, two from wave 8, three on the last wave. */
+function bossTraps(
+  routeOrder: number,
+  wave: number
+): GhostTrap[] {
+  const count =
+    wave >= MAX_WAVES
+      ? 3
+      : wave >= 8
+        ? 2
+        : wave >= 5
+          ? 1
+          : 0;
+
+  const usable =
+    TRAPS.filter(
+      (trap) => trap.tier <= waveTier(wave) && trap.trigger === "enter"
+    );
+
+  const traps: GhostTrap[] = [];
+
+  for (let i = 0; i < count && usable.length > 0; i++) {
+    traps.push({
+      id: usable[(routeOrder * 3 + wave + i * 5) % usable.length].id,
+      lane: LANE_ORDER[(wave + i) % LANES],
+    });
+  }
+
+  return traps;
 }
 
 export function bossWave(
@@ -1386,6 +1773,38 @@ export function bossWave(
 
   let regularIndex = 0;
 
+  // Lanes: the Boss card holds the middle, the rest fill the
+  // emptiest lane (mid, left, right).
+  const perLane = [
+    0,
+    0,
+    0,
+  ];
+
+  const laneFor = (
+    boss: boolean
+  ) => {
+    let lane =
+      boss && perLane[1] < LANE_MAX
+        ? 1
+        : -1;
+
+    if (lane < 0) {
+      for (const candidate of LANE_ORDER) {
+        if (
+          perLane[candidate] < LANE_MAX &&
+          (lane < 0 || perLane[candidate] < perLane[lane])
+        ) {
+          lane = candidate;
+        }
+      }
+    }
+
+    perLane[lane] += 1;
+
+    return lane;
+  };
+
   const units =
     picks.map(
       (pick, i): BossUnitSpec => {
@@ -1419,12 +1838,16 @@ export function bossWave(
 
         return {
           name: pick.card.name,
-          img: pick.card.img,
+          img: pick.card.art ?? pick.card.img,
           atk: stats.atk,
           hp: stats.hp,
           boss: pick.boss,
           keywords,
           power,
+          level: pick.card.level,
+          lane: laneFor(pick.boss),
+          // Guardians hold a lane as a wall.
+          def: !pick.boss && keywords.includes("taunt"),
         };
       }
     );
@@ -1436,6 +1859,10 @@ export function bossWave(
     routeName: route.name,
     tier: waveTier(wave),
     units,
+    traps: bossTraps(
+      route.order,
+      wave
+    ),
   };
 }
 
@@ -1447,6 +1874,7 @@ export type GhostWave = {
   ghostId: string;
   name: string;
   units: GhostUnit[];
+  traps: GhostTrap[];
 };
 
 export type Foe =
@@ -1465,7 +1893,9 @@ export function foeFor(
   turn: number
 ): Foe {
   const ghost =
-    state.ghosts[turn - 1] ?? null;
+    turn < MAX_WAVES
+      ? state.ghosts[turn - 1] ?? null
+      : null;
 
   if (ghost) {
     return {
@@ -1475,6 +1905,7 @@ export function foeFor(
       ghostId: ghost.id,
       name: ghost.name,
       units: ghost.units,
+      traps: ghost.traps,
     };
   }
 
@@ -1493,7 +1924,7 @@ export function foeName(
 }
 
 // ---------------------------------------------------------
-// Combat
+// Combat units + synergies
 // ---------------------------------------------------------
 
 type CUnit = {
@@ -1509,6 +1940,12 @@ type CUnit = {
   golden: boolean;
   boss: boolean;
   token: boolean;
+  lane: number;
+  /** Tile, counted from side 0's castle (0) to side 1's (LANE_LEN + 1). */
+  y: number;
+  def: boolean;
+  /** Castle damage when it breaks through. */
+  castle: number;
   taunt: boolean;
   shield: boolean;
   revive: boolean;
@@ -1519,6 +1956,8 @@ type CUnit = {
   lastwill: number;
   spawn: number;
   ambush: number;
+  banished: boolean;
+  gone: boolean;
 };
 
 function blankCUnit(
@@ -1540,6 +1979,10 @@ function blankCUnit(
     golden: false,
     boss: false,
     token: false,
+    lane: 1,
+    y: 1,
+    def: false,
+    castle: 1,
     taunt: false,
     shield: false,
     revive: false,
@@ -1550,6 +1993,8 @@ function blankCUnit(
     lastwill: 0,
     spawn: 0,
     ambush: 0,
+    banished: false,
+    gone: false,
   };
 }
 
@@ -1587,6 +2032,15 @@ function applyKeyword(
       unit.ambush += power;
       break;
   }
+}
+
+/** Castle damage of a monster that breaks through. */
+export function castleDamage(
+  level: number,
+  golden: boolean,
+  boss: boolean
+) {
+  return 1 + Math.floor(Math.max(0, level) / 4) + (golden ? 1 : 0) + (boss ? 1 : 0);
 }
 
 export type SynergyState = {
@@ -1642,8 +2096,8 @@ export function boardSynergies(
 }
 
 function playerCombatUnits(
-  board: Pick<Unit, "id" | "atk" | "hp" | "golden">[],
-  side: 0 | 1 = 0
+  board: Pick<Unit, "id" | "atk" | "hp" | "golden" | "lane" | "def">[],
+  side: 0 | 1
 ): {
   units: CUnit[];
   fire: 0 | 1 | 2;
@@ -1668,10 +2122,10 @@ function playerCombatUnits(
 
         const cu =
           blankCUnit(
-            side === 0 ? (unit as Unit).uid : 10000 + index,
+            side === 0 ? (unit as Unit).uid ?? index + 1 : 10000 + index,
             side,
             def.name,
-            def.img
+            def.art ?? def.img
           );
 
         cu.attribute = def.attribute;
@@ -1679,6 +2133,14 @@ function playerCombatUnits(
         cu.atk = unit.atk;
         cu.hp = unit.hp;
         cu.golden = unit.golden;
+        cu.lane = unit.lane;
+        cu.def = unit.def;
+        cu.castle =
+          castleDamage(
+            def.kind === "xyz" ? def.rank ?? 4 : def.level,
+            unit.golden,
+            false
+          );
 
         if (
           def.ability !== "rally" &&
@@ -1800,10 +2262,6 @@ function playerCombatUnits(
     add((u) => u.tribe === "Aqua", level("Aqua") === 2 ? 3 : 1, level("Aqua") === 2 ? 6 : 3);
   }
 
-  for (const unit of units) {
-    unit.maxHp = unit.hp;
-  }
-
   return {
     units,
     fire: level("FIRE") as 0 | 1 | 2,
@@ -1826,8 +2284,15 @@ function bossCombatUnits(
 
       cu.atk = spec.atk;
       cu.hp = spec.hp;
-      cu.maxHp = spec.hp;
       cu.boss = spec.boss;
+      cu.lane = spec.lane;
+      cu.def = spec.def;
+      cu.castle =
+        castleDamage(
+          spec.level,
+          false,
+          spec.boss
+        );
 
       for (const keyword of spec.keywords) {
         applyKeyword(
@@ -1840,6 +2305,44 @@ function bossCombatUnits(
       return cu;
     }
   );
+}
+
+/**
+ * Positions: per side and lane, DEFENSE walls stand nearest the
+ * castle, then the attackers in board order (the last one in front).
+ * DEF walls get double durability (triple with Guardian).
+ */
+function deploy(
+  units: CUnit[]
+) {
+  for (let lane = 0; lane < LANES; lane++) {
+    const inLane =
+      units.filter(
+        (unit) => unit.lane === lane
+      );
+
+    const ordered = [
+      ...inLane.filter((unit) => unit.def),
+      ...inLane.filter((unit) => !unit.def),
+    ];
+
+    ordered.forEach(
+      (unit, i) => {
+        unit.y =
+          unit.side === 0
+            ? 1 + i
+            : LANE_LEN - i;
+      }
+    );
+  }
+
+  for (const unit of units) {
+    if (unit.def) {
+      unit.hp *= unit.taunt ? 3 : 2;
+    }
+
+    unit.maxHp = unit.hp;
+  }
 }
 
 function keywordsOf(
@@ -1877,22 +2380,41 @@ function snap(
       boss: unit.boss,
       token: unit.token,
       kw: keywordsOf(unit),
+      lane: unit.lane,
+      // Always counted from the owner's castle.
+      y: unit.side === 0 ? unit.y : LANE_LEN + 1 - unit.y,
+      def: unit.def,
     })
   );
 }
 
+// ---------------------------------------------------------
+// Combat: the lane simulation
+// ---------------------------------------------------------
+
+type LiveTrap = {
+  def: TrapDef;
+  lane: number;
+  used: boolean;
+};
+
 export function resolveCombat(
   board: Unit[],
   wave: Foe,
-  rng: Prng,
-  record: boolean
+  record: boolean,
+  myTraps: readonly GhostTrap[] = []
 ): {
   result: "win" | "loss" | "tie";
   damage: number;
+  dealt: number;
+  recap: string[];
   frames: CombatFrame[];
 } {
   const player =
-    playerCombatUnits(board);
+    playerCombatUnits(
+      board,
+      0
+    );
 
   // A ghost is a player board too: same synergies, other side.
   const foe =
@@ -1912,9 +2434,74 @@ export function resolveCombat(
     foe.units,
   ];
 
+  deploy(sides[0]);
+  deploy(sides[1]);
+
+  const traps: [LiveTrap[], LiveTrap[]] = [
+    myTraps.map(
+      (trap) => ({
+        def: TRAP_BY_ID.get(trap.id) as TrapDef,
+        lane: trap.lane,
+        used: false,
+      })
+    ),
+    wave.traps.map(
+      (trap) => ({
+        def: TRAP_BY_ID.get(trap.id) as TrapDef,
+        lane: trap.lane,
+        used: false,
+      })
+    ),
+  ];
+
+  const cap =
+    damageCap(wave.wave);
+
+  // Castle damage taken: [side 0, side 1].
+  const taken = [
+    0,
+    0,
+  ];
+
   const frames: CombatFrame[] = [];
 
   let tokenUid = 20000;
+
+  let hits: CombatHit[] = [];
+  let castleHits: CastleHit[] = [];
+  let flips: TrapFlip[] = [];
+  let deaths: CombatDeath[] = [];
+
+  // Why each unit is about to die (for events + the recap).
+  const cause =
+    new Map<number, {
+      by: string;
+      src: number;
+    }>();
+
+  const names =
+    new Map<number, string>();
+
+  for (const unit of [...sides[0], ...sides[1]]) {
+    names.set(unit.uid, unit.name);
+  }
+
+  // Recap raw material, per lane.
+  const notes =
+    Array.from(
+      {
+        length: LANES,
+      },
+      () => ({
+        flips: [] as TrapFlip[],
+        breaks: [[], []] as {
+          name: string;
+          amt: number;
+        }[][],
+        lost: [0, 0],
+        held: [0, 0],
+      })
+    );
 
   const push = (
     ev: CombatEvent
@@ -1924,19 +2511,122 @@ export function resolveCombat(
         ev,
         mine: snap(sides[0]),
         foe: snap(sides[1]),
+        traps: [
+          traps[0].map(
+            (trap) => ({
+              lane: trap.lane,
+              id: trap.def.id,
+              used: trap.used,
+            })
+          ),
+          traps[1].map(
+            (trap) => ({
+              lane: trap.lane,
+              id: trap.def.id,
+              used: trap.used,
+            })
+          ),
+        ],
+        castle: [
+          Math.min(cap, taken[0]),
+          Math.min(cap, taken[1]),
+        ],
       });
     }
   };
 
-  const alive = (
+  const enemyOf = (
     side: 0 | 1
-  ) => sides[side].length > 0;
+  ): 0 | 1 => (side === 0 ? 1 : 0);
+
+  const dirOf = (
+    side: 0 | 1
+  ) => (side === 0 ? 1 : -1);
+
+  /** Units of `side` in `lane`, front (nearest the enemy) first. */
+  const laneUnits = (
+    side: 0 | 1,
+    lane: number
+  ) =>
+    sides[side]
+      .filter(
+        (unit) => unit.lane === lane && unit.hp > 0
+      )
+      .sort(
+        (a, b) => (side === 0 ? b.y - a.y : a.y - b.y) || a.uid - b.uid
+      );
+
+  const trapOn = (
+    side: 0 | 1,
+    lane: number
+  ) =>
+    traps[side].find(
+      (trap) => trap.lane === lane && !trap.used
+    ) ?? null;
+
+  const flip = (
+    side: 0 | 1,
+    trap: LiveTrap,
+    dst: number[]
+  ) => {
+    trap.used = true;
+
+    const event = {
+      side,
+      lane: trap.lane,
+      id: trap.def.id,
+      dst,
+    };
+
+    flips.push(event);
+    notes[trap.lane].flips.push(event);
+  };
+
+  const hitCastle = (
+    side: 0 | 1,
+    lane: number,
+    amount: number,
+    src: number,
+    why: CastleHit["cause"]
+  ) => {
+    const waboku =
+      traps[side].find(
+        (trap) => trap.lane === lane && trap.def.effect === "no_castle_damage"
+      );
+
+    if (waboku) {
+      if (!waboku.used) {
+        flip(side, waboku, [src]);
+      }
+
+      return;
+    }
+
+    taken[side] += amount;
+
+    castleHits.push({
+      side,
+      lane,
+      amt: amount,
+      src,
+      cause: why,
+    });
+
+    if (why === "breakthrough") {
+      notes[lane].breaks[side === 0 ? 1 : 0].push({
+        name: names.get(src) ?? "A monster",
+        amt: amount,
+      });
+    }
+  };
 
   const hit = (
     target: CUnit,
     amount: number,
     venom: boolean,
-    pierce: boolean
+    pierce: boolean,
+    src: number,
+    why: HitCause
   ) => {
     if (
       amount <= 0 ||
@@ -1944,6 +2634,13 @@ export function resolveCombat(
     ) {
       return;
     }
+
+    hits.push({
+      src,
+      dst: target.uid,
+      amt: target.shield ? 0 : amount,
+      cause: why,
+    });
 
     if (target.shield) {
       target.shield = false;
@@ -1963,28 +2660,156 @@ export function resolveCombat(
       target.hp = 0;
     }
 
+    if (target.hp <= 0) {
+      cause.set(target.uid, {
+        by: venom ? "venom" : "battle",
+        src,
+      });
+    }
+
     if (
       pierce &&
       amount > before
     ) {
-      const list =
-        sides[target.side];
+      // Spills into the enemy behind the target, else the castle.
+      const behind =
+        laneUnits(target.side, target.lane).find(
+          (unit) => unit !== target && (target.side === 1 ? unit.y > target.y : unit.y < target.y)
+        );
 
-      const index =
-        list.indexOf(target);
-
-      const neighbour =
-        list.slice(index + 1).find((unit) => unit.hp > 0) ??
-        list.slice(0, Math.max(0, index)).reverse().find((unit) => unit.hp > 0);
-
-      if (neighbour) {
+      if (behind) {
         hit(
-          neighbour,
+          behind,
           amount - before,
           false,
-          false
+          false,
+          src,
+          "pierce"
+        );
+      } else {
+        hitCastle(
+          target.side,
+          target.lane,
+          1,
+          src,
+          "pierce"
         );
       }
+    }
+  };
+
+  /** Free tile behind `unit` nearest its own castle (bounce). */
+  const sendBack = (
+    unit: CUnit
+  ) => {
+    const tiles =
+      unit.side === 0
+        ? Array.from({ length: unit.y - 1 }, (_, i) => i + 1)
+        : Array.from({ length: LANE_LEN - unit.y }, (_, i) => LANE_LEN - i);
+
+    const free =
+      tiles.find(
+        (y) => !sides[0].concat(sides[1]).some((other) => other.lane === unit.lane && other.y === y && other.hp > 0)
+      );
+
+    if (free !== undefined) {
+      unit.y = free;
+    }
+  };
+
+  const destroy = (
+    unit: CUnit,
+    by: string,
+    banish = false
+  ) => {
+    unit.hp = 0;
+    unit.banished = unit.banished || banish;
+
+    cause.set(unit.uid, {
+      by,
+      src: -1,
+    });
+  };
+
+  /** An enemy attacker stepped into `side`'s half of its lane. */
+  const enterTrap = (
+    side: 0 | 1,
+    intruder: CUnit
+  ) => {
+    const trap =
+      trapOn(side, intruder.lane);
+
+    if (
+      !trap ||
+      trap.def.trigger !== "enter"
+    ) {
+      return;
+    }
+
+    switch (trap.def.effect) {
+      case "destroy_min_atk":
+        if (intruder.atk < trap.def.value) {
+          return;
+        }
+
+        flip(side, trap, [intruder.uid]);
+        destroy(intruder, trap.def.id);
+        return;
+      case "destroy":
+        flip(side, trap, [intruder.uid]);
+        destroy(intruder, trap.def.id);
+        return;
+      case "banish":
+        flip(side, trap, [intruder.uid]);
+        destroy(intruder, trap.def.id, true);
+        return;
+      case "bounce":
+        flip(side, trap, [intruder.uid]);
+        sendBack(intruder);
+        return;
+      case "reflect":
+        flip(side, trap, [intruder.uid]);
+        hitCastle(
+          intruder.side,
+          intruder.lane,
+          intruder.castle,
+          intruder.uid,
+          "reflect"
+        );
+        sendBack(intruder);
+        return;
+      case "destroy_two": {
+        const victims =
+          laneUnits(intruder.side, intruder.lane)
+            .filter(
+              (unit) => !unit.def
+            )
+            .slice(0, 2);
+
+        flip(side, trap, victims.map((unit) => unit.uid));
+
+        for (const victim of victims) {
+          destroy(victim, trap.def.id);
+        }
+
+        return;
+      }
+      case "wipe_lane": {
+        const victims = [
+          ...laneUnits(0, intruder.lane),
+          ...laneUnits(1, intruder.lane),
+        ];
+
+        flip(side, trap, victims.map((unit) => unit.uid));
+
+        for (const victim of victims) {
+          destroy(victim, trap.def.id);
+        }
+
+        return;
+      }
+      default:
+        return;
     }
   };
 
@@ -2007,28 +2832,68 @@ export function resolveCombat(
 
         list.splice(i, 1);
 
+        if (!unit.gone) {
+          const why =
+            cause.get(unit.uid) ?? {
+              by: "battle",
+              src: -1,
+            };
+
+          deaths.push({
+            uid: unit.uid,
+            side,
+            lane: unit.lane,
+            by: why.by,
+            src: why.src,
+          });
+
+          notes[unit.lane].lost[side] += 1;
+          cause.delete(unit.uid);
+        }
+
+        if (unit.banished) {
+          continue;
+        }
+
+        // Last Will: the front ally in its lane, else the front
+        // ally of the leftmost lane (no randomness in combat).
         if (unit.lastwill > 0) {
-          const allies =
-            list.filter(
-              (ally) => ally.hp > 0
-            );
+          const ally =
+            laneUnits(side, unit.lane)[0] ??
+            [0, 1, 2]
+              .map((lane) => laneUnits(side, lane)[0])
+              .find(Boolean);
 
-          if (allies.length > 0) {
-            const ally =
-              allies[rng.int(0, allies.length - 1)];
-
+          if (ally) {
             ally.atk += unit.lastwill;
             ally.hp += unit.lastwill;
             ally.maxHp += unit.lastwill;
           }
         }
 
-        let insertAt = i;
+        const haunted =
+          trapOn(side, unit.lane);
 
-        if (
-          unit.spawn > 0 &&
-          list.length < BOARD_MAX
+        if (unit.revive) {
+          unit.revive = false;
+          unit.hp = unit.reviveFull ? unit.maxHp : 1;
+          unit.lastwill = 0;
+          unit.spawn = 0;
+
+          list.splice(i, 0, unit);
+        } else if (
+          haunted &&
+          haunted.def.effect === "revive" &&
+          !unit.token
         ) {
+          flip(side, haunted, [unit.uid]);
+
+          unit.hp = unit.maxHp;
+          unit.lastwill = 0;
+          unit.spawn = 0;
+
+          list.splice(i, 0, unit);
+        } else if (unit.spawn > 0) {
           const token =
             blankCUnit(
               tokenUid,
@@ -2039,38 +2904,65 @@ export function resolveCombat(
 
           tokenUid += 1;
 
+          names.set(token.uid, "Token");
+
           token.atk = unit.spawn;
           token.hp = unit.spawn;
           token.maxHp = unit.spawn;
           token.token = true;
+          token.lane = unit.lane;
+          token.y = unit.y;
 
-          list.splice(insertAt, 0, token);
-
-          insertAt += 1;
+          list.splice(i, 0, token);
         }
 
-        if (
-          unit.revive &&
-          list.length < BOARD_MAX
-        ) {
-          unit.revive = false;
-          unit.hp = unit.reviveFull ? unit.maxHp : 1;
-          unit.lastwill = 0;
-          unit.spawn = 0;
-
-          list.splice(insertAt, 0, unit);
-        }
+        i += 1;
       }
     }
   };
+
+  const flush = () => {
+    const out = {
+      hits,
+      castle: castleHits,
+      traps: flips,
+      deaths,
+    };
+
+    hits = [];
+    castleHits = [];
+    flips = [];
+    deaths = [];
+
+    return out;
+  };
+
+  /** The front enemy of the first lane (mid, left, right) with one. */
+  const firstFront = (
+    side: 0 | 1
+  ) =>
+    LANE_ORDER.map(
+      (lane) => laneUnits(side, lane)[0]
+    ).find(Boolean) ?? null;
+
+  /** The enemy with the most ATK (ties: lowest uid). */
+  const strongest = (
+    side: 0 | 1
+  ) =>
+    [...sides[side]]
+      .filter(
+        (unit) => unit.hp > 0
+      )
+      .sort(
+        (a, b) => b.atk - a.atk || a.uid - b.uid
+      )[0] ?? null;
 
   push({
     k: "start",
   });
 
-  // ---- Start of combat ----
-  // (Bosses have no FIRE / Fiend synergy, so a Boss fight draws
-  // exactly the same random numbers as before ghosts existed.)
+  // ---- Start of combat: Fiend, FIRE, Ambush ----
+  // (Bosses have no synergies: they draw no extra random numbers.)
   const synergyOf = [
     player,
     foe,
@@ -2081,7 +2973,7 @@ export function resolveCombat(
       synergyOf[side].fiend;
 
     if (fiend > 0) {
-      for (const unit of sides[side === 0 ? 1 : 0]) {
+      for (const unit of sides[enemyOf(side)]) {
         unit.atk = Math.max(
           0,
           unit.atk - (fiend === 2 ? 3 : 1)
@@ -2095,7 +2987,7 @@ export function resolveCombat(
       synergyOf[side].fire;
 
     const enemy =
-      sides[side === 0 ? 1 : 0];
+      sides[enemyOf(side)];
 
     if (
       fire === 0 ||
@@ -2104,16 +2996,18 @@ export function resolveCombat(
       continue;
     }
 
+    // FIRE 3: the front enemy of the first busy lane; 5: everyone.
     const targets =
       fire === 2
         ? [...enemy]
-        : [enemy[rng.int(0, enemy.length - 1)]];
+        : [firstFront(enemyOf(side)) as CUnit];
 
     for (const target of targets) {
-      hit(target, 3, false, false);
+      hit(target, 3, false, false, -1, "fire");
     }
 
     processDeaths();
+    flush();
 
     push({
       k: "ambush",
@@ -2126,7 +3020,7 @@ export function resolveCombat(
   for (const side of [0, 1] as const) {
     for (const unit of [...sides[side]]) {
       const enemy =
-        sides[side === 0 ? 1 : 0];
+        sides[enemyOf(side)];
 
       if (
         unit.ambush <= 0 ||
@@ -2137,17 +3031,15 @@ export function resolveCombat(
         continue;
       }
 
+      // The front enemy in its lane, else the strongest enemy.
       const target =
-        enemy[rng.int(0, enemy.length - 1)];
+        laneUnits(enemyOf(side), unit.lane)[0] ??
+        (strongest(enemyOf(side)) as CUnit);
 
-      hit(
-        target,
-        unit.ambush,
-        false,
-        false
-      );
+      hit(target, unit.ambush, false, false, unit.uid, "ambush");
 
       processDeaths();
+      flush();
 
       push({
         k: "ambush",
@@ -2158,175 +3050,316 @@ export function resolveCombat(
     }
   }
 
-  // ---- Attacks ----
-  let attacker: 0 | 1 =
-    sides[0].length > sides[1].length
-      ? 0
-      : sides[1].length > sides[0].length
-        ? 1
-        : rng.chance(0.5)
-          ? 0
-          : 1;
+  // ---- Ticks ----
+  let quiet = 0;
 
-  const next = [
-    0,
-    0,
-  ];
+  for (let tick = 0; tick < MAX_TICKS && quiet < STALL_TICKS; tick++) {
+    const attackers =
+      sides[0].some((unit) => !unit.def) ||
+      sides[1].some((unit) => !unit.def);
 
-  const pickAttacker = (
-    side: 0 | 1
-  ) => {
-    const list =
-      sides[side];
-
-    for (let k = 0; k < list.length; k++) {
-      const index =
-        (next[side] + k) % list.length;
-
-      if (list[index].atk > 0) {
-        return list[index];
-      }
-    }
-
-    return null;
-  };
-
-  for (let step = 0; step < MAX_COMBAT_STEPS; step++) {
-    if (
-      !alive(0) ||
-      !alive(1)
-    ) {
+    if (!attackers) {
       break;
     }
 
-    const unit =
-      pickAttacker(attacker);
+    const before =
+      JSON.stringify(
+        [...sides[0], ...sides[1]].map(
+          (unit) => [unit.uid, unit.y, unit.hp]
+        )
+      );
 
-    if (!unit) {
-      if (!pickAttacker(attacker === 0 ? 1 : 0)) {
-        break;
-      }
+    // 1. Clash: the two front units of a lane, if adjacent.
+    for (let lane = 0; lane < LANES; lane++) {
+      const a =
+        laneUnits(0, lane)[0];
 
-      attacker = attacker === 0 ? 1 : 0;
-
-      continue;
-    }
-
-    const own =
-      sides[attacker];
-
-    const enemySide =
-      attacker === 0 ? 1 : 0;
-
-    const position =
-      own.indexOf(unit);
-
-    const swings =
-      unit.double ? 2 : 1;
-
-    for (let swing = 0; swing < swings; swing++) {
-      const enemy =
-        sides[enemySide];
+      const b =
+        laneUnits(1, lane)[0];
 
       if (
-        unit.hp <= 0 ||
-        !own.includes(unit) ||
-        enemy.length === 0
+        !a ||
+        !b ||
+        b.y - a.y !== 1
       ) {
-        break;
+        continue;
       }
 
-      const taunts =
-        enemy.filter(
-          (foe) => foe.taunt
-        );
-
-      const choices =
-        taunts.length > 0
-          ? taunts
-          : enemy;
-
-      const target =
-        choices[rng.int(0, choices.length - 1)];
-
-      const dealt =
-        unit.atk;
-
-      const taken =
-        target.atk;
-
-      hit(
-        target,
-        dealt,
-        unit.venom,
-        unit.pierce
+      // Simultaneous: both strike with what they had.
+      const strikes = [
+        {
+          from: a,
+          to: b,
+        },
+        {
+          from: b,
+          to: a,
+        },
+      ].map(
+        ({
+          from,
+          to,
+        }) => ({
+          from,
+          to,
+          amount: from.def ? Math.floor(from.atk / 2) : from.atk,
+          swings: from.double ? 2 : 1,
+        })
       );
 
-      hit(
-        unit,
-        taken,
-        target.venom,
-        false
-      );
+      for (const strike of strikes) {
+        for (let swing = 0; swing < strike.swings; swing++) {
+          if (swing > 0 && strike.to.hp <= 0) {
+            break;
+          }
 
-      processDeaths();
-
-      push({
-        k: "attack",
-        src: unit.uid,
-        dst: target.uid,
-      });
+          hit(
+            strike.to,
+            strike.amount,
+            strike.from.venom,
+            strike.from.pierce,
+            strike.from.uid,
+            strike.from.def ? "counter" : "attack"
+          );
+        }
+      }
     }
 
-    const nowAt =
-      own.indexOf(unit);
+    processDeaths();
 
-    next[attacker] =
-      nowAt >= 0
-        ? nowAt + 1
-        : position;
+    // 2. Move: attackers step forward, front first.
+    for (const side of [0, 1] as const) {
+      const dir =
+        dirOf(side);
 
-    attacker = enemySide;
+      for (let lane = 0; lane < LANES; lane++) {
+        for (const unit of laneUnits(side, lane)) {
+          if (
+            unit.def ||
+            unit.hp <= 0 ||
+            unit.gone
+          ) {
+            continue;
+          }
+
+          const next =
+            unit.y + dir;
+
+          if (
+            next === 0 ||
+            next === LANE_LEN + 1
+          ) {
+            // Breaks through: castle damage, then it leaves.
+            hitCastle(
+              enemyOf(side),
+              lane,
+              unit.castle,
+              unit.uid,
+              "breakthrough"
+            );
+
+            unit.gone = true;
+            unit.hp = 0;
+            unit.banished = true;
+
+            continue;
+          }
+
+          const blocked =
+            sides[0].concat(sides[1]).some(
+              (other) => other !== unit && other.lane === lane && other.y === next && other.hp > 0
+            );
+
+          if (blocked) {
+            continue;
+          }
+
+          unit.y = next;
+
+          const entered =
+            side === 0
+              ? next === HALF + 1
+              : next === HALF;
+
+          if (entered) {
+            enterTrap(
+              enemyOf(side),
+              unit
+            );
+          }
+        }
+      }
+
+      processDeaths();
+    }
+
+    const changed =
+      hits.length > 0 ||
+      castleHits.length > 0 ||
+      flips.length > 0 ||
+      JSON.stringify(
+        [...sides[0], ...sides[1]].map(
+          (unit) => [unit.uid, unit.y, unit.hp]
+        )
+      ) !== before;
+
+    quiet =
+      changed
+        ? 0
+        : quiet + 1;
+
+    push({
+      k: "tick",
+      ...flush(),
+    });
   }
 
+  // ---- Lanes held: a lane only one side still stands in chips
+  // the other castle for 1 (no stalling behind walls). ----
+  for (let lane = 0; lane < LANES; lane++) {
+    const mine =
+      laneUnits(0, lane).length;
+
+    const theirs =
+      laneUnits(1, lane).length;
+
+    if (mine > 0 && theirs === 0) {
+      notes[lane].held[0] = 1;
+      hitCastle(1, lane, 1, -1, "held");
+    } else if (theirs > 0 && mine === 0) {
+      notes[lane].held[1] = 1;
+      hitCastle(0, lane, 1, -1, "held");
+    }
+  }
+
+  if (castleHits.length > 0) {
+    push({
+      k: "tick",
+      ...flush(),
+    });
+  }
+
+  const recap =
+    notes.map(
+      (note, lane) => laneRecapLine(lane, note, sides[0].some((unit) => unit.lane === lane && unit.def))
+    );
+
+  const damage =
+    Math.min(cap, taken[0]);
+
+  const dealt =
+    Math.min(cap, taken[1]);
+
+  // Castle damage decides: more taken than dealt = loss.
   const result: "win" | "loss" | "tie" =
-    alive(0) && !alive(1)
-      ? "win"
-      : alive(1) && !alive(0)
-        ? "loss"
+    damage > dealt
+      ? "loss"
+      : dealt > damage
+        ? "win"
         : "tie";
-
-  let damage = 0;
-
-  if (result === "loss") {
-    damage =
-      wave.tier +
-      sides[1].reduce(
-        (sum, unit) => sum + (unit.boss ? 2 : 1),
-        0
-      );
-
-    const cap =
-      wave.wave <= 3
-        ? DAMAGE_CAP[0]
-        : wave.wave <= 6
-          ? DAMAGE_CAP[1]
-          : DAMAGE_CAP[2];
-
-    damage = Math.min(cap, damage);
-  }
 
   push({
     k: "end",
     result,
     damage,
+    dealt,
   });
 
   return {
     result,
     damage,
+    dealt,
+    recap,
     frames,
   };
+}
+
+const TRAP_VERB: Record<string, string> = {
+  destroy_min_atk: "destroyed",
+  destroy: "destroyed",
+  banish: "banished",
+  destroy_two: "destroyed",
+  wipe_lane: "wiped out",
+  bounce: "sent back",
+  reflect: "reflected",
+  revive: "revived",
+  no_castle_damage: "blocked",
+};
+
+/** "Left: Dark Magician broke through, -2 LP to their castle". */
+function laneRecapLine(
+  lane: number,
+  note: {
+    flips: TrapFlip[];
+    breaks: {
+      name: string;
+      amt: number;
+    }[][];
+    lost: number[];
+    held: number[];
+  },
+  myWall: boolean
+) {
+  const label =
+    ["Left", "Mid", "Right"][lane];
+
+  const parts: string[] = [];
+
+  for (const flip of note.flips) {
+    const trap =
+      TRAP_BY_ID.get(flip.id);
+
+    parts.push(
+      `${flip.side === 0 ? "your" : "their"} ${trap?.name ?? "trap"} ${TRAP_VERB[trap?.effect ?? "destroy"]} ${flip.dst.length > 1 ? `${flip.dst.length} monsters` : "an attacker"}`
+    );
+  }
+
+  const broke = (
+    list: {
+      name: string;
+      amt: number;
+    }[],
+    whose: string
+  ) => {
+    if (list.length === 0) {
+      return;
+    }
+
+    const total =
+      list.reduce(
+        (sum, entry) => sum + entry.amt,
+        0
+      );
+
+    const who =
+      list.length === 1
+        ? list[0].name
+        : `${list.length} monsters`;
+
+    parts.push(`${who} broke through, -${total} LP to ${whose} castle`);
+  };
+
+  broke(note.breaks[0], "their");
+  broke(note.breaks[1], "your");
+
+  if (note.held[0]) {
+    parts.push("you held the lane");
+  } else if (note.held[1]) {
+    parts.push("they held the lane");
+  }
+
+  if (parts.length === 0) {
+    if (note.lost[0] + note.lost[1] > 0) {
+      parts.push(`${note.lost[1]} destroyed, ${note.lost[0]} lost`);
+    } else {
+      parts.push(myWall ? "wall held" : "quiet");
+    }
+  }
+
+  const text =
+    parts.slice(0, 2).join(" · ");
+
+  return `${label}: ${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
 // ---------------------------------------------------------
@@ -2345,6 +3378,7 @@ function startNextTurn(
   state.gold = state.maxGold;
   state.tierCost = Math.max(0, state.tierCost - 1);
   state.actionsThisTurn = 0;
+  state.overlayUsed = false;
 
   if (state.frozen) {
     state.frozen = false;
@@ -2388,6 +3422,14 @@ function endTurn(
     }
   }
 
+  const myTraps =
+    state.traps.map(
+      (trap) => ({
+        id: trap.id,
+        lane: trap.lane,
+      })
+    );
+
   // The board that goes into this fight: a ghost for friends.
   state.snapshots.push({
     turn: state.turn,
@@ -2397,8 +3439,11 @@ function endTurn(
         atk: unit.atk,
         hp: unit.hp,
         golden: unit.golden,
+        lane: unit.lane,
+        def: unit.def,
       })
     ),
+    traps: myTraps,
   });
 
   const wave =
@@ -2419,18 +3464,20 @@ function endTurn(
     resolveCombat(
       state.board,
       wave,
-      createPrng(`${state.seed}:combat:${state.turn}`),
-      record
+      record,
+      myTraps
     );
 
   if (combat.result === "win") {
     state.wins += 1;
   } else if (combat.result === "loss") {
     state.losses += 1;
-    state.health -= combat.damage;
   } else {
     state.ties += 1;
   }
+
+  // Whatever broke through hurts, even in a won fight.
+  state.health -= combat.damage;
 
   state.history.push({
     wave: state.turn,
@@ -2460,12 +3507,15 @@ function endTurn(
     foe: name,
     result: combat.result,
     damage: combat.damage,
+    dealt: combat.dealt,
+    cap: damageCap(wave.wave),
+    recap: combat.recap,
     frames: combat.frames,
   };
 }
 
 const ACTION_RE =
-  /^(?:b(\d)|s(\d{1,5})|p(\d{1,5})\.(\d)|m(\d{1,5})\.(\d)|(r)|(f)|(u)|d(\d)|(e)|x(\d{1,5})\.(\d{1,5})|c(\d{1,2})\.(\d{1,5})(?:\.(\d{1,5}))?)$/;
+  /^(?:b(\d)|s(\d{1,5})|p(\d{1,5})\.(\d)|m(\d{1,5})\.(\d)|(r)|(f)|(u)|d(\d)|(e)|x(\d{1,5})\.(\d{1,5})|c(\d{1,2})\.(\d{1,5})(?:\.(\d{1,5}))?|t(\d{1,5}))$/;
 
 const MAX_ACTION_LENGTH = 16;
 
@@ -2568,6 +3618,9 @@ function applyMatched(
   const blockedByDiscover =
     state.discover !== null;
 
+  const lane =
+    (index: number) => Number(match[index]);
+
   // ---- buy ----
   if (match[1] !== undefined) {
     if (blockedByDiscover) {
@@ -2586,6 +3639,28 @@ function applyMatched(
 
     if (state.gold < UNIT_COST) {
       return "Not enough gold.";
+    }
+
+    if (isTrapId(id)) {
+      const free =
+        freeTrapLane(state);
+
+      if (free < 0) {
+        return "All 3 trap zones are full: sell a trap first.";
+      }
+
+      state.gold -= UNIT_COST;
+      state.shop[slot] = null;
+
+      state.traps.push({
+        uid: state.nextUid,
+        id,
+        lane: free,
+      });
+
+      state.nextUid += 1;
+
+      return null;
     }
 
     if (!hasRoom(state)) {
@@ -2608,16 +3683,32 @@ function applyMatched(
     return null;
   }
 
-  // ---- sell ----
+  // ---- sell (unit or trap) ----
   if (match[2] !== undefined) {
     if (blockedByDiscover) {
       return "Pick a discover option first.";
     }
 
+    const uid =
+      Number(match[2]);
+
+    const trapIndex =
+      state.traps.findIndex(
+        (trap) => trap.uid === uid
+      );
+
+    if (trapIndex >= 0) {
+      state.pool[state.traps[trapIndex].id] += 1;
+      state.traps.splice(trapIndex, 1);
+      state.gold += SELL_VALUE;
+
+      return null;
+    }
+
     const found =
       findUnit(
         state,
-        Number(match[2])
+        uid
       );
 
     if (!found) {
@@ -2640,7 +3731,7 @@ function applyMatched(
     return null;
   }
 
-  // ---- play from bench ----
+  // ---- play from bench into a lane ----
   if (match[3] !== undefined) {
     if (blockedByDiscover) {
       return "Pick a discover option first.";
@@ -2659,18 +3750,24 @@ function applyMatched(
       return "That unit is not on the bench.";
     }
 
+    const target =
+      lane(4);
+
+    if (target >= LANES) {
+      return "No such lane.";
+    }
+
     if (state.board.length >= BOARD_MAX) {
       return "The board is full.";
     }
 
-    const position =
-      Math.min(
-        Number(match[4]),
-        state.board.length
-      );
+    if (laneCounts(state.board)[target] >= LANE_MAX) {
+      return "That lane is full.";
+    }
 
     state.bench.splice(found.index, 1);
-    state.board.splice(position, 0, found.unit);
+    found.unit.lane = target;
+    state.board.push(found.unit);
 
     triggerRally(
       state,
@@ -2680,12 +3777,42 @@ function applyMatched(
     return null;
   }
 
-  // ---- move on board ----
+  // ---- move a board unit (or a trap) to a lane ----
   if (match[5] !== undefined) {
+    const uid =
+      Number(match[5]);
+
+    const target =
+      lane(6);
+
+    if (target >= LANES) {
+      return "No such lane.";
+    }
+
+    const trap =
+      state.traps.find(
+        (t) => t.uid === uid
+      );
+
+    if (trap) {
+      const other =
+        state.traps.find(
+          (t) => t.lane === target && t !== trap
+        );
+
+      if (other) {
+        other.lane = trap.lane;
+      }
+
+      trap.lane = target;
+
+      return null;
+    }
+
     const found =
       findUnit(
         state,
-        Number(match[5])
+        uid
       );
 
     if (
@@ -2695,15 +3822,17 @@ function applyMatched(
       return "That unit is not on the board.";
     }
 
-    const position =
-      Number(match[6]);
-
-    if (position >= state.board.length) {
-      return "No such board position.";
+    if (
+      found.unit.lane !== target &&
+      laneCounts(state.board)[target] >= LANE_MAX
+    ) {
+      return "That lane is full.";
     }
 
+    // Last in board order = front of its lane.
     state.board.splice(found.index, 1);
-    state.board.splice(position, 0, found.unit);
+    found.unit.lane = target;
+    state.board.push(found.unit);
 
     return null;
   }
@@ -2790,6 +3919,26 @@ function applyMatched(
       Number(match[14]),
       uids
     );
+  }
+
+  // ---- ATTACK / DEFENSE position ----
+  if (match[17] !== undefined) {
+    const found =
+      findUnit(
+        state,
+        Number(match[17])
+      );
+
+    if (
+      !found ||
+      found.where !== "board"
+    ) {
+      return "That unit is not on the board.";
+    }
+
+    found.unit.def = !found.unit.def;
+
+    return null;
   }
 
   // ---- end turn ----

@@ -17,6 +17,7 @@ import type {
 } from "@supabase/supabase-js";
 
 import {
+  BOARD_SCHEMA,
   ENGINE_VERSION,
   normalizeGhosts,
   turnSeconds,
@@ -170,6 +171,7 @@ async function freezeGhosts(
       {
         p_profile_id: userId,
         target_run_id: runId,
+        target_max_schema: BOARD_SCHEMA,
       }
     );
 
@@ -558,9 +560,11 @@ export async function submitArenaRun(
           turn: snapshot.turn,
           board: {
             units: snapshot.units,
+            traps: snapshot.traps,
           },
         })
       ),
+      target_board_schema: BOARD_SCHEMA,
     }
   );
 

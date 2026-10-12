@@ -18,6 +18,8 @@ import {
   LEGACY_LOG_REASON,
   MAX_WAVES,
   SELL_VALUE,
+  SUMMON_UNLOCK_WAVE,
+  TRAP_UNLOCK_WAVE,
   type GhostBoard,
   type Run,
   type Unit,
@@ -67,6 +69,8 @@ function give(
         atk: def.atk * (golden ? 2 : 1),
         hp: def.hp * (golden ? 2 : 1),
         golden,
+        lane: 1,
+        def: false,
       };
 
       run.state.nextUid += 1;
@@ -76,6 +80,18 @@ function give(
       return unit;
     }
   );
+}
+
+/** A run on the wave where Fusion / Xyz unlock. */
+function unlockedRun(
+  seed: string
+) {
+  const run =
+    createRun(seed);
+
+  run.state.turn = SUMMON_UNLOCK_WAVE;
+
+  return run;
 }
 
 function recipeIndex(
@@ -115,6 +131,7 @@ function friendGhosts(
           id,
           name,
           units: snapshot.units,
+          traps: snapshot.traps,
         });
 
         candidates.push({
@@ -163,6 +180,34 @@ describe("fusion + xyz data", () => {
     }
   });
 
+  it("unlock in stages: traps on wave 3, Fusion / Xyz on wave 4", () => {
+    const run =
+      createRun("stages");
+
+    const [a, b] =
+      give(run, ["mystic-tomato", "ufo-turtle"]);
+
+    expect(applyAction(run, `x${a.uid}.${b.uid}`).ok).toBe(false);
+
+    for (let turn = 1; turn < TRAP_UNLOCK_WAVE; turn++) {
+      expect(run.state.shop.some((id) => id !== null && id in run.state.pool && !UNIT_BY_ID.has(id))).toBe(false);
+
+      for (let i = 0; i < 3; i++) {
+        applyAction(run, "r");
+      }
+
+      expect(run.state.shop.every((id) => id === null || UNIT_BY_ID.has(id))).toBe(true);
+
+      applyAction(run, "e");
+    }
+
+    while (run.state.turn < SUMMON_UNLOCK_WAVE) {
+      applyAction(run, "e");
+    }
+
+    expect(applyAction(run, `x${a.uid}.${b.uid}`).ok).toBe(true);
+  });
+
   it("specials are never in the shop pool", () => {
     const run =
       createRun("pool");
@@ -180,7 +225,7 @@ describe("fusion + xyz data", () => {
 describe("overlay (Xyz)", () => {
   it("two Level 4 units become Number 39: Utopia in the first board slot", () => {
     const run =
-      createRun("xyz");
+      unlockedRun("xyz");
 
     const [a, b] =
       give(run, ["mystic-tomato", "ufo-turtle"]);
@@ -207,7 +252,7 @@ describe("overlay (Xyz)", () => {
 
   it("works across board and bench, and shows up in xyzOptions", () => {
     const run =
-      createRun("xyz-bench");
+      unlockedRun("xyz-bench");
 
     give(run, ["mystic-tomato"]);
     give(run, ["mother-grizzly"], "bench");
@@ -228,7 +273,7 @@ describe("overlay (Xyz)", () => {
 
   it("rejects different Levels, the same unit twice, Level 1-2 and specials", () => {
     const run =
-      createRun("xyz-bad");
+      unlockedRun("xyz-bad");
 
     const [four, three, two, twoB] =
       give(run, ["mystic-tomato", "baby-dragon", "jinzo-7", "man-eater-bug"]);
@@ -245,9 +290,32 @@ describe("overlay (Xyz)", () => {
     expect(run.state.board).toHaveLength(5);
   });
 
+  it("costs 1 gold and works once per turn", () => {
+    const run =
+      unlockedRun("xyz-limit");
+
+    const [a, b, c, d] =
+      give(run, ["mystic-tomato", "ufo-turtle", "mother-grizzly", "pyramid-turtle"]);
+
+    run.state.gold = 0;
+
+    expect(applyAction(run, `x${a.uid}.${b.uid}`).ok).toBe(false);
+
+    run.state.gold = 5;
+
+    expect(applyAction(run, `x${a.uid}.${b.uid}`).ok).toBe(true);
+    expect(run.state.gold).toBe(4);
+    expect(applyAction(run, `x${c.uid}.${d.uid}`).ok).toBe(false);
+
+    applyAction(run, "e");
+
+    expect(run.state.overlayUsed).toBe(false);
+    expect(applyAction(run, `x${c.uid}.${d.uid}`).ok).toBe(true);
+  });
+
   it("selling a special gives gold and leaves the pool alone", () => {
     const run =
-      createRun("sell-special");
+      unlockedRun("sell-special");
 
     const [utopia] =
       give(run, [XYZ_BY_RANK.get(4)!.id]);
@@ -268,7 +336,7 @@ describe("overlay (Xyz)", () => {
 describe("polymerization (Fusion)", () => {
   it("Dark Magician + Buster Blader = Dark Paladin", () => {
     const run =
-      createRun("fusion");
+      unlockedRun("fusion");
 
     const [dm, bb] =
       give(run, ["dark-magician", "buster-blader"]);
@@ -291,7 +359,7 @@ describe("polymerization (Fusion)", () => {
 
   it("'any Dragon' materials: Dark Magician Girl + a Dragon", () => {
     const run =
-      createRun("fusion-tribe");
+      unlockedRun("fusion-tribe");
 
     const [dmg, dragon, warrior] =
       give(run, ["dark-magician-girl", "baby-dragon", "command-knight"]);
@@ -309,7 +377,7 @@ describe("polymerization (Fusion)", () => {
 
   it("Blue-Eyes Ultimate Dragon needs a golden Blue-Eyes (three copies)", () => {
     const run =
-      createRun("beud");
+      unlockedRun("beud");
 
     const index =
       recipeIndex("blue-eyes-ultimate-dragon");
@@ -328,7 +396,7 @@ describe("polymerization (Fusion)", () => {
 
   it("unknown recipes and wrong material counts are rejected", () => {
     const run =
-      createRun("fusion-bad");
+      unlockedRun("fusion-bad");
 
     const [dm, bb] =
       give(run, ["dark-magician", "buster-blader"]);
@@ -387,7 +455,8 @@ describe("ghost assignment", () => {
 
     expect(pickGhosts("seed-1", candidates)).toEqual(first);
     expect(pickGhosts("seed-1", [...candidates].reverse())).toEqual(first);
-    expect(first).toHaveLength(MAX_WAVES);
+    // The last wave is always a Boss.
+    expect(first).toHaveLength(MAX_WAVES - 1);
   });
 
   it("rotates between friends and falls back when one has no board", () => {
@@ -614,6 +683,125 @@ describe("ghost runs", () => {
     }
   });
 
+  it("ghost boards keep their lanes, positions and traps", () => {
+    const table =
+      ghostTableFromRows([
+        {
+          turn: 1,
+          snapshot_id: "snap-1",
+          ghost_name: "Bossg",
+          board: {
+            units: [
+              {
+                id: "kuriboh",
+                atk: 1,
+                hp: 9,
+                golden: false,
+                lane: 0,
+                def: true,
+              },
+              {
+                id: "sangan",
+                atk: 2,
+                hp: 2,
+                golden: false,
+                lane: 7,
+                def: false,
+              },
+            ],
+            traps: [
+              {
+                id: "sakuretsu-armor",
+                lane: 1,
+              },
+              {
+                id: "waboku",
+                lane: 1,
+              },
+              {
+                id: "not-a-trap",
+                lane: 2,
+              },
+            ],
+          },
+        },
+      ]);
+
+    const ghost =
+      table[0]!;
+
+    expect(ghost.units.map((unit) => [unit.lane, unit.def])).toEqual([[0, true], [1, false]]);
+    expect(ghost.traps).toEqual([{ id: "sakuretsu-armor", lane: 1 }]);
+
+    // Its trap fires on the player's first attacker in that lane.
+    const run =
+      createRun("ghost-trap", table);
+
+    give(run, ["mystic-tomato"]);
+
+    const outcome =
+      applyAction(run, "e", { record: true });
+
+    const flipped =
+      outcome.ok
+        ? outcome.combat?.frames.flatMap((frame) => (frame.ev.k === "tick" ? frame.ev.traps : []))
+        : [];
+
+    expect(outcome.ok && outcome.combat?.foe).toBe("Bossg's board");
+    expect(flipped).toEqual([expect.objectContaining({ side: 1, id: "sakuretsu-armor" })]);
+  });
+
+  it("old schema-1 boards (no lanes) get an auto layout", () => {
+    const [ghost] =
+      ghostTableFromRows([
+        {
+          turn: 1,
+          snapshot_id: "old",
+          ghost_name: "Old",
+          board: {
+            units: [
+              { id: "kuriboh", atk: 1, hp: 9, golden: false },
+              { id: "sangan", atk: 3, hp: 2, golden: false },
+              { id: "mystic-tomato", atk: 3, hp: 3, golden: false },
+              { id: "gone-card", atk: 3, hp: 3, golden: false },
+            ],
+          },
+        },
+      ]);
+
+    expect(ghost?.units.map((unit) => [unit.id, unit.lane, unit.def])).toEqual([
+      ["kuriboh", 1, true],
+      ["sangan", 0, false],
+      ["mystic-tomato", 2, false],
+    ]);
+    expect(ghost?.traps).toEqual([]);
+  });
+
+  it("snapshots record lanes, positions and traps", () => {
+    const run =
+      createRun("snap-traps");
+
+    run.state.gold = 9;
+
+    const [unit] =
+      give(run, ["kuriboh"]);
+
+    run.state.traps.push({
+      uid: 999,
+      id: "waboku",
+      lane: 2,
+    });
+
+    applyAction(run, `t${unit.uid}`);
+    applyAction(run, "e");
+
+    expect(run.state.snapshots[0]).toEqual({
+      turn: 1,
+      units: [expect.objectContaining({ id: "kuriboh", lane: 1, def: true })],
+      traps: [{ id: "waboku", lane: 2 }],
+    });
+  });
+
   it("records the board of every turn as a snapshot", () => {
     const run =
       playBotRun("snapshots");
@@ -632,7 +820,7 @@ describe("ghost runs", () => {
 // Old (v1) runs
 // ---------------------------------------------------------
 
-describe("legacy v1 logs", () => {
+describe("legacy v1 / v2 logs", () => {
   it("are rejected cleanly, never crash", () => {
     const legacy = {
       v: 1,
@@ -651,6 +839,12 @@ describe("legacy v1 logs", () => {
     });
 
     expect(validateRun("old-run", legacy, 50000).ok).toBe(false);
+
+    // v2 (pre-lanes) logs too.
+    expect(replayLog("old-run", { v: 2, a: ["e"], g: [] })).toEqual({
+      ok: false,
+      reason: LEGACY_LOG_REASON,
+    });
 
     // A v1 log that used v1-only numbers (wave 20 etc.) is the same.
     expect(

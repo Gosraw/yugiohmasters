@@ -165,6 +165,25 @@ const FUSIONS = [
   ["Blue-Eyes Ultimate Dragon", [{ unit: "Blue-Eyes White Dragon", golden: true }]],
 ];
 
+// ---- Trap cards (shop, phase 2 lanes) ----
+// Set face-down on one lane (max 1 per lane). Each trap triggers
+// once per combat and stays (it is not used up). `trigger`:
+//   enter  = an enemy attacker steps into your half of the lane
+//   death  = one of your monsters in that lane is destroyed
+//   castle = an enemy would damage your castle from that lane
+//   [name, tier, effect, trigger, value]
+const TRAPS = [
+  ["Trap Hole", 1, "destroy_min_atk", "enter", 5],
+  ["Negate Attack", 1, "bounce", "enter", 0],
+  ["Waboku", 2, "no_castle_damage", "castle", 0],
+  ["Sakuretsu Armor", 2, "destroy", "enter", 0],
+  ["Magic Cylinder", 3, "reflect", "enter", 0],
+  ["Call of the Haunted", 3, "revive", "death", 0],
+  ["Mirror Force", 4, "destroy_two", "enter", 0],
+  ["Dimensional Prison", 5, "banish", "enter", 0],
+  ["Torrential Tribute", 6, "wipe_lane", "enter", 0],
+];
+
 // Combat keywords each Boss route leans on (bosses never use
 // shop-only abilities like rally / ascend).
 const ROUTE_KEYWORDS = {
@@ -372,6 +391,33 @@ for (let rank = 3; rank <= 8; rank++) {
   }
 }
 
+// ---- Traps ----
+const trapRows = await lookup(TRAPS.map((row) => row[0]));
+
+const traps = TRAPS.map(([name, tier, effect, trigger, value]) => {
+  const card = trapRows.get(name.toLowerCase());
+  if (!card) {
+    problems.push(`not in catalog: ${name}`);
+    return null;
+  }
+  if (!poolNames.has(name.toLowerCase())) {
+    problems.push(`not in Classic pool: ${name}`);
+  }
+  if (!/Trap/.test(card.card_type)) {
+    problems.push(`${name} is not a Trap Card`);
+  }
+  return {
+    id: slug(card.name),
+    name: card.name,
+    tier,
+    effect,
+    trigger,
+    value,
+    img: card.image_url_small,
+    art: card.image_url_cropped ?? null,
+  };
+}).filter(Boolean);
+
 // ---- Boss routes ----
 const routeNames = BOSS_ROUTES.flatMap((route) => [
   ...route.stages.map((stage) => stage.evolutionCard),
@@ -442,10 +488,10 @@ for (const unit of units) {
 
 writeFileSync(
   OUT,
-  `${JSON.stringify({ generatedBy: "data/autobattler/build-units.mjs", units, specials, fusions, routes }, null, 1)}\n`
+  `${JSON.stringify({ generatedBy: "data/autobattler/build-units.mjs", units, specials, fusions, traps, routes }, null, 1)}\n`
 );
 
-console.log(`wrote ${units.length} units, ${specials.length} specials, ${fusions.length} fusions, ${routes.length} routes -> ${path.relative(ROOT, OUT)}`);
+console.log(`wrote ${units.length} units, ${specials.length} specials, ${fusions.length} fusions, ${traps.length} traps, ${routes.length} routes -> ${path.relative(ROOT, OUT)}`);
 console.log("tiers", byTier);
 console.log("attributes", byAttr);
 console.log("tribes", byTribe);

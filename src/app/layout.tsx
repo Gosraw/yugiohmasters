@@ -61,7 +61,9 @@ const homeIntroScript =
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${cinzel.variable} ${inter.variable}`} suppressHydrationWarning>
-      <body>
+      {/* Browser extensions (e.g. Grammarly) add data-* attributes to
+          <body> before React hydrates; don't treat that as an app error. */}
+      <body suppressHydrationWarning>
         <Script id="dc-home-intro" strategy="beforeInteractive">
           {homeIntroScript}
         </Script>

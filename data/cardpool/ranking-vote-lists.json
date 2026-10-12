@@ -1,0 +1,3912 @@
+{
+ "generated_at": "2026-10-12T00:41:21.875Z",
+ "engine_version": "2026-09-01.2",
+ "correction_layer_version": "2026-10-12.1",
+ "vote_options": {
+  "rarity": {
+   "agree": "Agree",
+   "too_strong": "Too strong for this rarity: make it rarer (Legendary: ban it)",
+   "too_weak": "Too weak: make it more common"
+  },
+  "limited_1": {
+   "agree": "Agree: max 1 per deck",
+   "too_strong": "Too strong: ban it",
+   "too_weak": "Too weak: allow 3 per deck"
+  },
+  "forbidden": {
+   "agree": "Agree: keep it out",
+   "too_weak": "Allow it"
+  }
+ },
+ "totals": {
+  "lists": 25,
+  "entries": 451,
+  "votes": 411
+ },
+ "lists": [
+  {
+   "key": "proposal_forbidden",
+   "title": "Proposed: forbidden",
+   "description": "Unfair cards (locks, stall, one-turn-win loops). Agree = keep them out of the game.",
+   "items": [
+    {
+     "id": 82301904,
+     "name": "Chaos Emperor Dragon - Envoy of the End",
+     "proposed_verdict": "forbidden",
+     "confidence": "high",
+     "context": "Sends every card in both hands and on the field to the GY; named OUT by the owner. (category: board and hand wipe; confidence: high)",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 3078576,
+     "name": "Yata-Garasu",
+     "proposed_verdict": "forbidden",
+     "confidence": "high",
+     "context": "Yata-lock: skips the opponent's draw every turn once their hand and field are empty. (category: lock turn skip; confidence: high)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 23846921,
+     "name": "Arcana Force XXI - The World",
+     "proposed_verdict": "forbidden",
+     "confidence": "high",
+     "context": "Skips the opponent's whole turn every turn with a token/fodder engine - endless lock. (category: lock turn skip; confidence: high)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 35316708,
+     "name": "Time Seal",
+     "proposed_verdict": "forbidden",
+     "confidence": "high",
+     "context": "Opponent skips their next draw; Yata-style lock piece. (category: lock turn skip; confidence: high)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 61740673,
+     "name": "Imperial Order",
+     "proposed_verdict": "forbidden",
+     "confidence": "high",
+     "context": "Negates all Spells for the whole game for a small LP cost. (category: lock floodgate; confidence: high)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 93016201,
+     "name": "Royal Oppression",
+     "proposed_verdict": "forbidden",
+     "confidence": "high",
+     "context": "Negates every Special Summon on demand; summon floodgate. (category: lock floodgate; confidence: high)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 51452091,
+     "name": "Royal Decree",
+     "proposed_verdict": "forbidden",
+     "confidence": "high",
+     "context": "Negates all other Traps on the field permanently. (category: lock floodgate; confidence: high)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 47084486,
+     "name": "Vanity's Fiend",
+     "proposed_verdict": "forbidden",
+     "confidence": "high",
+     "context": "Neither player can Special Summon; named by the owner. (category: lock floodgate; confidence: high)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 5851097,
+     "name": "Vanity's Emptiness",
+     "proposed_verdict": "forbidden",
+     "confidence": "high",
+     "context": "Neither player can Special Summon; continuous Trap floodgate. (category: lock floodgate; confidence: high)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 72634965,
+     "name": "Vanity's Ruler",
+     "proposed_verdict": "forbidden",
+     "confidence": "high",
+     "context": "Opponent cannot Special Summon at all (one-sided). (category: lock floodgate; confidence: high)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 33746252,
+     "name": "Majesty's Fiend",
+     "proposed_verdict": "forbidden",
+     "confidence": "high",
+     "context": "Neither player can activate monster effects. (category: lock floodgate; confidence: high)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 42009836,
+     "name": "Fossil Dyna Pachycephalo",
+     "proposed_verdict": "forbidden",
+     "confidence": "high",
+     "context": "Wipes Special Summoned monsters and stops all Special Summons. (category: lock floodgate; confidence: high)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 59509952,
+     "name": "Archlord Kristya",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Self-summoning 2800 boss that also stops all Special Summons and returns to the Deck top. (category: lock floodgate; confidence: medium)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 84478195,
+     "name": "Barrier Statue of the Abyss",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "No Special Summons except one Attribute - attribute floodgate. (category: lock floodgate; confidence: medium)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 19740112,
+     "name": "Barrier Statue of the Drought",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "No Special Summons except one Attribute - attribute floodgate. (category: lock floodgate; confidence: medium)",
+     "sort_order": 15,
+     "vote_here": true
+    },
+    {
+     "id": 46145256,
+     "name": "Barrier Statue of the Heavens",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "No Special Summons except one Attribute - attribute floodgate. (category: lock floodgate; confidence: medium)",
+     "sort_order": 16,
+     "vote_here": true
+    },
+    {
+     "id": 47961808,
+     "name": "Barrier Statue of the Inferno",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "No Special Summons except one Attribute - attribute floodgate. (category: lock floodgate; confidence: medium)",
+     "sort_order": 17,
+     "vote_here": true
+    },
+    {
+     "id": 73356503,
+     "name": "Barrier Statue of the Stormwinds",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "No Special Summons except one Attribute - attribute floodgate. (category: lock floodgate; confidence: medium)",
+     "sort_order": 18,
+     "vote_here": true
+    },
+    {
+     "id": 10963799,
+     "name": "Barrier Statue of the Torrent",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "No Special Summons except one Attribute - attribute floodgate. (category: lock floodgate; confidence: medium)",
+     "sort_order": 19,
+     "vote_here": true
+    },
+    {
+     "id": 58921041,
+     "name": "Anti-Spell Fragrance",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "All Spells must be Set and wait a turn; cripples every Spell-based deck. (category: lock floodgate; confidence: medium)",
+     "sort_order": 20,
+     "vote_here": true
+    },
+    {
+     "id": 53334471,
+     "name": "Gozen Match",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Each player may control only 1 Attribute; built-in lock for mono decks. (category: lock floodgate; confidence: medium)",
+     "sort_order": 21,
+     "vote_here": true
+    },
+    {
+     "id": 90846359,
+     "name": "Rivalry of Warlords",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Each player may control only 1 Type; built-in lock for mono decks. (category: lock floodgate; confidence: medium)",
+     "sort_order": 22,
+     "vote_here": true
+    },
+    {
+     "id": 23516703,
+     "name": "Summon Limit",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Caps both players at 2 Summons per turn; anti-combo floodgate. (category: lock floodgate; confidence: medium)",
+     "sort_order": 23,
+     "vote_here": true
+    },
+    {
+     "id": 59305593,
+     "name": "Mistake",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Neither player can search the Deck; continuous floodgate. (category: lock floodgate; confidence: medium)",
+     "sort_order": 24,
+     "vote_here": true
+    },
+    {
+     "id": 27581098,
+     "name": "Non-Fusion Area",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Neither player can Fusion Summon - shuts off one of this format's two Extra Deck mechanics. (category: lock floodgate; confidence: medium)",
+     "sort_order": 25,
+     "vote_here": true
+    },
+    {
+     "id": 91279700,
+     "name": "Evilswarm Ophion",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Easy Rank 4 that stops all Level 5+ Special Summons (Fusion/Xyz bosses) and searches. (category: lock floodgate; confidence: medium)",
+     "sort_order": 26,
+     "vote_here": true
+    },
+    {
+     "id": 29549364,
+     "name": "Mask of Restrict",
+     "proposed_verdict": "forbidden",
+     "confidence": "low",
+     "context": "Neither player can Tribute; locks out Tribute-Summon bosses. (category: lock floodgate; confidence: low)",
+     "sort_order": 27,
+     "vote_here": true
+    },
+    {
+     "id": 85742772,
+     "name": "Gravity Bind",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Level 4+ monsters can never attack; classic stall for FTK/alt-win decks. (category: lock stall; confidence: medium)",
+     "sort_order": 28,
+     "vote_here": true
+    },
+    {
+     "id": 3136426,
+     "name": "Level Limit - Area B",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Forces all Level 4+ monsters into Defense Position; stall. (category: lock stall; confidence: medium)",
+     "sort_order": 29,
+     "vote_here": true
+    },
+    {
+     "id": 44656491,
+     "name": "Messenger of Peace",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Monsters with 1500+ ATK cannot attack for 100 LP per turn; stall. (category: lock stall; confidence: medium)",
+     "sort_order": 30,
+     "vote_here": true
+    },
+    {
+     "id": 17078030,
+     "name": "Wall of Revealing Light",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Pay LP once, opponent's monsters can't attack; stall for burn/alt-win decks. (category: lock stall; confidence: medium)",
+     "sort_order": 31,
+     "vote_here": true
+    },
+    {
+     "id": 18634367,
+     "name": "Red Screen",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Opponent's monsters cannot declare attacks (1000 LP per turn); stall. (category: lock stall; confidence: medium)",
+     "sort_order": 32,
+     "vote_here": true
+    },
+    {
+     "id": 60912752,
+     "name": "D.D. Borderline",
+     "proposed_verdict": "forbidden",
+     "confidence": "low",
+     "context": "Neither player can conduct a Battle Phase while you have no Spells in GY; stall. (category: lock stall; confidence: low)",
+     "sort_order": 33,
+     "vote_here": true
+    },
+    {
+     "id": 32723153,
+     "name": "Magical Explosion",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Burn OTK engine: 200 per Spell in GY with an empty hand (Empty Jar / burn FTK decks). (category: ftk otk engine; confidence: medium)",
+     "sort_order": 34,
+     "vote_here": true
+    },
+    {
+     "id": 39980304,
+     "name": "Chain Material",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Fusion from Deck/GY/field for free; core of Ancient Gear / Power Bond FTKs. (category: ftk otk engine; confidence: medium)",
+     "sort_order": 35,
+     "vote_here": true
+    },
+    {
+     "id": 11384280,
+     "name": "Cannon Soldier",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Unlimited Tribute-for-500 burn; loops with token/revival engines (Mass Driver already banned in 2014). (category: burn loop; confidence: medium)",
+     "sort_order": 36,
+     "vote_here": true
+    },
+    {
+     "id": 14702066,
+     "name": "Cannon Soldier MK-2",
+     "proposed_verdict": "forbidden",
+     "confidence": "low",
+     "context": "Unlimited Tribute-2-for-1500 burn; same loop as Cannon Soldier. (category: burn loop; confidence: low)",
+     "sort_order": 37,
+     "vote_here": true
+    },
+    {
+     "id": 59297550,
+     "name": "Wind-Up Magician",
+     "proposed_verdict": "forbidden",
+     "confidence": "medium",
+     "context": "Engine of the Wind-Up hand loop (Rat/Shark/Hunter) that strips the opponent's whole hand. (category: hand loop; confidence: medium)",
+     "sort_order": 38,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "proposal_limited",
+   "title": "Proposed: max 1 per deck",
+   "description": "Softer cases: playable, but only 1 copy per deck.",
+   "items": [
+    {
+     "id": 84636823,
+     "name": "Spell Canceller",
+     "proposed_verdict": "limited_1",
+     "confidence": "medium",
+     "context": "Imperial Order on a monster body; removable, so limit instead of ban. (category: lock floodgate; confidence: medium) Proposed rarity: Ultra Rare.",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 13974207,
+     "name": "Denko Sekka",
+     "proposed_verdict": "limited_1",
+     "confidence": "low",
+     "context": "Backrow floodgate on a 1700 body; removable, so limit instead of ban. (category: lock floodgate; confidence: low) Proposed rarity: Ultra Rare.",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 82732705,
+     "name": "Skill Drain",
+     "proposed_verdict": "limited_1",
+     "confidence": "low",
+     "context": "Negates every face-up monster effect for 1000 LP; strong lock for beatdown. NOTE: Jinzo Boss Route stage-1 support grant. (category: lock floodgate; confidence: low) Proposed rarity: Secret Rare. (Also on: Jinzo route.)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 68937720,
+     "name": "Mind Drain",
+     "proposed_verdict": "limited_1",
+     "confidence": "low",
+     "context": "Current text only stops hand monster effects (hand traps); mild floodgate. (category: lock floodgate; confidence: low) Proposed rarity: Ultra Rare.",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 99735427,
+     "name": "Shadow-Imprisoning Mirror",
+     "proposed_verdict": "limited_1",
+     "confidence": "low",
+     "context": "Negates all DARK monster effects - hits a huge share of the pool. (category: lock floodgate; confidence: low) Proposed rarity: Ultra Rare.",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 53341729,
+     "name": "Light-Imprisoning Mirror",
+     "proposed_verdict": "limited_1",
+     "confidence": "low",
+     "context": "Negates all LIGHT monster effects - hits a huge share of the pool. (category: lock floodgate; confidence: low) Proposed rarity: Ultra Rare.",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 94253609,
+     "name": "Elemental Absorber",
+     "proposed_verdict": "limited_1",
+     "confidence": "low",
+     "context": "One Attribute of the opponent's monsters can never attack; stall. (category: lock stall; confidence: low) Proposed rarity: Ultra Rare.",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 16923472,
+     "name": "Wind-Up Hunter",
+     "proposed_verdict": "limited_1",
+     "confidence": "low",
+     "context": "Random hand discard piece of the Wind-Up hand loop. (category: hand loop; confidence: low) Proposed rarity: Ultra Rare.",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 91623717,
+     "name": "Chain Strike",
+     "proposed_verdict": "limited_1",
+     "confidence": "low",
+     "context": "Chain-burn FTK enabler (400 x chain link). 2014 list had it Semi-Limited. (category: burn loop; confidence: low) Proposed rarity: Ultra Rare.",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 79875176,
+     "name": "Toon Cannon Soldier",
+     "proposed_verdict": "limited_1",
+     "confidence": "low",
+     "context": "Unlimited Tribute-for-500 burn like Cannon Soldier. NOTE: Toon Boss Route support grant. (category: burn loop; confidence: low) Proposed rarity: Ultra Rare. (Also on: Toon route.)",
+     "sort_order": 10,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "proposal_legendary",
+   "title": "Proposed: Legendary board wipes",
+   "description": "One-sided board wipes: only 1 copy exists in the whole league.",
+   "items": [
+    {
+     "id": 12580477,
+     "name": "Raigeki",
+     "proposed_verdict": "Legendary",
+     "confidence": "high",
+     "context": "Destroys all of the opponent's monsters; named by the owner. (category: mass removal; confidence: high) (Also on: Legendary cards.)",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 53129443,
+     "name": "Dark Hole",
+     "proposed_verdict": "Legendary",
+     "confidence": "high",
+     "context": "Destroys all monsters on the field; named by the owner. (category: mass removal; confidence: high) (Also on: Legendary cards.)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 18144507,
+     "name": "Harpie's Feather Duster",
+     "proposed_verdict": "Legendary",
+     "confidence": "high",
+     "context": "Destroys all of the opponent's Spells/Traps; named by the owner (2014: Forbidden). NOTE: Harpie Boss Route support grant. (category: mass removal; confidence: high) (Also on: Legendary cards, Harpie route.)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 19613556,
+     "name": "Heavy Storm",
+     "proposed_verdict": "Legendary",
+     "confidence": "medium",
+     "context": "Destroys all Spells/Traps on the field (2014: Forbidden). (category: mass removal; confidence: medium) (Also on: Legendary cards.)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 53582587,
+     "name": "Torrential Tribute",
+     "proposed_verdict": "Legendary",
+     "confidence": "medium",
+     "context": "Trap that destroys all monsters on a Summon. NOTE: Boss Route support grant. (category: mass removal; confidence: medium) (Also on: Legendary cards.)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 44095762,
+     "name": "Mirror Force",
+     "proposed_verdict": "Legendary",
+     "confidence": "medium",
+     "context": "Destroys all of the opponent's Attack Position monsters on an attack. (category: mass removal; confidence: medium) (Also on: Legendary cards.)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 69162969,
+     "name": "Lightning Vortex",
+     "proposed_verdict": "Legendary",
+     "confidence": "medium",
+     "context": "Discard 1: destroy all the opponent's face-up monsters (one-sided Raigeki). (category: mass removal; confidence: medium) (Also on: Legendary cards.)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 1224927,
+     "name": "Malevolent Catastrophe",
+     "proposed_verdict": "Legendary",
+     "confidence": "medium",
+     "context": "On an opponent's attack, destroys all Spells/Traps on the field. (category: mass removal; confidence: medium) (Also on: Legendary cards.)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 46772449,
+     "name": "Evilswarm Exciton Knight",
+     "proposed_verdict": "Legendary",
+     "confidence": "medium",
+     "context": "Generic Rank 4 that destroys all other cards on the field. (category: mass removal; confidence: medium) (Also on: Legendary cards.)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 42703248,
+     "name": "Giant Trunade",
+     "proposed_verdict": "Legendary",
+     "confidence": "low",
+     "context": "Returns all Spells/Traps to the hand (2014: Forbidden; season-1 calibration had it Ultra Rare). (category: mass removal; confidence: low) (Also on: Legendary cards.)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 57774843,
+     "name": "Judgment Dragon",
+     "proposed_verdict": "Legendary",
+     "confidence": "low",
+     "context": "Repeatable full-field wipe for 1000 LP on a Lightsworn boss. (category: mass removal; confidence: low) (Also on: Legendary cards.)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 64681432,
+     "name": "Gandora the Dragon of Destruction",
+     "proposed_verdict": "Legendary",
+     "confidence": "low",
+     "context": "Destroys and banishes every other card on the field. (category: mass removal; confidence: low) (Also on: Legendary cards.)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 40854197,
+     "name": "Elemental HERO Absolute Zero",
+     "proposed_verdict": "Legendary",
+     "confidence": "low",
+     "context": "Easy HERO Fusion; when it leaves the field all the opponent's monsters are destroyed. (category: mass removal; confidence: low) (Also on: Legendary cards.)",
+     "sort_order": 13,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "legendary",
+   "title": "Legendary cards",
+   "description": "Every proposed Legendary (1 copy in the whole league). Agree / too strong (ban it) / too weak (should be Secret Rare).",
+   "items": [
+    {
+     "id": 47297616,
+     "name": "Light and Darkness Dragon",
+     "proposed_verdict": "Legendary",
+     "context": "revives any monster, no lock | human calibration (round 2, 2026-08-30): Legendary",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 5861892,
+     "name": "Arcana Force EX - The Light Ruler",
+     "proposed_verdict": "Legendary",
+     "context": "human calibration (round 2, 2026-08-30): Legendary",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 4335427,
+     "name": "Sophia, Goddess of Rebirth",
+     "proposed_verdict": "Legendary",
+     "context": "human calibration (round 2, 2026-08-30): Legendary",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 69831560,
+     "name": "Arcana Force EX - The Dark Ruler",
+     "proposed_verdict": "Legendary",
+     "context": "human calibration (round 2, 2026-08-30): Legendary",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 67688478,
+     "name": "Gemini Imps",
+     "proposed_verdict": "Legendary",
+     "context": "used from the hand on the opponent's turn (hand trap) | passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 68140974,
+     "name": "Meklord Emperor Wisel",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 89111398,
+     "name": "Dark Dust Spirit",
+     "proposed_verdict": "Legendary",
+     "context": "human calibration (round 2, 2026-08-30): Legendary (Also on: Zombie route.)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 48229808,
+     "name": "Horus the Black Flame Dragon LV8",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 5795980,
+     "name": "Strike of the Monarchs",
+     "proposed_verdict": "Legendary",
+     "context": "close to the engine's Legendary gate (ceiling >= 9, generic, low dependency) and ranks inside the Legendary count",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 77498348,
+     "name": "Black Luster Soldier - Envoy of the Evening Twilight",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count (Also on: Chaos / Black Luster Soldier route.)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 31053337,
+     "name": "Blackwing - Abrolhos the Megaquake",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 983995,
+     "name": "Rebound",
+     "proposed_verdict": "Legendary",
+     "context": "close to the engine's Legendary gate (ceiling >= 9, generic, low dependency) and ranks inside the Legendary count",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 45452224,
+     "name": "Kinka-byo",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 56252810,
+     "name": "Assault Revival",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 22747316,
+     "name": "Retort",
+     "proposed_verdict": "Legendary",
+     "context": "generic removal / negation, no lock | close to the engine's Legendary gate (ceiling >= 9, generic, low dependency) and ranks inside the Legendary count",
+     "sort_order": 15,
+     "vote_here": true
+    },
+    {
+     "id": 73551138,
+     "name": "Gishki Emilia",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 16,
+     "vote_here": true
+    },
+    {
+     "id": 60417395,
+     "name": "Darkness Neosphere",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 17,
+     "vote_here": true
+    },
+    {
+     "id": 58058134,
+     "name": "Slacker Magician",
+     "proposed_verdict": "Legendary",
+     "context": "close to the engine's Legendary gate (ceiling >= 9, generic, low dependency) and ranks inside the Legendary count",
+     "sort_order": 18,
+     "vote_here": true
+    },
+    {
+     "id": 74841885,
+     "name": "Sky Scourge Invicil",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 19,
+     "vote_here": true
+    },
+    {
+     "id": 27769400,
+     "name": "Tualatin",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 20,
+     "vote_here": true
+    },
+    {
+     "id": 79473793,
+     "name": "White Night Dragon",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 21,
+     "vote_here": true
+    },
+    {
+     "id": 59371387,
+     "name": "The Resolute Meklord Army",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 22,
+     "vote_here": true
+    },
+    {
+     "id": 8967776,
+     "name": "Sephylon, the Ultimate Timelord",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 23,
+     "vote_here": true
+    },
+    {
+     "id": 18940556,
+     "name": "Ultimate Conductor Tyranno",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count (Also on: Dinosaur route.)",
+     "sort_order": 24,
+     "vote_here": true
+    },
+    {
+     "id": 88989706,
+     "name": "Great Dezard",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 25,
+     "vote_here": true
+    },
+    {
+     "id": 32543380,
+     "name": "Volcanic Doomfire",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 26,
+     "vote_here": true
+    },
+    {
+     "id": 51549976,
+     "name": "Final Inzektion",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 27,
+     "vote_here": true
+    },
+    {
+     "id": 57774843,
+     "name": "Judgment Dragon",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 28,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 85771019,
+     "name": "Darklord Asmodeus",
+     "proposed_verdict": "Legendary",
+     "context": "human calibration (round 2, 2026-08-30): Secret Rare or Legendary (Also on: Secret Rare border cases.)",
+     "sort_order": 29,
+     "vote_here": true
+    },
+    {
+     "id": 34487429,
+     "name": "Ancient City - Rainbow Ruins",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count (Also on: Crystal Beast route.)",
+     "sort_order": 30,
+     "vote_here": true
+    },
+    {
+     "id": 14005031,
+     "name": "Moon Dance Ritual",
+     "proposed_verdict": "Legendary",
+     "context": "close to the engine's Legendary gate (ceiling >= 9, generic, low dependency) and ranks inside the Legendary count",
+     "sort_order": 31,
+     "vote_here": true
+    },
+    {
+     "id": 48716527,
+     "name": "The Monarchs Erupt",
+     "proposed_verdict": "Legendary",
+     "context": "close to the engine's Legendary gate (ceiling >= 9, generic, low dependency) and ranks inside the Legendary count",
+     "sort_order": 32,
+     "vote_here": true
+    },
+    {
+     "id": 46772449,
+     "name": "Evilswarm Exciton Knight",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 33,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 53129443,
+     "name": "Dark Hole",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 34,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 18144507,
+     "name": "Harpie's Feather Duster",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 35,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 19613556,
+     "name": "Heavy Storm",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 36,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 12580477,
+     "name": "Raigeki",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 37,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 12600382,
+     "name": "Exodia Necross",
+     "proposed_verdict": "Legendary",
+     "context": "passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 38,
+     "vote_here": true
+    },
+    {
+     "id": 42703248,
+     "name": "Giant Trunade",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 39,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 64681432,
+     "name": "Gandora the Dragon of Destruction",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 40,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 1224927,
+     "name": "Malevolent Catastrophe",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 41,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 44095762,
+     "name": "Mirror Force",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 42,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 53582587,
+     "name": "Torrential Tribute",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 43,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 69162969,
+     "name": "Lightning Vortex",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 44,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 40854197,
+     "name": "Elemental HERO Absolute Zero",
+     "proposed_verdict": "Legendary",
+     "context": "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 45,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    }
+   ]
+  },
+  {
+   "key": "secret_border",
+   "title": "Secret Rare border cases",
+   "description": "Cards right on the Secret Rare line: just under Legendary, the weakest Secret Rares, and the strongest Ultra Rares.",
+   "items": [
+    {
+     "id": 85771019,
+     "name": "Darklord Asmodeus",
+     "proposed_verdict": "Legendary",
+     "context": "One of the strongest Ultra Rares. human calibration (round 2, 2026-08-30): Secret Rare or Legendary",
+     "sort_order": 1,
+     "vote_here": false,
+     "voted_in": "legendary"
+    },
+    {
+     "id": 53347303,
+     "name": "Blue-Eyes Shining Dragon",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. human calibration (round 2, 2026-08-30): Ultra Rare or Secret Rare (Also on: Blue-Eyes route.)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 2407234,
+     "name": "Number 69: Heraldry Crest",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. human calibration (round 2, 2026-08-30): Secret Rare or Legendary",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 23299957,
+     "name": "Vehicroid Connection Zone",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.34 (splashable engine)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 25924653,
+     "name": "Gladiator Beast Darius",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.33 (archetype)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 77679716,
+     "name": "Superheavy Samurai Soulbreaker Armor",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.33 (archetype)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 29146185,
+     "name": "World of Prophecy",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.33 (archetype)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 55589254,
+     "name": "Frost and Flame Dragon",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.31 (generic)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 40465719,
+     "name": "Common Charity",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.3 (generic)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 29590752,
+     "name": "Gladiator Beast Octavius",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.3 (splashable engine)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 58120309,
+     "name": "Starlight Road",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.3 (generic)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 83104731,
+     "name": "Ancient Gear Golem",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.29 (narrow support) (Also on: Ancient Gear route.)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 96427353,
+     "name": "Aqua Armor Ninja",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. turns on when you are behind (comeback card)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 51126152,
+     "name": "Night Express Knight",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.29 (narrow support)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 31328739,
+     "name": "Psi-Impulse",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.29 (generic)",
+     "sort_order": 15,
+     "vote_here": true
+    },
+    {
+     "id": 94950218,
+     "name": "Reverse Breaker",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.29 (splashable engine)",
+     "sort_order": 16,
+     "vote_here": true
+    },
+    {
+     "id": 63468625,
+     "name": "Meklord Astro Mekanikle",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.28 (narrow support)",
+     "sort_order": 17,
+     "vote_here": true
+    },
+    {
+     "id": 99212922,
+     "name": "White Dragon Ninja",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.28 (narrow support)",
+     "sort_order": 18,
+     "vote_here": true
+    },
+    {
+     "id": 47826112,
+     "name": "Poseidra, the Atlantean Dragon",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.27 (splashable engine) (Also on: Legendary Fisherman route.)",
+     "sort_order": 19,
+     "vote_here": true
+    },
+    {
+     "id": 40867519,
+     "name": "Silent Insect",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.27 (generic)",
+     "sort_order": 20,
+     "vote_here": true
+    },
+    {
+     "id": 86848580,
+     "name": "Ice Beast Zerofyne",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.26 (generic)",
+     "sort_order": 21,
+     "vote_here": true
+    },
+    {
+     "id": 37322745,
+     "name": "Naturia Forest",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.26 (narrow support)",
+     "sort_order": 22,
+     "vote_here": true
+    },
+    {
+     "id": 11819616,
+     "name": "Tytannial, Princess of Camellias",
+     "proposed_verdict": "Secret Rare",
+     "context": "One of the weakest Secret Rares. engine score 5.26 (generic)",
+     "sort_order": 23,
+     "vote_here": true
+    },
+    {
+     "id": 55690251,
+     "name": "Darklord Desire",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.25 (narrow support)",
+     "sort_order": 24,
+     "vote_here": true
+    },
+    {
+     "id": 76039636,
+     "name": "Doom Dozer",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.24 (narrow support)",
+     "sort_order": 25,
+     "vote_here": true
+    },
+    {
+     "id": 36521459,
+     "name": "Malefic Stardust Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.24 (narrow support)",
+     "sort_order": 26,
+     "vote_here": true
+    },
+    {
+     "id": 23689697,
+     "name": "Mobius the Mega Monarch",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.24 (narrow support)",
+     "sort_order": 27,
+     "vote_here": true
+    },
+    {
+     "id": 3064425,
+     "name": "Superheavy Samurai Soulbang Cannon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.24 (archetype)",
+     "sort_order": 28,
+     "vote_here": true
+    },
+    {
+     "id": 33017655,
+     "name": "The Gates of Dark World",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.24 (splashable engine)",
+     "sort_order": 29,
+     "vote_here": true
+    },
+    {
+     "id": 97403510,
+     "name": "Number 92: Heart-eartH Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.23 (generic)",
+     "sort_order": 30,
+     "vote_here": true
+    },
+    {
+     "id": 19684740,
+     "name": "Fairy Knight Ingunar",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.22 (generic)",
+     "sort_order": 31,
+     "vote_here": true
+    },
+    {
+     "id": 29424328,
+     "name": "Diabolos, King of the Abyss",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.2 (narrow support)",
+     "sort_order": 32,
+     "vote_here": true
+    },
+    {
+     "id": 38737148,
+     "name": "Lightray Daedalus",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.2 (narrow support) (Also on: Legendary Fisherman route.)",
+     "sort_order": 33,
+     "vote_here": true
+    },
+    {
+     "id": 58139128,
+     "name": "Gravekeeper's Shaman",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.19 (narrow support)",
+     "sort_order": 34,
+     "vote_here": true
+    },
+    {
+     "id": 57355219,
+     "name": "Paradox Fusion",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.18 (generic)",
+     "sort_order": 35,
+     "vote_here": true
+    },
+    {
+     "id": 53519297,
+     "name": "Blackboost",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.17 (splashable engine)",
+     "sort_order": 36,
+     "vote_here": true
+    },
+    {
+     "id": 48680970,
+     "name": "Eternal Soul",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.16 (splashable engine) (Also on: Dark Magician / Magician Girl route.)",
+     "sort_order": 37,
+     "vote_here": true
+    },
+    {
+     "id": 55758589,
+     "name": "Photon Wyvern",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.16 (splashable engine) (Also on: Galaxy / Photon route.)",
+     "sort_order": 38,
+     "vote_here": true
+    },
+    {
+     "id": 85605684,
+     "name": "Berserk Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.15 (narrow support) (Also on: Zombie route.)",
+     "sort_order": 39,
+     "vote_here": true
+    },
+    {
+     "id": 72443568,
+     "name": "Silent Magician LV8",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.15 (narrow support)",
+     "sort_order": 40,
+     "vote_here": true
+    },
+    {
+     "id": 2061963,
+     "name": "Number 104: Masquerade",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.13 (generic)",
+     "sort_order": 41,
+     "vote_here": true
+    },
+    {
+     "id": 88754763,
+     "name": "CXyz Coach Lord Ultimatrainer",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.11 (splashable engine)",
+     "sort_order": 42,
+     "vote_here": true
+    },
+    {
+     "id": 29436665,
+     "name": "Dark Eradicator Warlock",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. engine score 5.11 (narrow support) (Also on: Dark Magician / Magician Girl route.)",
+     "sort_order": 43,
+     "vote_here": true
+    },
+    {
+     "id": 6165656,
+     "name": "Number C88: Gimmick Puppet Disaster Leo",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. human calibration (round 2, 2026-08-30): Ultra Rare or Secret Rare",
+     "sort_order": 44,
+     "vote_here": true
+    },
+    {
+     "id": 17032740,
+     "name": "Elemental HERO Chaos Neos",
+     "proposed_verdict": "Ultra Rare",
+     "context": "One of the strongest Ultra Rares. human calibration (round 2, 2026-08-30): Ultra Rare or Secret Rare",
+     "sort_order": 45,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_chaos_bls",
+   "title": "Chaos / Black Luster Soldier route",
+   "description": "The 15 strongest pool cards for the Chaos / Black Luster Soldier Boss route theme.",
+   "items": [
+    {
+     "id": 77498348,
+     "name": "Black Luster Soldier - Envoy of the Evening Twilight",
+     "proposed_verdict": "Legendary",
+     "context": "Theme: archetype tag \"Black Luster Soldier\". passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 1,
+     "vote_here": false,
+     "voted_in": "legendary"
+    },
+    {
+     "id": 80208158,
+     "name": "D.D. Esper Star Sparrow",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: archetype tag \"D.D.\". turns on when you are behind (comeback card)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 47017574,
+     "name": "Number C92: Heart-eartH Chaos Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Chaos\". human calibration (round 2, 2026-08-30): Ultra Rare",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 95291684,
+     "name": "D.D. Unicorn Knight",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"D.D.\". engine score 5.61 (splashable engine)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 72989439,
+     "name": "Black Luster Soldier - Envoy of the Beginning",
+     "proposed_verdict": "Secret Rare",
+     "context": "Boss route card. engine score 5.52 (splashable engine)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 24508238,
+     "name": "D.D. Crow",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"D.D.\". used from the hand on the opponent's turn (hand trap) | human calibration (approved 9, 2026-08-30): Ultra Rare",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 72630549,
+     "name": "Chaos Command Magician",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 5.27 (splashable engine)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 61044390,
+     "name": "Chaos End",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Chaos\". engine score 5.21 (splashable engine)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 80925836,
+     "name": "Koa'ki Meiru Doom",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 5.14 (splashable engine)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 9596126,
+     "name": "Chaos Sorcerer",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.98 (splashable engine)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 25460258,
+     "name": "Darkflare Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 4.98 (generic)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 70074904,
+     "name": "D.D. Assailant",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"D.D.\". engine score 4.85 (splashable engine)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 37043180,
+     "name": "D.D. Warrior",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"D.D.\". engine score 4.85 (splashable engine)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 7572887,
+     "name": "D.D. Warrior Lady",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.85 (splashable engine)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 4081825,
+     "name": "Chaos Infinity",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Chaos\". engine score 4.8 (splashable engine)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_dark_magician",
+   "title": "Dark Magician / Magician Girl route",
+   "description": "The 15 strongest pool cards for the Dark Magician / Magician Girl Boss route theme.",
+   "items": [
+    {
+     "id": 50725996,
+     "name": "Dark Magician Knight",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: archetype tag \"Dark Magician\". engine score 5.86 (splashable engine)",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 71625222,
+     "name": "Time Wizard",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Magician\". engine score 5.3 (splashable engine)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 48680970,
+     "name": "Eternal Soul",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 5.16 (splashable engine)",
+     "sort_order": 3,
+     "vote_here": false,
+     "voted_in": "secret_border"
+    },
+    {
+     "id": 29436665,
+     "name": "Dark Eradicator Warlock",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Dark Magician\". engine score 5.11 (narrow support)",
+     "sort_order": 4,
+     "vote_here": false,
+     "voted_in": "secret_border"
+    },
+    {
+     "id": 2314238,
+     "name": "Dark Magic Attack",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 5.08 (splashable engine)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 33225925,
+     "name": "Milla the Temporal Magician",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Magician\". engine score 4.91 (narrow support)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 30603688,
+     "name": "Apprentice Illusion Magician",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Dark Magician\". used from the hand on the opponent's turn (hand trap)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 28553439,
+     "name": "Magical Dimension",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.66 (generic)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 7198399,
+     "name": "Chocolate Magician Girl",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Magician Girl\". engine score 4.59 (splashable engine)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 63391643,
+     "name": "Thousand Knives",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.53 (splashable engine)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 46986420,
+     "name": "Dark Magician",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.27 (narrow support)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 9156135,
+     "name": "Apprentice Magician",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.22 (narrow support)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 30208479,
+     "name": "Magician of Black Chaos",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Dark Magician\". engine score 4.18 (narrow support)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 45141844,
+     "name": "Old Vindictive Magician",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.17 (generic)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 98494543,
+     "name": "Magical Stone Excavation",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 3.99 (generic)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_elemental_hero",
+   "title": "Elemental HERO route",
+   "description": "The 15 strongest pool cards for the Elemental HERO Boss route theme.",
+   "items": [
+    {
+     "id": 5126490,
+     "name": "Neos Wiseman",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Elemental HERO\". human calibration (round 2, 2026-08-30): Ultra Rare",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 52098461,
+     "name": "Wrath of Neos",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: archetype tag \"Elemental HERO\". engine score 5.41 (splashable engine)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 29612557,
+     "name": "Cyclone Boomerang",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Elemental HERO\". engine score 5.25 (splashable engine)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 79979666,
+     "name": "Elemental HERO Bubbleman",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Elemental HERO\". engine score 4.84 (splashable engine)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 82639107,
+     "name": "Convert Contact",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Neo-Spacian\". turns on when you are behind (comeback card)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 71060915,
+     "name": "Feather Wind",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Elemental HERO\". engine score 4.8 (splashable engine)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 27780618,
+     "name": "Vision HERO Vyon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Vision HERO\". engine score 4.8 (narrow support)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 51085303,
+     "name": "Elemental HERO Poison Rose",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Elemental HERO\". engine score 4.78 (narrow support)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 50304345,
+     "name": "Evil HERO Infernal Prodigy",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Evil HERO\". turns on when you are behind (comeback card)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 55428811,
+     "name": "Fifth Hope",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Elemental HERO\". engine score 4.68 (archetype)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 1539051,
+     "name": "Space Gift",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Neo-Spacian\". engine score 4.58 (splashable engine)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 47274077,
+     "name": "Neos Force",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Elemental HERO\". engine score 4.53 (splashable engine)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 41077745,
+     "name": "Elemental HERO Ice Edge",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Elemental HERO\". engine score 4.45 (splashable engine)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 35255456,
+     "name": "Miracle Contact",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Elemental HERO\". engine score 4.4 (splashable engine)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 78387742,
+     "name": "Fake Hero",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Elemental HERO\". engine score 4.36 (splashable engine)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_blue_eyes",
+   "title": "Blue-Eyes route",
+   "description": "The 15 strongest pool cards for the Blue-Eyes Boss route theme.",
+   "items": [
+    {
+     "id": 53347303,
+     "name": "Blue-Eyes Shining Dragon",
+     "proposed_verdict": "Secret Rare",
+     "context": "Boss route card. human calibration (round 2, 2026-08-30): Ultra Rare or Secret Rare",
+     "sort_order": 1,
+     "vote_here": false,
+     "voted_in": "secret_border"
+    },
+    {
+     "id": 17655904,
+     "name": "Burst Stream of Destruction",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 5.08 (splashable engine)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 89631139,
+     "name": "Blue-Eyes White Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.53 (narrow support)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 39701395,
+     "name": "Cards of Consonance",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.41 (generic)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 38120068,
+     "name": "Trade-In",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.41 (generic) (Also on: Crystal Beast route, Red-Eyes route.)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 88241506,
+     "name": "Maiden with Eyes of Blue",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.11 (archetype)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 6853254,
+     "name": "Return of the Dragon Lords",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.93 (narrow support) (Also on: Red-Eyes route.)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 79814787,
+     "name": "The White Stone of Legend",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.93 (narrow support)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 81380218,
+     "name": "Chorus of Sanctuary",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 41620959,
+     "name": "Dragon Shrine",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 71490127,
+     "name": "Dragon's Mirror",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 87025064,
+     "name": "Silver's Cry",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 93437091,
+     "name": "Bingo Machine, Go!!!",
+     "proposed_verdict": "Normal",
+     "context": "Theme: archetype tag \"Blue-Eyes\". engine score 3.75 (narrow support)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 34627841,
+     "name": "Kaibaman",
+     "proposed_verdict": "Normal",
+     "context": "Theme: archetype tag \"Blue-Eyes\". engine score 3.2 (narrow support)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 73398797,
+     "name": "Paladin of White Dragon",
+     "proposed_verdict": "Normal",
+     "context": "Theme: archetype tag \"Blue-Eyes\". engine score 2.92 (narrow support)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_cyber_dragon",
+   "title": "Cyber Dragon route",
+   "description": "The 15 strongest pool cards for the Cyber Dragon Boss route theme.",
+   "items": [
+    {
+     "id": 12670770,
+     "name": "Cyber Network",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: archetype tag \"Cyber Dragon\". engine score 5.55 (splashable engine) (Also on: Machina route.)",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 33093439,
+     "name": "Cyber Eltanin",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: name. engine score 4.86 (narrow support) (Also on: Machina route.)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 3370104,
+     "name": "Cyber Phoenix",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: name. engine score 4.77 (generic) (Also on: Machina route.)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 3657444,
+     "name": "Cyber Valley",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.74 (generic)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 52875873,
+     "name": "Evolution Burst",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Cyber Dragon\". engine score 4.53 (splashable engine)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 58069384,
+     "name": "Cyber Dragon Nova",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Cyber Dragon\". engine score 4.43 (archetype)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 1710476,
+     "name": "Malefic Cyber End Dragon",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: name. engine score 4.43 (narrow support)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 23893227,
+     "name": "Cyber Dragon Core",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. turns on when you are behind (comeback card)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 86686671,
+     "name": "Cyber Repair Plant",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Cyber Dragon\". engine score 4.33 (splashable engine)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 92773018,
+     "name": "Cybernetic Hidden Technology",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Cyber Dragon\". engine score 4.25 (splashable engine)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 70095154,
+     "name": "Cyber Dragon",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. turns on when you are behind (comeback card)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 77625948,
+     "name": "Cyberdark Edge",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Cyberdark\". engine score 4.22 (narrow support)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 41230939,
+     "name": "Cyberdark Horn",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Cyberdark\". engine score 4.22 (narrow support)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 3019642,
+     "name": "Cyberdark Keel",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Cyberdark\". engine score 4.22 (narrow support)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 29975188,
+     "name": "Cyber Dragon Vier",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Cyber Dragon\". engine score 4.09 (narrow support)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_jinzo",
+   "title": "Jinzo route",
+   "description": "The 15 strongest pool cards for the Jinzo Boss route theme.",
+   "items": [
+    {
+     "id": 82732705,
+     "name": "Skill Drain",
+     "proposed_verdict": "Secret Rare",
+     "context": "Boss route card. engine score 5.47 (generic)",
+     "sort_order": 1,
+     "vote_here": false,
+     "voted_in": "proposal_limited"
+    },
+    {
+     "id": 303660,
+     "name": "Amplifier",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 5.25 (generic)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 35803249,
+     "name": "Jinzo - Lord",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. human calibration (round 2, 2026-08-30): Ultra Rare",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 77585513,
+     "name": "Jinzo",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.53 (narrow support)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 83968380,
+     "name": "Jar of Greed",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.43 (splashable engine)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 89041555,
+     "name": "Blast Held by a Tribute",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.38 (generic)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 59616123,
+     "name": "Trap Stun",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.18 (narrow support)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 66788016,
+     "name": "Fissure",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 24874630,
+     "name": "Fiend's Sanctuary",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.88 (narrow support)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 32809211,
+     "name": "Jinzo #7",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.88 (narrow support)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 9418534,
+     "name": "Jinzo - Returner",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. engine score 3.75 (narrow support)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 11961740,
+     "name": "Different Dimension Capsule",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. engine score 3.64 (narrow support) (Also on: Toon route.)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 81172176,
+     "name": "Fiend Comedian",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. engine score 3.64 (narrow support)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 68540059,
+     "name": "Metalmorph",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. engine score 3.64 (narrow support)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 4178474,
+     "name": "Raigeki Break",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. generic removal / negation, no lock",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_armed_dragon_ojama",
+   "title": "Chazz / Armed Dragon / Ojama route",
+   "description": "The 15 strongest pool cards for the Chazz / Armed Dragon / Ojama Boss route theme.",
+   "items": [
+    {
+     "id": 65192027,
+     "name": "Dark Armed Dragon",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: archetype tag \"Armed Dragon\". engine score 5.69 (splashable engine)",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 73879377,
+     "name": "Armed Dragon LV7",
+     "proposed_verdict": "Secret Rare",
+     "context": "Boss route card. engine score 5.47 (splashable engine)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 59464593,
+     "name": "Armed Dragon LV10",
+     "proposed_verdict": "Secret Rare",
+     "context": "Boss route card. engine score 5.38 (splashable engine)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 8251996,
+     "name": "Ojama Delta Hurricane!!",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.95 (splashable engine)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 98259197,
+     "name": "Ojamuscle",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Ojama\". engine score 4.95 (splashable engine)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 46384672,
+     "name": "Armed Dragon LV5",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.76 (splashable engine)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 89189982,
+     "name": "Metaphys Armed Dragon",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Armed Dragon\". engine score 4.3 (narrow support)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 24643836,
+     "name": "Ojamagic",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.03 (splashable engine)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 61127349,
+     "name": "Big Bang Shot",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 980973,
+     "name": "Armed Dragon LV3",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.85 (narrow support)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 64627453,
+     "name": "Ojama Blue",
+     "proposed_verdict": "Rare",
+     "context": "Theme: archetype tag \"Ojama\". engine score 3.83 (narrow support)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 37132349,
+     "name": "Ojama Red",
+     "proposed_verdict": "Rare",
+     "context": "Theme: archetype tag \"Ojama\". engine score 3.82 (narrow support)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 25290459,
+     "name": "Level Up!",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. engine score 3.79 (narrow support)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 90011152,
+     "name": "Ojama Country",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. engine score 3.78 (narrow support)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 68473226,
+     "name": "Hardened Armed Dragon",
+     "proposed_verdict": "Normal",
+     "context": "Theme: name. engine score 3.73 (narrow support)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_crystal_beast",
+   "title": "Crystal Beast route",
+   "description": "The 15 strongest pool cards for the Crystal Beast Boss route theme.",
+   "items": [
+    {
+     "id": 79856792,
+     "name": "Rainbow Dragon",
+     "proposed_verdict": "Secret Rare",
+     "context": "Boss route card. human calibration (round 2, 2026-08-30): Secret Rare",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 79407975,
+     "name": "Rainbow Dark Dragon",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: name. human calibration (round 2, 2026-08-30): Secret Rare",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 34487429,
+     "name": "Ancient City - Rainbow Ruins",
+     "proposed_verdict": "Legendary",
+     "context": "Theme: archetype tag \"Crystal Beast\". passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 3,
+     "vote_here": false,
+     "voted_in": "legendary"
+    },
+    {
+     "id": 12644061,
+     "name": "Advanced Dark",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Crystal Beast\". engine score 5.11 (splashable engine)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 11136371,
+     "name": "Counter Gem",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Crystal Beast\". engine score 4.96 (splashable engine)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 93260132,
+     "name": "Spell Shattering Arrow",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.66 (generic)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 7617253,
+     "name": "Rainbow Path",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.44 (splashable engine)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 598988,
+     "name": "Malefic Rainbow Dragon",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: name. engine score 4.43 (narrow support)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 38120068,
+     "name": "Trade-In",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.41 (generic)",
+     "sort_order": 9,
+     "vote_here": false,
+     "voted_in": "route_blue_eyes"
+    },
+    {
+     "id": 60876124,
+     "name": "Rare Value",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.36 (splashable engine)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 96331676,
+     "name": "Crystal Raigeki",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Crystal Beast\". engine score 4.25 (splashable engine)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 7093411,
+     "name": "Crystal Beast Sapphire Pegasus",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.18 (narrow support)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 32933942,
+     "name": "Crystal Beast Amethyst Cat",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.15 (narrow support)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 95600067,
+     "name": "Crystal Beast Topaz Tiger",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.15 (narrow support)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 32710364,
+     "name": "Crystal Beast Ruby Carbuncle",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.08 (narrow support)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_red_eyes",
+   "title": "Red-Eyes route",
+   "description": "The 15 strongest pool cards for the Red-Eyes Boss route theme.",
+   "items": [
+    {
+     "id": 96561011,
+     "name": "Red-Eyes Darkness Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Red-Eyes\". engine score 4.61 (narrow support)",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 88264978,
+     "name": "Red-Eyes Darkness Metal Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. 2014 list / proposal status \"limited\" -> at least Ultra Rare (was Super Rare)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 38120068,
+     "name": "Trade-In",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.41 (generic)",
+     "sort_order": 3,
+     "vote_here": false,
+     "voted_in": "route_blue_eyes"
+    },
+    {
+     "id": 39191307,
+     "name": "Masked Dragon",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.98 (narrow support)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 5186893,
+     "name": "Red-Eyes Zombie Dragon",
+     "proposed_verdict": "Rare",
+     "context": "Theme: archetype tag \"Red-Eyes\". engine score 3.98 (narrow support)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 6853254,
+     "name": "Return of the Dragon Lords",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.93 (narrow support)",
+     "sort_order": 6,
+     "vote_here": false,
+     "voted_in": "route_blue_eyes"
+    },
+    {
+     "id": 48976825,
+     "name": "Burial from a Different Dimension",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. 2014 list / proposal status \"limited\" -> at least Ultra Rare (was Rare)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 19384334,
+     "name": "Molten Destruction",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 74677427,
+     "name": "Red-Eyes Black Dragon",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 41142615,
+     "name": "The Cheerful Coffin",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 6172122,
+     "name": "Red-Eyes Fusion",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.82 (narrow support)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 36262024,
+     "name": "Black Dragon's Chick",
+     "proposed_verdict": "Normal",
+     "context": "Theme: archetype tag \"Red-Eyes\". engine score 3.75 (narrow support)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 67300516,
+     "name": "Red-Eyes Wyvern",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. engine score 3.72 (narrow support)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 98045062,
+     "name": "Enemy Controller",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. generic removal / negation, no lock (Also on: Toon route.)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 97077563,
+     "name": "Call of the Haunted",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. engine score 3.64 (narrow support)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_zombie",
+   "title": "Zombie route",
+   "description": "The 15 strongest pool cards for the Zombie Boss route theme.",
+   "items": [
+    {
+     "id": 89111398,
+     "name": "Dark Dust Spirit",
+     "proposed_verdict": "Legendary",
+     "context": "Theme: Zombie monster. human calibration (round 2, 2026-08-30): Legendary",
+     "sort_order": 1,
+     "vote_here": false,
+     "voted_in": "legendary"
+    },
+    {
+     "id": 39711336,
+     "name": "Fushioh Richie",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: Zombie monster. human calibration (round 2, 2026-08-30): Secret Rare",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 65422840,
+     "name": "Shutendoji",
+     "proposed_verdict": "Secret Rare",
+     "context": "Boss route card. engine score 5.6 (generic)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 73445448,
+     "name": "Number 22: Zombiestein",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: Zombie monster. engine score 5.55 (generic)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 28297833,
+     "name": "Necroface",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Zombie monster. engine score 5.44 (generic)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 70595331,
+     "name": "Il Blud",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 5.4 (generic) (Also on: Vampire route.)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 27971137,
+     "name": "Zombowwow",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Zombie monster. engine score 5.34 (generic)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 3149764,
+     "name": "Tutan Mask",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. generic removal / negation, no lock",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 85605684,
+     "name": "Berserk Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Zombie monster. engine score 5.15 (narrow support)",
+     "sort_order": 9,
+     "vote_here": false,
+     "voted_in": "secret_border"
+    },
+    {
+     "id": 68722455,
+     "name": "Red Ogre",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Zombie monster. engine score 5.06 (generic)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 36021814,
+     "name": "King of the Skull Servants",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Zombie monster. engine score 5.02 (splashable engine)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 22056710,
+     "name": "Vampire Genesis",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Zombie monster. engine score 4.98 (narrow support) (Also on: Vampire route.)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 37675138,
+     "name": "Bone Crusher",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Zombie monster. engine score 4.89 (generic)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 52512994,
+     "name": "Kasha",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Zombie monster. engine score 4.89 (generic)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 6039967,
+     "name": "Vampire Fraulein",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Zombie monster. used from the hand on the opponent's turn (hand trap) (Also on: Vampire route.)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_dinosaur",
+   "title": "Dinosaur route",
+   "description": "The 15 strongest pool cards for the Dinosaur Boss route theme.",
+   "items": [
+    {
+     "id": 85028288,
+     "name": "Jurrac Titano",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: archetype tag \"Jurrac\". human calibration (round 2, 2026-08-30): Secret Rare",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 18940556,
+     "name": "Ultimate Conductor Tyranno",
+     "proposed_verdict": "Legendary",
+     "context": "Boss route card. passes the engine's Legendary gate and ranks inside the Legendary count",
+     "sort_order": 2,
+     "vote_here": false,
+     "voted_in": "legendary"
+    },
+    {
+     "id": 92755808,
+     "name": "Element Saurus",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Dinosaur monster. engine score 5.27 (generic)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 6849042,
+     "name": "Super-Ancient Dinobeast",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Dinosaur monster. engine score 5.11 (generic)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 23869735,
+     "name": "Fossil Excavation",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 5.1 (generic)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 5479217,
+     "name": "Jurrac Impact",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Jurrac\". engine score 4.93 (splashable engine)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 56240989,
+     "name": "Evoltile Casinerio",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 4.89 (splashable engine)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 4058065,
+     "name": "Evilswarm Salamandra",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Dinosaur monster. engine score 4.85 (splashable engine)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 17045014,
+     "name": "Evolsaur Diplo",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Dinosaur monster. engine score 4.76 (splashable engine)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 58419204,
+     "name": "Survival Instinct",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 4.68 (generic)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 35842855,
+     "name": "Pyrorex the Elemental Lord",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Dinosaur monster. engine score 4.61 (narrow support)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 2671330,
+     "name": "Hyper Hammerhead",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Dinosaur monster. engine score 4.56 (generic)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 71106375,
+     "name": "Jurrac Iguanon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Jurrac\". engine score 4.56 (splashable engine)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 80651316,
+     "name": "Evolsaur Cerato",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Dinosaur monster. engine score 4.55 (splashable engine)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 15894048,
+     "name": "Ultimate Tyranno",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Dinosaur monster. engine score 4.53 (narrow support)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_legendary_fisherman",
+   "title": "Legendary Fisherman route",
+   "description": "The 15 strongest pool cards for the Legendary Fisherman Boss route theme.",
+   "items": [
+    {
+     "id": 88307361,
+     "name": "Superancient Deepsea King Coelacanth",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: Fish monster. human calibration (round 2, 2026-08-30): Secret Rare",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 20470500,
+     "name": "Armed Sea Hunter",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: Sea Serpent monster. engine score 5.94 (generic)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 68836428,
+     "name": "Tri-Edge Levia",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Sea Serpent monster. human calibration (round 2, 2026-08-30): Ultra Rare",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 62023839,
+     "name": "Fishborg Archer",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: archetype tag \"Fishborg\". engine score 5.55 (splashable engine)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 37721209,
+     "name": "Levia-Dragon - Daedalus",
+     "proposed_verdict": "Secret Rare",
+     "context": "Boss route card. engine score 5.47 (splashable engine)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 43138260,
+     "name": "Xyz Remora",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Fish monster. engine score 5.34 (generic)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 23536866,
+     "name": "Gazer Shark",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Fish monster. engine score 5.3 (generic)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 47826112,
+     "name": "Poseidra, the Atlantean Dragon",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: Sea Serpent monster. engine score 5.27 (splashable engine)",
+     "sort_order": 8,
+     "vote_here": false,
+     "voted_in": "secret_border"
+    },
+    {
+     "id": 51562916,
+     "name": "Big Wave Small Wave",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 5.21 (generic)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 56606928,
+     "name": "Eternal Drought",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 5.21 (generic)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 65984457,
+     "name": "Gladiator Beast Torax",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Fish monster. engine score 5.21 (splashable engine)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 38737148,
+     "name": "Lightray Daedalus",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Sea Serpent monster. engine score 5.2 (narrow support)",
+     "sort_order": 12,
+     "vote_here": false,
+     "voted_in": "secret_border"
+    },
+    {
+     "id": 5975022,
+     "name": "Gladiator Beast Murmillo",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Fish monster. engine score 5.16 (splashable engine)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 66853752,
+     "name": "Fishborg Launcher",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Fishborg\". engine score 5.13 (splashable engine)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 10560119,
+     "name": "Fishborg Doctor",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Fishborg\". engine score 5.06 (splashable engine)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_machina",
+   "title": "Machina route",
+   "description": "The 15 strongest pool cards for the Machina Boss route theme.",
+   "items": [
+    {
+     "id": 24731453,
+     "name": "Snow Plow Hustle Rustle",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: text supports the theme. used from the hand on the opponent's turn (hand trap); turns on when you are behind (comeback card)",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 12670770,
+     "name": "Cyber Network",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: text supports the theme. engine score 5.55 (splashable engine)",
+     "sort_order": 2,
+     "vote_here": false,
+     "voted_in": "route_cyber_dragon"
+    },
+    {
+     "id": 12079734,
+     "name": "Delta Tri",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 5.51 (generic)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 19891310,
+     "name": "Geargiagear Gigant XG",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: text supports the theme. human calibration (round 2, 2026-08-30): Secret Rare",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 88671720,
+     "name": "Black Salvo",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 5.34 (generic)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 35220244,
+     "name": "Gravity Blaster",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 5.34 (generic)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 18895832,
+     "name": "System Down",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 5.34 (generic)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 21323861,
+     "name": "Acid Rain",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 5.21 (generic)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 64662453,
+     "name": "Iron Call",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 5.21 (generic)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 16943770,
+     "name": "Mecha Phantom Beast Aerosguin",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 5.11 (splashable engine)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 94973028,
+     "name": "Mecha Phantom Beast Coltwing",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 5.1 (splashable engine)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 5556499,
+     "name": "Machina Fortress",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.92 (splashable engine)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 33093439,
+     "name": "Cyber Eltanin",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 4.86 (narrow support)",
+     "sort_order": 13,
+     "vote_here": false,
+     "voted_in": "route_cyber_dragon"
+    },
+    {
+     "id": 31768112,
+     "name": "Oilman",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 4.8 (generic)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 3370104,
+     "name": "Cyber Phoenix",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 4.77 (generic)",
+     "sort_order": 15,
+     "vote_here": false,
+     "voted_in": "route_cyber_dragon"
+    }
+   ]
+  },
+  {
+   "key": "route_toon",
+   "title": "Toon route",
+   "description": "The 15 strongest pool cards for the Toon Boss route theme.",
+   "items": [
+    {
+     "id": 43175858,
+     "name": "Toon Kingdom",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.83 (splashable engine)",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 16392422,
+     "name": "Toon Masked Sorcerer",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.71 (splashable engine)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 14087893,
+     "name": "Book of Moon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. generic removal / negation, no lock | 2014 list / proposal status \"limited\" -> at least Ultra Rare (was Super Rare)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 15270885,
+     "name": "Toon Goblin Attack Force",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.02 (narrow support)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 65458948,
+     "name": "Toon Mermaid",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.02 (narrow support)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 89997728,
+     "name": "Toon Table of Contents",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.97 (narrow support)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 15259703,
+     "name": "Toon World",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 62762898,
+     "name": "Parrot Dragon",
+     "proposed_verdict": "Rare",
+     "context": "Theme: archetype tag \"Toon\". engine score 3.88 (narrow support)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 59383041,
+     "name": "Toon Alligator",
+     "proposed_verdict": "Normal",
+     "context": "Theme: name. engine score 3.76 (narrow support)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 42386471,
+     "name": "Toon Gemini Elf",
+     "proposed_verdict": "Normal",
+     "context": "Theme: archetype tag \"Toon\". engine score 3.71 (narrow support)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 98045062,
+     "name": "Enemy Controller",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. generic removal / negation, no lock",
+     "sort_order": 11,
+     "vote_here": false,
+     "voted_in": "route_red_eyes"
+    },
+    {
+     "id": 11961740,
+     "name": "Different Dimension Capsule",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. engine score 3.64 (narrow support)",
+     "sort_order": 12,
+     "vote_here": false,
+     "voted_in": "route_jinzo"
+    },
+    {
+     "id": 43509019,
+     "name": "Toon Defense",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. engine score 3.64 (narrow support)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 79875176,
+     "name": "Toon Cannon Soldier",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. 2014 list / proposal status \"limited_1_per_deck\" -> at least Ultra Rare (was Normal)",
+     "sort_order": 14,
+     "vote_here": false,
+     "voted_in": "proposal_limited"
+    },
+    {
+     "id": 53183600,
+     "name": "Blue-Eyes Toon Dragon",
+     "proposed_verdict": "Normal",
+     "context": "Theme: archetype tag \"Toon\". engine score 2.55 (archetype)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_harpie",
+   "title": "Harpie route",
+   "description": "The 15 strongest pool cards for the Harpie Boss route theme.",
+   "items": [
+    {
+     "id": 55608151,
+     "name": "Gryphon Wing",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: archetype tag \"Harpie\". engine score 6.13 (splashable engine)",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 18144507,
+     "name": "Harpie's Feather Duster",
+     "proposed_verdict": "Legendary",
+     "context": "Boss route card. owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)",
+     "sort_order": 2,
+     "vote_here": false,
+     "voted_in": "proposal_legendary"
+    },
+    {
+     "id": 27927359,
+     "name": "Harpie Lady 2",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Harpie\". engine score 5.14 (splashable engine)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 12181376,
+     "name": "Triangle Ecstasy Spark",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Harpie\". engine score 5.09 (narrow support)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 6924874,
+     "name": "Harpie's Pet Baby Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.85 (generic)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 68815132,
+     "name": "Harpie Dancer",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Harpie\". engine score 4.38 (splashable engine)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 45547649,
+     "name": "Birdface",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Harpie\". engine score 4.03 (narrow support)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 19337371,
+     "name": "Hysteric Sign",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.96 (narrow support)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 75064463,
+     "name": "Harpie Queen",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.9 (narrow support)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 80316585,
+     "name": "Cyber Harpie Lady",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.85 (narrow support)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 91932350,
+     "name": "Harpie Lady 1",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.85 (narrow support)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 54415063,
+     "name": "Harpie Lady 3",
+     "proposed_verdict": "Rare",
+     "context": "Theme: archetype tag \"Harpie\". engine score 3.85 (narrow support)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 12206212,
+     "name": "Harpie Lady Sisters",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.85 (narrow support)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 52040216,
+     "name": "Harpie's Pet Dragon",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.85 (narrow support)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 76812113,
+     "name": "Harpie Lady",
+     "proposed_verdict": "Normal",
+     "context": "Boss route card. engine score 3.81 (narrow support)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_ancient_gear",
+   "title": "Ancient Gear route",
+   "description": "The 15 strongest pool cards for the Ancient Gear Boss route theme.",
+   "items": [
+    {
+     "id": 10509340,
+     "name": "Ancient Gear Beast",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. human calibration (round 2, 2026-08-30): Ultra Rare",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 1953925,
+     "name": "Ancient Gear Engineer",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: archetype tag \"Ancient Gear\". engine score 5.65 (splashable engine)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 50933533,
+     "name": "Ancient Gear Gadjiltron Dragon",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: archetype tag \"Ancient Gear\". engine score 5.45 (narrow support)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 83104731,
+     "name": "Ancient Gear Golem",
+     "proposed_verdict": "Secret Rare",
+     "context": "Boss route card. engine score 5.29 (narrow support)",
+     "sort_order": 4,
+     "vote_here": false,
+     "voted_in": "secret_border"
+    },
+    {
+     "id": 313513,
+     "name": "Spell Gear",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Ancient Gear\". engine score 4.98 (splashable engine)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 39303359,
+     "name": "Ancient Gear Knight",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Ancient Gear\". engine score 4.91 (narrow support)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 30435145,
+     "name": "Ancient Gear Factory",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Ancient Gear\". engine score 4.83 (splashable engine)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 56094445,
+     "name": "Ancient Gear Soldier",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.74 (narrow support)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 60953949,
+     "name": "Ancient Gear Box",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Ancient Gear\". engine score 4.38 (splashable engine)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 86321248,
+     "name": "Ancient Gear Gadjiltron Chimera",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Ancient Gear\". engine score 4.15 (narrow support)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 80045583,
+     "name": "Ancient Gear Cannon",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Ancient Gear\". engine score 4.1 (narrow support)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 23171610,
+     "name": "Limiter Removal",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. 2014 list / proposal status \"limited\" -> at least Ultra Rare (was Rare)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 63995093,
+     "name": "Machine Duplication",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 3659803,
+     "name": "Overload Fusion",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 56747793,
+     "name": "United We Stand",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_galaxy_photon",
+   "title": "Galaxy / Photon route",
+   "description": "The 15 strongest pool cards for the Galaxy / Photon Boss route theme.",
+   "items": [
+    {
+     "id": 88177324,
+     "name": "Number 107: Galaxy-Eyes Tachyon Dragon",
+     "proposed_verdict": "Secret Rare",
+     "context": "Boss route card. human calibration (round 2, 2026-08-30): Secret Rare",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 66523544,
+     "name": "Superdimensional Robot Galaxy Destroyer",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: name. human calibration (round 2, 2026-08-30): Secret Rare",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 39272762,
+     "name": "Neo Galaxy-Eyes Photon Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Galaxy-Eyes\". human calibration (round 2, 2026-08-30): Ultra Rare",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 9024367,
+     "name": "Galaxy Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: name. engine score 5.44 (generic)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 92661479,
+     "name": "Photon Strike Bounzer",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: name. engine score 5.43 (splashable engine)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 55758589,
+     "name": "Photon Wyvern",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Photon\". engine score 5.16 (splashable engine)",
+     "sort_order": 6,
+     "vote_here": false,
+     "voted_in": "secret_border"
+    },
+    {
+     "id": 9354555,
+     "name": "Photon Veil",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Photon\". engine score 4.87 (splashable engine)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 68396121,
+     "name": "Number C107: Neo Galaxy-Eyes Tachyon Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Galaxy-Eyes\". engine score 4.76 (narrow support)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 28990150,
+     "name": "Photon Cerberus",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Photon\". engine score 4.74 (narrow support)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 38757297,
+     "name": "Photon Leo",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Photon\". engine score 4.72 (splashable engine)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 80887714,
+     "name": "Galaxy Storm",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: name. engine score 4.66 (generic)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 35112613,
+     "name": "Kuriphoton",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Photon\". used from the hand on the opponent's turn (hand trap)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 36834155,
+     "name": "Photon Pirate",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Photon\". engine score 4.62 (splashable engine)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 93717133,
+     "name": "Galaxy-Eyes Photon Dragon",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.41 (narrow support)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 98263709,
+     "name": "Galaxy Mirror Sage",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: name. engine score 4.4 (generic)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_destiny_hero",
+   "title": "Destiny HERO route",
+   "description": "The 15 strongest pool cards for the Destiny HERO Boss route theme.",
+   "items": [
+    {
+     "id": 40591390,
+     "name": "Destiny HERO - Dreadmaster",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Destiny HERO\". engine score 5.34 (splashable engine)",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 39829561,
+     "name": "Destiny HERO - Departed",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 5.23 (splashable engine)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 28355718,
+     "name": "Destiny HERO - Double Dude",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Destiny HERO\". engine score 4.68 (narrow support)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 36625827,
+     "name": "Destiny HERO - Dread Servant",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Destiny HERO\". engine score 4.66 (splashable engine)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 9201964,
+     "name": "D - Fortune",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Destiny HERO\". turns on when you are behind (comeback card)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 41613948,
+     "name": "Destiny HERO - Doom Lord",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.6 (splashable engine)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 22147147,
+     "name": "Cyclone Blade",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Destiny HERO\". engine score 4.53 (splashable engine)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 83965310,
+     "name": "Destiny HERO - Plasma",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.44 (splashable engine)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 45809008,
+     "name": "Destiny Draw",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.27 (splashable engine)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 55461064,
+     "name": "Destiny HERO - Blade Master",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Destiny HERO\". used from the hand on the opponent's turn (hand trap)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 80744121,
+     "name": "Destiny HERO - Fear Monger",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.19 (narrow support)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 13093792,
+     "name": "Destiny HERO - Diamond Dude",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.11 (narrow support)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 15294090,
+     "name": "Destiny Mirage",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Destiny HERO\". engine score 4.05 (narrow support)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 74329404,
+     "name": "D - Formation",
+     "proposed_verdict": "Rare",
+     "context": "Theme: archetype tag \"Destiny HERO\". engine score 3.96 (narrow support)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 26841274,
+     "name": "D-Fusion",
+     "proposed_verdict": "Rare",
+     "context": "Theme: archetype tag \"Destiny HERO\". engine score 3.94 (narrow support)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_vampire",
+   "title": "Vampire route",
+   "description": "The 15 strongest pool cards for the Vampire Boss route theme.",
+   "items": [
+    {
+     "id": 70595331,
+     "name": "Il Blud",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 5.4 (generic)",
+     "sort_order": 1,
+     "vote_here": false,
+     "voted_in": "route_zombie"
+    },
+    {
+     "id": 22056710,
+     "name": "Vampire Genesis",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. engine score 4.98 (narrow support)",
+     "sort_order": 2,
+     "vote_here": false,
+     "voted_in": "route_zombie"
+    },
+    {
+     "id": 6039967,
+     "name": "Vampire Fraulein",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. used from the hand on the opponent's turn (hand trap)",
+     "sort_order": 3,
+     "vote_here": false,
+     "voted_in": "route_zombie"
+    },
+    {
+     "id": 62188962,
+     "name": "Vampire Kingdom",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: archetype tag \"Vampire\". engine score 4.66 (splashable engine)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 94192409,
+     "name": "Compulsory Evacuation Device",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Boss route card. generic removal / negation, no lock",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 88728507,
+     "name": "Vampire Sorcerer",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.39 (splashable engine)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 36352429,
+     "name": "Vampire Dragon",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Vampire\". engine score 4.35 (splashable engine)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 14212201,
+     "name": "Shadow Vampire",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Vampire\". engine score 4.32 (narrow support)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 40607210,
+     "name": "Vampire Grace",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 4.32 (narrow support)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 38250531,
+     "name": "Crimson Knight Vampire Bram",
+     "proposed_verdict": "Super Rare",
+     "context": "Theme: archetype tag \"Vampire\". engine score 4.3 (splashable engine)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 92826944,
+     "name": "Mezuki",
+     "proposed_verdict": "Super Rare",
+     "context": "Boss route card. engine score 3.99 (narrow support)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 80485722,
+     "name": "Vampire Hunter",
+     "proposed_verdict": "Rare",
+     "context": "Theme: archetype tag \"Vampire\". engine score 3.98 (narrow support)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 26495087,
+     "name": "Vampire Lady",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.98 (narrow support)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 82962242,
+     "name": "Vampire Vamp",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.98 (narrow support)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 2204140,
+     "name": "Book of Life",
+     "proposed_verdict": "Rare",
+     "context": "Boss route card. engine score 3.92 (narrow support)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  },
+  {
+   "key": "route_cubic",
+   "title": "Cubic route",
+   "description": "The 15 strongest pool cards for the Cubic Boss route theme.",
+   "items": [
+    {
+     "id": 55888045,
+     "name": "Number C106: Giant Red Hand",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Rock monster. human calibration (round 2, 2026-08-30): Ultra Rare",
+     "sort_order": 1,
+     "vote_here": true
+    },
+    {
+     "id": 12467005,
+     "name": "Tackle Crusader",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: Rock monster. engine score 5.48 (generic)",
+     "sort_order": 2,
+     "vote_here": true
+    },
+    {
+     "id": 49680980,
+     "name": "Koa'ki Meiru Sandman",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: Rock monster. engine score 5.47 (splashable engine)",
+     "sort_order": 3,
+     "vote_here": true
+    },
+    {
+     "id": 66816282,
+     "name": "Koa'ki Meiru Wall",
+     "proposed_verdict": "Secret Rare",
+     "context": "Theme: Rock monster. engine score 5.47 (splashable engine)",
+     "sort_order": 4,
+     "vote_here": true
+    },
+    {
+     "id": 79080761,
+     "name": "Gigastone Omega",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Rock monster. engine score 5.34 (generic)",
+     "sort_order": 5,
+     "vote_here": true
+    },
+    {
+     "id": 63746411,
+     "name": "Number 106: Giant Hand",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Rock monster. engine score 5.3 (generic)",
+     "sort_order": 6,
+     "vote_here": true
+    },
+    {
+     "id": 47606319,
+     "name": "Gigantes",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Rock monster. engine score 5.27 (generic)",
+     "sort_order": 7,
+     "vote_here": true
+    },
+    {
+     "id": 15545291,
+     "name": "Granmarg the Mega Monarch",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Rock monster. engine score 5.27 (splashable engine)",
+     "sort_order": 8,
+     "vote_here": true
+    },
+    {
+     "id": 20101223,
+     "name": "Breath of Light",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: text supports the theme. engine score 5.21 (generic)",
+     "sort_order": 9,
+     "vote_here": true
+    },
+    {
+     "id": 581014,
+     "name": "Daigusto Emeral",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Rock monster. engine score 5.17 (splashable engine)",
+     "sort_order": 10,
+     "vote_here": true
+    },
+    {
+     "id": 8102334,
+     "name": "Gate Blocker",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Rock monster. engine score 5.17 (generic)",
+     "sort_order": 11,
+     "vote_here": true
+    },
+    {
+     "id": 58843503,
+     "name": "Medium Piece Golem",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Rock monster. engine score 5.17 (generic)",
+     "sort_order": 12,
+     "vote_here": true
+    },
+    {
+     "id": 90464188,
+     "name": "Obsidian Dragon",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Rock monster. engine score 5.17 (generic)",
+     "sort_order": 13,
+     "vote_here": true
+    },
+    {
+     "id": 22754505,
+     "name": "Small Piece Golem",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Rock monster. engine score 5.07 (generic)",
+     "sort_order": 14,
+     "vote_here": true
+    },
+    {
+     "id": 45041488,
+     "name": "Koa'ki Meiru Guardian",
+     "proposed_verdict": "Ultra Rare",
+     "context": "Theme: Rock monster. engine score 4.96 (splashable engine)",
+     "sort_order": 15,
+     "vote_here": true
+    }
+   ]
+  }
+ ]
+}

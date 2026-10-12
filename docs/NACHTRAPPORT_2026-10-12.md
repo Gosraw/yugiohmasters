@@ -23,10 +23,11 @@ de echte database van je vrienden is **niet aangeraakt**.
 | Weekdoelen (voorlopig), Seizoenspad, premie & inhaalbonus | ✅ |
 | Nieuw Home-scherm | ✅ |
 | Binder toont alle kaarten | ✅ |
-| Klimspel (Pyramid Climb) | ⏳ zie onderaan |
+| Klimspel (Pyramid Climb) — dagelijks + weekranglijst, server controleert scores | ✅ (Play → Mini Games) |
 | Auto battler (Shadow Arena) | ⏳ zie onderaan |
-| Testbots (Playwright) | ⏳ zie onderaan |
-| Beelden/video's/omroeper (fal.ai / ElevenLabs) | ❌ nog niet (ElevenLabs niet gekoppeld) |
+| Testbots (Playwright): start, 17 pagina's × 3 spelers, economie, shop | ✅ (nog geen volledig groene run in één keer, zie onder) |
+| 20 Boss-arena's, seizoensposter/banner, 6 emblemen (fal.ai) | ✅ |
+| Video's + omroeper (ElevenLabs) | ❌ nog niet (ElevenLabs niet gekoppeld) |
 
 ## ⚠️ Belangrijk om te weten
 
@@ -42,7 +43,17 @@ de echte database van je vrienden is **niet aangeraakt**.
 3. **Ik heb geïnstalleerd:** Postgres 17, PostgREST, Colima/Docker en
    Supabase CLI (via Homebrew) en `postgres` + Playwright in het project.
    npm-cache en Homebrew-downloadcache leeggemaakt voor ruimte.
-4. **fal.ai:** ~$0,24 uitgegeven (3 stijlproeven). Budget was $10.
+4. **fal.ai:** ~$2,50 uitgegeven (3 stijlproeven + 28 beelden). Budget was $10.
+5. **Nog een fout in de live app (gevonden door de testbots):** het bestand
+   dat nieuwe spelers door de start leidt (Boss kiezen → draft →
+   welkomstpacks) en je inlog ververst, stond op de verkeerde plek en werd
+   **nooit** uitgevoerd. In 2.0 opgelost (`src/proxy.ts`). Gevolg nu live:
+   nieuwe spelers kunnen de draft overslaan en krijgen geen welkomstpacks.
+6. **Seizoen-1 "welkomstpacks al gehad"-vinkjes** worden door de reset niet
+   gewist → bij de 2.0-reset moeten die mee (staat in het lanceerscript).
+7. **Mini-games:** een handige speler kan de score-controle omzeilen door de
+   database direct aan te roepen. Volledig dichtzetten kan pas als er een
+   geheime server-sleutel in Vercel staat (jij moet die instellen).
 
 ## Wat jij moet beslissen
 

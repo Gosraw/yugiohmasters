@@ -1,0 +1,578 @@
+{
+  "generated_at": "2026-10-12T00:23:13.731Z",
+  "catalog": {
+    "source": "https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes",
+    "fetched_at": "2026-10-12T00:11:00.803Z",
+    "db_version": {
+      "database_version": "147.29",
+      "last_update": "2026-10-12 00:03:27"
+    },
+    "cards": 14606
+  },
+  "banlist": {
+    "name": "TCG Forbidden & Limited List - October 2014",
+    "effective_from": "2014-10-01",
+    "effective_to": "2014-12-31"
+  },
+  "proposal_entries": 61,
+  "exclusion_counts_catalog_wide": {
+    "catalog_total": 14606,
+    "out_of_scope_type": 230,
+    "not_in_master_duel": 472,
+    "manual_exclude": 8,
+    "manual_include": 25,
+    "mechanic_type": 1398,
+    "mechanic_text_dependency": 430,
+    "era_post_2014": 5831,
+    "unknown_release_date": 1
+  },
+  "classic_scope_exclusions": {
+    "manual_exclude": 8,
+    "mechanic_text_dependency": 110,
+    "mechanic_type": 211,
+    "not_in_master_duel": 23
+  },
+  "pool_total": 6236,
+  "pool_playable": 6136,
+  "pool_by_source": {
+    "core": 6211,
+    "curated_include": 25
+  },
+  "pool_by_type": {
+    "Spell Card": 1183,
+    "Effect Monster": 2592,
+    "Normal Monster": 603,
+    "Flip Effect Monster": 131,
+    "Trap Card": 979,
+    "XYZ Monster": 242,
+    "Tuner Monster": 189,
+    "Gemini Monster": 33,
+    "Fusion Monster": 178,
+    "Normal Tuner Monster": 7,
+    "Spirit Monster": 24,
+    "Union Effect Monster": 26,
+    "Ritual Monster": 15,
+    "Toon Monster": 9,
+    "Ritual Effect Monster": 24,
+    "Flip Tuner Effect Monster": 1
+  },
+  "pool_by_final_status": {
+    "unlimited": 6038,
+    "semi_limited": 15,
+    "limited": 60,
+    "forbidden": 100,
+    "limited_1_per_deck": 10,
+    "legendary_unique": 13
+  },
+  "pool_by_era_banlist": {
+    "unlimited": 6084,
+    "semi_limited": 16,
+    "limited": 66,
+    "forbidden": 70
+  },
+  "verdict_overrides_era": [
+    "Chain Strike: semi_limited -> limited_1_per_deck",
+    "Dark Hole: limited -> legendary_unique",
+    "Giant Trunade: forbidden -> legendary_unique",
+    "Harpie's Feather Duster: forbidden -> legendary_unique",
+    "Heavy Storm: forbidden -> legendary_unique",
+    "Magical Explosion: limited -> forbidden",
+    "Raigeki: limited -> legendary_unique",
+    "Torrential Tribute: limited -> legendary_unique",
+    "Wall of Revealing Light: limited -> forbidden",
+    "Wind-Up Magician: limited -> forbidden"
+  ],
+  "classic_not_in_master_duel": 23,
+  "soft_mechanic_mentions_kept": 88,
+  "boss_route_issue_counts": {
+    "info": 14,
+    "blocking": 17,
+    "era_gap": 38
+  },
+  "boss_route_issues": [
+    {
+      "severity": "info",
+      "route": "chaos_bls",
+      "card": "Black Luster Soldier - Envoy of the Beginning",
+      "role": "stage 2 evolution",
+      "issue": "status limited (2014 list)"
+    },
+    {
+      "severity": "info",
+      "route": "chaos_bls",
+      "card": "Chaos Sorcerer",
+      "role": "stage 3 evolution",
+      "issue": "status semi_limited (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "chaos_bls",
+      "card": "Chaos Emperor Dragon - Envoy of the End",
+      "role": "stage 4 evolution",
+      "issue": "status forbidden (our proposal)"
+    },
+    {
+      "severity": "info",
+      "route": "chaos_bls",
+      "card": "Charge of the Light Brigade",
+      "role": "stage 3 support grant",
+      "issue": "status limited (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "chaos_bls",
+      "card": "Dimension Fusion",
+      "role": "stage 4 support grant (exclusive)",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "chaos_bls",
+      "card": "Card of Safe Return",
+      "role": "stage 4 support grant",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "chaos_bls",
+      "card": "Return from the Different Dimension",
+      "role": "stage 4 support grant (exclusive)",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "dark_magician",
+      "card": "Dark Magician of Chaos",
+      "role": "stage 4 evolution",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "era_gap",
+      "route": "dark_magician",
+      "card": "Dark Renewal",
+      "role": "stage 4 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "blue_eyes",
+      "card": "The Melody of Awakening Dragon",
+      "role": "stage 2 support grant (exclusive)",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "blue_eyes",
+      "card": "Dragon Spirit of White",
+      "role": "stage 3 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "blue_eyes",
+      "card": "Sage with Eyes of Blue",
+      "role": "stage 4 support grant (exclusive)",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "info",
+      "route": "cyber_dragon",
+      "card": "Limiter Removal",
+      "role": "stage 2 support grant",
+      "issue": "status limited (2014 list)"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cyber_dragon",
+      "card": "Chimeratech Rampage Dragon",
+      "role": "stage 2 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "info",
+      "route": "jinzo",
+      "card": "Skill Drain",
+      "role": "stage 1 support grant",
+      "issue": "status limited_1_per_deck (our proposal)"
+    },
+    {
+      "severity": "blocking",
+      "route": "jinzo",
+      "card": "Ring of Destruction",
+      "role": "stage 2 support grant",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "info",
+      "route": "armed_dragon_ojama",
+      "card": "Ojama Trio",
+      "role": "stage 2 support grant (exclusive)",
+      "issue": "status semi_limited (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "armed_dragon_ojama",
+      "card": "Card Destruction",
+      "role": "stage 4 support grant",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "info",
+      "route": "red_eyes",
+      "card": "Red-Eyes Darkness Metal Dragon",
+      "role": "stage 3 evolution",
+      "issue": "status limited (2014 list)"
+    },
+    {
+      "severity": "era_gap",
+      "route": "red_eyes",
+      "card": "Red-Eyes Slash Dragon",
+      "role": "stage 4 evolution",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "red_eyes",
+      "card": "Ties of the Brethren",
+      "role": "stage 1 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "info",
+      "route": "red_eyes",
+      "card": "Burial from a Different Dimension",
+      "role": "stage 4 support grant",
+      "issue": "status limited (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "zombie",
+      "card": "Card of Safe Return",
+      "role": "stage 4 support grant",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "era_gap",
+      "route": "dinosaur",
+      "card": "Petiteranodon",
+      "role": "stage 1 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "blocking",
+      "route": "dinosaur",
+      "card": "Fossil Dyna Pachycephalo",
+      "role": "stage 2 support grant",
+      "issue": "status forbidden (our proposal)"
+    },
+    {
+      "severity": "era_gap",
+      "route": "legendary_fisherman",
+      "card": "The Legendary Fisherman II",
+      "role": "stage 2 evolution",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "legendary_fisherman",
+      "card": "The Legendary Fisherman III",
+      "role": "stage 3 evolution",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "legendary_fisherman",
+      "card": "Citadel Whale",
+      "role": "stage 2 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "info",
+      "route": "legendary_fisherman",
+      "card": "Deep Sea Diva",
+      "role": "stage 2 support grant",
+      "issue": "status limited (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "legendary_fisherman",
+      "card": "Fishborg Blaster",
+      "role": "stage 2 support grant",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "legendary_fisherman",
+      "card": "Torrential Tribute",
+      "role": "stage 3 support grant",
+      "issue": "status legendary_unique (our proposal)"
+    },
+    {
+      "severity": "info",
+      "route": "machina",
+      "card": "Limiter Removal",
+      "role": "stage 1 support grant",
+      "issue": "status limited (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "machina",
+      "card": "Pot of Avarice",
+      "role": "stage 3 support grant",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "era_gap",
+      "route": "machina",
+      "card": "Heavy Mech Support Armor",
+      "role": "stage 3 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "info",
+      "route": "toon",
+      "card": "Toon Cannon Soldier",
+      "role": "stage 2 support grant (exclusive)",
+      "issue": "status limited_1_per_deck (our proposal)"
+    },
+    {
+      "severity": "info",
+      "route": "toon",
+      "card": "Book of Moon",
+      "role": "stage 3 support grant",
+      "issue": "status limited (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "toon",
+      "card": "Card Destruction",
+      "role": "stage 4 support grant",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "toon",
+      "card": "Ring of Destruction",
+      "role": "stage 4 support grant",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "harpie",
+      "card": "Harpie's Feather Duster",
+      "role": "stage 1 support grant",
+      "issue": "status legendary_unique (our proposal)"
+    },
+    {
+      "severity": "era_gap",
+      "route": "harpie",
+      "card": "Ties of the Brethren",
+      "role": "stage 3 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "ancient_gear",
+      "card": "Ancient Gear Reactor Dragon",
+      "role": "stage 4 evolution",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "ancient_gear",
+      "card": "Ancient Gear Wyvern",
+      "role": "stage 1 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "ancient_gear",
+      "card": "Ancient Gear Golem - Ultimate Pound",
+      "role": "stage 2 support grant (exclusive)",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "info",
+      "route": "ancient_gear",
+      "card": "Limiter Removal",
+      "role": "stage 2 support grant",
+      "issue": "status limited (2014 list)"
+    },
+    {
+      "severity": "era_gap",
+      "route": "galaxy_photon",
+      "card": "Galaxy-Eyes Cipher Dragon",
+      "role": "stage 3 evolution",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "galaxy_photon",
+      "card": "Photon Vanisher",
+      "role": "stage 1 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "galaxy_photon",
+      "card": "Galaxy Soldier",
+      "role": "stage 1 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "galaxy_photon",
+      "card": "Photon Stream of Destruction",
+      "role": "stage 2 support grant (exclusive)",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "galaxy_photon",
+      "card": "Galaxy Cyclone",
+      "role": "stage 4 support grant (exclusive)",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "destiny_hero",
+      "card": "Destiny HERO - Dystopia",
+      "role": "stage 4 evolution",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "blocking",
+      "route": "vampire",
+      "card": "Card of Safe Return",
+      "role": "stage 1 support grant",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "blocking",
+      "route": "vampire",
+      "card": "Pot of Avarice",
+      "role": "stage 2 support grant",
+      "issue": "status forbidden (2014 list)"
+    },
+    {
+      "severity": "info",
+      "route": "vampire",
+      "card": "Compulsory Evacuation Device",
+      "role": "stage 4 support grant",
+      "issue": "status limited (2014 list)"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Dark Garnex the Cubic Beast",
+      "role": "stage 1 evolution",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Duza the Meteor Cubic Vessel",
+      "role": "stage 2 evolution",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Buster Gundil the Cubic Behemoth",
+      "role": "stage 3 evolution",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Crimson Nova the Dark Cubic Lord",
+      "role": "stage 4 evolution",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Cubic Karma",
+      "role": "stage 1 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Cubic Wave",
+      "role": "stage 1 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Cubic Rebirth",
+      "role": "stage 1 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Vijam the Cubic Seed",
+      "role": "stage 2 support grant (exclusive)",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Unification of the Cubic Lords",
+      "role": "stage 2 support grant (exclusive)",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Indiora Doom Volt the Cubic Emperor",
+      "role": "stage 2 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Blade Garoodia the Cubic Beast",
+      "role": "stage 3 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Geira Guile the Cubic King",
+      "role": "stage 3 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Cubic Ascension",
+      "role": "stage 3 support grant (exclusive)",
+      "issue": "not in pool: 2019+ release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Cubic Dharma",
+      "role": "stage 4 support grant",
+      "issue": "not in pool: 2019+ release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Cubic Causality",
+      "role": "stage 4 support grant",
+      "issue": "not in pool: 2019+ release, no include override"
+    },
+    {
+      "severity": "era_gap",
+      "route": "cubic",
+      "card": "Cubic Mandala",
+      "role": "stage 4 support grant",
+      "issue": "not in pool: 2015-2018 release, no include override"
+    }
+  ],
+  "warnings": []
+}

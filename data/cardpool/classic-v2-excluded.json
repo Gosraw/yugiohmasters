@@ -1,0 +1,3170 @@
+[
+ {
+  "id": 86120752,
+  "name": "Aleister the Invoker",
+  "type": "Effect Monster",
+  "release_date": "2017-02-23",
+  "era": "2015-2018",
+  "reason": "manual_exclude",
+  "detail": "Invoked/Aleister package: compact generic splash Fusion engine."
+ },
+ {
+  "id": 74063034,
+  "name": "Invocation",
+  "type": "Spell Card",
+  "release_date": "2017-02-23",
+  "era": "2015-2018",
+  "reason": "manual_exclude",
+  "detail": "Invoked/Aleister package."
+ },
+ {
+  "id": 85908279,
+  "name": "Invoked Cocytus",
+  "type": "Fusion Monster",
+  "release_date": "2017-02-23",
+  "era": "2015-2018",
+  "reason": "manual_exclude",
+  "detail": "Invoked/Aleister package."
+ },
+ {
+  "id": 11270236,
+  "name": "Invoked Elysium",
+  "type": "Fusion Monster",
+  "release_date": "2017-02-23",
+  "era": "2015-2018",
+  "reason": "manual_exclude",
+  "detail": "Invoked/Aleister package."
+ },
+ {
+  "id": 48791583,
+  "name": "Invoked Magellanica",
+  "type": "Fusion Monster",
+  "release_date": "2017-02-23",
+  "era": "2015-2018",
+  "reason": "manual_exclude",
+  "detail": "Invoked/Aleister package."
+ },
+ {
+  "id": 75286621,
+  "name": "Invoked Mechaba",
+  "type": "Fusion Monster",
+  "release_date": "2017-02-23",
+  "era": "2015-2018",
+  "reason": "manual_exclude",
+  "detail": "Invoked/Aleister package."
+ },
+ {
+  "id": 12307878,
+  "name": "Invoked Purgatrio",
+  "type": "Fusion Monster",
+  "release_date": "2017-02-23",
+  "era": "2015-2018",
+  "reason": "manual_exclude",
+  "detail": "Invoked/Aleister package."
+ },
+ {
+  "id": 63504681,
+  "name": "Number 86: Heroic Champion - Rhongomyniad",
+  "type": "XYZ Monster",
+  "release_date": "2015-04-16",
+  "era": "2015-2018",
+  "reason": "manual_exclude",
+  "detail": "Extremely generic Xyz splash payoff."
+ },
+ {
+  "id": 56804361,
+  "name": "Aether, the Empowering Dragon",
+  "type": "Effect Monster",
+  "release_date": "2014-07-10",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"When this card is Pendulum Summoned: You can target 1 card on the field; return it to the hand.\""
+ },
+ {
+  "id": 40048324,
+  "name": "Arcane Apprentice",
+  "type": "Tuner Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is sent to the Graveyard for a Synchro Summon, you can add 1 \"Assault Mode Activate\" from your Deck to your hand.\""
+ },
+ {
+  "id": 80280737,
+  "name": "Assault Mode Activate",
+  "type": "Trap Card",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Tribute 1 Synchro Monster; Special Summon 1 \"/Assault Mode\" monster, whose name includes the Tributed monster's name, from your Deck in Atta\""
+ },
+ {
+  "id": 96700602,
+  "name": "Barrier Wave",
+  "type": "Trap Card",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Activate by Tributing 1 Synchro Monster when an opponent's monster declares an attack.\""
+ },
+ {
+  "id": 15629801,
+  "name": "Battle Waltz",
+  "type": "Spell Card",
+  "release_date": "2011-01-21",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Target 1 Synchro Monster you control; Special Summon 1 \"Waltz Token\" with the current Type, Attribute, Level, ATK and DEF of that monster.\""
+ },
+ {
+  "id": 83903521,
+  "name": "Beast of the Pharaoh",
+  "type": "Effect Monster",
+  "release_date": "2008-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is sent to the GY for a Synchro Summon: You can target 1 Level 4 or lower Zombie monster in your GY; Special Summon that target\""
+ },
+ {
+  "id": 58685438,
+  "name": "Bicorn Re'em",
+  "type": "Effect Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is sent to the Graveyard as a Synchro Material Monster for a Synchro Summon, send the top 2 cards from your opponent's Deck to \""
+ },
+ {
+  "id": 31677606,
+  "name": "Black and White Wave",
+  "type": "Spell Card",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"If there is a face-up Xyz Monster on the field with a Synchro Monster as Xyz Material: Target 1 card on the field; banish that target, and i\""
+ },
+ {
+  "id": 4068622,
+  "name": "Blackwing - Aurora the Northern Lights",
+  "type": "Effect Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"Once per turn: You can banish 1 \"Blackwing\" Synchro Monster from your Extra Deck; until the End Phase, this card's name and original ATK bec\""
+ },
+ {
+  "id": 25435080,
+  "name": "Blackwing - Bombardment",
+  "type": "Trap Card",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Tribute 1 \"Blackwing\" monster to select 1 face-up Synchro Monster you control.\""
+ },
+ {
+  "id": 88305978,
+  "name": "Blackwing - Calima the Haze",
+  "type": "Effect Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"During your opponent's Battle Phase, if you control no monsters: You can banish this card from the Graveyard, then target 1 Synchro Monster \""
+ },
+ {
+  "id": 36442179,
+  "name": "Blackwing - Hurricane the Tornado",
+  "type": "Tuner Monster",
+  "release_date": "2014-04-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"Once per turn: You can target 1 Synchro Monster on the field; this card's ATK becomes that monster's current ATK, until the end of this turn\""
+ },
+ {
+  "id": 98884569,
+  "name": "Blue Rose Dragon",
+  "type": "Effect Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"When this card on the field is destroyed and sent to the GY: You can target 1 \"Black Rose Dragon\" or 1 Plant monster in your GY; Special Sum\""
+ },
+ {
+  "id": 52840598,
+  "name": "Bri Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2011-01-21",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 83991690,
+  "name": "Buten",
+  "type": "Tuner Monster",
+  "release_date": "2012-04-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"During your Main Phase: You can banish this card from the Graveyard to target 1 face-up Level 4 or lower LIGHT Fairy-Type monster you contro\""
+ },
+ {
+  "id": 25652655,
+  "name": "Changer Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 5519829,
+  "name": "Counselor Lily",
+  "type": "Tuner Monster",
+  "release_date": "2008-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"When this card is sent to the Graveyard for a Synchro Summon, you can pay 500 Life Points to have that Synchro Monster gain 1000 ATK until t\""
+ },
+ {
+  "id": 5780210,
+  "name": "Creation Resonator",
+  "type": "Tuner Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If you control a Level 8 or higher Synchro Monster, you can Special Summon this card (from your hand).\""
+ },
+ {
+  "id": 24566654,
+  "name": "Crimson Fire",
+  "type": "Trap Card",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"When your opponent activates a Spell/Trap Card that would inflict damage to you, while you control a \"Red Dragon Archfiend\": Your opponent t\""
+ },
+ {
+  "id": 34659866,
+  "name": "Darksea Rescue",
+  "type": "Effect Monster",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is used for a Synchro Summon and sent to the Graveyard, the owner of this card draws 1 card.\""
+ },
+ {
+  "id": 32441317,
+  "name": "De-Synchro",
+  "type": "Spell Card",
+  "release_date": "2008-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Target 1 Synchro Monster on the field; return that target to the Extra Deck, then, if all of the monsters that were used for the Synchro Sum\""
+ },
+ {
+  "id": 42079445,
+  "name": "Descending Lost Star",
+  "type": "Trap Card",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Target 1 Synchro Monster in your Graveyard; Special Summon that target in Defense Position, but its effects are negated, its Level is reduce\""
+ },
+ {
+  "id": 46480475,
+  "name": "Discord",
+  "type": "Trap Card",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Neither player can Synchro Summon.\""
+ },
+ {
+  "id": 58369990,
+  "name": "Doomstar Magician",
+  "type": "Effect Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"Once per turn: You can discard 1 card, then target 1 card in either player's Pendulum Zone; destroy that card, and if you do, draw 1 card.\""
+ },
+ {
+  "id": 14017402,
+  "name": "Dragon Knight Draco-Equiste",
+  "type": "Fusion Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "materials need an excluded mechanic: \"1 Dragon-Type Synchro Monster + 1 Warrior-Type monster\""
+ },
+ {
+  "id": 56286179,
+  "name": "Drill Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 16825874,
+  "name": "Eccentric Boy",
+  "type": "Tuner Monster",
+  "release_date": "2010-01-15",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"When using this card as a Synchro Material Monster, the other Synchro Material Monster is 1 monster in your hand.\""
+ },
+ {
+  "id": 8316661,
+  "name": "Fabled Miztoji",
+  "type": "Tuner Monster",
+  "release_date": "2010-09-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"You can send this card from your hand to the GY, then target 1 non-Tuner \"Fabled\" monster you control; that monster is treated as a Tuner wh\""
+ },
+ {
+  "id": 13708425,
+  "name": "Flare Resonator",
+  "type": "Tuner Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"A Synchro Monster that used this card as a Synchro Material gains 300 ATK.\""
+ },
+ {
+  "id": 19642774,
+  "name": "Fleur Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2010-10-26",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 58601383,
+  "name": "Gaia Drake, the Universal Force",
+  "type": "Fusion Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "materials need an excluded mechanic: \"1 \"Gaia Knight, the Force of Earth\" + 1 non-Effect Synchro Monster\""
+ },
+ {
+  "id": 7811875,
+  "name": "Gravity Collapse",
+  "type": "Trap Card",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Activate by sending 1 face-up Synchro Monster you control to the Graveyard when your opponent Summons a monster.\""
+ },
+ {
+  "id": 3972721,
+  "name": "Greed Grado",
+  "type": "Spell Card",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Activate only if you destroyed a face-up Synchro Monster controlled by your opponent this turn, either by battle or by a card effect.\""
+ },
+ {
+  "id": 41788781,
+  "name": "Guldfaxe of the Nordic Beasts",
+  "type": "Tuner Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If your opponent controls a Synchro Monster and you control no monsters, you can Special Summon this card (from your hand).\""
+ },
+ {
+  "id": 40348946,
+  "name": "Hyper Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 39440937,
+  "name": "Intercept Wave",
+  "type": "Spell Card",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"All Synchro Monsters on the field are changed to Defense Position.\""
+ },
+ {
+  "id": 63977008,
+  "name": "Junk Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2008-08-05",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 78845026,
+  "name": "Lightwave Tuning",
+  "type": "Spell Card",
+  "release_date": "2008-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "manual review: Only turns a monster into a Tuner (Synchro-only purpose)."
+ },
+ {
+  "id": 25531465,
+  "name": "Magicat",
+  "type": "Effect Monster",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is sent to the Graveyard for the Synchro Summon of a Spellcaster-Type Synchro Monster, you can return 1 Spell Card from your Gr\""
+ },
+ {
+  "id": 47929865,
+  "name": "Magidog",
+  "type": "Effect Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is sent to the Graveyard for the Synchro Summon of a Spellcaster-Type monster, you can select and add 1 Field Spell Card from y\""
+ },
+ {
+  "id": 21159309,
+  "name": "Majestic Dragon",
+  "type": "Tuner Monster",
+  "release_date": "2009-11-17",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "no effect besides a Synchro-material restriction (exists only for Synchro Summons)"
+ },
+ {
+  "id": 74509280,
+  "name": "Malefic Parallel Gear",
+  "type": "Tuner Monster",
+  "release_date": "2011-02-22",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"When using this card as a Synchro Material Monster, the other Synchro Material Monster is 1 \"Malefic\" monster in your hand.\""
+ },
+ {
+  "id": 73417207,
+  "name": "Mara of the Nordic Alfar",
+  "type": "Tuner Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"When using this card as Synchro Material, the other Synchro Materials must be 2 \"Nordic\" monsters in your hand.\""
+ },
+ {
+  "id": 75675029,
+  "name": "Memory Crush King",
+  "type": "Effect Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"When this card inflicts Battle Damage to your opponent by a direct attack, remove from play all Synchro Monsters in your opponent's Graveyar\""
+ },
+ {
+  "id": 36484016,
+  "name": "Miracle Synchro Fusion",
+  "type": "Spell Card",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Remove from play, from your side of the field or your Graveyard, the Fusion Material Monsters listed on a Fusion Monster Card that lists a S\""
+ },
+ {
+  "id": 56897896,
+  "name": "Mono Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2014-10-23",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 62896588,
+  "name": "Natural Tune",
+  "type": "Spell Card",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "manual review: Only turns a Normal Monster into a Tuner (Synchro-only purpose)."
+ },
+ {
+  "id": 44236692,
+  "name": "Necro Linker",
+  "type": "Effect Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "manual review: Revives a Synchron Tuner - all Synchrons are excluded."
+ },
+ {
+  "id": 17841097,
+  "name": "Needle Soldier",
+  "type": "Effect Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is used as a Synchro Material Monster for a Synchro Monster, during battle between that Synchro Monster and a Defense Position \""
+ },
+ {
+  "id": 96182448,
+  "name": "Nitro Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2008-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 23327298,
+  "name": "Parallel Selection",
+  "type": "Trap Card",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Activate only when a Synchro Monster you control is destroyed by your opponent's card (either by battle or by card effect) and sent to the G\""
+ },
+ {
+  "id": 76660409,
+  "name": "Pendulum Back",
+  "type": "Trap Card",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"If you have 2 cards in your Pendulum Zones: Target 2 monsters in your Graveyard, each with a Level between (exclusive) the Pendulum Scales o\""
+ },
+ {
+  "id": 6901008,
+  "name": "Phantom King Hydride",
+  "type": "Tuner Monster",
+  "release_date": "2014-05-16",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If you use this card you control for a Synchro Summon, you can treat it as a non-Tuner monster.\""
+ },
+ {
+  "id": 86821010,
+  "name": "Power Break",
+  "type": "Trap Card",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Activate only while you control a face-up \"Power Tool Dragon\".\""
+ },
+ {
+  "id": 11047543,
+  "name": "Psychic Feel Zone",
+  "type": "Spell Card",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Select 2 of your removed from play monsters (1 Psychic-Type Tuner and 1 Psychic-Type non-Tuner), return them to the Graveyard, and Special S\""
+ },
+ {
+  "id": 4450854,
+  "name": "Qlimate Change",
+  "type": "Trap Card",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"Add up to 3 face-up \"Qli\" Pendulum Monster Cards from your Extra Deck to your hand.\""
+ },
+ {
+  "id": 11287364,
+  "name": "Quick-Span Knight",
+  "type": "Tuner Monster",
+  "release_date": "2012-03-16",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is sent to the Graveyard for a Synchro Summon: Target 1 face-up monster your opponent controls; that target loses 500 ATK.\""
+ },
+ {
+  "id": 20932152,
+  "name": "Quickdraw Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2009-11-17",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 60312997,
+  "name": "Reanimation Wave",
+  "type": "Trap Card",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "manual review: Revives a Synchro Monster from the GY - dead without Synchro."
+ },
+ {
+  "id": 41197012,
+  "name": "Red Carpet",
+  "type": "Trap Card",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"If a Dragon-Type Synchro Monster is on the field: Target up to 2 \"Resonator\" monsters in your Graveyard; Special Summon them.\""
+ },
+ {
+  "id": 87614611,
+  "name": "Red Dragon Vase",
+  "type": "Spell Card",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"If you control a \"Red Dragon Archfiend\": Draw 2 cards.\""
+ },
+ {
+  "id": 71353388,
+  "name": "Reed Butterfly",
+  "type": "Effect Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If your opponent controls a face-up Synchro Monster(s) and you control no face-up Synchro Monsters, you can Special Summon this card from yo\""
+ },
+ {
+  "id": 59593925,
+  "name": "Resonant Destruction",
+  "type": "Spell Card",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Each time a \"Resonator\" monster(s) is sent to the Graveyard as a Synchro Material: Target 1 card your opponent controls; destroy that target\""
+ },
+ {
+  "id": 71971554,
+  "name": "Road Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2009-06-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 37953640,
+  "name": "Royal Swamp Eel",
+  "type": "Tuner Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is used as a Synchro Material Monster, all the other Synchro Material Monsters must be Fish-Type.\""
+ },
+ {
+  "id": 50215517,
+  "name": "Scarlet Security",
+  "type": "Spell Card",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"If you control a \"Red Dragon Archfiend\": Destroy all Spell and Trap Cards your opponent controls.\""
+ },
+ {
+  "id": 35329581,
+  "name": "Shadow Impulse",
+  "type": "Trap Card",
+  "release_date": "2014-04-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"When a Synchro Monster(s) you control is destroyed by battle or by card effect and sent to the Graveyard: Target 1 of those Synchro Monsters\""
+ },
+ {
+  "id": 94081496,
+  "name": "Shiny Black \"C\"",
+  "type": "Effect Monster",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"During either player's turn, when exactly 1 Synchro Monster is Special Summoned to your opponent's side of the field: You can banish this ca\""
+ },
+ {
+  "id": 25231813,
+  "name": "Silver Wing",
+  "type": "Spell Card",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Equip only to a Level 8 or higher Dragon-Type Synchro Monster.\""
+ },
+ {
+  "id": 61632317,
+  "name": "Sinister Sprocket",
+  "type": "Tuner Monster",
+  "release_date": "2008-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is sent to the Graveyard for the Synchro Summon of a DARK Synchro Monster, you can destroy 1 face-up Spell or Trap Card.\""
+ },
+ {
+  "id": 42314669,
+  "name": "Soundproofed",
+  "type": "Spell Card",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"This card can only be activated at the start of Main Phase 1, and only if you control no face-up Synchro Monsters.\""
+ },
+ {
+  "id": 70391588,
+  "name": "Star Siphon",
+  "type": "Trap Card",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"When a Synchro Monster(s) is Special Summoned: Target 1 of them; Special Summon 1 \"Siphon Token\" (Spellcaster-Type/DARK/Level 1/ATK 0/DEF 0)\""
+ },
+ {
+  "id": 80244114,
+  "name": "Stardust Phantom",
+  "type": "Effect Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"When this card you control is destroyed by your opponent's card (either by battle or by card effect) and sent to your Graveyard, you can sel\""
+ },
+ {
+  "id": 89181369,
+  "name": "Stardust Shimmer",
+  "type": "Spell Card",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Select 1 Dragon-Type Synchro Monster in your Graveyard.\""
+ },
+ {
+  "id": 68543408,
+  "name": "Stardust Xiaolong",
+  "type": "Effect Monster",
+  "release_date": "2009-11-17",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "manual review: Revives only when you Synchro Summon Stardust Dragon; otherwise a 100 ATK vanilla."
+ },
+ {
+  "id": 83295594,
+  "name": "Steam Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2014-10-23",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 73837870,
+  "name": "Sunny Pixie",
+  "type": "Tuner Monster",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is sent to the Graveyard for the Synchro Summon of a LIGHT Synchro Monster: Gain 1000 Life Points.\""
+ },
+ {
+  "id": 21113684,
+  "name": "Supreme Arcanite Magician",
+  "type": "Fusion Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "materials need an excluded mechanic: \"1 Spellcaster-Type Synchro Monster + 1 Spellcaster-Type monster\""
+ },
+ {
+  "id": 21879581,
+  "name": "Synchro Barrier",
+  "type": "Trap Card",
+  "release_date": "2009-11-17",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Tribute 1 Synchro Monster you control.\""
+ },
+ {
+  "id": 35537860,
+  "name": "Synchro Blast Wave",
+  "type": "Spell Card",
+  "release_date": "2008-08-05",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"If you control a Synchro Monster: Target 1 monster your opponent controls; destroy that target.\""
+ },
+ {
+  "id": 36737092,
+  "name": "Synchro Change",
+  "type": "Spell Card",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Remove from play 1 face-up Synchro Monster you control.\""
+ },
+ {
+  "id": 88289295,
+  "name": "Synchro Control",
+  "type": "Spell Card",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Activate only if you have no Synchro Monsters on your side of the field or in your Graveyard.\""
+ },
+ {
+  "id": 24545464,
+  "name": "Synchro Deflector",
+  "type": "Trap Card",
+  "release_date": "2008-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Activate only when a face-up Synchro Monster you control is selected as an attack target.\""
+ },
+ {
+  "id": 75105429,
+  "name": "Synchro Ejection",
+  "type": "Trap Card",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Select 1 face-up Synchro Monster your opponent controls and remove it from play.\""
+ },
+ {
+  "id": 15839054,
+  "name": "Synchro Fusionist",
+  "type": "Effect Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is sent to the Graveyard as a Synchro Material Monster, you can add 1 Spell Card from your Deck to your hand with \"Polymerizati\""
+ },
+ {
+  "id": 52128900,
+  "name": "Synchro Gift",
+  "type": "Spell Card",
+  "release_date": "2011-01-21",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Select 2 face-up monsters you control (1 Synchro Monster and 1 non-Synchro monster).\""
+ },
+ {
+  "id": 50702124,
+  "name": "Synchro Magnet",
+  "type": "Tuner Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"When you Synchro Summon a Synchro Monster, you can Special Summon this card from your hand.\""
+ },
+ {
+  "id": 14507213,
+  "name": "Synchro Material",
+  "type": "Trap Card",
+  "release_date": "2011-01-21",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "manual review: Only lets you use an opponent's monster as Synchro Material - dead without Synchro."
+ },
+ {
+  "id": 79796561,
+  "name": "Synchro Soldier",
+  "type": "Effect Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "manual review: Its only effect needs a Synchro Monster you control."
+ },
+ {
+  "id": 30123142,
+  "name": "Synchro Strike",
+  "type": "Trap Card",
+  "release_date": "2008-11-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Target Synchro Summoned monster gains 500 ATK for each Synchro Material Monster used to Summon it, until the End Phase.\""
+ },
+ {
+  "id": 36643046,
+  "name": "Synchron Explorer",
+  "type": "Effect Monster",
+  "release_date": "2010-05-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 61032879,
+  "name": "Synchronized Realm",
+  "type": "Spell Card",
+  "release_date": "2008-08-05",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 37300735,
+  "name": "T.G. Jet Falcon",
+  "type": "Tuner Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is sent to the Graveyard as a Synchro Material: Inflict 500 damage to your opponent.\""
+ },
+ {
+  "id": 40253382,
+  "name": "TG-SX1",
+  "type": "Trap Card",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"When a \"T.G.\" monster you control destroys an opponent's monster by battle and sends it to the Graveyard: Target 1 \"T.G.\" Synchro Monster in\""
+ },
+ {
+  "id": 53623827,
+  "name": "Top Runner",
+  "type": "Tuner Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"All face-up Synchro Monsters you control gain 600 ATK.\""
+ },
+ {
+  "id": 83370323,
+  "name": "Torapart",
+  "type": "Tuner Monster",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If the Synchro Monster that used this card as a Synchro Material Monster attacks, your opponent cannot activate Trap Cards until the end of \""
+ },
+ {
+  "id": 87319876,
+  "name": "Trust Guardian",
+  "type": "Tuner Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"Once per turn, that Synchro Monster cannot be destroyed by battle.\""
+ },
+ {
+  "id": 50951359,
+  "name": "Tuner Capture",
+  "type": "Trap Card",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Activate only when your opponent Synchro Summons a monster.\""
+ },
+ {
+  "id": 70284332,
+  "name": "Tuner's Scheme",
+  "type": "Trap Card",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Activate only when a Synchro Monster is Special Summoned to your opponent's side of the field.\""
+ },
+ {
+  "id": 96363153,
+  "name": "Tuning",
+  "type": "Spell Card",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"Add 1 \"Synchron\" Tuner from your Deck to your hand, then send the top card of your Deck to the GY.\""
+ },
+ {
+  "id": 92676637,
+  "name": "Tuningware",
+  "type": "Effect Monster",
+  "release_date": "2009-02-24",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"This card can be treated as a Level 2 monster when used for a Synchro Summon.\""
+ },
+ {
+  "id": 67270095,
+  "name": "Turbo Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2008-11-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 40101111,
+  "name": "Ultimate Axon Kicker",
+  "type": "Fusion Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "materials need an excluded mechanic: \"1 Psychic-Type Synchro Monster + 1 Psychic-Type monster\""
+ },
+ {
+  "id": 21296383,
+  "name": "Unibird",
+  "type": "Effect Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"You can remove from play this face-up card, and 1 face-up monster you control, to select 1 Synchro Monster in your Graveyard with a Level le\""
+ },
+ {
+  "id": 15310033,
+  "name": "Unknown Synchron",
+  "type": "Tuner Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "Synchron card (Synchro-enabler family)"
+ },
+ {
+  "id": 94634433,
+  "name": "Urgent Tuning",
+  "type": "Trap Card",
+  "release_date": "2008-11-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"During the Battle Phase: Immediately after this effect resolves, Synchro Summon 1 Synchro Monster using monsters you control.\""
+ },
+ {
+  "id": 65196094,
+  "name": "Variety Comes Out",
+  "type": "Spell Card",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Return 1 face-up Synchro Monster you control to the Extra Deck to select and Special Summon a Tuner monster(s) from your Graveyard, whose to\""
+ },
+ {
+  "id": 43014054,
+  "name": "Vice Berserker",
+  "type": "Effect Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is sent to the Graveyard as a Synchro Material Monster, inflict 2000 damage to the player that Synchro Summoned, and the Synchr\""
+ },
+ {
+  "id": 41431329,
+  "name": "Vylon Cube",
+  "type": "Tuner Monster",
+  "release_date": "2011-05-29",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "only mechanic-bound effects: \"If this card is sent to the Graveyard for the Synchro Summon of a LIGHT monster: You can add 1 Equip Spell Card from your Deck to your hand.\""
+ },
+ {
+  "id": 23440062,
+  "name": "Wicked Rebirth",
+  "type": "Trap Card",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_text_dependency",
+  "detail": "activation condition/cost needs an excluded mechanic: \"Activate this card by paying 800 LP, then target 1 Synchro Monster in your Graveyard; Special Summon it in Attack Position.\""
+ },
+ {
+  "id": 26593852,
+  "name": "Ally of Justice Catastor",
+  "type": "Synchro Monster",
+  "release_date": "2009-06-20",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 9888196,
+  "name": "Ally of Justice Decisive Armor",
+  "type": "Synchro Monster",
+  "release_date": "2010-09-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 69461394,
+  "name": "Ally of Justice Field Marshal",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 19204398,
+  "name": "Ally of Justice Light Gazer",
+  "type": "Synchro Monster",
+  "release_date": "2010-01-29",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 25862681,
+  "name": "Ancient Fairy Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2009-08-18",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 26304459,
+  "name": "Ancient Flamvell Deity",
+  "type": "Synchro Monster",
+  "release_date": "2011-01-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 4179255,
+  "name": "Ancient Pixie Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2014-03-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 25958491,
+  "name": "Ancient Sacred Wyvern",
+  "type": "Synchro Monster",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 42216237,
+  "name": "Angel of Zera",
+  "type": "Synchro Monster",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 31924889,
+  "name": "Arcanite Magician",
+  "type": "Synchro Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 59969392,
+  "name": "Archfiend Zombie-Skull",
+  "type": "Synchro Monster",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 88033975,
+  "name": "Armades, Keeper of Boundaries",
+  "type": "Synchro Monster",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 29071332,
+  "name": "Armory Arm",
+  "type": "Synchro Monster",
+  "release_date": "2009-02-24",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 37910722,
+  "name": "Ascension Sky Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2014-09-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 92361635,
+  "name": "Atomic Scrap Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 69514125,
+  "name": "Avenging Knight Parshath",
+  "type": "Synchro Monster",
+  "release_date": "2008-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 40908371,
+  "name": "Azure-Eyes Silver Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2013-09-12",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 83755611,
+  "name": "Baxia, Brightness of the Yang Zing",
+  "type": "Synchro Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 34408491,
+  "name": "Beelze of the Diabolic Dragons",
+  "type": "Synchro Monster",
+  "release_date": "2014-03-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 96029574,
+  "name": "Black Brutdrago",
+  "type": "Synchro Monster",
+  "release_date": "2009-11-17",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 73580471,
+  "name": "Black Rose Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2008-11-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 9012916,
+  "name": "Black-Winged Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 60992105,
+  "name": "Blackfeather Darkrage Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2014-03-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 17377751,
+  "name": "Blackwing - Gram the Shining Star",
+  "type": "Synchro Monster",
+  "release_date": "2013-04-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 33236860,
+  "name": "Blackwing - Silverwind the Ascendant",
+  "type": "Synchro Monster",
+  "release_date": "2009-11-17",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 76913983,
+  "name": "Blackwing Armed Wing",
+  "type": "Synchro Monster",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 69031175,
+  "name": "Blackwing Armor Master",
+  "type": "Synchro Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 30757396,
+  "name": "Blood Mefist",
+  "type": "Synchro Monster",
+  "release_date": "2011-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 50321796,
+  "name": "Brionac, Dragon of the Ice Barrier",
+  "type": "Synchro Monster",
+  "release_date": "2009-11-05",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 74168099,
+  "name": "Brotherhood of the Fire Fist - Horse Prince",
+  "type": "Synchro Monster",
+  "release_date": "2013-01-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 89856523,
+  "name": "Brotherhood of the Fire Fist - Kirin",
+  "type": "Synchro Monster",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 37474917,
+  "name": "Catapult Warrior",
+  "type": "Synchro Monster",
+  "release_date": "2012-02-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 32995007,
+  "name": "Celestial Wolf Lord, Blue Sirius",
+  "type": "Synchro Monster",
+  "release_date": "2013-11-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 31385077,
+  "name": "Chaos Goddess",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 36407615,
+  "name": "Chaos King Archfiend",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 45037489,
+  "name": "Chevalier de Fleur",
+  "type": "Synchro Monster",
+  "release_date": "2010-10-26",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 9348522,
+  "name": "Cloudcastle",
+  "type": "Synchro Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 23693634,
+  "name": "Colossal Fighter",
+  "type": "Synchro Monster",
+  "release_date": "2008-08-05",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 68319538,
+  "name": "Cosmic Fortress Gol'gar",
+  "type": "Synchro Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 80321197,
+  "name": "Crimson Blader",
+  "type": "Synchro Monster",
+  "release_date": "2013-01-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 10755984,
+  "name": "Daigusto Eguls",
+  "type": "Synchro Monster",
+  "release_date": "2011-09-29",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 34109611,
+  "name": "Daigusto Falcos",
+  "type": "Synchro Monster",
+  "release_date": "2012-05-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 84766279,
+  "name": "Daigusto Gulldos",
+  "type": "Synchro Monster",
+  "release_date": "2011-09-29",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 29552709,
+  "name": "Daigusto Sphreez",
+  "type": "Synchro Monster",
+  "release_date": "2012-02-03",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 31919988,
+  "name": "Dark Diviner",
+  "type": "Synchro Monster",
+  "release_date": "2012-01-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 88643579,
+  "name": "Dark End Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2009-04-26",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 67904682,
+  "name": "Dark Flattop",
+  "type": "Synchro Monster",
+  "release_date": "2012-01-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 75326861,
+  "name": "Dark Highlander",
+  "type": "Synchro Monster",
+  "release_date": "2011-07-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 32646477,
+  "name": "Dark Strike Fighter",
+  "type": "Synchro Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 70583986,
+  "name": "Dewloren, Tiger King of the Ice Barrier",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 6021033,
+  "name": "Doomkaiser Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2008-11-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 21970285,
+  "name": "Dragon Horn Hunter",
+  "type": "Pendulum Normal Monster",
+  "release_date": "2014-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Normal Monster"
+ },
+ {
+  "id": 25682811,
+  "name": "Dragunity Knight - Barcha",
+  "type": "Synchro Monster",
+  "release_date": "2011-01-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 900787,
+  "name": "Dragunity Knight - Gae Bulg",
+  "type": "Synchro Monster",
+  "release_date": "2010-09-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 34116027,
+  "name": "Dragunity Knight - Gae Dearg",
+  "type": "Synchro Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 80159717,
+  "name": "Dragunity Knight - Trident",
+  "type": "Synchro Monster",
+  "release_date": "2011-01-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 21249921,
+  "name": "Dragunity Knight - Vajrayana",
+  "type": "Synchro Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 3429238,
+  "name": "Drill Warrior",
+  "type": "Synchro Monster",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 93353691,
+  "name": "Driven Daredevil",
+  "type": "Synchro Monster",
+  "release_date": "2012-01-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 40529384,
+  "name": "Exploder Dragonwing",
+  "type": "Synchro Monster",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 33413279,
+  "name": "Explosive Magician",
+  "type": "Synchro Monster",
+  "release_date": "2009-11-17",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 39477584,
+  "name": "Fabled Leviathan",
+  "type": "Synchro Monster",
+  "release_date": "2010-09-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 47395382,
+  "name": "Fabled Ragin",
+  "type": "Synchro Monster",
+  "release_date": "2010-09-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 54048462,
+  "name": "Fabled Valkyrus",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 53714009,
+  "name": "Flamvell Uruquizas",
+  "type": "Synchro Monster",
+  "release_date": "2009-11-05",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 17390179,
+  "name": "Flash Knight",
+  "type": "Pendulum Normal Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Normal Monster"
+ },
+ {
+  "id": 50091196,
+  "name": "Formula Synchron",
+  "type": "Synchro Tuner Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Tuner Monster"
+ },
+ {
+  "id": 43785278,
+  "name": "Foucault's Cannon",
+  "type": "Pendulum Normal Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Normal Monster"
+ },
+ {
+  "id": 94515289,
+  "name": "Frozen Fitzgerald",
+  "type": "Synchro Monster",
+  "release_date": "2011-03-31",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 97204936,
+  "name": "Gaia Knight, the Force of Earth",
+  "type": "Synchro Monster",
+  "release_date": "2008-08-05",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 66165755,
+  "name": "Genex Ally Axel",
+  "type": "Synchro Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 17760003,
+  "name": "Genex Ally Triarm",
+  "type": "Synchro Monster",
+  "release_date": "2011-01-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 52709508,
+  "name": "Genex Ally Triforce",
+  "type": "Synchro Monster",
+  "release_date": "2011-01-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 33972299,
+  "name": "Geo Genex",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 63422098,
+  "name": "Giganticastle",
+  "type": "Synchro Monster",
+  "release_date": "2013-11-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 7391448,
+  "name": "Goyo Guardian",
+  "type": "Synchro Monster",
+  "release_date": "2008-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 44035031,
+  "name": "Gravity Warrior",
+  "type": "Synchro Monster",
+  "release_date": "2012-03-16",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 65749035,
+  "name": "Gungnir, Dragon of the Ice Barrier",
+  "type": "Synchro Monster",
+  "release_date": "2010-09-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 79606837,
+  "name": "Herald of the Arc Light",
+  "type": "Synchro Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 39765958,
+  "name": "Hot Red Dragon Archfiend",
+  "type": "Synchro Monster",
+  "release_date": "2014-09-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 15028680,
+  "name": "HTS Psyhemuth",
+  "type": "Synchro Monster",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 95453143,
+  "name": "Hundred Eyes Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 47421985,
+  "name": "Hydro Genex",
+  "type": "Synchro Monster",
+  "release_date": "2010-01-29",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 95526884,
+  "name": "Hyper Psychic Blaster",
+  "type": "Synchro Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 83519853,
+  "name": "Ignoble Knight of High Laundsallyn",
+  "type": "Synchro Monster",
+  "release_date": "2013-11-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 72896720,
+  "name": "Infernity Doom Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 19974580,
+  "name": "Iron Chain Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2008-11-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 42810973,
+  "name": "Junk Archer",
+  "type": "Synchro Monster",
+  "release_date": "2010-01-15",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 59771339,
+  "name": "Junk Berserker",
+  "type": "Synchro Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 74860293,
+  "name": "Junk Destroyer",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 37993923,
+  "name": "Junk Gardna",
+  "type": "Synchro Monster",
+  "release_date": "2011-02-22",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 60800381,
+  "name": "Junk Warrior",
+  "type": "Synchro Monster",
+  "release_date": "2008-08-05",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 80032567,
+  "name": "Jurrac Giganoto",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 17548456,
+  "name": "Jurrac Meteor",
+  "type": "Synchro Monster",
+  "release_date": "2011-01-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 65961683,
+  "name": "Jurrac Velphito",
+  "type": "Synchro Monster",
+  "release_date": "2010-09-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 23874409,
+  "name": "Karakuri Shogun mdl 00 \"Burei\"",
+  "type": "Synchro Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 66976526,
+  "name": "Karakuri Steel Shogun mdl 00X \"Bureido\"",
+  "type": "Synchro Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 48940337,
+  "name": "Lancephorhynchus",
+  "type": "Pendulum Normal Monster",
+  "release_date": "2014-11-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Normal Monster"
+ },
+ {
+  "id": 31632536,
+  "name": "Laval Dual Slasher",
+  "type": "Synchro Monster",
+  "release_date": "2011-11-10",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 20374351,
+  "name": "Laval Stennon",
+  "type": "Synchro Monster",
+  "release_date": "2012-02-03",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 12986807,
+  "name": "Laval the Greater",
+  "type": "Synchro Monster",
+  "release_date": "2011-05-29",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 75991898,
+  "name": "Lavalval Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2011-05-29",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 8611007,
+  "name": "Lavalval Dragun",
+  "type": "Synchro Monster",
+  "release_date": "2012-05-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 29981921,
+  "name": "Legendary Six Samurai - Shi En",
+  "type": "Synchro Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 8561192,
+  "name": "Leo, the Keeper of the Sacred Tree",
+  "type": "Synchro Monster",
+  "release_date": "2014-01-24",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 25165047,
+  "name": "Life Stream Dragon",
+  "type": "Synchro Tuner Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Tuner Monster"
+ },
+ {
+  "id": 25132288,
+  "name": "Light End Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 49389523,
+  "name": "Lightning Tricorn",
+  "type": "Synchro Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 87259077,
+  "name": "Lightning Warrior",
+  "type": "Synchro Monster",
+  "release_date": "2010-12-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 38354937,
+  "name": "Locomotion R-Genex",
+  "type": "Synchro Monster",
+  "release_date": "2010-09-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 67098114,
+  "name": "Loki, Lord of the Aesir",
+  "type": "Synchro Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 43385557,
+  "name": "Magical Android",
+  "type": "Synchro Monster",
+  "release_date": "2008-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 67030233,
+  "name": "Majestic Red Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 7841112,
+  "name": "Majestic Star Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2009-11-03",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 8310162,
+  "name": "Malefic Paradox Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2011-02-22",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 53451824,
+  "name": "Mecha Phantom Beast Concoruda",
+  "type": "Synchro Monster",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 4779823,
+  "name": "Michael, the Arch-Lightsworn",
+  "type": "Synchro Monster",
+  "release_date": "2014-06-27",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 53981499,
+  "name": "Mighty Warrior",
+  "type": "Synchro Monster",
+  "release_date": "2014-01-24",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 15240238,
+  "name": "Mist Bird Clausolas",
+  "type": "Synchro Monster",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 89310929,
+  "name": "Mist Valley Thunder Lord",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 27315304,
+  "name": "Mist Wurm",
+  "type": "Synchro Monster",
+  "release_date": "2009-11-05",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 66818682,
+  "name": "Moon Dragon Quilla",
+  "type": "Synchro Monster",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 2956282,
+  "name": "Naturia Barkion",
+  "type": "Synchro Monster",
+  "release_date": "2010-09-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 33198837,
+  "name": "Naturia Beast",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 43932460,
+  "name": "Naturia Landoise",
+  "type": "Synchro Monster",
+  "release_date": "2011-01-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 16527176,
+  "name": "Naturia Leodrake",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 18013090,
+  "name": "Nitro Warrior",
+  "type": "Synchro Monster",
+  "release_date": "2008-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 16178683,
+  "name": "Odd-Eyes Pendulum Dragon",
+  "type": "Pendulum Effect Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Effect Monster"
+ },
+ {
+  "id": 93483212,
+  "name": "Odin, Father of the Aesir",
+  "type": "Synchro Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 68124775,
+  "name": "Orient Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2011-08-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 24221808,
+  "name": "Overmind Archfiend",
+  "type": "Synchro Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 17857780,
+  "name": "Performapal Cheermole",
+  "type": "Pendulum Effect Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Effect Monster"
+ },
+ {
+  "id": 78835747,
+  "name": "Performapal Kaleidoscorp",
+  "type": "Pendulum Effect Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Effect Monster"
+ },
+ {
+  "id": 43241495,
+  "name": "Performapal Trampolynx",
+  "type": "Pendulum Effect Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Effect Monster"
+ },
+ {
+  "id": 4239451,
+  "name": "Performapal Turn Toad",
+  "type": "Pendulum Effect Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Effect Monster"
+ },
+ {
+  "id": 67556500,
+  "name": "Phonon Pulse Dragon",
+  "type": "Synchro Tuner Monster",
+  "release_date": "2014-05-16",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Tuner Monster"
+ },
+ {
+  "id": 2403771,
+  "name": "Power Tool Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 68084557,
+  "name": "Power Tool Mecha Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2014-03-28",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 46132282,
+  "name": "Powered Inzektron",
+  "type": "Synchro Monster",
+  "release_date": "2014-01-24",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 45379225,
+  "name": "Psychic Lifetrancer",
+  "type": "Synchro Monster",
+  "release_date": "2008-11-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 7582066,
+  "name": "Psychic Nightmare",
+  "type": "Synchro Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 37038993,
+  "name": "Puralis, the Purple Pyrotile",
+  "type": "Synchro Tuner Monster",
+  "release_date": "2013-11-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Tuner Monster"
+ },
+ {
+  "id": 91907707,
+  "name": "Qliphort Carrier",
+  "type": "Pendulum Effect Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Effect Monster"
+ },
+ {
+  "id": 64496451,
+  "name": "Qliphort Disk",
+  "type": "Pendulum Effect Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Effect Monster"
+ },
+ {
+  "id": 37991342,
+  "name": "Qliphort Helix",
+  "type": "Pendulum Effect Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Effect Monster"
+ },
+ {
+  "id": 65518099,
+  "name": "Qliphort Scout",
+  "type": "Pendulum Normal Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Normal Monster"
+ },
+ {
+  "id": 90885155,
+  "name": "Qliphort Shell",
+  "type": "Pendulum Effect Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Effect Monster"
+ },
+ {
+  "id": 45500495,
+  "name": "Queen of Thorns",
+  "type": "Synchro Monster",
+  "release_date": "2008-11-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 70902743,
+  "name": "Red Dragon Archfiend",
+  "type": "Synchro Monster",
+  "release_date": "2008-08-18",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 97489701,
+  "name": "Red Nova Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2010-11-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 60634565,
+  "name": "Reptilianne Hydra",
+  "type": "Synchro Monster",
+  "release_date": "2009-11-17",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 50485594,
+  "name": "Rescue Hamster",
+  "type": "Pendulum Effect Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Effect Monster"
+ },
+ {
+  "id": 5309481,
+  "name": "Revived King Ha Des",
+  "type": "Synchro Monster",
+  "release_date": "2008-11-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 2322421,
+  "name": "Road Warrior",
+  "type": "Synchro Monster",
+  "release_date": "2009-06-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 29143726,
+  "name": "Samsara, Dragon of Rebirth",
+  "type": "Synchro Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 45298492,
+  "name": "Scarred Warrior",
+  "type": "Synchro Monster",
+  "release_date": "2012-03-16",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 45815891,
+  "name": "Scrap Archfiend",
+  "type": "Synchro Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 76774528,
+  "name": "Scrap Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 50278554,
+  "name": "Scrap Twin Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 76891401,
+  "name": "Sea Dragon Lord Gishilnodon",
+  "type": "Synchro Monster",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 43366227,
+  "name": "Seven Swords Warrior",
+  "type": "Synchro Monster",
+  "release_date": "2010-12-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 35952884,
+  "name": "Shooting Quasar Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2011-12-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 24696097,
+  "name": "Shooting Star Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2010-11-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 4290468,
+  "name": "Splendid Rose",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 41517789,
+  "name": "Star Eater",
+  "type": "Synchro Monster",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 44508094,
+  "name": "Stardust Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2008-08-18",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 83994433,
+  "name": "Stardust Spark Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2013-11-05",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 94415058,
+  "name": "Stargazer Magician",
+  "type": "Pendulum Effect Monster",
+  "release_date": "2014-07-10",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Effect Monster"
+ },
+ {
+  "id": 86137485,
+  "name": "Stygian Sergeants",
+  "type": "Synchro Monster",
+  "release_date": "2010-02-23",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 39823987,
+  "name": "Sun Dragon Inti",
+  "type": "Synchro Monster",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 51447164,
+  "name": "T.G. Blade Blaster",
+  "type": "Synchro Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 97836203,
+  "name": "T.G. Halberd Cannon",
+  "type": "Synchro Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 90953320,
+  "name": "T.G. Hyper Librarian",
+  "type": "Synchro Monster",
+  "release_date": "2011-05-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 24943456,
+  "name": "T.G. Power Gladiator",
+  "type": "Synchro Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 62560742,
+  "name": "T.G. Recipro Dragonfly",
+  "type": "Synchro Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 98558751,
+  "name": "T.G. Wonder Magician",
+  "type": "Synchro Tuner Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Tuner Monster"
+ },
+ {
+  "id": 63101919,
+  "name": "Tempest Magician",
+  "type": "Synchro Monster",
+  "release_date": "2008-11-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 89194103,
+  "name": "The Fabled Kudabbi",
+  "type": "Synchro Monster",
+  "release_date": "2011-01-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 44155002,
+  "name": "The Fabled Unicore",
+  "type": "Synchro Monster",
+  "release_date": "2011-01-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 6588580,
+  "name": "Thermal Genex",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 30604579,
+  "name": "Thor, Lord of the Aesir",
+  "type": "Synchro Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 70780151,
+  "name": "Thought Ruler Archfiend",
+  "type": "Synchro Monster",
+  "release_date": "2008-08-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 77506119,
+  "name": "Thunder Unicorn",
+  "type": "Synchro Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 20409757,
+  "name": "Timegazer Magician",
+  "type": "Pendulum Effect Monster",
+  "release_date": "2014-07-10",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Pendulum Effect Monster"
+ },
+ {
+  "id": 39402797,
+  "name": "Trident Dragion",
+  "type": "Synchro Monster",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 52687916,
+  "name": "Trishula, Dragon of the Ice Barrier",
+  "type": "Synchro Monster",
+  "release_date": "2011-01-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 13574687,
+  "name": "Turbo Cannon",
+  "type": "Synchro Monster",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 46195773,
+  "name": "Turbo Warrior",
+  "type": "Synchro Monster",
+  "release_date": "2008-11-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 63465535,
+  "name": "Underground Arachnid",
+  "type": "Synchro Monster",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 52639377,
+  "name": "Underworld Fighter Balmung",
+  "type": "Synchro Monster",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 73483491,
+  "name": "Vindikite R-Genex",
+  "type": "Synchro Monster",
+  "release_date": "2010-09-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 601193,
+  "name": "Virgil, Rock Star of the Burning Abyss",
+  "type": "Synchro Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 81020646,
+  "name": "Void Ogre Dragon",
+  "type": "Synchro Monster",
+  "release_date": "2012-03-16",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 13995824,
+  "name": "Voltic Bicorn",
+  "type": "Synchro Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 25373678,
+  "name": "Vortex the Whirlwind",
+  "type": "Synchro Monster",
+  "release_date": "2011-02-05",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 98012938,
+  "name": "Vulcan the Divine",
+  "type": "Synchro Monster",
+  "release_date": "2013-10-24",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 56768355,
+  "name": "Vylon Alpha",
+  "type": "Synchro Monster",
+  "release_date": "2012-02-03",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 45215453,
+  "name": "Vylon Delta",
+  "type": "Synchro Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 75779210,
+  "name": "Vylon Epsilon",
+  "type": "Synchro Monster",
+  "release_date": "2011-05-29",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 93157004,
+  "name": "Vylon Omega",
+  "type": "Synchro Monster",
+  "release_date": "2012-02-03",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 48370501,
+  "name": "Vylon Sigma",
+  "type": "Synchro Monster",
+  "release_date": "2011-05-29",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 2772236,
+  "name": "Wattchimera",
+  "type": "Synchro Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 29765339,
+  "name": "Watthydra",
+  "type": "Synchro Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 43925870,
+  "name": "Windmill Genex",
+  "type": "Synchro Monster",
+  "release_date": "2010-05-25",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 63612442,
+  "name": "X-Saber Souza",
+  "type": "Synchro Monster",
+  "release_date": "2012-03-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 80108118,
+  "name": "X-Saber Urbellum",
+  "type": "Synchro Monster",
+  "release_date": "2009-06-09",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 83810690,
+  "name": "X-Saber Wayne",
+  "type": "Synchro Monster",
+  "release_date": "2010-01-29",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 52352005,
+  "name": "XX-Saber Gottoms",
+  "type": "Synchro Monster",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 2203790,
+  "name": "XX-Saber Hyunlei",
+  "type": "Synchro Monster",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 43202238,
+  "name": "Yazi, Evil of the Yang Zing",
+  "type": "Synchro Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 22858242,
+  "name": "Zeman the Ape King",
+  "type": "Synchro Monster",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "reason": "mechanic_type",
+  "detail": "Synchro Monster"
+ },
+ {
+  "id": 149694341,
+  "name": "???",
+  "type": "Spell Card",
+  "release_date": "1990-01-01",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 7165085,
+  "name": "Bait Doll",
+  "type": "Spell Card",
+  "release_date": "2003-03-01",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 501000006,
+  "name": "Chimaera, the Master of Beasts",
+  "type": "Effect Monster",
+  "release_date": "2007-07-28",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 62966332,
+  "name": "Convulsion of Nature",
+  "type": "Spell Card",
+  "release_date": "2003-06-06",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 24096228,
+  "name": "Double Spell",
+  "type": "Spell Card",
+  "release_date": "2003-10-10",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 11502550,
+  "name": "Elemental HERO Air Neos",
+  "type": "Fusion Monster",
+  "release_date": "2007-02-28",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 501000007,
+  "name": "Emperor of Lightning",
+  "type": "Effect Monster",
+  "release_date": "2007-07-28",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 111000561,
+  "name": "Get Your Game On!",
+  "type": "Spell Card",
+  "release_date": "2007-07-28",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 10000040,
+  "name": "Holactie the Creator of Light",
+  "type": "Effect Monster",
+  "release_date": "2011-12-10",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 501000002,
+  "name": "King of Destruction - Xexex",
+  "type": "Effect Monster",
+  "release_date": "2005-08-07",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 10000030,
+  "name": "Magi Magi ☆ Magician Gal",
+  "type": "XYZ Monster",
+  "release_date": "2011-12-12",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 501000001,
+  "name": "Meteo the Matchless",
+  "type": "Effect Monster",
+  "release_date": "2004-07-25",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 58074572,
+  "name": "Mooyan Curry",
+  "type": "Spell Card",
+  "release_date": "2010-08-14",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 98931003,
+  "name": "Nanana",
+  "type": "Spell Card",
+  "release_date": "2014-04-28",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 73578229,
+  "name": "Pole Position",
+  "type": "Trap Card",
+  "release_date": "2005-02-26",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 501000003,
+  "name": "Queen of Fate - Eternia",
+  "type": "Effect Monster",
+  "release_date": "2005-08-07",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 10449150,
+  "name": "Shuttleroid",
+  "type": "Effect Monster",
+  "release_date": "2007-12-22",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 18807109,
+  "name": "Spellbinding Circle",
+  "type": "Trap Card",
+  "release_date": "2002-09-16",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 69832741,
+  "name": "Spirit Elimination",
+  "type": "Spell Card",
+  "release_date": "2003-03-01",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 501000004,
+  "name": "Testament of the Arcane Lords",
+  "type": "Effect Monster",
+  "release_date": "2006-07-02",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 68811206,
+  "name": "Tyler the Great Warrior",
+  "type": "Effect Monster",
+  "release_date": "2005-08-05",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 501000000,
+  "name": "Ulevo",
+  "type": "Effect Monster",
+  "release_date": "2004-07-25",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ },
+ {
+  "id": 44910027,
+  "name": "Victory Dragon",
+  "type": "Effect Monster",
+  "release_date": "2007-01-01",
+  "era": "core_<=2014",
+  "reason": "not_in_master_duel",
+  "detail": "not listed in Master Duel by YGOPRODeck"
+ }
+]

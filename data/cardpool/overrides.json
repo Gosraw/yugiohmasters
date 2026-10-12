@@ -1,0 +1,51 @@
+{
+  "_comment": "Curated include/exclude overrides for the Duelist Circle Classic pool, copied verbatim (names + short reasons) from the format_card_overrides seed migrations so scripts/cardpool/build-pool.mjs can run without a database. Provenance per entry: 'source' = migration file in supabase/migrations/. If you change the overrides in a new migration, mirror the change here (or vice versa). Includes bypass the era cutoff and the mechanic text-dependency check but never the Master Duel existence check; excludes always win.",
+  "format_code": "duelist_circle_classic_v1",
+  "include": [
+    { "name": "Chocolate Magician Girl", "source": "202608300900_duelist_circle_classic_format.sql", "reason": "Curated 2015-2018 Dark Magician / Magician Girl support (brief's own model example)." },
+
+    { "name": "Elemental HERO Shadow Mist", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Elemental HERO removal + search, once per turn." },
+    { "name": "Mask Change II", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Masked HERO Fusion enabler." },
+    { "name": "Elemental HERO Blazeman", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "HERO searcher, consistency piece." },
+    { "name": "Eternal Soul", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Dark Magician protection/revival Trap." },
+    { "name": "Red-Eyes Fusion", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Red-Eyes Fusion enabler." },
+    { "name": "Red-Eyes Black Dragon Sword", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Accessible Red-Eyes Fusion boss." },
+    { "name": "The Black Stone of Legend", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Red-Eyes searcher (counterpart of White Stone)." },
+    { "name": "Cyber Emergency", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Cyber Dragon search Spell." },
+    { "name": "Cyber Dragon Herz", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Cyber Dragon identity mechanic." },
+    { "name": "Cyber Dragon Vier", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Cyber Dragon identity mechanic." },
+    { "name": "Chaos Ancient Gear Giant", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Iconic Ancient Gear Fusion boss." },
+    { "name": "Ancient Gear Fusion", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Ancient Gear Fusion enabler." },
+    { "name": "Ancient Gear Howitzer", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Second Ancient Gear Fusion option." },
+    { "name": "Rainbow Overdragon", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Crystal Beast capstone Fusion." },
+    { "name": "D-Fusion", "source": "202608301200_seed_2015_2018_legacy_support_whitelist.sql", "reason": "Destiny HERO Fusion enabler." },
+
+    { "name": "Fairy Tail - Snow", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Explicit nostalgia include." },
+    { "name": "Ultimate Conductor Tyranno", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Explicit nostalgia include; Dinosaur Boss Route support." },
+    { "name": "Vision HERO Vyon", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Elemental HERO family consistency support." },
+    { "name": "Amazoness Onslaught", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Amazoness archetype support." },
+    { "name": "Vampire Fraulein", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Vampire archetype support." },
+    { "name": "Return of the Dragon Lords", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Felgrand / Dragon Lords support." },
+    { "name": "Toon Kingdom", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Toon archetype support." },
+    { "name": "Bingo Machine, Go!!!", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Blue-Eyes archetype support." },
+    { "name": "Apprentice Illusion Magician", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Dark Magician archetype support." }
+  ],
+  "exclude": [
+    { "name": "Aleister the Invoker", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Invoked/Aleister package: compact generic splash Fusion engine." },
+    { "name": "Invocation", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Invoked/Aleister package." },
+    { "name": "Invoked Magellanica", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Invoked/Aleister package." },
+    { "name": "Invoked Purgatrio", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Invoked/Aleister package." },
+    { "name": "Invoked Elysium", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Invoked/Aleister package." },
+    { "name": "Invoked Cocytus", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Invoked/Aleister package." },
+    { "name": "Invoked Mechaba", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Invoked/Aleister package." },
+    { "name": "Number 86: Heroic Champion - Rhongomyniad", "source": "202609011200_cardpool_final_calibration_includes_excludes.sql", "reason": "Extremely generic Xyz splash payoff." },
+
+    { "name": "Synchro Material", "kind": "mechanic_leak", "source": "manual review, cardpool v2 foundation (2026-10-12)", "reason": "Only lets you use an opponent's monster as Synchro Material - dead without Synchro." },
+    { "name": "Synchro Soldier", "kind": "mechanic_leak", "source": "manual review, cardpool v2 foundation (2026-10-12)", "reason": "Its only effect needs a Synchro Monster you control." },
+    { "name": "Reanimation Wave", "kind": "mechanic_leak", "source": "manual review, cardpool v2 foundation (2026-10-12)", "reason": "Revives a Synchro Monster from the GY - dead without Synchro." },
+    { "name": "Lightwave Tuning", "kind": "mechanic_leak", "source": "manual review, cardpool v2 foundation (2026-10-12)", "reason": "Only turns a monster into a Tuner (Synchro-only purpose)." },
+    { "name": "Natural Tune", "kind": "mechanic_leak", "source": "manual review, cardpool v2 foundation (2026-10-12)", "reason": "Only turns a Normal Monster into a Tuner (Synchro-only purpose)." },
+    { "name": "Stardust Xiaolong", "kind": "mechanic_leak", "source": "manual review, cardpool v2 foundation (2026-10-12)", "reason": "Revives only when you Synchro Summon Stardust Dragon; otherwise a 100 ATK vanilla." },
+    { "name": "Necro Linker", "kind": "mechanic_leak", "source": "manual review, cardpool v2 foundation (2026-10-12)", "reason": "Revives a Synchron Tuner - all Synchrons are excluded." }
+  ]
+}

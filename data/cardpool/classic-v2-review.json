@@ -1,0 +1,706 @@
+[
+ {
+  "id": 14553285,
+  "name": "Arcanite Magician/Assault Mode",
+  "type": "Effect Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"When this card on the field is destroyed, you can Special Summon 1 \"Arcanite Magician\" from your Graveyard.\""
+ },
+ {
+  "id": 31175914,
+  "name": "Attack Gainer",
+  "type": "Tuner Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is sent to the Graveyard as a Synchro Material Monster, select 1 face-up monster your opponent controls.\""
+ },
+ {
+  "id": 95637655,
+  "name": "Backup Warrior",
+  "type": "Effect Monster",
+  "release_date": "2012-05-24",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 66500065,
+  "name": "Bi'an, Earth of the Yang Zing",
+  "type": "Effect Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Once per turn, during your opponent's Main Phase or Battle Phase, you can: Immediately after this effect resolves, Synchro Summon 1 Synchro \""
+ },
+ {
+  "id": 2095764,
+  "name": "Bixi, Water of the Yang Zing",
+  "type": "Effect Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Once per turn, during your opponent's Main Phase or Battle Phase, you can: Immediately after this effect resolves, Synchro Summon 1 Synchro \""
+ },
+ {
+  "id": 89258906,
+  "name": "Blackwing - Breeze the Zephyr",
+  "type": "Tuner Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 52900379,
+  "name": "Blackwing - Brisote the Tailwind",
+  "type": "Effect Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is sent to the Graveyard as a Synchro Material: Gain 600 LP.\""
+ },
+ {
+  "id": 41902352,
+  "name": "Blackwing - Kochi the Daybreak",
+  "type": "Tuner Monster",
+  "release_date": "2011-05-27",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 49460512,
+  "name": "Blackwing - Kogarashi the Wanderer",
+  "type": "Tuner Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"When a monster is Synchro Summoned using this card as a Synchro Material, the opponent of this card's owner cannot activate cards or effects\""
+ },
+ {
+  "id": 73652465,
+  "name": "Blackwing - Oroshi the Squall",
+  "type": "Tuner Monster",
+  "release_date": "2014-04-25",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is sent to the GY as a Synchro Material: You can target 1 monster on the field; change that target's battle position.\""
+ },
+ {
+  "id": 9047460,
+  "name": "Blackwing - Steam the Cloak",
+  "type": "Tuner Monster",
+  "release_date": "2014-04-25",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card Summoned this way is used as a Synchro Material Monster, all other Synchro Material Monsters must be \"Blackwing\" monsters.\""
+ },
+ {
+  "id": 72714392,
+  "name": "Blackwing - Vayu the Emblem of Honor",
+  "type": "Tuner Monster",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is in the Graveyard: You can target 1 non-Tuner \"Blackwing\" monster in your Graveyard; banish both this card and that target, a\""
+ },
+ {
+  "id": 54582424,
+  "name": "Blue Mountain Butterspy",
+  "type": "Effect Monster",
+  "release_date": "2013-07-12",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 81587028,
+  "name": "Box of Friends",
+  "type": "Effect Monster",
+  "release_date": "2013-07-12",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 22923081,
+  "name": "Breaker the Dark Magical Warrior",
+  "type": "Effect Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is Pendulum Summoned: Place 3 Spell Counters on it.\""
+ },
+ {
+  "id": 66762372,
+  "name": "Brotherhood of the Fire Fist - Boar",
+  "type": "Tuner Monster",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 93751476,
+  "name": "Brotherhood of the Fire Fist - Caribou",
+  "type": "Effect Monster",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is sent to the Graveyard for the Synchro Summon of a \"Fire Fist\" monster: You can Set 1 \"Fire Formation\" Spell Card directly fr\""
+ },
+ {
+  "id": 1662004,
+  "name": "Brotherhood of the Fire Fist - Spirit",
+  "type": "Tuner Monster",
+  "release_date": "2013-01-25",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 96930127,
+  "name": "Chain Dog",
+  "type": "Effect Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 525110,
+  "name": "Cherry Inmato",
+  "type": "Tuner Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"They cannot be used as Synchro Material Monsters this turn.\""
+ },
+ {
+  "id": 38898779,
+  "name": "Colossal Fighter/Assault Mode",
+  "type": "Effect Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"When this card on the field is destroyed, you can Special Summon 1 \"Colossal Fighter\" from your Graveyard.\""
+ },
+ {
+  "id": 70908596,
+  "name": "Constellar Kaus",
+  "type": "Effect Monster",
+  "release_date": "2012-09-28",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 12863633,
+  "name": "Curse of the Circle",
+  "type": "Trap Card",
+  "release_date": "2011-08-06",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 14943837,
+  "name": "Debris Dragon",
+  "type": "Tuner Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"The other Synchro Material(s) cannot be Level 4.\""
+ },
+ {
+  "id": 77153811,
+  "name": "Djinn Cursenchanter of Rituals",
+  "type": "Effect Monster",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"While the monster Ritual Summoned using this card is face-up on the field, Synchro Monsters' effects are negated.\""
+ },
+ {
+  "id": 1764972,
+  "name": "Doomkaiser Dragon/Assault Mode",
+  "type": "Effect Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"When this card on the field is destroyed, you can Special Summon 1 \"Doomkaiser Dragon\" from your Graveyard.\""
+ },
+ {
+  "id": 53855409,
+  "name": "Doppelwarrior",
+  "type": "Effect Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is sent to the GY as a Synchro Material: You can Special Summon 2 \"Doppel Tokens\" (Warrior/DARK/Level 1/ATK 400/DEF 400) in Att\""
+ },
+ {
+  "id": 63730624,
+  "name": "Double Tool C&D",
+  "type": "Spell Card",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Equip only to a \"Power Tool Dragon\" or Level 4 or higher Machine-Type \"Morphtronic\" monster you control.\""
+ },
+ {
+  "id": 25988873,
+  "name": "Dragunity Partisan",
+  "type": "Tuner Monster",
+  "release_date": "2011-01-25",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"While this card is equipped to a monster, that monster is treated as a Tuner monster.\""
+ },
+ {
+  "id": 93369354,
+  "name": "Fishborg Blaster",
+  "type": "Tuner Monster",
+  "release_date": "2009-09-01",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is used as a Synchro Material Monster, all other Synchro Material Monsters must be WATER.\""
+ },
+ {
+  "id": 66853752,
+  "name": "Fishborg Launcher",
+  "type": "Tuner Monster",
+  "release_date": "2012-11-09",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 9583383,
+  "name": "Gagaga Caesar",
+  "type": "Effect Monster",
+  "release_date": "2012-11-09",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 26082117,
+  "name": "Gagaga Magician",
+  "type": "Effect Monster",
+  "release_date": "2011-08-06",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 42155488,
+  "name": "Genomix Fighter",
+  "type": "Tuner Monster",
+  "release_date": "2013-11-08",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Once per turn: You can declare 1 Monster Type; if this card is used as a Synchro Material Monster this turn, treat this card and the other S\""
+ },
+ {
+  "id": 38975369,
+  "name": "Gundari",
+  "type": "Spirit Monster",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card battles a Synchro Monster, return both monsters to their owners' hands at the start of the Damage Step (without damage calculat\""
+ },
+ {
+  "id": 89774530,
+  "name": "Heroic Challenger - Double Lance",
+  "type": "Effect Monster",
+  "release_date": "2012-08-18",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 37169670,
+  "name": "Hyper Psychic Blaster/Assault Mode",
+  "type": "Effect Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"When this card on the field is destroyed, you can Special Summon 1 \"Hyper Psychic Blaster\" from your Graveyard.\""
+ },
+ {
+  "id": 22200403,
+  "name": "Hypnosister",
+  "type": "Effect Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"This card gains effects based on the total number of cards in both players' Pendulum Zones.\""
+ },
+ {
+  "id": 19353570,
+  "name": "Kagemucha Knight",
+  "type": "Effect Monster",
+  "release_date": "2012-03-16",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 94656263,
+  "name": "Kagetokage",
+  "type": "Effect Monster",
+  "release_date": "2011-11-10",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 40817915,
+  "name": "Kurivolt",
+  "type": "Effect Monster",
+  "release_date": "2012-01-14",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 10736540,
+  "name": "Lady of the Lake",
+  "type": "Tuner Monster",
+  "release_date": "2013-11-08",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is used for a Synchro Summon, banish it.\""
+ },
+ {
+  "id": 55501446,
+  "name": "Lightserpent",
+  "type": "Effect Monster",
+  "release_date": "2011-11-10",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 67489919,
+  "name": "Mecha Phantom Beast Blue Impala",
+  "type": "Tuner Monster",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"The other Synchro Material Monster(s) are \"Mecha Phantom Beast\" monsters in your hand or on your side of the field.\""
+ },
+ {
+  "id": 31480215,
+  "name": "Mecha Phantom Beast Warbluran",
+  "type": "Tuner Monster",
+  "release_date": "2013-08-08",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is sent to the Graveyard for the Synchro Summon of a Machine-Type monster: Special Summon 1 \"Mecha Phantom Beast Token\" (Machin\""
+ },
+ {
+  "id": 38522377,
+  "name": "Meklord Astro Dragon Asterisk",
+  "type": "Effect Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Each time a Synchro Monster(s) is Special Summoned: Inflict 1000 damage to the Summoning player.\""
+ },
+ {
+  "id": 63468625,
+  "name": "Meklord Astro Mekanikle",
+  "type": "Effect Monster",
+  "release_date": "2011-05-01",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Once per turn: You can target 1 Synchro Monster your opponent controls; equip that target to this card.\""
+ },
+ {
+  "id": 4545683,
+  "name": "Meklord Emperor Granel",
+  "type": "Effect Monster",
+  "release_date": "2011-05-01",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Once per turn: You can target 1 Synchro Monster your opponent controls; equip that target to this card.\""
+ },
+ {
+  "id": 31930787,
+  "name": "Meklord Emperor Skiel",
+  "type": "Effect Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Once per turn: You can target 1 Synchro Monster your opponent controls; equip that target to this card.\""
+ },
+ {
+  "id": 68140974,
+  "name": "Meklord Emperor Wisel",
+  "type": "Effect Monster",
+  "release_date": "2011-09-01",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Once per turn: You can target 1 Synchro Monster your opponent controls; equip that target to this card.\""
+ },
+ {
+  "id": 67328336,
+  "name": "Meklord Fortress",
+  "type": "Spell Card",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"\"Meklord Emperor\" monsters you control cannot be targeted by the effects of Synchro Monsters.\""
+ },
+ {
+  "id": 3580032,
+  "name": "Merlin",
+  "type": "Effect Monster",
+  "release_date": "2014-11-20",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"(Quick Effect): You can banish this card from your GY; immediately after this effect resolves, Synchro Summon 1 \"Noble Knight\" Synchro Monst\""
+ },
+ {
+  "id": 94079037,
+  "name": "Mine Mole",
+  "type": "Effect Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is sent to the Graveyard as a Synchro Material Monster of a Beast-Type monster, draw 1 card.\""
+ },
+ {
+  "id": 58807980,
+  "name": "Monoceros",
+  "type": "Effect Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"When you Synchro Summon using this card and a Beast-Type Tuner monster as the Synchro Material Monsters, you can select 1 Beast-Type Tuner m\""
+ },
+ {
+  "id": 51912531,
+  "name": "Mystic Macrocarpa Seed",
+  "type": "Tuner Monster",
+  "release_date": "2014-01-24",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 19605133,
+  "name": "Naturia Ladybug",
+  "type": "Effect Monster",
+  "release_date": "2011-01-25",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"When you Synchro Summon a \"Naturia\" Synchro Monster, you can Special Summon this card from your Graveyard.\""
+ },
+ {
+  "id": 82340056,
+  "name": "Offering to the Immortals",
+  "type": "Trap Card",
+  "release_date": "2010-02-12",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 21620076,
+  "name": "Pain Painter",
+  "type": "Tuner Monster",
+  "release_date": "2011-08-06",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 71564150,
+  "name": "Perditious Puppeteer",
+  "type": "Effect Monster",
+  "release_date": "2011-08-06",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"These monsters cannot activate their effects, and cannot be Tributed or used as a Synchro Material Monster.\""
+ },
+ {
+  "id": 17418744,
+  "name": "Photon Sanctuary",
+  "type": "Spell Card",
+  "release_date": "2012-03-16",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"These Tokens cannot attack or be used as Synchro Material Monsters.\""
+ },
+ {
+  "id": 3891471,
+  "name": "Psychic Tuning",
+  "type": "Trap Card",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"It is treated as a Tuner monster.\""
+ },
+ {
+  "id": 35089369,
+  "name": "Pulao, Wind of the Yang Zing",
+  "type": "Effect Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Once per turn, during your opponent's Main Phase or Battle Phase, you can: Immediately after this effect resolves, Synchro Summon 1 Synchro \""
+ },
+ {
+  "id": 10178757,
+  "name": "R-Genex Oracle",
+  "type": "Tuner Monster",
+  "release_date": "2010-09-25",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 77336644,
+  "name": "Red Dragon Archfiend/Assault Mode",
+  "type": "Effect Monster",
+  "release_date": "2009-02-28",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"When this card on the field is destroyed, you can Special Summon 1 \"Red Dragon Archfiend\" from your Graveyard.\""
+ },
+ {
+  "id": 18634367,
+  "name": "Red Screen",
+  "type": "Trap Card",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"\"Red Dragon Archfiend\" must be on the field to activate and to resolve this effect.\""
+ },
+ {
+  "id": 1357146,
+  "name": "Ronintoadin",
+  "type": "Effect Monster",
+  "release_date": "2010-05-07",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 734741,
+  "name": "Rubic, Malebranche of the Burning Abyss",
+  "type": "Tuner Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 56746202,
+  "name": "Scrap Chimera",
+  "type": "Effect Monster",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \", and all other Synchro Material Monsters must also be \"Scrap\" monsters.\""
+ },
+ {
+  "id": 67038874,
+  "name": "Scrap Mind Reader",
+  "type": "Tuner Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is used as a Synchro Material Monster, all other Synchro Material Monsters must be \"Scrap\" monsters.\""
+ },
+ {
+  "id": 65503206,
+  "name": "Scrap Soldier",
+  "type": "Tuner Monster",
+  "release_date": "2010-11-06",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 20838380,
+  "name": "Shark Stickers",
+  "type": "Effect Monster",
+  "release_date": "2011-11-10",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 26381750,
+  "name": "Soaring Eagle Above the Searing Land",
+  "type": "Tuner Monster",
+  "release_date": "2011-05-29",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card is sent to the Graveyard for a Synchro Summon: You can Special Summon this card.\""
+ },
+ {
+  "id": 61257789,
+  "name": "Stardust Dragon/Assault Mode",
+  "type": "Effect Monster",
+  "release_date": "2009-03-10",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"When this card on the field is destroyed: You can target 1 \"Stardust Dragon\" in your GY; Special Summon it.\""
+ },
+ {
+  "id": 54338958,
+  "name": "Steelswarm Cell",
+  "type": "Effect Monster",
+  "release_date": "2011-09-29",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 90727556,
+  "name": "Steelswarm Scout",
+  "type": "Effect Monster",
+  "release_date": "2011-09-29",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 30106950,
+  "name": "Suanni, Fire of the Yang Zing",
+  "type": "Effect Monster",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Once per turn, during your opponent's Main Phase or Battle Phase, you can: Immediately after this effect resolves, Synchro Summon 1 Synchro \""
+ },
+ {
+  "id": 64910482,
+  "name": "T.G. Cyber Magician",
+  "type": "Tuner Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"If this card you control would be used as Synchro Material for a \"T.G.\" monster, \"T.G.\" monsters in your hand can be used as the non-Tuner S\""
+ },
+ {
+  "id": 99946920,
+  "name": "Taotie, Shadow of the Yang Zing",
+  "type": "Effect Monster",
+  "release_date": "2014-11-06",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Once per turn, during your opponent's Main Phase or Battle Phase, you can: Immediately after this effect resolves, Synchro Summon 1 Synchro \""
+ },
+ {
+  "id": 65079854,
+  "name": "Thorn of Malice",
+  "type": "Spell Card",
+  "release_date": "2009-05-02",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Equip only to \"Black Rose Dragon\" or a Plant-Type monster.\""
+ },
+ {
+  "id": 10802915,
+  "name": "Tour Guide From the Underworld",
+  "type": "Effect Monster",
+  "release_date": "2011-04-30",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 47459126,
+  "name": "Tuned Magician",
+  "type": "Gemini Monster",
+  "release_date": "2009-11-17",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"This card is treated as a Tuner monster.\""
+ },
+ {
+  "id": 61777313,
+  "name": "Vanadis of the Nordic Ascendant",
+  "type": "Tuner Monster",
+  "release_date": "2011-02-08",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"For a Synchro Summon, you can substitute this card for any 1 \"Nordic\" Tuner.\""
+ },
+ {
+  "id": 92035412,
+  "name": "Vylon Element",
+  "type": "Spell Card",
+  "release_date": "2012-02-03",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 35262428,
+  "name": "Wiseman's Chalice",
+  "type": "Spell Card",
+  "release_date": "2010-08-07",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"The monster cannot be Tributed, or used as a Synchro Material Monster, while it is face-up on the field.\""
+ },
+ {
+  "id": 5998840,
+  "name": "XX-Saber Boggart Knight",
+  "type": "Effect Monster",
+  "release_date": "2010-05-01",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"restriction clause\""
+ },
+ {
+  "id": 30398342,
+  "name": "Yang Zing Creation",
+  "type": "Trap Card",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"You cannot Special Summon monsters from the Extra Deck, except Synchro Monsters.\""
+ },
+ {
+  "id": 77783947,
+  "name": "Yang Zing Unleashed",
+  "type": "Trap Card",
+  "release_date": "2014-08-14",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"During either player's Main Phase or Battle Phase: You can send this face-up card from your Spell & Trap Zone to the Graveyard; immediately \""
+ },
+ {
+  "id": 61011311,
+  "name": "Zenmailfunction",
+  "type": "Spell Card",
+  "release_date": "2011-11-10",
+  "era": "core_<=2014",
+  "note": "mechanic mention, independent function kept: \"Its effect(s) is negated, and it cannot be Tributed or used as a Synchro Material Monster.\""
+ }
+]

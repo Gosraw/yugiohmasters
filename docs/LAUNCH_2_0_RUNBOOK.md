@@ -90,6 +90,19 @@ Wat je ziet: per bestand een regel `== supabase/migrations/...`, en geen `ERROR`
 
 **STOP als:** je ergens `ERROR` ziet. De lus stopt dan vanzelf. Het bestand met de fout is niet half uitgevoerd. Kopieer de foutmelding en vraag om hulp.
 
+### Stap 2b: De goedgekeurde seizoenscijfers zetten
+
+Je hebt de cijfers uit de simulator op 12 oktober goedgekeurd (Boss
+1.800 / 3.200 / 5.500, routes 3.000 / 5.500, rondeplaatsen 350/200/100).
+Deze stap zet ze in de database:
+
+```
+psql "$DB" -v ON_ERROR_STOP=1 -c "set duelist.approve_season2_numbers = 'yes'" -f supabase/proposals/season2_numbers.sql
+```
+
+Daarna: in `tests/e2e/economy-rules.ts` de 2.0-cijfers aanzetten, zodat
+de testbots de nieuwe bedragen controleren.
+
 ### Stap 3: Proefdraaien van de reset (verandert niets)
 
 Kies de **startdatum van Seizoen 2**, bijvoorbeeld maandag `2026-10-19`.
@@ -281,7 +294,7 @@ node scripts/cardpool/build-v2-format-migration.mjs \
   - the output must pass the quote-safety scanner (`findUnsafeSqlLiteral`).
 - **Once a seed has been applied anywhere,** emit a **new** file name. The SQL replaces the format's rows, so a later file supersedes the earlier one.
 
-### Boss-route exemption (owner decision pending)
+### Boss-route exemption (owner decided 2026-10-12: exempt = ON)
 
 `duelist_circle_formats.boss_route_exempt` (default **true** in the generated seed).
 

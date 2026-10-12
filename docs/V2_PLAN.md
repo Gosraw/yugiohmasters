@@ -197,11 +197,13 @@ Strong cards are fine; **unfair cards are not**.
   Pack (~4,000 cards, can't be dismantled) — fully playable in
   Unlimited rooms, so NOT an exclusion. Only "not in Master Duel"
   excludes (23 Classic cards). See docs/cardpool-v2-foundation.md.
-- Owner decisions: Boss-route clashes with the concept (Chaos Emperor
-  Dragon is the Chaos/BLS stage-4 boss; Dark Magician of Chaos was
-  forbidden in 2014; board-wipe support grants vs "1 per league"; the
-  Cubic route is all post-2014). Proposal: Boss evolution monsters and
-  exclusive route grants are exempt from pool rules.
-- Owner approval: season simulator numbers (docs/season-sim-report.md).
+- **Decided 2026-10-12:** Boss evolution monsters and route-exclusive
+  grants are EXEMPT from pool rules (only their owner gets them;
+  duelist_circle_formats.boss_route_exempt = true).
+- **Decided 2026-10-12:** season simulator numbers APPROVED
+  (docs/season-sim-report.md) — applied on launch night via
+  supabase/proposals/season2_numbers.sql (runbook step 2b).
+- **Decided 2026-10-12:** a player-entered season result only counts
+  after the OPPONENT confirms (admin = referee, except in own duels).
 - Connect ElevenLabs.
 - Weekly goals deep-dive with owner.

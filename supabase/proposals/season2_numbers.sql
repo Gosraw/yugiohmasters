@@ -1,5 +1,6 @@
 -- =========================================================
--- PROPOSAL - NOT APPLIED - WAITING FOR THE OWNER'S APPROVAL
+-- APPROVED by the owner on 2026-10-12 - apply on LAUNCH NIGHT
+-- (runbook step 2b), not before: it changes live economy numbers.
 --
 -- Season 2 economy numbers proposed by the season simulator
 -- (docs/season-sim-report.md, scripts/season-sim/config.mjs PROPOSED).

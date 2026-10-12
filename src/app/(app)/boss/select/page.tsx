@@ -35,6 +35,10 @@ import {
   getRouteStagePrices,
 } from "@/lib/boss-prices";
 
+import {
+  getBossArenaImage,
+} from "@/lib/boss-arena";
+
 export const dynamic =
   "force-dynamic";
 
@@ -384,8 +388,16 @@ export default async function BossPathSelectPage({
                       key={
                         route.id
                       }
-                      className={`panel relative flex flex-col p-5 ${alreadyChosenElsewhere ? "opacity-50" : ""}`}
+                      className={`panel relative flex flex-col overflow-hidden p-5 ${alreadyChosenElsewhere ? "opacity-50" : ""}`}
                     >
+                      <div
+                        aria-hidden="true"
+                        className="-mx-5 -mt-5 mb-4 h-28 bg-cover bg-center [mask-image:linear-gradient(180deg,#000_55%,transparent)]"
+                        style={{
+                          backgroundImage: `url(${getBossArenaImage(route.code)})`,
+                        }}
+                      />
+
                       <div className="flex items-center justify-between">
                         <span className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
                           Route{" "}

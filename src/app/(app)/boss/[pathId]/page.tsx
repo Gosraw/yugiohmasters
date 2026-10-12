@@ -32,6 +32,10 @@ import {
   evolveBossStage,
 } from "@/app/actions/boss-routes";
 
+import {
+  getBossArenaImage,
+} from "@/lib/boss-arena";
+
 export const dynamic =
   "force-dynamic";
 
@@ -55,6 +59,7 @@ export const dynamic =
 
 type BossRoute = {
   id: string;
+  code: string;
   name: string;
   teaser_story: string;
   star_profile: Record<
@@ -186,7 +191,7 @@ export default async function BossPathDetailPage({
     supabase
       .from("boss_routes")
       .select(
-        "id,name,teaser_story,star_profile,target_power_grade"
+        "id,code,name,teaser_story,star_profile,target_power_grade"
       )
       .eq(
         "id",
@@ -386,6 +391,18 @@ export default async function BossPathDetailPage({
   return (
     <main className="relative min-h-screen overflow-hidden pb-28">
       <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-x-0 top-0 h-[640px] [mask-image:linear-gradient(180deg,#000_45%,transparent)]">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-cover bg-top opacity-60"
+            style={{
+              backgroundImage: `url(${getBossArenaImage(route.code)})`,
+            }}
+          />
+
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/60 to-black/80" />
+        </div>
+
         <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-amber-400/[0.06] blur-[150px]" />
 
         <div className="absolute -right-40 top-40 h-[460px] w-[460px] rounded-full bg-violet-500/[0.045] blur-[160px]" />

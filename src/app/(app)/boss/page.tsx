@@ -29,6 +29,10 @@ import {
   getRouteStagePrices,
 } from "@/lib/boss-prices";
 
+import {
+  getBossArenaImage,
+} from "@/lib/boss-arena";
+
 export const dynamic =
   "force-dynamic";
 
@@ -280,7 +284,20 @@ export default async function BossHubPage() {
                   href={`/boss/${path.id}`}
                   className="panel group relative flex flex-col overflow-hidden p-5 transition-all hover:-translate-y-0.5 hover:border-amber-300/25"
                 >
-                  <div className="flex items-center justify-between">
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-45 transition-opacity duration-500 group-hover:opacity-60"
+                    style={{
+                      backgroundImage: `url(${getBossArenaImage(route.code)})`,
+                    }}
+                  />
+
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/70 to-black/90"
+                  />
+
+                  <div className="relative flex items-center justify-between">
                     <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-zinc-500">
                       Slot {slot}
                     </span>
@@ -301,17 +318,17 @@ export default async function BossHubPage() {
                     )}
                   </div>
 
-                  <h2 className="gold-text mt-4 text-xl font-black leading-snug">
+                  <h2 className="gold-text relative mt-4 text-xl font-black leading-snug">
                     {route.name}
                   </h2>
 
-                  <p className="mt-2 line-clamp-3 text-xs leading-5 text-zinc-500">
+                  <p className="relative mt-2 line-clamp-3 text-xs leading-5 text-zinc-400">
                     {
                       route.teaser_story
                     }
                   </p>
 
-                  <div className="mt-5">
+                  <div className="relative mt-5">
                     <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-zinc-500">
                       <span>
                         Stage{" "}
@@ -344,7 +361,7 @@ export default async function BossHubPage() {
                   {!mastered &&
                     nextPrice != null && (
                       <p
-                        className={`mt-4 inline-flex items-center gap-1.5 text-xs font-black ${
+                        className={`relative mt-4 inline-flex items-center gap-1.5 text-xs font-black ${
                           duelPoints >= nextPrice
                             ? "text-emerald-300"
                             : "text-zinc-400"
@@ -362,7 +379,7 @@ export default async function BossHubPage() {
                       </p>
                     )}
 
-                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-black text-amber-300 group-hover:text-amber-200">
+                  <span className="relative mt-4 inline-flex items-center gap-1.5 text-sm font-black text-amber-300 group-hover:text-amber-200">
                     <Sword
                       size={14}
                     />

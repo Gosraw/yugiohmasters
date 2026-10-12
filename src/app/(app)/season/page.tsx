@@ -86,18 +86,28 @@ export default async function SeasonPage() {
 
       {/* HEADER */}
 
-      <header className="mt-3">
-        <p className="text-xs uppercase tracking-[.12em] text-zinc-300/80">
+      <header className="relative mt-3 overflow-hidden rounded-2xl border border-[rgb(242_196_90/.3)] px-4 pb-4 pt-16 shadow-[0_0_30px_rgb(242_196_90/.1)]">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[url('/v2/season/season2-banner.jpg')] bg-cover bg-[70%_center]"
+        />
+
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-[rgb(5_8_26/.65)] to-[rgb(5_8_26/.95)]"
+        />
+
+        <p className="relative text-xs uppercase tracking-[.12em] text-zinc-300/80">
           {seasonWeekLabel(
             overview.season
           )}
         </p>
 
-        <h1 className="mt-0.5 text-[26px] font-bold leading-tight text-[#f6e3b0]">
+        <h1 className="relative mt-0.5 text-[26px] font-bold leading-tight text-[#f6e3b0]">
           Season Path
         </h1>
 
-        <p className="mt-1 text-[13px] leading-5 text-zinc-400">
+        <p className="relative mt-1 text-[13px] leading-5 text-zinc-300">
           One free reward track for the whole season. Earn XP by playing,
           and every tier you reach pays out automatically.
         </p>

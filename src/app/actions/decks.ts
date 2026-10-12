@@ -71,7 +71,7 @@ async function requireOwnedDeck(
   ) {
     redirect(
       `/decks?error=${safeMessage(
-        "Deck niet gevonden."
+        "Deck not found."
       )}`
     );
   }
@@ -82,7 +82,7 @@ async function requireOwnedDeck(
   ) {
     redirect(
       `/decks?error=${safeMessage(
-        "Dit deck is niet van jou."
+        "This deck isn't yours."
       )}`
     );
   }
@@ -127,7 +127,7 @@ export async function createDeck(
   if (!name) {
     redirect(
       `/decks?error=${safeMessage(
-        "Decknaam is verplicht."
+        "Deck name is required."
       )}`
     );
   }
@@ -137,7 +137,7 @@ export async function createDeck(
   ) {
     redirect(
       `/decks?error=${safeMessage(
-        "Decknaam mag maximaal 80 tekens bevatten."
+        "Deck name can be at most 80 characters."
       )}`
     );
   }
@@ -166,7 +166,7 @@ export async function createDeck(
   ) {
     redirect(
       `/decks?error=${safeMessage(
-        "League niet gevonden."
+        "League not found."
       )}`
     );
   }
@@ -196,7 +196,7 @@ export async function createDeck(
   if (!deckId) {
     redirect(
       `/decks?error=${safeMessage(
-        "Deck kon niet worden aangemaakt."
+        "The deck could not be created."
       )}`
     );
   }
@@ -211,107 +211,130 @@ export async function createDeck(
 }
 
 // =========================================================
-// ADD CARD TO DECK
+// ADD / REMOVE CARD (deck builder)
+//
+// Called straight from the deck builder's client code (not a <form>),
+// once per tap. They deliberately RETURN a result instead of
+// redirecting or revalidating: a redirect or revalidatePath() would
+// make Next.js re-render the whole deck page (collection, catalog,
+// Deck Doctor - many queries) and the page would jump after every
+// tap. The builder updates its own state optimistically and only
+// needs to know whether the database accepted the change.
+//
+// The database stays the source of truth for every deck rule:
+// add_card_to_deck + the validate_deck_card trigger check ownership,
+// locked copies, format legality, Main/Extra placement (Fusion + Xyz
+// only in Extra) and the 60 / 15 maximums.
 // =========================================================
 
-export async function addCardToDeck(
-  formData: FormData
+export type DeckCardMutationResult =
+  | {
+      ok: true;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function loadEditableDeck(
+  deckId: string
 ) {
-  const deckId =
-    getString(
-      formData,
-      "deck_id"
-    );
-
-  const cardInstanceId =
-    getString(
-      formData,
-      "card_instance_id"
-    );
-
-  if (!deckId) {
-    redirect(
-      `/decks?error=${safeMessage(
-        "Deck ontbreekt."
-      )}`
-    );
-  }
-
-  if (!cardInstanceId) {
-    redirect(
-      `/decks/${deckId}?error=${safeMessage(
-        "Kaart ontbreekt."
-      )}`
-    );
-  }
-
   const {
     supabase,
     userId,
-    deck,
-  } =
-    await requireOwnedDeck(
+  } = await requireUser();
+
+  const {
+    data: deck,
+    error,
+  } = await supabase
+    .from("decks")
+    .select(
+      "id,owner_id,status"
+    )
+    .eq(
+      "id",
       deckId
-    );
+    )
+    .maybeSingle();
+
+  if (
+    error ||
+    !deck
+  ) {
+    return {
+      supabase,
+      error:
+        "Deck not found.",
+    } as const;
+  }
+
+  if (
+    deck.owner_id !==
+    userId
+  ) {
+    return {
+      supabase,
+      error:
+        "This deck isn't yours.",
+    } as const;
+  }
 
   if (
     deck.status !==
     "draft"
   ) {
-    redirect(
-      `/decks/${deckId}?error=${safeMessage(
-        "Alleen een Draft deck kan worden aangepast."
-      )}`
-    );
+    return {
+      supabase,
+      error:
+        "Only a Draft deck can be edited.",
+    } as const;
+  }
+
+  return {
+    supabase,
+    error:
+      null,
+  } as const;
+}
+
+export async function addDeckCard(
+  deckId: string,
+  cardInstanceId: string
+): Promise<DeckCardMutationResult> {
+  if (
+    !UUID_RE.test(
+      deckId
+    ) ||
+    !UUID_RE.test(
+      cardInstanceId
+    )
+  ) {
+    return {
+      ok: false,
+      error:
+        "That card could not be added.",
+    };
   }
 
   const {
-    data: instance,
+    supabase,
     error:
-      instanceError,
-  } = await supabase
-    .from(
-      "card_instances"
-    )
-    .select(
-      "id,current_owner_id,locked"
-    )
-    .eq(
-      "id",
-      cardInstanceId
-    )
-    .maybeSingle();
-
-  if (
-    instanceError ||
-    !instance
-  ) {
-    redirect(
-      `/decks/${deckId}?error=${safeMessage(
-        "Kaartinstance niet gevonden."
-      )}`
+      deckError,
+  } =
+    await loadEditableDeck(
+      deckId
     );
-  }
 
-  if (
-    instance.current_owner_id !==
-    userId
-  ) {
-    redirect(
-      `/decks/${deckId}?error=${safeMessage(
-        "Deze kaart is niet van jou."
-      )}`
-    );
-  }
-
-  if (
-    instance.locked
-  ) {
-    redirect(
-      `/decks/${deckId}?error=${safeMessage(
-        "Deze kaart is locked en kan niet aan een deck worden toegevoegd."
-      )}`
-    );
+  if (deckError) {
+    return {
+      ok: false,
+      error:
+        deckError,
+    };
   }
 
   const {
@@ -328,74 +351,52 @@ export async function addCardToDeck(
   );
 
   if (error) {
-    redirect(
-      `/decks/${deckId}?error=${safeMessage(
-        error.message
-      )}`
-    );
+    return {
+      ok: false,
+      error:
+        error.message,
+    };
   }
 
-  refreshDeck(
-    deckId
-  );
-
-  redirect(
-    `/decks/${deckId}`
-  );
+  return {
+    ok: true,
+  };
 }
 
-// =========================================================
-// REMOVE CARD FROM DECK
-// =========================================================
-
-export async function removeCardFromDeck(
-  formData: FormData
-) {
-  const deckId =
-    getString(
-      formData,
-      "deck_id"
-    );
-
-  const deckCardId =
-    getString(
-      formData,
-      "deck_card_id"
-    );
-
-  if (!deckId) {
-    redirect(
-      `/decks?error=${safeMessage(
-        "Deck ontbreekt."
-      )}`
-    );
-  }
-
-  if (!deckCardId) {
-    redirect(
-      `/decks/${deckId}?error=${safeMessage(
-        "Deckkaart ontbreekt."
-      )}`
-    );
+export async function removeDeckCard(
+  deckId: string,
+  cardInstanceId: string
+): Promise<DeckCardMutationResult> {
+  if (
+    !UUID_RE.test(
+      deckId
+    ) ||
+    !UUID_RE.test(
+      cardInstanceId
+    )
+  ) {
+    return {
+      ok: false,
+      error:
+        "That card could not be removed.",
+    };
   }
 
   const {
     supabase,
-    deck,
+    error:
+      deckError,
   } =
-    await requireOwnedDeck(
+    await loadEditableDeck(
       deckId
     );
 
-  if (
-    deck.status !==
-    "draft"
-  ) {
-    redirect(
-      `/decks/${deckId}?error=${safeMessage(
-        "Alleen een Draft deck kan worden aangepast."
-      )}`
-    );
+  if (deckError) {
+    return {
+      ok: false,
+      error:
+        deckError,
+    };
   }
 
   const {
@@ -405,15 +406,15 @@ export async function removeCardFromDeck(
   } = await supabase
     .from("deck_cards")
     .select(
-      "id,deck_id"
-    )
-    .eq(
-      "id",
-      deckCardId
+      "id"
     )
     .eq(
       "deck_id",
       deckId
+    )
+    .eq(
+      "card_instance_id",
+      cardInstanceId
     )
     .maybeSingle();
 
@@ -421,11 +422,11 @@ export async function removeCardFromDeck(
     deckCardError ||
     !deckCard
   ) {
-    redirect(
-      `/decks/${deckId}?error=${safeMessage(
-        "Deckkaart niet gevonden."
-      )}`
-    );
+    return {
+      ok: false,
+      error:
+        "That card is no longer in this deck.",
+    };
   }
 
   const {
@@ -434,34 +435,30 @@ export async function removeCardFromDeck(
     "remove_card_from_deck",
     {
       target_deck_card_id:
-        deckCardId,
+        deckCard.id,
     }
   );
 
   if (error) {
-    redirect(
-      `/decks/${deckId}?error=${safeMessage(
-        `Kaart verwijderen mislukt: ${error.message}`
-      )}`
-    );
+    return {
+      ok: false,
+      error:
+        `Could not remove the card: ${error.message}`,
+    };
   }
 
-  refreshDeck(
-    deckId
-  );
-
-  redirect(
-    `/decks/${deckId}`
-  );
+  return {
+    ok: true,
+  };
 }
 
 // =========================================================
 // MARK DECK READY
 //
-// Database doet de definitieve validatie:
-// - minimaal 40 Main
-// - maximaal 60 Main
-// - maximaal 15 Extra
+// The database does the final validation:
+// - at least 40 Main
+// - at most 60 Main
+// - at most 15 Extra
 // =========================================================
 
 export async function markDeckReady(
@@ -476,7 +473,7 @@ export async function markDeckReady(
   if (!deckId) {
     redirect(
       `/decks?error=${safeMessage(
-        "Deck ontbreekt."
+        "Deck is missing."
       )}`
     );
   }
@@ -495,7 +492,7 @@ export async function markDeckReady(
   ) {
     redirect(
       `/decks/${deckId}?error=${safeMessage(
-        "Een gearchiveerd deck kan niet Ready worden gemaakt."
+        "An archived deck can't be marked Ready."
       )}`
     );
   }
@@ -525,7 +522,7 @@ export async function markDeckReady(
   if (error) {
     redirect(
       `/decks/${deckId}?error=${safeMessage(
-        `Deck kan nog niet Ready worden gemaakt: ${error.message}`
+        `This deck can't be marked Ready yet: ${error.message}`
       )}`
     );
   }
@@ -555,7 +552,7 @@ export async function markDeckDraft(
   if (!deckId) {
     redirect(
       `/decks?error=${safeMessage(
-        "Deck ontbreekt."
+        "Deck is missing."
       )}`
     );
   }
@@ -574,7 +571,7 @@ export async function markDeckDraft(
   ) {
     redirect(
       `/decks/${deckId}?error=${safeMessage(
-        "Een gearchiveerd deck kan niet worden aangepast."
+        "An archived deck can't be changed."
       )}`
     );
   }
@@ -584,7 +581,7 @@ export async function markDeckDraft(
   ) {
     redirect(
       `/decks/${deckId}?error=${safeMessage(
-        "Je actieve deck kan niet naar Draft worden teruggezet. Activeer eerst een ander Ready deck."
+        "Your Active Deck can't go back to Draft. Activate another Ready deck first."
       )}`
     );
   }
@@ -644,7 +641,7 @@ export async function setActiveDeck(
   if (!deckId) {
     redirect(
       `/decks?error=${safeMessage(
-        "Deck ontbreekt."
+        "Deck is missing."
       )}`
     );
   }
@@ -663,7 +660,7 @@ export async function setActiveDeck(
   ) {
     redirect(
       `/decks/${deckId}?error=${safeMessage(
-        "Alleen een Ready deck kan Active worden."
+        "Only a Ready deck can become Active."
       )}`
     );
   }
@@ -725,7 +722,7 @@ export async function renameDeck(
   if (!deckId) {
     redirect(
       `/decks?error=${safeMessage(
-        "Deck ontbreekt."
+        "Deck is missing."
       )}`
     );
   }
@@ -733,7 +730,7 @@ export async function renameDeck(
   if (!name) {
     redirect(
       `/decks/${deckId}?error=${safeMessage(
-        "Decknaam is verplicht."
+        "Deck name is required."
       )}`
     );
   }
@@ -743,7 +740,7 @@ export async function renameDeck(
   ) {
     redirect(
       `/decks/${deckId}?error=${safeMessage(
-        "Decknaam mag maximaal 80 tekens bevatten."
+        "Deck name can be at most 80 characters."
       )}`
     );
   }
@@ -762,7 +759,7 @@ export async function renameDeck(
   ) {
     redirect(
       `/decks/${deckId}?error=${safeMessage(
-        "Een gearchiveerd deck kan niet worden hernoemd."
+        "An archived deck can't be renamed."
       )}`
     );
   }
@@ -800,8 +797,8 @@ export async function renameDeck(
 // =========================================================
 // ARCHIVE DECK
 //
-// We verwijderen decks bewust niet hard.
-// Match history kan later naar dit deck verwijzen.
+// Decks are deliberately never hard-deleted:
+// match history can still point at this deck.
 // =========================================================
 
 export async function archiveDeck(
@@ -816,7 +813,7 @@ export async function archiveDeck(
   if (!deckId) {
     redirect(
       `/decks?error=${safeMessage(
-        "Deck ontbreekt."
+        "Deck is missing."
       )}`
     );
   }
@@ -834,7 +831,7 @@ export async function archiveDeck(
   ) {
     redirect(
       `/decks/${deckId}?error=${safeMessage(
-        "Je actieve deck kan niet worden gearchiveerd. Activeer eerst een ander deck."
+        "Your Active Deck can't be archived. Activate another deck first."
       )}`
     );
   }

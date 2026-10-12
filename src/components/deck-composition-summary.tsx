@@ -3,22 +3,16 @@
 // =========================================================
 // DECK COMPOSITION SUMMARY (Deck Builder 2.0)
 //
-// Lifted out of decks/[id]/page.tsx into its own Client Component so
-// the counts can update the moment a card is added or removed,
-// instead of only after the server action's full page round trip.
-// The numbers themselves come from the shared live composition
-// context; `ownedVsUsed` stays a server-computed prop (it needs the
-// player's whole owned-quantity map, which isn't sent to the
-// browser, and it is a "spare copies" hint rather than one of the
-// composition counts that has to be instant).
+// Shown in the deck builder's "More" tab. `composition` is computed
+// in the browser from the builder's live deck state (see
+// computeDeckComposition in src/lib/deck-composition.ts), so it moves
+// the moment a card is added or removed - no server round trip.
 //
 // Always-visible headline row ("Monsters 22 · Spells 11 · Traps 7"),
-// with the deeper breakdown (Normal/Effect split, Level/Rank curve,
-// Attributes, Types, Archetypes, spare owned copies) tucked behind a
-// native <details> so it never overwhelms the page by default. Plain
-// English throughout - no engine terminology, no raw scores (see the
-// product spec's explicit "good: Monsters 22 · Spells 11 · Traps 7 /
-// bad: NORMAL_SUMMON_COMPETITION score=0.823" example).
+// with the deeper breakdown (Level/Rank curve, Attributes, Types,
+// Archetypes, spare owned copies) tucked behind a native <details>
+// so it never overwhelms the page by default. Plain English
+// throughout - no engine terminology, no raw scores.
 // =========================================================
 
 import {
@@ -26,12 +20,9 @@ import {
 } from "lucide-react";
 
 import {
+  type DeckComposition,
   type OwnedVsUsedEntry,
 } from "@/lib/deck-composition";
-
-import {
-  useDeckLiveComposition,
-} from "@/components/deck-live-composition";
 
 function DistributionRow({
   label,
@@ -68,18 +59,12 @@ function DistributionRow({
 }
 
 export function DeckCompositionSummary({
+  composition,
   ownedVsUsed,
 }: {
+  composition: DeckComposition;
   ownedVsUsed: OwnedVsUsedEntry[];
 }) {
-  // The one number source for this panel: the live, client-side
-  // composition (see deck-live-composition.tsx). It starts out as
-  // exactly what the server computed for this render and moves the
-  // instant a card is added or removed, without waiting for the
-  // server action's round trip.
-  const {
-    composition,
-  } = useDeckLiveComposition();
 
   const { main, extra } = composition;
 
@@ -122,8 +107,8 @@ export function DeckCompositionSummary({
   ).sort((a, b) => b[1] - a[1]);
 
   return (
-    <details className="panel group/comp mt-6 overflow-hidden p-0">
-      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 p-4 select-none sm:p-5">
+    <details className="panel group/comp overflow-hidden p-0">
+      <summary className="flex min-h-14 cursor-pointer touch-manipulation list-none flex-wrap items-center justify-between gap-3 p-4 select-none sm:p-5">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <span className="text-sm font-black text-zinc-100">
             Monsters {main.monsters} · Spells {main.spells} · Traps{" "}

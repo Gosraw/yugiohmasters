@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seizoen 2 stijlkeuze</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Marcellus&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --page:#0c0b0a; --ink:#ece6da; --muted:#a59c8c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--ink); font-family:Inter,system-ui,sans-serif; }
+  header { max-width:1200px; margin:0 auto; padding:32px 16px 8px; }
+  header h1 { font-family:Cinzel,serif; font-weight:700; font-size:28px; margin:0 0 8px; letter-spacing:.04em; }
+  header p { color:var(--muted); margin:0; max-width:720px; line-height:1.5; }
+  .grid { max-width:1200px; margin:0 auto; padding:24px 16px 64px; display:grid; gap:40px 28px; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
+  .option h2 { font-family:Cinzel,serif; font-size:18px; margin:0 0 4px; }
+  .option .why { color:var(--muted); font-size:14px; line-height:1.5; margin:0 0 16px; min-height:63px; }
+  .phone { position:relative; width:100%; max-width:360px; aspect-ratio:9/18.5; margin:0 auto; border-radius:36px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 0 8px #1b1916, 0 0 0 9px #2c2823; }
+  .bg { position:absolute; inset:0; background-size:cover; background-position:center; }
+  .screen { position:absolute; inset:0; display:flex; flex-direction:column; padding:44px 16px 0; }
+  .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .brand { font-family:Cinzel,serif; font-weight:900; font-size:15px; letter-spacing:.14em; }
+  .dp { font-weight:700; font-size:13px; padding:6px 10px; border-radius:999px; }
+  .hello { font-size:12px; letter-spacing:.12em; text-transform:uppercase; opacity:.8; margin:0 0 2px; }
+  .title { font-family:Cinzel,serif; font-weight:700; font-size:24px; margin:0 0 14px; line-height:1.15; }
+  .card { border-radius:16px; padding:12px 14px; margin-bottom:10px; }
+  .card h3 { margin:0 0 8px; font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; }
+  .goal { display:flex; align-items:center; gap:10px; font-size:13px; margin:6px 0; }
+  .bar { flex:1; height:6px; border-radius:6px; overflow:hidden; }
+  .bar i { display:block; height:100%; border-radius:6px; }
+  .row { display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:6px 0; }
+  .pill { font-size:11px; font-weight:700; padding:4px 9px; border-radius:999px; }
+  .vs { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:4px; }
+  .duelist { flex:1; text-align:center; padding:10px 6px; border-radius:12px; font-weight:600; font-size:13px; }
+  .vs b { font-family:Cinzel,serif; font-size:14px; }
+  .nav { margin-top:auto; display:grid; grid-template-columns:repeat(5,1fr); padding:10px 6px 22px; font-size:10px; text-align:center; font-weight:600; }
+  .nav span { display:block; font-size:18px; margin-bottom:2px; }
+
+  /* A — Sun Temple */
+  .a .bg { background-image:linear-gradient(180deg,rgba(40,24,6,.15),rgba(40,24,6,.55) 55%,rgba(30,18,4,.9)),url(img/style-a.jpg); }
+  .a .screen { color:#fff8ea; }
+  .a .dp { background:rgba(255,236,190,.9); color:#5a3a08; }
+  .a .title { color:#fff3d6; text-shadow:0 2px 12px rgba(80,40,0,.6); }
+  .a .card { background:rgba(250,238,210,.88); color:#3d2a10; box-shadow:0 8px 24px rgba(60,30,0,.3); }
+  .a .card h3 { color:#9a6512; }
+  .a .bar { background:rgba(120,80,20,.18); } .a .bar i { background:linear-gradient(90deg,#c98a1b,#f0c25a); }
+  .a .pill { background:#9a6512; color:#fff6e0; }
+  .a .duelist { background:rgba(154,101,18,.12); }
+  .a .nav { background:rgba(250,238,210,.95); color:#6b4a14; }
+  .a .nav .on { color:#b06d00; }
+
+  /* B — Night Temple */
+  .b .bg { background-image:linear-gradient(180deg,rgba(5,8,20,.2),rgba(5,8,20,.65) 50%,rgba(4,6,14,.95)),url(img/style-b.jpg); }
+  .b .screen { color:#e8e2d0; }
+  .b .brand { color:#f2c45a; text-shadow:0 0 14px rgba(242,196,90,.6); }
+  .b .dp { background:rgba(242,196,90,.14); color:#f2c45a; border:1px solid rgba(242,196,90,.45); }
+  .b .title { color:#f6e3b0; }
+  .b .card { background:rgba(14,20,44,.7); border:1px solid rgba(242,196,90,.28); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+  .b .card h3 { color:#f2c45a; }
+  .b .bar { background:rgba(255,255,255,.1); } .b .bar i { background:linear-gradient(90deg,#d79b2b,#ffd86e); box-shadow:0 0 10px #ffcf5e; }
+  .b .pill { background:rgba(242,196,90,.16); color:#ffd86e; border:1px solid rgba(242,196,90,.5); }
+  .b .duelist { background:rgba(40,60,120,.35); border:1px solid rgba(120,150,230,.25); }
+  .b .vs b { color:#f2c45a; }
+  .b .nav { background:rgba(6,9,22,.92); border-top:1px solid rgba(242,196,90,.25); color:#8f93a8; }
+  .b .nav .on { color:#f2c45a; }
+
+  /* C — Relic */
+  .c .bg { background-image:radial-gradient(ellipse at 50% 45%,rgba(8,14,18,.55),rgba(8,14,18,.85) 60%),url(img/style-c.jpg); }
+  .c .screen { color:#e9f1ee; font-family:Marcellus,Inter,serif; }
+  .c .brand { font-family:Marcellus,serif; color:#e7c66b; letter-spacing:.24em; }
+  .c .dp { background:linear-gradient(180deg,#f3d886,#b88a2a); color:#2a1d05; font-family:Inter,sans-serif; }
+  .c .title { font-family:Marcellus,serif; font-weight:400; font-size:26px; color:#f3e2ae; }
+  .c .card { background:linear-gradient(180deg,rgba(10,26,30,.92),rgba(7,16,20,.92)); border:1px solid #b88a2a; box-shadow:inset 0 0 0 3px rgba(26,140,140,.35); border-radius:6px; }
+  .c .card h3 { color:#3fc6bd; font-family:Inter,sans-serif; }
+  .c .goal, .c .row { font-family:Inter,sans-serif; }
+  .c .bar { background:rgba(63,198,189,.15); border-radius:0; } .c .bar i { border-radius:0; background:repeating-linear-gradient(90deg,#3fc6bd 0 8px,#1e8f8a 8px 10px); }
+  .c .pill { background:#1e5aa8; color:#e7f0ff; border-radius:3px; }
+  .c .duelist { background:rgba(184,138,42,.14); border:1px solid rgba(184,138,42,.5); border-radius:4px; font-family:Inter,sans-serif; }
+  .c .vs b { color:#e7c66b; font-family:Marcellus,serif; }
+  .c .nav { background:linear-gradient(180deg,#1a1408,#0b0904); border-top:2px solid #b88a2a; color:#9d8f6c; font-family:Inter,sans-serif; }
+  .c .nav .on { color:#3fc6bd; }
+
+  @media (max-width:420px){ header h1{font-size:22px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Seizoen 2 — kies de stijl</h1>
+  <p>Drie richtingen binnen het Millennium/Egypte-thema, getoond op het nieuwe Home-scherm (weekdoelen, wat op jou wacht, deze ronde, nieuw menu). Achtergronden zijn eigen fal.ai-proeven. Ik bouw voorlopig verder met <b>B — Night Temple</b>; zeg het als je liever A of C wilt.</p>
+</header>
+
+<main class="grid">
+  <section class="option a">
+    <h2>A — Sun Temple</h2>
+    <p class="why">Licht en warm: zandsteen, zonnestralen, perkament-panelen. Voelt fris en uniek, maar is een grote breuk met de huidige donkere app en minder sfeervol 's avonds.</p>
+    <div class="phone"><div class="bg"></div><div class="screen">
+      <div class="top"><div class="brand">DUELIST CIRCLE</div><div class="dp">2,340 DP</div></div>
+      <p class="hello">Season 2 · Week 3</p><p class="title">Welcome back, BossG</p>
+      <div class="card"><h3>Weekly goals · 2 / 3</h3>
+        <div class="goal">Play 3 duels <div class="bar"><i style="width:100%"></i></div></div>
+        <div class="goal">Open 2 packs <div class="bar"><i style="width:50%"></i></div></div>
+        <div class="goal">Trade once <div class="bar"><i style="width:100%"></i></div></div></div>
+      <div class="card"><h3>Waiting on you</h3>
+        <div class="row">Trade offer from Samo <span class="pill">Review</span></div></div>
+      <div class="card"><h3>This round · Round 8</h3>
+        <div class="vs"><div class="duelist">BossG</div><b>VS</b><div class="duelist">Fardin</div></div></div>
+      <nav class="nav"><div class="on"><span>☥</span>Home</div><div><span>⚔</span>Play</div><div><span>🂠</span>Cards</div><div><span>◈</span>Shop</div><div><span>𓂀</span>Profile</div></nav>
+    </div></div>
+  </section>
+
+  <section class="option b">
+    <h2>B — Night Temple</h2>
+    <p class="why">Nacht in de tempel: obsidiaan en lapisblauw, gloeiend goud, fakkels en mist. Spannend en mysterieus, blijft herkenbaar donker/goud maar voelt als een nieuw seizoen. Mijn aanbeveling.</p>
+    <div class="phone"><div class="bg"></div><div class="screen">
+      <div class="top"><div class="brand">DUELIST CIRCLE</div><div class="dp">2,340 DP</div></div>
+      <p class="hello">Season 2 · Week 3</p><p class="title">Welcome back, BossG</p>
+      <div class="card"><h3>Weekly goals · 2 / 3</h3>
+        <div class="goal">Play 3 duels <div class="bar"><i style="width:100%"></i></div></div>
+        <div class="goal">Open 2 packs <div class="bar"><i style="width:50%"></i></div></div>
+        <div class="goal">Trade once <div class="bar"><i style="width:100%"></i></div></div></div>
+      <div class="card"><h3>Waiting on you</h3>
+        <div class="row">Trade offer from Samo <span class="pill">Review</span></div></div>
+      <div class="card"><h3>This round · Round 8</h3>
+        <div class="vs"><div class="duelist">BossG</div><b>VS</b><div class="duelist">Fardin</div></div></div>
+      <nav class="nav"><div class="on"><span>☥</span>Home</div><div><span>⚔</span>Play</div><div><span>🂠</span>Cards</div><div><span>◈</span>Shop</div><div><span>𓂀</span>Profile</div></nav>
+    </div></div>
+  </section>
+
+  <section class="option c">
+    <h2>C — Relic</h2>
+    <p class="why">Alsof de app een kostbaar artefact is: goud metaal, turquoise en lapis inlegwerk, strakke geometrie. Heel uitgesproken en luxueus, maar druk; kan op kleine schermen vermoeiend worden.</p>
+    <div class="phone"><div class="bg"></div><div class="screen">
+      <div class="top"><div class="brand">DUELIST CIRCLE</div><div class="dp">2,340 DP</div></div>
+      <p class="hello">Season 2 · Week 3</p><p class="title">Welcome back, BossG</p>
+      <div class="card"><h3>Weekly goals · 2 / 3</h3>
+        <div class="goal">Play 3 duels <div class="bar"><i style="width:100%"></i></div></div>
+        <div class="goal">Open 2 packs <div class="bar"><i style="width:50%"></i></div></div>
+        <div class="goal">Trade once <div class="bar"><i style="width:100%"></i></div></div></div>
+      <div class="card"><h3>Waiting on you</h3>
+        <div class="row">Trade offer from Samo <span class="pill">Review</span></div></div>
+      <div class="card"><h3>This round · Round 8</h3>
+        <div class="vs"><div class="duelist">BossG</div><b>VS</b><div class="duelist">Fardin</div></div></div>
+      <nav class="nav"><div class="on"><span>☥</span>Home</div><div><span>⚔</span>Play</div><div><span>🂠</span>Cards</div><div><span>◈</span>Shop</div><div><span>𓂀</span>Profile</div></nav>
+    </div></div>
+  </section>
+</main>
+</body>
+</html>

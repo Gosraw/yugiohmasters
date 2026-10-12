@@ -34,6 +34,16 @@ import {
 } from "react";
 
 import {
+  createPortal,
+} from "react-dom";
+
+import {
+  EyeOfWudjat,
+  GlyphBand,
+  SandParticles,
+} from "@/components/millennium-glyphs";
+
+import {
   PackArt,
 } from "@/components/pack-art";
 
@@ -48,16 +58,39 @@ import {
 // sparkles, banner text). Rank comes from `rarityRank` below.
 // =========================================================
 
-function glowClassForRank(
+// Soft light behind the revealed card, tinted per rarity
+// (opacity/scale pulse of a radial gradient - no animated
+// box-shadow, which repaints every frame on phones).
+function auraForRank(
   rank: number
 ) {
-  if (rank >= 6) return "pull-glow-6";
-  if (rank === 5) return "pull-glow-5";
-  if (rank === 4) return "pull-glow-4";
-  if (rank === 3) return "pull-glow-3";
-  if (rank === 2) return "pull-glow-2";
-  return "";
+  if (rank >= 6) return "rgb(255 216 110 / .7)";
+  if (rank === 5) return "rgb(120 150 255 / .55)";
+  if (rank === 4) return "rgb(242 196 90 / .55)";
+  if (rank === 3) return "rgb(110 200 240 / .4)";
+  if (rank === 2) return "rgb(96 140 230 / .3)";
+  return null;
 }
+
+// Card backs fanned behind the pack, one per card still
+// sealed (max 3 shown).
+const FAN_LAYOUT = [
+  {
+    x: "-7%",
+    rot: "-7deg",
+    opacity: 0.8,
+  },
+  {
+    x: "7%",
+    rot: "6deg",
+    opacity: 0.8,
+  },
+  {
+    x: "-2%",
+    rot: "-2.5deg",
+    opacity: 0.9,
+  },
+];
 
 function sparkleCountForRank(
   rank: number
@@ -493,6 +526,14 @@ export function PackOpeningReveal({
     setLegendarySkipped,
   ] = useState(false);
 
+  // Index from which the "Revealed Cards" grid fans in with a
+  // stagger: the one card just revealed, or every card at once
+  // after "Reveal all".
+  const [
+    staggerFrom,
+    setStaggerFrom,
+  ] = useState(0);
+
   const legendaryTimers =
     useRef<
       ReturnType<
@@ -860,6 +901,7 @@ export function PackOpeningReveal({
   // Legendary's cinematic has actually finished (see
   // handleSlotClick and the CONTINUE button in the render below).
   function advanceToNextPull() {
+    setStaggerFrom(revealed);
     setFlipped(false);
     setImageLoaded(false);
     clearLegendaryTimers();
@@ -953,6 +995,13 @@ export function PackOpeningReveal({
       false
     );
 
+    setStaggerFrom(
+      Math.min(
+        revealed,
+        pulls.length
+      )
+    );
+
     setRevealed(
       pulls.length
     );
@@ -968,6 +1017,7 @@ export function PackOpeningReveal({
     setLegendarySkipped(
       false
     );
+    setStaggerFrom(0);
     setRevealed(0);
   }
 
@@ -977,11 +1027,16 @@ export function PackOpeningReveal({
           PACK HEADER
       ================================================== */}
 
-      <section className="relative overflow-hidden rounded-[28px] border border-amber-300/20 bg-gradient-to-br from-amber-300/[0.07] via-black/50 to-violet-500/[0.06] p-6 sm:p-8">
+      <section className="relative overflow-hidden rounded-[28px] border border-amber-300/20 bg-gradient-to-br from-amber-300/[0.07] via-[#0a0e22]/70 to-[#2c4590]/[0.2] p-6 sm:p-8">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-amber-400/[0.08] blur-[100px]" />
+          <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[radial-gradient(closest-side,rgb(242_196_90/.14),transparent)]" />
 
-          <div className="absolute -bottom-24 left-[20%] h-72 w-72 rounded-full bg-violet-500/[0.07] blur-[100px]" />
+          <div className="absolute -bottom-24 left-[20%] h-72 w-72 rounded-full bg-[radial-gradient(closest-side,rgb(44_69_144/.35),transparent)]" />
+
+          <GlyphBand
+            units={4}
+            className="absolute inset-x-6 bottom-2 h-4 text-amber-300/20"
+          />
         </div>
 
         <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -1029,7 +1084,7 @@ export function PackOpeningReveal({
 
       {!complete &&
         currentPull && (
-        <section className="mt-6">
+        <section className="mt-6 overflow-x-clip">
           <div className="mx-auto max-w-sm">
             <div
               className={
@@ -1063,23 +1118,161 @@ export function PackOpeningReveal({
                 className="group block w-full cursor-pointer disabled:cursor-wait"
               >
                 <div className="relative aspect-[421/614] w-full">
-                  {/* MYSTERY CARD — cross-fades out on reveal.
+                  {/* CARDS STILL SEALED — card backs fanned
+                      behind the pack, one fewer per reveal. */}
+                  {FAN_LAYOUT.slice(
+                    0,
+                    Math.max(
+                      0,
+                      Math.min(
+                        3,
+                        pulls.length -
+                          revealed -
+                          1
+                      )
+                    )
+                  ).map(
+                    (
+                      fan,
+                      index
+                    ) => (
+                      <div
+                        key={
+                          index
+                        }
+                        aria-hidden="true"
+                        className="dc-fan-card pointer-events-none absolute inset-[3%] flex items-center justify-center rounded-[22px]"
+                        style={
+                          {
+                            "--fan-x":
+                              fan.x,
+                            "--fan-rot":
+                              fan.rot,
+                            "--fan-opacity":
+                              fan.opacity,
+                            animationDelay: `${index * 70}ms`,
+                          } as React.CSSProperties
+                        }
+                      >
+                        <EyeOfWudjat className="h-8 w-12 text-amber-300/25" />
+                      </div>
+                    )
+                  )}
+
+                  {/* RARITY LIGHT — behind the revealed card:
+                      aura (Rare+), gold rays (Ultra+), lapis
+                      mist (Secret), sand (Legendary). */}
+                  {flipped &&
+                    auraForRank(
+                      currentRank
+                    ) && (
+                      <div
+                        key={`aura-${currentPull.id}`}
+                        aria-hidden="true"
+                        className={`dc-aura pointer-events-none absolute -inset-[14%] rounded-full ${
+                          currentRank >= 6
+                            ? "dc-aura-forever"
+                            : ""
+                        }`}
+                        style={
+                          {
+                            "--aura":
+                              auraForRank(
+                                currentRank
+                              ),
+                          } as React.CSSProperties
+                        }
+                      />
+                    )}
+
+                  {flipped &&
+                    !reducedMotion &&
+                    currentRank ===
+                      5 && (
+                      <>
+                        <div
+                          aria-hidden="true"
+                          className="dc-mist pointer-events-none absolute -left-[30%] top-[5%] h-[70%] w-[90%] rounded-full"
+                        />
+
+                        <div
+                          aria-hidden="true"
+                          className="dc-mist pointer-events-none absolute -right-[30%] bottom-[0%] h-[70%] w-[90%] rounded-full"
+                          style={{
+                            animationDelay:
+                              "-2.5s",
+                          }}
+                        />
+                      </>
+                    )}
+
+                  {flipped &&
+                    !reducedMotion &&
+                    (currentRank ===
+                      4 ||
+                      currentRank ===
+                        5 ||
+                      (currentRank ===
+                        6 &&
+                        legendaryStep >=
+                          LEGENDARY_STEP.IMPACT)) && (
+                      <div
+                        key={`rays-${currentPull.id}`}
+                        aria-hidden="true"
+                        className="dc-rays pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[175%] -translate-x-1/2 -translate-y-1/2"
+                        style={
+                          {
+                            "--ray-color":
+                              currentRank ===
+                              5
+                                ? "rgb(150 175 255 / .5)"
+                                : "rgb(255 216 110 / .55)",
+                            "--rays-opacity":
+                              currentRank >=
+                              6
+                                ? 1
+                                : 0.7,
+                          } as React.CSSProperties
+                        }
+                      />
+                    )}
+
+                  {flipped &&
+                    !reducedMotion &&
+                    currentRank ===
+                      6 &&
+                    legendaryStep >=
+                      LEGENDARY_STEP.REVEAL && (
+                      <SandParticles className="-inset-x-[10%] -top-[20%] bottom-0" />
+                    )}
+
+                  {/* MYSTERY PACK — "unseals" on tap: the gold
+                      glyph bands ignite, a seam of light opens
+                      down the middle, the pack swells and fades.
                       Deliberately NOT a 3D flip: backface-
                       visibility + preserve-3d rendering is
                       inconsistent across phones/browsers and
                       was the actual cause of cards randomly
-                      appearing blank. A plain opacity+scale
-                      cross-fade can't render "nothing". */}
+                      appearing blank. Opacity+scale can't
+                      render "nothing". */}
                   <div
-                    className={`absolute inset-0 overflow-hidden rounded-[24px] border border-amber-300/20 bg-gradient-to-br from-zinc-900 via-black to-violet-950/30 p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] transition-all duration-300 group-hover:-translate-y-1 group-hover:border-amber-300/35 ${
+                    className={`absolute inset-0 overflow-hidden rounded-[24px] border border-amber-300/25 bg-gradient-to-br from-[#18214a] via-[#080c20] to-[#05081a] p-5 shadow-[0_30px_100px_rgba(0,0,0,.55)] transition-colors duration-200 group-hover:border-amber-300/45 ${
                       flipped
-                        ? "scale-95 opacity-0"
-                        : "scale-100 opacity-100"
+                        ? "dc-pack-unseal"
+                        : "dc-pack-rest"
                     }`}
                   >
                     <div className="pointer-events-none absolute inset-0">
-                      <div className="absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300/[0.05] blur-[70px]" />
+                      <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(242_196_90/.12),transparent)]" />
                     </div>
+
+                    <GlyphBand
+                      className="dc-glyph-band pointer-events-none absolute inset-x-5 top-1.5 h-3"
+                    />
+
+                    <GlyphBand
+                      className="dc-glyph-band pointer-events-none absolute inset-x-5 bottom-1.5 h-3"
+                    />
 
                     <div className="relative h-full overflow-hidden rounded-2xl border border-amber-300/15 bg-black/70">
                       <PackArt
@@ -1096,24 +1289,29 @@ export function PackOpeningReveal({
                       />
 
                       <div className="pointer-events-none absolute inset-x-0 top-[38%] flex justify-center">
-                        <span className="rounded-full border border-white/25 bg-black/60 px-4 py-1.5 text-[9px] font-black uppercase tracking-[.25em] text-white backdrop-blur-sm">
-                          Tap to Reveal
+                        <span className="rounded-full border border-amber-300/40 bg-[#05081a]/75 px-4 py-1.5 text-[9px] font-black uppercase tracking-[.25em] text-amber-100">
+                          Tap to Unseal
                         </span>
                       </div>
                     </div>
+
+                    <div
+                      aria-hidden="true"
+                      className="dc-seam pointer-events-none absolute inset-y-[6%] left-1/2 w-[3px] -translate-x-1/2 rounded-full"
+                    />
                   </div>
 
                   {/* THE ACTUAL PULLED CARD */}
                   <div
-                    className={`absolute inset-0 overflow-hidden rounded-[24px] border bg-black/70 p-3 shadow-[0_30px_100px_rgba(0,0,0,.55)] transition-all duration-300 ${
+                    className={`absolute inset-0 overflow-hidden rounded-[24px] border bg-[#05081a]/90 p-3 shadow-[0_30px_100px_rgba(0,0,0,.55)] ${
                       rarityStyles[
                         currentRarity
                       ] ??
                       "border-zinc-500/30"
                     } ${
                       flipped
-                        ? `scale-100 opacity-100 ${glowClassForRank(currentRank)}`
-                        : "scale-95 opacity-0"
+                        ? "dc-card-rise"
+                        : "pointer-events-none scale-95 opacity-0"
                     }`}
                   >
                     {flipped && (
@@ -1197,17 +1395,6 @@ export function PackOpeningReveal({
                           </>
                         )}
 
-                        {/* SCREEN REACTION — Ultra Rare and
-                            Secret Rare get a brief contained
-                            flash the moment they're revealed. */}
-                        {(currentRank ===
-                          4 ||
-                          currentRank ===
-                            5) &&
-                          !reducedMotion && (
-                          <div className="pull-screen-flash pointer-events-none absolute inset-0" />
-                        )}
-
                         {sparkleCountForRank(
                           currentRank
                         ) > 0 &&
@@ -1238,7 +1425,7 @@ export function PackOpeningReveal({
 
                         {currentRank >=
                           6 && (
-                          <div className="pull-burst-ring pointer-events-none absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-yellow-300/60" />
+                          <div className="pull-burst-ring pointer-events-none absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-amber-200/70" />
                         )}
 
                         <div className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b-xl bg-gradient-to-t from-black/85 to-transparent p-3">
@@ -1296,7 +1483,21 @@ export function PackOpeningReveal({
                           6 &&
                           legendaryStep <
                             LEGENDARY_STEP.REVEAL && (
-                          <div className="legendary-dim pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center overflow-hidden rounded-xl bg-black/92 p-5 text-center">
+                          <div className="legendary-dim pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center overflow-hidden rounded-xl bg-[radial-gradient(120%_80%_at_50%_45%,#18214a_0%,#080c20_55%,#03050f_100%)] p-5 text-center">
+                            <GlyphBand
+                              className="absolute inset-x-4 top-3 h-3 text-amber-300/30"
+                            />
+
+                            <GlyphBand
+                              className="absolute inset-x-4 bottom-3 h-3 text-amber-300/30"
+                            />
+
+                            {legendaryStep >=
+                              LEGENDARY_STEP.SILHOUETTE &&
+                              !reducedMotion && (
+                                <SandParticles />
+                              )}
+
                             {legendaryStep <
                               LEGENDARY_STEP.SILHOUETTE && (
                               <div className="space-y-3">
@@ -1317,7 +1518,7 @@ export function PackOpeningReveal({
                                         key={
                                           index
                                         }
-                                        className="legendary-line-in text-xs italic leading-5 text-amber-100/90"
+                                        className="legendary-line-in font-display text-[13px] leading-5 text-amber-100/90"
                                       >
                                         {
                                           line
@@ -1327,22 +1528,20 @@ export function PackOpeningReveal({
                                   )}
 
                                 <p className="pt-1 text-[8px] font-black uppercase tracking-[.3em] text-amber-300/60">
-                                  Duelist Circle Chronicle
+                                  Chronicle of the Temple
                                 </p>
                               </div>
                             )}
 
                             {legendaryStep >=
                               LEGENDARY_STEP.SILHOUETTE && (
-                              <div
-                                className={`relative flex h-32 w-24 items-center justify-center rounded-2xl border border-amber-300/40 bg-black ${reducedMotion ? "" : "legendary-silhouette"}`}
-                              >
-                                <Crown
-                                  size={
-                                    28
-                                  }
-                                  className="text-amber-300/70"
+                              <div className="dc-eye-open relative flex h-48 w-48 items-center justify-center">
+                                <div
+                                  aria-hidden="true"
+                                  className="dc-eye-glow absolute inset-0 rounded-full"
                                 />
+
+                                <EyeOfWudjat className="relative h-20 w-28 text-amber-200 drop-shadow-[0_0_12px_rgba(255,216,110,.85)]" />
                               </div>
                             )}
 
@@ -1445,6 +1644,40 @@ export function PackOpeningReveal({
         </section>
       )}
 
+      {/* VIEWPORT FLASH — one short gold-white flash for
+          Ultra Rare and up (Legendary: on its FLASH beat).
+          Portaled to <body> so the shake wrapper's transform
+          can't trap it inside the card. */}
+      {!complete &&
+        flipped &&
+        !reducedMotion &&
+        typeof document !==
+          "undefined" &&
+        (currentRank === 4 ||
+          currentRank === 5 ||
+          (currentRank === 6 &&
+            legendaryStep >=
+              LEGENDARY_STEP.FLASH)) &&
+        createPortal(
+          <div
+            key={`flash-${currentPull?.id}`}
+            aria-hidden="true"
+            className="dc-screen-flash pointer-events-none fixed inset-0 z-[70]"
+            style={
+              {
+                "--flash-peak":
+                  currentRank >= 6
+                    ? 0.8
+                    : currentRank ===
+                        5
+                      ? 0.6
+                      : 0.45,
+              } as React.CSSProperties
+            }
+          />,
+          document.body
+        )}
+
       {/* ==================================================
           REVEALED CARDS
       ================================================== */}
@@ -1469,7 +1702,10 @@ export function PackOpeningReveal({
                 revealed
               )
               .map(
-                (pull) => {
+                (
+                  pull,
+                  index
+                ) => {
                   const {
                     card,
                   } = pull;
@@ -1491,7 +1727,20 @@ export function PackOpeningReveal({
                     ] ?? 0;
 
                   return (
-                    <div key={pull.id} className="relative">
+                    <div
+                      key={pull.id}
+                      className="dc-grid-fan-in relative"
+                      style={{
+                        animationDelay: `${Math.min(
+                          Math.max(
+                            0,
+                            index -
+                              staggerFrom
+                          ),
+                          10
+                        ) * 60}ms`,
+                      }}
+                    >
                     <Link
                       href={`/cards/${card.id}?returnTo=/shop`}
                       className={`group relative overflow-hidden rounded-2xl border bg-black/20 transition-all hover:-translate-y-1 ${rarityStyle}`}

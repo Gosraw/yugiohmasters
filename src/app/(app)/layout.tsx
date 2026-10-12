@@ -4,6 +4,7 @@ import { RewardPopup } from "@/components/reward-popup";
 import { requireUser } from "@/lib/supabase/queries";
 import { getLeagueIdForUser } from "@/lib/league-stats";
 import { getAttentionItems } from "@/lib/attention-items";
+import { TabTransition } from "@/components/tab-transition";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // requireUser() redirects unauthenticated visitors on its own (via
@@ -26,7 +27,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <>
       <ActionFeedbackBanner />
       <RewardPopup userId={userId} />
-      <div className="pb-24">{children}</div>
+      <div className="pb-24">
+        <TabTransition>{children}</TabTransition>
+      </div>
       <BottomNav attentionCount={attentionCount} />
     </>
   );

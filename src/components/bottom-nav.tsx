@@ -133,6 +133,15 @@ export function BottomNav({
   const pathname =
     usePathname();
 
+  const activeIndex =
+    items.findIndex(
+      (item) =>
+        isActiveItem(
+          pathname,
+          item
+        )
+    );
+
   return (
     <nav
       aria-label="Main"
@@ -142,7 +151,25 @@ export function BottomNav({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[rgb(255_216_110/.55)] to-transparent" />
 
       <div className="mx-auto max-w-xl px-2">
-        <div className="grid grid-cols-5">
+        <div className="relative grid grid-cols-5">
+          {/* One shared active bar that glides between tabs
+              (CSS transform transition; during a tab view
+              transition it is its own named layer, see
+              .dc-nav-indicator in globals.css). */}
+          <span
+            aria-hidden="true"
+            className="dc-nav-indicator pointer-events-none absolute -top-1.5 left-0 flex w-1/5 justify-center"
+            style={{
+              transform: `translateX(${Math.max(activeIndex, 0) * 100}%)`,
+              opacity:
+                activeIndex < 0
+                  ? 0
+                  : 1,
+            }}
+          >
+            <span className="h-[2px] w-8 rounded-full bg-[#ffd86e] shadow-[0_0_12px_rgba(255,207,94,.75)]" />
+          </span>
+
           {items.map(
             (item) => {
               const Icon =
@@ -158,6 +185,9 @@ export function BottomNav({
                 <Link
                   key={item.href}
                   href={item.href}
+                  transitionTypes={[
+                    "nav-tab",
+                  ]}
                   aria-current={
                     active
                       ? "page"
@@ -169,14 +199,6 @@ export function BottomNav({
                       : "text-[#8f93a8] hover:text-[#ece6d6]"
                   }`}
                 >
-                  <span
-                    className={`absolute -top-1.5 h-[2px] rounded-full bg-[#ffd86e] transition-all duration-200 motion-reduce:transition-none ${
-                      active
-                        ? "w-8 opacity-100 shadow-[0_0_12px_rgba(255,207,94,.75)]"
-                        : "w-0 opacity-0"
-                    }`}
-                  />
-
                   <span className="relative flex h-7 w-7 items-center justify-center">
                     <Icon
                       size={21}

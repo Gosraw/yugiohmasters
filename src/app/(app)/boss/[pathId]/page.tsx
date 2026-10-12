@@ -36,6 +36,10 @@ import {
   getBossArenaImage,
 } from "@/lib/boss-arena";
 
+import {
+  BossEvolutionCinematic,
+} from "@/components/boss-evolution-cinematic";
+
 export const dynamic =
   "force-dynamic";
 
@@ -94,6 +98,9 @@ type StageRow = {
 type CardRow = {
   id: string;
   name: string;
+  image_url:
+    | string
+    | null;
 };
 
 type GrantRow = {
@@ -105,14 +112,22 @@ type GrantRow = {
 
 export default async function BossPathDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{
     pathId: string;
+  }>;
+  searchParams: Promise<{
+    evolved?: string;
   }>;
 }) {
   const {
     pathId,
   } = await params;
+
+  const {
+    evolved,
+  } = await searchParams;
 
   const {
     supabase,
@@ -311,6 +326,11 @@ export default async function BossPathDetailPage({
     string
   >();
 
+  let cardImageMap = new Map<
+    string,
+    string | null
+  >();
+
   // Evolution monsters + the support cards each unlocked stage
   // grants (the grant names used to be missing here, so every
   // support card showed as "Unknown Card").
@@ -330,7 +350,7 @@ export default async function BossPathDetailPage({
       error: cardsError,
     } = await supabase
       .from("card_catalog")
-      .select("id,name")
+      .select("id,name,image_url")
       .in("id", namedCardIds);
 
     if (cardsError) {
@@ -339,15 +359,64 @@ export default async function BossPathDetailPage({
       );
     }
 
+    const cardRows =
+      (cardsData ??
+        []) as CardRow[];
+
     cardNameMap = new Map(
-      (
-        (cardsData ??
-          []) as CardRow[]
-      ).map((card) => [
+      cardRows.map((card) => [
         card.id,
         card.name,
       ])
     );
+
+    cardImageMap = new Map(
+      cardRows.map((card) => [
+        card.id,
+        card.image_url,
+      ])
+    );
+  }
+
+  // The evolution moment: only for the owner, only right after
+  // the evolve action redirected here, and only when the stage
+  // in the URL is the one actually reached.
+  const evolvedStage =
+    Number(evolved);
+
+  const evolvedTo =
+    isOwner &&
+    evolvedStage ===
+      path.current_stage
+      ? stages.find(
+          (stage) =>
+            stage.stage_number ===
+            evolvedStage
+        )
+      : undefined;
+
+  const evolvedFrom =
+    evolvedTo
+      ? stages.find(
+          (stage) =>
+            stage.stage_number ===
+            evolvedStage - 1
+        )
+      : undefined;
+
+  function stageCard(
+    stage: StageRow
+  ) {
+    return {
+      name:
+        cardNameMap.get(
+          stage.evolution_card_catalog_id
+        ) ?? "Unknown Card",
+      imageUrl:
+        cardImageMap.get(
+          stage.evolution_card_catalog_id
+        ) ?? null,
+    };
   }
 
   const ownerName =
@@ -390,6 +459,28 @@ export default async function BossPathDetailPage({
 
   return (
     <main className="relative min-h-screen overflow-hidden pb-28">
+      {evolvedTo && (
+        <BossEvolutionCinematic
+          key={evolvedTo.id}
+          arenaImage={getBossArenaImage(
+            route.code
+          )}
+          stageNumber={
+            evolvedTo.stage_number
+          }
+          oldCard={
+            evolvedFrom
+              ? stageCard(
+                  evolvedFrom
+                )
+              : null
+          }
+          newCard={stageCard(
+            evolvedTo
+          )}
+        />
+      )}
+
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-x-0 top-0 h-[640px] [mask-image:linear-gradient(180deg,#000_45%,transparent)]">
           <div

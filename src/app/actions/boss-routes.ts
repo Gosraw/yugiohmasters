@@ -206,6 +206,6 @@ export async function evolveBossStage(
   revalidateBossPaths(pathId);
 
   redirect(
-    `/boss/${pathId}?success=${encodeURIComponent(`Evolved to Stage ${stageNumber}!`)}`
+    `/boss/${pathId}?evolved=${stageNumber}&success=${encodeURIComponent(`Evolved to Stage ${stageNumber}!`)}`
   );
 }

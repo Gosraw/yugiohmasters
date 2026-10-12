@@ -234,21 +234,11 @@ body::after {
    Intensity scales with card rarity (rank 1 = Normal .. 6 = Legendary).
 ========================================================= */
 
-@keyframes pull-fade-in {
-  from { opacity: 0; transform: scale(.92); }
-  to { opacity: 1; transform: scale(1); }
-}
-
 @keyframes pull-shake {
   10%, 90% { transform: translate3d(-1px, 0, 0); }
   20%, 80% { transform: translate3d(2px, 0, 0); }
   30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
   40%, 60% { transform: translate3d(5px, 0, 0); }
-}
-
-@keyframes pull-glow-pulse {
-  0%, 100% { box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
-  50% { box-shadow: 0 0 55px var(--pull-glow, rgba(255, 255, 255, .25)); }
 }
 
 @keyframes pull-sparkle {
@@ -261,15 +251,7 @@ body::after {
   100% { transform: scale(2.6); opacity: 0; }
 }
 
-.pull-face-in { animation: pull-fade-in .35s ease-out both; }
-
 .pull-shake-once { animation: pull-shake .55s ease-in-out 1; }
-
-.pull-glow-2 { --pull-glow: rgba(96, 165, 250, .35); animation: pull-glow-pulse 1.6s ease-in-out 2; }
-.pull-glow-3 { --pull-glow: rgba(103, 232, 249, .4); animation: pull-glow-pulse 1.5s ease-in-out 2; }
-.pull-glow-4 { --pull-glow: rgba(252, 211, 77, .5); animation: pull-glow-pulse 1.3s ease-in-out 3; }
-.pull-glow-5 { --pull-glow: rgba(196, 181, 253, .55); animation: pull-glow-pulse 1.2s ease-in-out 4; }
-.pull-glow-6 { --pull-glow: rgba(250, 204, 21, .65); animation: pull-glow-pulse 1.1s ease-in-out infinite; }
 
 .pull-sparkle { animation: pull-sparkle 1.4s ease-in-out infinite; }
 
@@ -308,27 +290,6 @@ body::after {
 }
 
 /* ---------------------------------------------------------
-   SCREEN REACTION — a brief, contained flash for Ultra Rare
-   and above. Lives inside the reveal card, not a true
-   viewport-wide flash (stays readable, not jarring).
---------------------------------------------------------- */
-
-@keyframes pull-screen-flash {
-  0% { opacity: 0; }
-  12% { opacity: .55; }
-  100% { opacity: 0; }
-}
-
-.pull-screen-flash {
-  animation: pull-screen-flash .6s ease-out 1;
-  background: radial-gradient(
-    circle at 50% 45%,
-    rgba(255, 255, 255, .9),
-    transparent 70%
-  );
-}
-
-/* ---------------------------------------------------------
    LEGENDARY CINEMATIC — the multi-beat sequence: dim,
    buildup, silhouette, flash, impact, reveal.
 --------------------------------------------------------- */
@@ -336,11 +297,6 @@ body::after {
 @keyframes legendary-dim-in {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-
-@keyframes legendary-silhouette-pulse {
-  0%, 100% { box-shadow: 0 0 25px rgba(250, 204, 21, .25); }
-  50% { box-shadow: 0 0 55px rgba(250, 204, 21, .55); }
 }
 
 @keyframes legendary-flash {
@@ -362,8 +318,6 @@ body::after {
 }
 
 .legendary-dim { animation: legendary-dim-in .5s ease-out both; }
-
-.legendary-silhouette { animation: legendary-silhouette-pulse 1.6s ease-in-out infinite; }
 
 .legendary-flash { animation: legendary-flash .45s ease-out 1; }
 
@@ -543,15 +497,6 @@ body::after {
 
   .pull-shake-once { animation: none; }
 
-  .pull-glow-2,
-  .pull-glow-3,
-  .pull-glow-4,
-  .pull-glow-5,
-  .pull-glow-6 {
-    animation: none;
-    box-shadow: 0 0 25px var(--pull-glow, transparent);
-  }
-
   .pull-sparkle { animation: none; opacity: .7; }
 
   .pull-burst-ring { animation: none; opacity: 0; }
@@ -564,15 +509,349 @@ body::after {
      for anything that still renders. */
   .pull-secret-streak { animation: none; opacity: .25; }
 
-  .pull-screen-flash { animation: none; opacity: 0; }
-
   .legendary-dim { animation: none; }
-
-  .legendary-silhouette { animation: none; box-shadow: 0 0 25px rgba(250, 204, 21, .35); }
 
   .legendary-flash { animation: none; opacity: 0; }
 
   .legendary-impact-shake { animation: none; }
 
   .legendary-line-in { animation: none; }
+}
+
+/* =========================================================
+   MILLENNIUM MOTION (2.0, Night Temple)
+   Pack unsealing, rarity escalation (aura -> gold light rays
+   -> lapis mist -> viewport flash), the themed Legendary
+   cinematic, the Boss evolution moment, tab transitions and
+   small press/glide feedback. Every animation here moves only
+   transform and opacity, and every one is switched off in the
+   reduced-motion block at the end of this section.
+========================================================= */
+
+/* ---- Pack: idle, unseal, cards fanned behind ---------- */
+
+@keyframes dc-pack-in {
+  from { opacity: 0; transform: translateY(10px) scale(.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes dc-pack-unseal {
+  0% { opacity: 1; transform: scale(1); }
+  38% { opacity: 1; transform: scale(1.035); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+@keyframes dc-glyph-ignite {
+  0% { opacity: .35; }
+  30% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes dc-seam {
+  0% { opacity: 0; transform: scaleY(0); }
+  40% { opacity: 1; transform: scaleY(1); }
+  100% { opacity: 0; transform: scaleY(1) scaleX(6); }
+}
+
+.dc-pack-rest { animation: dc-pack-in .32s cubic-bezier(.2, .8, .2, 1) both; }
+.dc-pack-unseal { animation: dc-pack-unseal .44s cubic-bezier(.4, 0, .2, 1) forwards; pointer-events: none; }
+
+.dc-glyph-band {
+  color: var(--dc-gold);
+  opacity: .35;
+  filter: drop-shadow(0 0 6px rgb(255 216 110 / .55));
+}
+
+.dc-pack-unseal .dc-glyph-band { animation: dc-glyph-ignite .44s ease-out forwards; }
+
+.dc-seam {
+  opacity: 0;
+  background: linear-gradient(180deg, transparent, #fff3c8 20%, var(--dc-gold-bright) 50%, #fff3c8 80%, transparent);
+  transform-origin: center;
+}
+
+.dc-pack-unseal .dc-seam { animation: dc-seam .44s ease-out forwards; }
+
+@keyframes dc-fan-in {
+  from { opacity: 0; transform: translateX(0) rotate(0deg) scale(.96); }
+  to { opacity: var(--fan-opacity, .9); transform: translateX(var(--fan-x)) rotate(var(--fan-rot)); }
+}
+
+.dc-fan-card {
+  opacity: var(--fan-opacity, .9);
+  transform: translateX(var(--fan-x)) rotate(var(--fan-rot));
+  transform-origin: 50% 90%;
+  animation: dc-fan-in .5s cubic-bezier(.2, .8, .2, 1) both;
+  background:
+    radial-gradient(circle at 50% 42%, rgb(242 196 90 / .2), transparent 55%),
+    repeating-linear-gradient(135deg, rgb(242 196 90 / .06) 0 2px, transparent 2px 12px),
+    linear-gradient(160deg, #26346e, #101634 70%);
+  border: 1px solid rgb(242 196 90 / .55);
+  box-shadow: 0 18px 50px rgb(2 4 14 / .55);
+}
+
+/* ---- Revealed card rise + grid fan-in ----------------- */
+
+@keyframes dc-card-rise {
+  from { opacity: 0; transform: translateY(16px) scale(.94); }
+  to { opacity: 1; transform: none; }
+}
+
+.dc-card-rise { animation: dc-card-rise .38s cubic-bezier(.2, .8, .2, 1) .12s both; }
+
+@keyframes dc-grid-fan-in {
+  from { opacity: 0; transform: translateY(18px) rotate(-5deg) scale(.92); }
+  to { opacity: 1; transform: none; }
+}
+
+.dc-grid-fan-in { animation: dc-grid-fan-in .42s cubic-bezier(.2, .8, .2, 1) both; }
+
+/* ---- Rarity escalation -------------------------------- */
+
+@keyframes dc-aura-pulse {
+  0%, 100% { opacity: .55; transform: scale(.98); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+
+.dc-aura {
+  background: radial-gradient(closest-side, var(--aura, rgb(242 196 90 / .45)), transparent 100%);
+  animation: dc-aura-pulse 1.6s ease-in-out 2 both;
+}
+
+.dc-aura-forever { animation-iteration-count: infinite; }
+
+@keyframes dc-rays-in {
+  from { opacity: 0; }
+  to { opacity: var(--rays-opacity, .75); }
+}
+
+@keyframes dc-rays-spin {
+  to { transform: rotate(360deg); }
+}
+
+.dc-rays {
+  animation: dc-rays-in .5s ease-out both;
+}
+
+.dc-rays::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: repeating-conic-gradient(
+    from 0deg,
+    var(--ray-color, rgb(255 216 110 / .55)) 0deg 5deg,
+    transparent 5deg 22deg
+  );
+  -webkit-mask-image: radial-gradient(closest-side, #000 20%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 20%, transparent 100%);
+  animation: dc-rays-spin 14s linear infinite;
+}
+
+@keyframes dc-mist-drift {
+  0%, 100% { transform: translate3d(-6%, 2%, 0) scale(1); opacity: .7; }
+  50% { transform: translate3d(6%, -3%, 0) scale(1.08); opacity: 1; }
+}
+
+.dc-mist {
+  background: radial-gradient(closest-side, rgb(64 98 200 / .55), rgb(44 69 144 / .18) 60%, transparent 100%);
+  animation: dc-mist-drift 5s ease-in-out infinite;
+}
+
+@keyframes dc-screen-flash {
+  0% { opacity: 0; }
+  18% { opacity: var(--flash-peak, .55); }
+  100% { opacity: 0; }
+}
+
+.dc-screen-flash {
+  opacity: 0;
+  background: radial-gradient(circle at 50% 42%, rgb(255 246 214 / .95), rgb(242 196 90 / .45) 45%, transparent 80%);
+  animation: dc-screen-flash .34s ease-out .08s forwards;
+}
+
+/* ---- Legendary: eye of wudjat + sand ------------------ */
+
+@keyframes dc-eye-glow {
+  0%, 100% { opacity: .45; transform: scale(.92); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+.dc-eye-glow {
+  background: radial-gradient(closest-side, rgb(255 216 110 / .6), rgb(242 196 90 / .15) 60%, transparent);
+  animation: dc-eye-glow 1.4s ease-in-out infinite;
+}
+
+@keyframes dc-eye-open {
+  from { opacity: 0; transform: scale(.7) translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.dc-eye-open { animation: dc-eye-open .5s cubic-bezier(.2, .8, .2, 1) both; }
+
+@keyframes dc-sand {
+  0% { opacity: 0; transform: translate3d(0, 0, 0); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(var(--sand-dx, 0), calc(-1 * var(--sand-rise, 160px)), 0); }
+}
+
+.dc-sand {
+  background: #ffd86e;
+  box-shadow: 0 0 6px rgb(255 216 110 / .8);
+  animation-name: dc-sand;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+}
+
+.legendary-flash {
+  background: radial-gradient(circle at 50% 45%, #fffaf0, #ffd86e 55%, #d79b2b) !important;
+}
+
+/* ---- Boss evolution cinematic ------------------------- */
+
+@keyframes dc-evo-backdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dc-evo-arena {
+  from { opacity: 0; transform: scale(1.12); }
+  to { opacity: .55; transform: scale(1); }
+}
+
+@keyframes dc-evo-old-out {
+  0% { opacity: 1; transform: none; }
+  55% { opacity: 1; transform: scale(1.02); }
+  100% { opacity: 0; transform: scale(1.12) translateY(-10px); }
+}
+
+@keyframes dc-evo-light {
+  0% { opacity: 0; transform: scaleY(.2); }
+  45% { opacity: 1; transform: scaleY(1); }
+  100% { opacity: 0; transform: scaleY(1.1) scaleX(1.6); }
+}
+
+@keyframes dc-evo-new-rise {
+  from { opacity: 0; transform: translateY(46px) scale(.9); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes dc-evo-title {
+  from { opacity: 0; transform: translateY(10px); letter-spacing: .02em; }
+  to { opacity: 1; transform: none; }
+}
+
+.dc-evo-backdrop { animation: dc-evo-backdrop .3s ease-out both; }
+.dc-evo-arena { animation: dc-evo-arena 1.6s cubic-bezier(.2, .8, .2, 1) both; }
+.dc-evo-old { animation: dc-evo-old-out 1.1s cubic-bezier(.4, 0, .2, 1) .35s both; }
+
+@keyframes dc-evo-old-glow {
+  0% { opacity: 0; }
+  60% { opacity: .95; }
+  100% { opacity: 1; }
+}
+
+.dc-evo-old-glow { opacity: 0; animation: dc-evo-old-glow .9s ease-in .4s both; }
+.dc-evo-light { animation: dc-evo-light 1s ease-out 1s both; transform-origin: 50% 60%; }
+.dc-evo-new { animation: dc-evo-new-rise .7s cubic-bezier(.16, 1, .3, 1) 1.45s both; }
+.dc-evo-title { animation: dc-evo-title .5s ease-out 1.9s both; }
+.dc-evo-actions { animation: dc-evo-backdrop .3s ease-out 2.2s both; }
+
+/* ---- Small feedback ----------------------------------- */
+
+.primary-button:active:not(:disabled) {
+  transform: scale(.97);
+  transition-duration: .08s;
+}
+
+.dc-nav-indicator {
+  transition: transform .32s cubic-bezier(.2, .8, .2, 1), opacity .2s ease;
+  view-transition-name: dc-nav-indicator;
+}
+
+@keyframes dc-rise-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+.dc-stagger > * {
+  animation: dc-rise-in .38s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.dc-stagger > *:nth-child(2) { animation-delay: 60ms; }
+.dc-stagger > *:nth-child(3) { animation-delay: 120ms; }
+.dc-stagger > *:nth-child(4) { animation-delay: 180ms; }
+.dc-stagger > *:nth-child(n + 5) { animation-delay: 240ms; }
+
+html[data-home-seen] .dc-stagger > * { animation: none; }
+
+/* ---- Tab transitions (React <ViewTransition>) ---------- */
+
+@keyframes dc-tab-out {
+  to { opacity: 0; }
+}
+
+@keyframes dc-tab-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+::view-transition-group(.dc-tab) {
+  animation-duration: 0s;
+}
+
+::view-transition-old(.dc-tab) {
+  animation: dc-tab-out .14s ease-in both;
+}
+
+::view-transition-new(.dc-tab) {
+  animation: dc-tab-in .26s cubic-bezier(.2, .8, .2, 1) .06s both;
+}
+
+::view-transition-group(dc-nav-indicator) {
+  animation-duration: .32s;
+  animation-timing-function: cubic-bezier(.2, .8, .2, 1);
+}
+
+/* The bar itself never fades, it only glides. */
+::view-transition-old(dc-nav-indicator) { animation: none; opacity: 0; }
+::view-transition-new(dc-nav-indicator) { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dc-pack-rest,
+  .dc-pack-unseal,
+  .dc-fan-card,
+  .dc-card-rise,
+  .dc-grid-fan-in,
+  .dc-eye-open,
+  .dc-evo-new,
+  .dc-evo-title,
+  .dc-evo-actions,
+  .dc-stagger > * { animation: none; }
+
+  .dc-pack-unseal { opacity: 0; }
+
+  .dc-aura,
+  .dc-rays,
+  .dc-rays::before,
+  .dc-mist,
+  .dc-eye-glow { animation: none; }
+
+  .dc-sand,
+  .dc-screen-flash,
+  .dc-evo-light,
+  .dc-evo-old { animation: none; opacity: 0; }
+
+  .dc-evo-arena { animation: none; opacity: .55; }
+
+  .dc-nav-indicator { transition: none; }
+
+  .primary-button:active:not(:disabled) { transform: none; }
+
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
 }

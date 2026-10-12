@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cinzel, Inter } from "next/font/google";
 import "./globals.css";
+import Script from "next/script";
 import { PwaRegister } from "@/components/pwa-register";
 
 // Night Temple theme fonts (2.0). Exposed as CSS variables;
@@ -51,10 +52,19 @@ export const viewport: Viewport = {
   interactiveWidget: "resizes-content",
 };
 
+// Runs before first paint: if Home's intro stagger already
+// played this session, mark <html> so it doesn't replay on a
+// reload (see components/home-intro-flag.tsx).
+const homeIntroScript =
+  "try{if(sessionStorage.getItem('dc-home-intro'))document.documentElement.dataset.homeSeen='1'}catch(e){}";
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${cinzel.variable} ${inter.variable}`}>
+    <html lang="en" className={`${cinzel.variable} ${inter.variable}`} suppressHydrationWarning>
       <body>
+        <Script id="dc-home-intro" strategy="beforeInteractive">
+          {homeIntroScript}
+        </Script>
         <PwaRegister />
         {children}
       </body>

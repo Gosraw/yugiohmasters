@@ -9,6 +9,10 @@ import {
 } from "@/components/home-weekly-goals";
 
 import {
+  HomeIntroFlag,
+} from "@/components/home-intro-flag";
+
+import {
   HomeWaitingOnYou,
 } from "@/components/home-waiting-on-you";
 
@@ -463,7 +467,9 @@ export default async function HomePage() {
         </h1>
       </div>
 
-      <div className="mt-4 space-y-2.5">
+      <HomeIntroFlag />
+
+      <div className="dc-stagger mt-4 space-y-2.5">
         <HomeWeeklyGoals
           weekly={overview.weekly}
         />

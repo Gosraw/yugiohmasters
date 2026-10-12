@@ -25,12 +25,25 @@ de echte database van je vrienden is **niet aangeraakt**.
 | Binder toont alle kaarten | ✅ |
 | Klimspel (Pyramid Climb) — dagelijks + weekranglijst, server controleert scores | ✅ (Play → Mini Games) |
 | Auto battler (Shadow Arena) — 78 monsters, 20 Boss-golven, server controleert | ✅ (Play → Mini Games) |
-| Testbots (Playwright): start, 17 pagina's × 3 spelers, economie, shop | ✅ (nog geen volledig groene run in één keer, zie onder) |
+| Testbots (Playwright): start, 17 pagina's × 3 spelers, economie, shop | ✅ **132/132 groen** (telefoon + desktop) |
 | 20 Boss-arena's, seizoensposter/banner, 6 emblemen (fal.ai) | ✅ |
 | Video's + omroeper (ElevenLabs) | ❌ nog niet (ElevenLabs niet gekoppeld) |
 
-**Eindcontrole (03:50):** typecheck schoon, lint schoon, 269 unit-tests
-groen, 10 SQL-testbestanden groen.
+**Eindcontrole (04:40):** typecheck schoon, lint schoon, 271 unit-tests
+groen, 13 SQL-testbestanden groen, testbots 132/132 groen.
+
+Ook gedaan na de eerste versie van dit rapport:
+- Nieuwe kaartenpool + onze banlist + Classic v2 staan klaar in de database
+  (nog uit), plus het lanceer-resetscript en het draaiboek
+  `docs/LAUNCH_2_0_RUNBOOK.md` (stap voor stap, in het Nederlands).
+- Master Duel-regel aangepast: alleen kaarten die niet in Master Duel
+  bestaan gaan eruit (jullie spelen Unlimited).
+- Deck builder toont onze limieten (Verboden / Max 1 / Max 2).
+- Perk-maximum 600 DP per week (instelbaar), titels op je profiel.
+- ~90 Nederlandse teksten vertaald naar Engels. Het Samo-paaseitje heb ik
+  bewust in het Nederlands gelaten — jij beslist.
+- Fout opgelost: nieuwe spelers kwamen na inloggen op Home in plaats van
+  bij Boss kiezen.
 
 ## ⚠️ Belangrijk om te weten
 

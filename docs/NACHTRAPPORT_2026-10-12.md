@@ -24,10 +24,13 @@ de echte database van je vrienden is **niet aangeraakt**.
 | Nieuw Home-scherm | ✅ |
 | Binder toont alle kaarten | ✅ |
 | Klimspel (Pyramid Climb) — dagelijks + weekranglijst, server controleert scores | ✅ (Play → Mini Games) |
-| Auto battler (Shadow Arena) | ⏳ zie onderaan |
+| Auto battler (Shadow Arena) — 78 monsters, 20 Boss-golven, server controleert | ✅ (Play → Mini Games) |
 | Testbots (Playwright): start, 17 pagina's × 3 spelers, economie, shop | ✅ (nog geen volledig groene run in één keer, zie onder) |
 | 20 Boss-arena's, seizoensposter/banner, 6 emblemen (fal.ai) | ✅ |
 | Video's + omroeper (ElevenLabs) | ❌ nog niet (ElevenLabs niet gekoppeld) |
+
+**Eindcontrole (03:50):** typecheck schoon, lint schoon, 269 unit-tests
+groen, 10 SQL-testbestanden groen.
 
 ## ⚠️ Belangrijk om te weten
 

@@ -78,16 +78,6 @@ await Promise.all(Array.from({ length: 6 }, async () => {
   }
 }));
 
-function shortText(text, max = 240) {
-  if (!text) {
-    return "";
-  }
-
-  const clean = text.replace(/\s+/g, " ").trim();
-
-  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
-}
-
 const data = lists
   .map((list) => ({
     key: list.key,
@@ -104,7 +94,10 @@ const data = lists
           verdict: item.proposed_verdict,
           context: item.context.replace(/\s*\(category:[^)]*\)\s*$/, "").replace(/\s*\(confidence:[^)]*\)\s*$/, ""),
           type: card ? [card.attribute, card.race, card.type].filter(Boolean).join(" · ") : "",
-          text: shortText(card?.desc),
+          text: (card?.desc || "").trim(),
+          stats: card && card.atk !== undefined
+            ? [card.level ? (card.type?.includes("XYZ") ? "Rank " : "Level ") + card.level : null, "ATK " + card.atk, card.def !== undefined ? "DEF " + card.def : null].filter(Boolean).join(" · ")
+            : "",
           img: images.get(item.id) ?? "",
         };
       }),

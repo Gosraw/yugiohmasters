@@ -85,6 +85,11 @@ details p { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
 .tally { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
 .tally span { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,.05); }
 .tally img { width: 16px; height: 16px; border-radius: 50%; }
+.dot-allow { color: var(--weak); }
+.cardtext { border-top: 1px solid var(--line-soft); padding-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.cardtext p { margin: 0; font-size: 14px; white-space: pre-line; }
+.rarity { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 14px; background: rgba(90,168,224,.08); border: 1px solid rgba(90,168,224,.35); }
+.rarity-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .dot-agree { color: var(--agree); } .dot-too_strong { color: var(--strong); } .dot-too_weak { color: var(--weak); }
 .toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 .toggle input { width: 18px; height: 18px; accent-color: var(--gold); }
@@ -140,7 +145,7 @@ function verdictLabel(v) {
 }
 function resolveVerdict(verdict, vote) {
   if (vote === "agree") return verdict;
-  if (verdict === "forbidden") return vote === "too_weak" ? "allowed" : "forbidden";
+  if (verdict === "forbidden") return baseVote(vote) === "allow" ? (allowRarity(vote) || "allowed") : "forbidden";
   if (verdict === "limited_1") return vote === "too_strong" ? "forbidden" : "unlimited";
   if (verdict === "Legendary") return vote === "too_strong" ? "forbidden" : "Secret Rare";
   const i = LADDER.indexOf(verdict);
@@ -148,11 +153,18 @@ function resolveVerdict(verdict, vote) {
   return LADDER[vote === "too_strong" ? Math.min(i + 1, LADDER.length - 1) : Math.max(i - 1, 0)];
 }
 function options(verdict) {
-  return verdict === "forbidden" ? ["agree", "too_weak"] : ["agree", "too_strong", "too_weak"];
+  return verdict === "forbidden" ? ["agree", "allow"] : ["agree", "too_strong", "too_weak"];
+}
+// "allow:Ultra Rare" -> "allow"; other votes unchanged.
+function baseVote(vote) {
+  return vote && vote.startsWith("allow") ? "allow" : vote;
+}
+function allowRarity(vote) {
+  return vote && vote.startsWith("allow:") ? vote.slice(6) : null;
 }
 function choiceText(verdict, vote) {
   if (verdict === "forbidden") {
-    return vote === "agree" ? ["Keep it out", "It stays forbidden"] : ["Allow it", "Let it into the card pool"];
+    return vote === "agree" ? ["Keep it out", "It stays forbidden"] : ["Allow it", "Then pick its rarity"];
   }
   const result = verdictLabel(resolveVerdict(verdict, vote));
   if (vote === "agree") return ["Agree", "Keep it at " + verdictLabel(verdict)];
@@ -192,6 +204,7 @@ const mine = {};           // my votes, optimistic
 let listFilter = "all", rFilter = "all";
 let cursor = ALL[0]?.id ?? null;
 let tab = "vote";
+let pickingRarity = null;  // card id whose "Allow it" rarity picker is open
 
 function myVote(id) { return mine[id] ?? votes[uid]?.[id]; }
 function filtered(listKey) { return listKey === "all" ? ALL : ALL.filter((i) => i.list === listKey); }
@@ -268,16 +281,39 @@ function renderVote() {
   cursor = item.id;
   const list = DATA.find((l) => l.key === item.list);
   const current = myVote(item.id);
+  const currentBase = baseVote(current);
+  const canVote = canWrite && uid;
 
   const choices = el("div", { class: "choices" });
   options(item.verdict).forEach((vote, idx) => {
     const [title, hint] = choiceText(item.verdict, vote);
+    const allowPicked = vote === "allow" && allowRarity(current);
     choices.append(el("button", {
-      class: "choice " + vote, "aria-pressed": String(current === vote), "data-key": String(idx + 1),
-      disabled: canWrite && uid ? null : "",
-      onclick: () => castVote(item.id, vote),
-    }, [el("span", { text: title }), el("small", { text: hint })]));
+      class: "choice " + (vote === "allow" ? "too_weak" : vote),
+      "aria-pressed": String(currentBase === vote || (vote === "allow" && pickingRarity === item.id)),
+      "data-key": String(idx + 1),
+      disabled: canVote ? null : "",
+      onclick: () => {
+        if (vote === "allow") { pickingRarity = item.id; renderVote(); return; }
+        pickingRarity = null;
+        castVote(item.id, vote);
+      },
+    }, [el("span", { text: title }), el("small", { text: allowPicked ? "Rarity: " + allowPicked : hint })]));
   });
+  if (item.verdict === "forbidden" && (pickingRarity === item.id || allowRarity(current))) {
+    const picker = el("div", { class: "rarity" }, [el("div", { class: "meta", text: "If it's allowed, which rarity should it get?" })]);
+    const row = el("div", { class: "rarity-row" });
+    for (const r of [...LADDER].reverse()) {
+      row.append(el("button", {
+        class: "chip", "aria-pressed": String(allowRarity(current) === r),
+        disabled: canVote ? null : "",
+        text: r,
+        onclick: () => { pickingRarity = null; castVote(item.id, "allow:" + r); },
+      }));
+    }
+    picker.append(row);
+    choices.append(picker);
+  }
 
   slot.append(el("article", { class: "card" }, [
     el("div", { class: "art", style: item.img ? "background-image:url(" + item.img + ")" : "" }, [
@@ -289,7 +325,11 @@ function renderVote() {
     el("div", { class: "body" }, [
       el("div", { class: "meta", text: (list ? list.title : "") + (item.type ? " · " + item.type : "") }),
       el("div", { class: "reason", text: item.context }),
-      item.text ? el("details", {}, [el("summary", { text: "Card text" }), el("p", { text: item.text })]) : null,
+      item.text ? el("div", { class: "cardtext" }, [
+        el("div", { class: "eyebrow", text: "Card text" }),
+        item.stats ? el("div", { class: "meta", text: item.stats }) : null,
+        el("p", { text: item.text }),
+      ]) : null,
       choices,
       el("div", { class: "nav" }, [
         el("button", { text: "← Back", onclick: () => { cursor = nextFrom(cursor, -1) ?? cursor; renderVote(); } }),
@@ -341,21 +381,36 @@ function outcome(item) {
   for (const [voter, v] of Object.entries(votes)) {
     const vote = voter === uid ? myVote(item.id) : v[item.id];
     if (!vote) continue;
-    counts[vote] = (counts[vote] || 0) + 1;
-    (who[vote] = who[vote] || []).push(voter);
+    const key = baseVote(vote);
+    counts[key] = (counts[key] || 0) + 1;
+    (who[key] = who[key] || []).push(voter);
   }
-  if (uid && !votes[uid] && myVote(item.id)) { const v = myVote(item.id); counts[v] = (counts[v] || 0) + 1; (who[v] = who[v] || []).push(uid); }
+  if (uid && !votes[uid] && myVote(item.id)) { const v = baseVote(myVote(item.id)); counts[v] = (counts[v] || 0) + 1; (who[v] = who[v] || []).push(uid); }
   const max = Math.max(0, ...Object.values(counts));
   const top = Object.keys(counts).filter((k) => counts[k] === max);
   let winner = null, how = "";
   if (max === 0) how = "No votes yet";
   else if (top.length === 1) winner = top[0];
   else {
-    const ownerVote = ownerId ? (ownerId === uid ? myVote(item.id) : votes[ownerId]?.[item.id]) : null;
+    const ownerVote = baseVote(ownerId ? (ownerId === uid ? myVote(item.id) : votes[ownerId]?.[item.id]) : null);
     if (ownerVote && top.includes(ownerVote)) { winner = ownerVote; how = "tie, Gosraw decides"; }
     else how = "Tied";
   }
-  return { counts, who, winner, how };
+  // "Allow it" won: the rarity is the most chosen one among those voters.
+  let rarities = [];
+  if (winner === "allow") {
+    const voteOf = (voter) => voter === uid ? myVote(item.id) : votes[voter]?.[item.id];
+    rarities = (who.allow || []).map((voter) => allowRarity(voteOf(voter))).filter(Boolean);
+    const rc = {};
+    for (const r of rarities) rc[r] = (rc[r] || 0) + 1;
+    const rmax = Math.max(0, ...Object.values(rc));
+    const rtop = Object.keys(rc).filter((r) => rc[r] === rmax);
+    const ownerRarity = ownerId ? allowRarity(voteOf(ownerId)) : null;
+    if (rtop.length === 1) winner = "allow:" + rtop[0];
+    else if (ownerRarity && rtop.includes(ownerRarity)) { winner = "allow:" + ownerRarity; how = (how ? how + "; " : "") + "rarity tie, Gosraw decides"; }
+    else how = (how ? how + "; " : "") + "rarity tied: " + rtop.join(" / ");
+  }
+  return { counts, who, winner, how, rarities };
 }
 
 async function renderResults() {
@@ -379,7 +434,7 @@ async function renderResults() {
         const people = (o.who[vote] || []);
         tally.append(el("span", {}, [
           el("b", { class: "dot-" + vote, text: "●" }),
-          el("span", { text: choiceText(item.verdict, vote)[0] + " " + people.length }),
+          el("span", { text: choiceText(item.verdict, vote)[0] + " " + people.length + (vote === "allow" && o.rarities.length ? " (" + o.rarities.join(", ") + ")" : "") }),
           ...people.map((p) => ps[p]?.avatarUrl ? el("img", { src: ps[p].avatarUrl, alt: ps[p].name || "voter", title: ps[p].name || "" }) : null),
         ]));
       }

@@ -27,10 +27,12 @@ de echte database van je vrienden is **niet aangeraakt**.
 | Auto battler (Shadow Arena) — 78 monsters, 20 Boss-golven, server controleert | ✅ (Play → Mini Games) |
 | Testbots (Playwright): start, 17 pagina's × 3 spelers, economie, shop | ✅ **132/132 groen** (telefoon + desktop) |
 | 20 Boss-arena's, seizoensposter/banner, 6 emblemen (fal.ai) | ✅ |
+| Beweging: Millennium pack-opening, Boss-evolutie-filmpje, tab-overgangen | ✅ (nog op echte iPhone testen) |
 | Video's + omroeper (ElevenLabs) | ❌ nog niet (ElevenLabs niet gekoppeld) |
 
 **Eindcontrole (04:40):** typecheck schoon, lint schoon, 271 unit-tests
-groen, 13 SQL-testbestanden groen, testbots 132/132 groen.
+groen, 13 SQL-testbestanden groen, testbots 132/132 groen, productie-build
+slaagt (05:00).
 
 Ook gedaan na de eerste versie van dit rapport:
 - Nieuwe kaartenpool + onze banlist + Classic v2 staan klaar in de database

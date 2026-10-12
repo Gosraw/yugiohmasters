@@ -54,7 +54,9 @@ begin
 
   select description into desc_first
   from public.duel_point_transactions
-  where profile_id = pg_temp.uid_of('fardin') and reason = 'round_winner_bonus';
+  where profile_id = pg_temp.uid_of('fardin') and reason = 'round_winner_bonus'
+  order by seq desc
+  limit 1;
   perform pg_temp.assert_eq(desc_first, 'Round 1 complete — 1st place', 'round bonus ledger row has a readable description');
 
   perform pg_temp.assert_true(

@@ -26,7 +26,7 @@ begin
     and metadata ->> 'purchase_type' = 'pack';
 
   perform pg_temp.assert_eq(tx.amount, -300, 'Normal Pack purchase logged as -300');
-  perform pg_temp.assert_eq(tx.description, 'Bought a Normal Pack', 'pack purchase ledger description');
+  perform pg_temp.assert_eq(tx.description, 'Bought a Standard Pack', 'pack purchase ledger description');
   perform pg_temp.assert_eq(pg_temp.balance('samo'), balance_before - 300, 'pack purchase debited exactly once');
 end;
 $$;

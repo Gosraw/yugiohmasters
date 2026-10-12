@@ -77,7 +77,7 @@ as $$
   delete from public.reward_vouchers;
 $$;
 
--- 3-player single-duel competition (bossg is the league admin),
+-- 3-player single-duel SEASON competition (bossg is the league admin),
 -- matches generated: schedule rounds 1-3 = round 1 (one full cycle),
 -- 4-6 = round 2 when meetings = 2.
 create function pg_temp.new_competition(target_meetings integer default 1)
@@ -96,6 +96,17 @@ begin
   where lm.profile_id = pg_temp.uid_of('bossg');
 
   new_id := public.create_competition_v2(league, 'SQL test season', target_meetings, 'single_duel');
+
+  -- It is THE season (competitions.is_season, 202610121500): any
+  -- other open season in the local DB steps aside for the test.
+  update public.competitions
+  set is_season = false
+  where league_id = league
+    and id <> new_id
+    and is_season
+    and status in ('draft', 'active');
+
+  perform public.mark_competition_as_season(new_id);
 
   perform public.add_competition_player_v2(new_id, pg_temp.uid_of(u))
   from unnest(array['bossg', 'samo', 'fardin']) as u;

@@ -45,6 +45,10 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  formatLeagueDate,
+} from "@/lib/format-date";
+
+import {
   SubmitButton,
 } from "@/components/submit-button";
 
@@ -281,19 +285,8 @@ function formatDate(
     | string
     | null
 ) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Date(
+  return formatLeagueDate(
     value
-  ).toLocaleDateString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
   );
 }
 
@@ -853,6 +846,19 @@ export default async function CompetitionDetailPage({
     (rewardData ??
       []) as RewardRule[];
 
+  // Season competitions pay per duel / per round instead, so their
+  // placement rules are all 0 DP and no voucher: no empty
+  // Champion / Runner-up / Third Place cards for those.
+  const visibleRewardRules =
+    rewardRules.filter(
+      (reward) =>
+        reward.duel_points > 0 ||
+        (Boolean(
+          reward.voucher_type
+        ) &&
+          reward.voucher_quantity > 0)
+    );
+
   // ======================================================
   // LIVE STANDINGS
   // ======================================================
@@ -1121,8 +1127,9 @@ export default async function CompetitionDetailPage({
 
       {/* REWARDS */}
 
+      {visibleRewardRules.length > 0 && (
       <section className="mt-5 grid gap-3 md:grid-cols-3">
-        {rewardRules.map(
+        {visibleRewardRules.map(
           (reward) => (
             <div
               key={
@@ -1165,10 +1172,12 @@ export default async function CompetitionDetailPage({
                         size={12}
                       />
 
-                      {
+                      {reward.voucher_quantity > 1
+                        ? `${reward.voucher_quantity}× `
+                        : ""}
+                      {voucherLabel(
                         reward.voucher_type
-                      }{" "}
-                      voucher
+                      )}
                     </span>
                   )}
               </div>
@@ -1176,6 +1185,7 @@ export default async function CompetitionDetailPage({
           )
         )}
       </section>
+      )}
 
       {/* DRAFT MANAGEMENT */}
 
@@ -2115,7 +2125,7 @@ export default async function CompetitionDetailPage({
                         <MatchCard
                           key={match.id}
                           match={match}
-                          allowCorrect={isCompleted}
+                          allowCorrect
                         />
                       ))}
                     </div>

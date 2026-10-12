@@ -25,8 +25,8 @@ import {
 } from "@/components/page-header";
 
 import {
-  SubmitButton,
-} from "@/components/submit-button";
+  ConfirmSubmitButton,
+} from "@/components/confirm-submit-button";
 
 import {
   evolveBossStage,
@@ -822,7 +822,8 @@ export default async function BossPathDetailPage({
                         }
                       />
 
-                      <SubmitButton
+                      <ConfirmSubmitButton
+                        confirmMessage={`Evolve to Stage ${stageNumber}${stage?.dp_cost_to_reach != null ? ` for ${stage.dp_cost_to_reach.toLocaleString()} DP` : ""}? This spends your Duel Points and can't be undone.`}
                         pendingLabel="Evolving..."
                         disabled={
                           !canEvolve
@@ -838,7 +839,7 @@ export default async function BossPathDetailPage({
                         {
                           stageNumber
                         }
-                      </SubmitButton>
+                      </ConfirmSubmitButton>
 
                       {!canAffordNext &&
                         stage?.dp_cost_to_reach != null && (

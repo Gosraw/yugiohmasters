@@ -12,6 +12,7 @@ import {
   Gift,
   Home,
   LockKeyhole,
+  LogOut,
   Medal,
   ScrollText,
   ShieldCheck,
@@ -22,6 +23,10 @@ import {
   Vote,
   Zap,
 } from "lucide-react";
+
+import {
+  logout,
+} from "@/app/actions/auth";
 
 import {
   chooseBossMonster,
@@ -36,6 +41,10 @@ import type {
 import {
   ProfileForm,
 } from "@/components/profile-form";
+
+import {
+  ConfirmSubmitButton,
+} from "@/components/confirm-submit-button";
 
 import {
   SubmitButton,
@@ -361,40 +370,132 @@ export default async function ProfilePage() {
   } = await requireUser();
 
   // ======================================================
+  // PARALLEL LOADS (perf, 2026-10-12)
+  //
+  // These queries don't depend on each other, so they run at the
+  // same time instead of one after another (was ~11 sequential
+  // round trips, 2-5 s). The league-scoped ones start right after
+  // the membership lookup below.
+  // ======================================================
+
+  const [
+    profileResult,
+    titlesResult,
+    membershipResult,
+    bossOptionsResult,
+    bossRouteIdentityResult,
+    collectionResult,
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(
+        `
+          id,
+          username,
+          duelist_name,
+          avatar_url,
+          custom_title,
+          catchphrase,
+          bio,
+          favorite_play_style,
+          favorite_card_type,
+          favorite_attribute,
+          favorite_monster_type,
+          boss_monster_option_id,
+          accent_theme,
+          signature_quote,
+          profile_banner_url,
+          boss_personality,
+          duel_points
+        `
+      )
+      .eq(
+        "id",
+        userId
+      )
+      .maybeSingle(),
+    supabase
+      .from(
+        "profile_titles"
+      )
+      .select(
+        "id,title,season_number"
+      )
+      .eq(
+        "profile_id",
+        userId
+      )
+      .order(
+        "granted_at",
+        {
+          ascending: true,
+        }
+      ),
+    supabase
+      .from(
+        "league_members"
+      )
+      .select(
+        "league_id"
+      )
+      .eq(
+        "profile_id",
+        userId
+      )
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from(
+        "boss_monster_options"
+      )
+      .select(
+        `
+          id,
+          name,
+          subtitle,
+          image_url,
+          active
+        `
+      )
+      .eq(
+        "active",
+        true
+      )
+      .order(
+        "sort_order",
+        {
+          ascending: true,
+        }
+      ),
+    getPrimaryBossIdentity(
+      supabase,
+      userId
+    ),
+    supabase
+      .from(
+        "card_instances"
+      )
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        }
+      )
+      .eq(
+        "current_owner_id",
+        userId
+      ),
+  ]);
+
+  // ======================================================
   // PROFILE
   // ======================================================
 
   const {
     data: profileData,
     error: profileError,
-  } = await supabase
-    .from("profiles")
-    .select(
-      `
-        id,
-        username,
-        duelist_name,
-        avatar_url,
-        custom_title,
-        catchphrase,
-        bio,
-        favorite_play_style,
-        favorite_card_type,
-        favorite_attribute,
-        favorite_monster_type,
-        boss_monster_option_id,
-        accent_theme,
-        signature_quote,
-        profile_banner_url,
-        boss_personality,
-        duel_points
-      `
-    )
-    .eq(
-      "id",
-      userId
-    )
-    .maybeSingle();
+  } = profileResult;
 
   if (
     profileError ||
@@ -412,23 +513,7 @@ export default async function ProfilePage() {
   // season champion) - public.profile_titles.
   const {
     data: titleRows,
-  } = await supabase
-    .from(
-      "profile_titles"
-    )
-    .select(
-      "id,title,season_number"
-    )
-    .eq(
-      "profile_id",
-      userId
-    )
-    .order(
-      "granted_at",
-      {
-        ascending: true,
-      }
-    );
+  } = titlesResult;
 
   const earnedTitles =
     (titleRows ?? []) as {
@@ -444,19 +529,7 @@ export default async function ProfilePage() {
   const {
     data: membership,
     error: membershipError,
-  } = await supabase
-    .from(
-      "league_members"
-    )
-    .select(
-      "league_id"
-    )
-    .eq(
-      "profile_id",
-      userId
-    )
-    .limit(1)
-    .maybeSingle();
+  } = membershipResult;
 
   if (
     membershipError ||
@@ -474,13 +547,71 @@ export default async function ProfilePage() {
   const leagueId =
     membership.league_id;
 
-  // 2.0 card pool vote (/vote)
-  const pendingCardVotes =
-    await getPendingCardVoteCount(
+  const [
+    pendingCardVotes,
+    matchResult,
+    leagueProfiles,
+    tradeResult,
+    deckResult,
+  ] = await Promise.all([
+    getPendingCardVoteCount(
       supabase,
       userId,
       leagueId
-    );
+    ),
+    supabase
+      .from("matches")
+      .select(
+        `
+          id,
+          player_one_id,
+          player_two_id,
+          winner_id,
+          result,
+          status,
+          match_type,
+          wager_type,
+          completed_at,
+          created_at
+        `
+      )
+      .eq(
+        "league_id",
+        leagueId
+      )
+      .or(
+        `player_one_id.eq.${userId},player_two_id.eq.${userId}`
+      ),
+    getLeagueProfiles(
+      supabase,
+      leagueId
+    ),
+    supabase
+      .from("trades")
+      .select("status")
+      .eq(
+        "league_id",
+        leagueId
+      )
+      .or(
+        `sender_id.eq.${userId},receiver_id.eq.${userId}`
+      ),
+    supabase
+      .from("decks")
+      .select(
+        "status,is_active"
+      )
+      .eq(
+        "league_id",
+        leagueId
+      )
+      .eq(
+        "owner_id",
+        userId
+      ),
+  ]);
+
+  // 2.0 card pool vote (/vote): pendingCardVotes, loaded above.
 
   // ======================================================
   // BOSS MONSTERS
@@ -489,29 +620,7 @@ export default async function ProfilePage() {
   const {
     data: bossOptionsData,
     error: bossOptionsError,
-  } = await supabase
-    .from(
-      "boss_monster_options"
-    )
-    .select(
-      `
-        id,
-        name,
-        subtitle,
-        image_url,
-        active
-      `
-    )
-    .eq(
-      "active",
-      true
-    )
-    .order(
-      "sort_order",
-      {
-        ascending: true,
-      }
-    );
+  } = bossOptionsResult;
 
   if (
     bossOptionsError
@@ -544,10 +653,7 @@ export default async function ProfilePage() {
   // a player's real, currently-evolving Boss Route identity, which
   // this second lookup resolves the same way Home does.
   const bossRouteIdentity =
-    await getPrimaryBossIdentity(
-      supabase,
-      userId
-    );
+    bossRouteIdentityResult;
 
   // ======================================================
   // MATCHES
@@ -556,29 +662,7 @@ export default async function ProfilePage() {
   const {
     data: matchData,
     error: matchError,
-  } = await supabase
-    .from("matches")
-    .select(
-      `
-        id,
-        player_one_id,
-        player_two_id,
-        winner_id,
-        result,
-        status,
-        match_type,
-        wager_type,
-        completed_at,
-        created_at
-      `
-    )
-    .eq(
-      "league_id",
-      leagueId
-    )
-    .or(
-      `player_one_id.eq.${userId},player_two_id.eq.${userId}`
-    );
+  } = matchResult;
 
   if (matchError) {
     throw new Error(
@@ -634,11 +718,6 @@ export default async function ProfilePage() {
   // TROPHY ROOM: TOP RIVAL
   // ======================================================
 
-  const leagueProfiles =
-    await getLeagueProfiles(
-      supabase,
-      leagueId
-    );
 
   const rivalSummaries =
     computeRivalSummaries(
@@ -734,16 +813,7 @@ export default async function ProfilePage() {
   const {
     data: tradeData,
     error: tradeError,
-  } = await supabase
-    .from("trades")
-    .select("status")
-    .eq(
-      "league_id",
-      leagueId
-    )
-    .or(
-      `sender_id.eq.${userId},receiver_id.eq.${userId}`
-    );
+  } = tradeResult;
 
   if (tradeError) {
     throw new Error(
@@ -770,21 +840,7 @@ export default async function ProfilePage() {
     count:
       collectionCountRaw,
     error: collectionError,
-  } = await supabase
-    .from(
-      "card_instances"
-    )
-    .select(
-      "id",
-      {
-        count: "exact",
-        head: true,
-      }
-    )
-    .eq(
-      "current_owner_id",
-      userId
-    );
+  } = collectionResult;
 
   if (
     collectionError
@@ -805,19 +861,7 @@ export default async function ProfilePage() {
   const {
     data: deckData,
     error: deckError,
-  } = await supabase
-    .from("decks")
-    .select(
-      "status,is_active"
-    )
-    .eq(
-      "league_id",
-      leagueId
-    )
-    .eq(
-      "owner_id",
-      userId
-    );
+  } = deckResult;
 
   if (deckError) {
     throw new Error(
@@ -1359,7 +1403,7 @@ export default async function ProfilePage() {
               </div>
 
               <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-600">
-                A visitekaartje only - separate from your Boss Route above
+                A calling card only - separate from your Boss Route above
               </p>
 
               <h2 className="mt-3 text-2xl font-black">
@@ -1416,6 +1460,13 @@ export default async function ProfilePage() {
             <p className="text-[10px] font-black uppercase tracking-[.18em] text-zinc-600">
               Choose Boss Monster
             </p>
+
+            {bossOptions.length ===
+              0 && (
+              <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-zinc-500">
+                No cosmetic Boss Monsters are available right now. Your real Boss Route above is not affected.
+              </div>
+            )}
 
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {bossOptions.map(
@@ -1865,6 +1916,39 @@ export default async function ProfilePage() {
         <div className="mt-6">
           <InstallAppCard />
         </div>
+
+        {/* ==================================================
+            LOG OUT
+        ================================================== */}
+
+        <section className="panel mt-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black text-zinc-100">
+              Log out
+            </p>
+
+            <p className="mt-1 text-xs text-zinc-500">
+              Sign out on this device. Your cards, DP and progress stay safe.
+            </p>
+          </div>
+
+          <form
+            action={
+              logout
+            }
+          >
+            <ConfirmSubmitButton
+              confirmMessage="Log out of Duelist Circle on this device?"
+              pendingLabel="Logging out..."
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-300/25 bg-red-300/[0.06] px-5 py-2.5 text-sm font-black text-red-200 transition-colors hover:bg-red-300/[0.12] sm:w-auto"
+            >
+              <LogOut
+                size={16}
+              />
+              Log out
+            </ConfirmSubmitButton>
+          </form>
+        </section>
       </div>
     </main>
   );

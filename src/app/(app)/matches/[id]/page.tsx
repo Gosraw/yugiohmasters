@@ -41,6 +41,10 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  formatLeagueDateTime,
+} from "@/lib/format-date";
+
+import {
   SubmitButton,
 } from "@/components/submit-button";
 
@@ -196,6 +200,7 @@ type DpEscrow = {
   status:
     | "funded"
     | "won"
+    | "lost"
     | "refunded";
 };
 
@@ -244,22 +249,28 @@ function formatDate(
     | string
     | null
 ) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Date(
+  return formatLeagueDateTime(
     value
-  ).toLocaleString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }
   );
+}
+
+function escrowLabel(
+  escrow: DpEscrow
+) {
+  switch (escrow.status) {
+    case "won":
+      return `${escrow.amount} DP stake · won`;
+
+    case "lost":
+      return `${escrow.amount} DP stake · lost`;
+
+    case "refunded":
+      return `${escrow.amount} DP stake · refunded`;
+
+    case "funded":
+    default:
+      return `${escrow.amount} DP funded`;
+  }
 }
 
 function StatusBadge({
@@ -353,8 +364,10 @@ function StatusBadge({
 
 function MatchTypeBadge({
   matchType,
+  isSeasonDuel = false,
 }: {
   matchType: MatchType;
+  isSeasonDuel?: boolean;
 }) {
   if (
     matchType ===
@@ -373,7 +386,9 @@ function MatchTypeBadge({
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/25 bg-amber-300/[0.07] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-amber-200">
       <Trophy size={12} />
-      League Duel
+      {isSeasonDuel
+        ? "Season Duel"
+        : "League Duel"}
     </span>
   );
 }
@@ -1266,7 +1281,7 @@ export default async function MatchDetailPage({
               href="#dispute"
               className="mt-2 block py-1.5 text-center text-xs font-bold text-zinc-500 transition-colors hover:text-zinc-300"
             >
-              Something wrong? Dispute it
+              Not right? Explain it below ↓
             </a>
           </section>
         )}
@@ -1296,6 +1311,10 @@ export default async function MatchDetailPage({
                 matchType={
                   match.match_type
                 }
+                isSeasonDuel={
+                  competition !==
+                  null
+                }
               />
                             {competition && (
                 <Link
@@ -1311,15 +1330,30 @@ export default async function MatchDetailPage({
               )}
 
               {match.wager_type !==
-                "none" && (
-                <span className="energy-line inline-flex items-center gap-1.5 rounded-full border border-cyan-300/20 bg-cyan-300/[0.06] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-200">
-                  <Crown
-                    size={11}
-                  />
+                "none" &&
+                (match.wager_status ===
+                  "settled" ||
+                match.wager_status ===
+                  "released" ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                    <Crown
+                      size={11}
+                    />
 
-                  Wager Active
-                </span>
-              )}
+                    {match.wager_status ===
+                    "settled"
+                      ? "Wager Settled"
+                      : "Wager Returned"}
+                  </span>
+                ) : (
+                  <span className="energy-line inline-flex items-center gap-1.5 rounded-full border border-cyan-300/20 bg-cyan-300/[0.06] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-cyan-200">
+                    <Crown
+                      size={11}
+                    />
+
+                    Wager Active
+                  </span>
+                ))}
             </div>
 
                        <p className="mt-4 text-center text-[10px] font-black uppercase tracking-[.3em] text-zinc-600 sm:mt-6">
@@ -1580,7 +1614,9 @@ export default async function MatchDetailPage({
                       }`}
                     >
                       {playerOneEscrow
-                        ? `${playerOneEscrow.amount} DP funded`
+                        ? escrowLabel(
+                            playerOneEscrow
+                          )
                         : "Waiting for stake"}
                     </p>
                   </div>
@@ -1600,7 +1636,9 @@ export default async function MatchDetailPage({
                       }`}
                     >
                       {playerTwoEscrow
-                        ? `${playerTwoEscrow.amount} DP funded`
+                        ? escrowLabel(
+                            playerTwoEscrow
+                          )
                         : "Waiting for stake"}
                     </p>
                   </div>

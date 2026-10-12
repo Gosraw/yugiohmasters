@@ -9,6 +9,10 @@ import {
 } from "next/navigation";
 
 import {
+  withFeedback,
+} from "@/lib/safe-return-to";
+
+import {
   requireUser,
 } from "@/lib/supabase/queries";
 
@@ -23,6 +27,21 @@ import {
 // 2.0: Boss evolution is DP only; the achievement-confirmation
 // action is gone (migration 202610120130).
 // =========================================================
+
+// Failures go back to the page the form was on with a friendly
+// ?error= banner instead of crashing into the error page.
+function failTo(
+  path: string,
+  message: string
+): never {
+  redirect(
+    withFeedback(
+      path,
+      "error",
+      message
+    )
+  );
+}
 
 function revalidateBossPaths(
   pathId?: string
@@ -59,7 +78,8 @@ export async function chooseBossPath(
   ).trim();
 
   if (!routeId) {
-    throw new Error(
+    failTo(
+      "/boss/select?slot=1",
       "Choose a Boss Route first."
     );
   }
@@ -75,14 +95,16 @@ export async function chooseBossPath(
     }
   );
 
-  if (error) {
-    throw new Error(
-      error.message
+  if (error || !pathId) {
+    failTo(
+      "/boss/select?slot=1",
+      error?.message ??
+        "Could not choose this Boss Route."
     );
   }
 
   revalidateBossPaths(
-    pathId ?? undefined
+    pathId
   );
 
   redirect(
@@ -118,7 +140,8 @@ export async function unlockBossPathSlot(
     (routeSlot !== 2 &&
       routeSlot !== 3)
   ) {
-    throw new Error(
+    failTo(
+      "/boss",
       "Invalid Boss Route slot selection."
     );
   }
@@ -136,14 +159,16 @@ export async function unlockBossPathSlot(
     }
   );
 
-  if (error) {
-    throw new Error(
-      error.message
+  if (error || !pathId) {
+    failTo(
+      `/boss/select?slot=${routeSlot}`,
+      error?.message ??
+        "Could not unlock this Boss Route slot."
     );
   }
 
   revalidateBossPaths(
-    pathId ?? undefined
+    pathId
   );
 
   redirect(
@@ -180,7 +205,10 @@ export async function evolveBossStage(
       stageNumber
     )
   ) {
-    throw new Error(
+    failTo(
+      pathId
+        ? `/boss/${encodeURIComponent(pathId)}`
+        : "/boss",
       "Invalid Boss Route evolution request."
     );
   }
@@ -198,7 +226,8 @@ export async function evolveBossStage(
   );
 
   if (error) {
-    throw new Error(
+    failTo(
+      `/boss/${encodeURIComponent(pathId)}`,
       error.message
     );
   }

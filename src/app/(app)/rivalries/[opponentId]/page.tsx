@@ -18,6 +18,10 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  formatLeagueDate,
+} from "@/lib/format-date";
+
+import {
   computeHeadToHead,
   getCompletedLeagueMatches,
   getLeagueIdForUser,
@@ -28,11 +32,7 @@ import {
 export const dynamic = "force-dynamic";
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return formatLeagueDate(value);
 }
 
 export default async function RivalryDetailPage({

@@ -88,11 +88,18 @@ export type ActiveSeason = {
   total_rounds: number | null;
 };
 
+export type LatestSeason = ActiveSeason & {
+  status: "active" | "completed";
+};
+
+const SEASON_COLUMNS =
+  "id,name,current_round,total_rounds";
+
 /**
- * The league's season competition: the active V2 round robin with
- * the longest schedule (newest first on a tie). There is meant to
- * be exactly one; this just picks sensibly if an old event is still
- * open.
+ * The league's running season competition (competitions.is_season,
+ * migration 202610121500 - a custom competition is never "the
+ * season"). The database allows at most one draft/active season per
+ * league; the ordering just picks sensibly if that ever changes.
  */
 export async function getActiveSeasonCompetition(
   supabase: SupabaseClient,
@@ -104,7 +111,7 @@ export async function getActiveSeasonCompetition(
   } = await supabase
     .from("competitions")
     .select(
-      "id,name,current_round,total_rounds"
+      SEASON_COLUMNS
     )
     .eq(
       "league_id",
@@ -115,13 +122,8 @@ export async function getActiveSeasonCompetition(
       "active"
     )
     .eq(
-      "competition_type",
-      "round_robin"
-    )
-    .not(
-      "meetings_per_pairing",
-      "is",
-      null
+      "is_season",
+      true
     )
     .order(
       "total_rounds",
@@ -146,4 +148,95 @@ export async function getActiveSeasonCompetition(
   }
 
   return (data as ActiveSeason | null) ?? null;
+}
+
+/**
+ * The running season, or else the most recently finished one (for
+ * "Season complete" screens and the league table between seasons).
+ */
+export async function getLatestSeasonCompetition(
+  supabase: SupabaseClient,
+  leagueId: string
+): Promise<LatestSeason | null> {
+  const active =
+    await getActiveSeasonCompetition(
+      supabase,
+      leagueId
+    );
+
+  if (active) {
+    return {
+      ...active,
+      status: "active",
+    };
+  }
+
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("competitions")
+    .select(
+      SEASON_COLUMNS
+    )
+    .eq(
+      "league_id",
+      leagueId
+    )
+    .eq(
+      "status",
+      "completed"
+    )
+    .eq(
+      "is_season",
+      true
+    )
+    .order(
+      "completed_at",
+      {
+        ascending: false,
+        nullsFirst: false,
+      }
+    )
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      error.message
+    );
+  }
+
+  return data
+    ? {
+        ...(data as ActiveSeason),
+        status: "completed",
+      }
+    : null;
+}
+
+/**
+ * Name for a new season competition: the current row of the
+ * `seasons` table ("Season 2"), never a hard-coded number.
+ */
+export async function getCurrentSeasonName(
+  supabase: SupabaseClient
+): Promise<string> {
+  const {
+    data,
+  } = await supabase
+    .from("seasons")
+    .select(
+      "name"
+    )
+    .eq(
+      "is_current",
+      true
+    )
+    .maybeSingle();
+
+  const name =
+    (data as { name: string } | null)?.name?.trim();
+
+  return name || "Season";
 }

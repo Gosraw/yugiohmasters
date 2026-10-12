@@ -3,8 +3,26 @@
 import { redirect } from "next/navigation";
 
 import {
+  withFeedback,
+} from "@/lib/safe-return-to";
+
+import {
   requireUser,
 } from "@/lib/supabase/queries";
+
+// Every failure goes back to /draft with a friendly ?error= banner
+// instead of crashing into the generic error page.
+function failDraft(
+  message: string
+): never {
+  redirect(
+    withFeedback(
+      "/draft",
+      "error",
+      message
+    )
+  );
+}
 
 // =========================================================
 // START INITIAL DRAFT
@@ -40,7 +58,7 @@ export async function startInitialDraft() {
     membershipError ||
     !membership
   ) {
-    throw new Error(
+    failDraft(
       "League membership not found."
     );
   }
@@ -56,7 +74,7 @@ export async function startInitialDraft() {
   );
 
   if (error) {
-    throw new Error(
+    failDraft(
       error.message
     );
   }
@@ -90,7 +108,7 @@ export async function createNextDraftOffer(
     );
 
   if (!draftPlayerId) {
-    throw new Error(
+    failDraft(
       "Draft player missing."
     );
   }
@@ -117,7 +135,7 @@ export async function createNextDraftOffer(
     playerError ||
     !player
   ) {
-    throw new Error(
+    failDraft(
       "Draft player not found."
     );
   }
@@ -126,7 +144,7 @@ export async function createNextDraftOffer(
     player.profile_id !==
     userId
   ) {
-    throw new Error(
+    failDraft(
       "You can't generate cards for another player."
     );
   }
@@ -161,7 +179,7 @@ export async function createNextDraftOffer(
   );
 
   if (error) {
-    throw new Error(
+    failDraft(
       error.message
     );
   }
@@ -209,7 +227,7 @@ export async function pickDraftCard(
     !offerId ||
     !optionId
   ) {
-    throw new Error(
+    failDraft(
       "Draft choice missing."
     );
   }
@@ -243,7 +261,7 @@ export async function pickDraftCard(
     offerError ||
     !offer
   ) {
-    throw new Error(
+    failDraft(
       "This draft choice is no longer active."
     );
   }
@@ -273,7 +291,7 @@ export async function pickDraftCard(
     playerError ||
     !draftPlayer
   ) {
-    throw new Error(
+    failDraft(
       "Draft player not found."
     );
   }
@@ -282,7 +300,7 @@ export async function pickDraftCard(
     draftPlayer.profile_id !==
     userId
   ) {
-    throw new Error(
+    failDraft(
       "You can't pick for another player."
     );
   }
@@ -324,7 +342,7 @@ export async function pickDraftCard(
   );
 
   if (pickError) {
-    throw new Error(
+    failDraft(
       pickError.message
     );
   }
@@ -351,7 +369,7 @@ export async function pickDraftCard(
     updatedPlayerError ||
     !updatedPlayer
   ) {
-    throw new Error(
+    failDraft(
       "Could not load your draft progress."
     );
   }
@@ -395,7 +413,7 @@ export async function pickDraftCard(
   );
 
   if (nextOfferError) {
-    throw new Error(
+    failDraft(
       `The card was picked, but the next draft choice could not be created: ${nextOfferError.message}`
     );
   }

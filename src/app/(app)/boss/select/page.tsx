@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -20,6 +21,10 @@ import {
 import {
   EmptyState,
 } from "@/components/empty-state";
+
+import {
+  ConfirmSubmitButton,
+} from "@/components/confirm-submit-button";
 
 import {
   SubmitButton,
@@ -390,13 +395,23 @@ export default async function BossPathSelectPage({
                       }
                       className={`panel relative flex flex-col overflow-hidden p-5 ${alreadyChosenElsewhere ? "opacity-50" : ""}`}
                     >
+                      {/* next/image lazy-loads: only the arenas on
+                          screen are downloaded, not all 20 at once. */}
                       <div
                         aria-hidden="true"
-                        className="-mx-5 -mt-5 mb-4 h-28 bg-cover bg-center [mask-image:linear-gradient(180deg,#000_55%,transparent)]"
-                        style={{
-                          backgroundImage: `url(${getBossArenaImage(route.code)})`,
-                        }}
-                      />
+                        className="relative -mx-5 -mt-5 mb-4 h-28 overflow-hidden [mask-image:linear-gradient(180deg,#000_55%,transparent)]"
+                      >
+                        <Image
+                          src={getBossArenaImage(
+                            route.code
+                          )}
+                          alt=""
+                          fill
+                          loading="lazy"
+                          sizes="(min-width: 1280px) 400px, (min-width: 640px) 50vw, 100vw"
+                          className="object-cover object-center"
+                        />
+                      </div>
 
                       <div className="flex items-center justify-between">
                         <span className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
@@ -536,23 +551,39 @@ export default async function BossPathSelectPage({
                               />
                             )}
 
-                            <SubmitButton
-                              pendingLabel="Choosing..."
-                              disabled={
-                                disabled
-                              }
-                              className="primary-button inline-flex w-full items-center justify-center gap-2 text-sm"
-                            >
-                              <Sparkles
-                                size={
-                                  15
+                            {cost ===
+                            null ? (
+                              <SubmitButton
+                                pendingLabel="Choosing..."
+                                disabled={
+                                  disabled
                                 }
-                              />
-                              {cost ===
-                              null
-                                ? "Choose This Route"
-                                : `Unlock for ${cost.toLocaleString()} DP`}
-                            </SubmitButton>
+                                className="primary-button inline-flex w-full items-center justify-center gap-2 text-sm"
+                              >
+                                <Sparkles
+                                  size={
+                                    15
+                                  }
+                                />
+                                Choose This Route
+                              </SubmitButton>
+                            ) : (
+                              <ConfirmSubmitButton
+                                confirmMessage={`Unlock ${route.name} as Boss Route slot ${slot} for ${cost.toLocaleString()} DP? This spends your Duel Points and can't be undone.`}
+                                pendingLabel="Unlocking..."
+                                disabled={
+                                  disabled
+                                }
+                                className="primary-button inline-flex w-full items-center justify-center gap-2 text-sm"
+                              >
+                                <Sparkles
+                                  size={
+                                    15
+                                  }
+                                />
+                                {`Unlock for ${cost.toLocaleString()} DP`}
+                              </ConfirmSubmitButton>
+                            )}
                           </form>
                         )}
                       </div>

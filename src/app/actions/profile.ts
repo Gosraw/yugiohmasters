@@ -18,8 +18,31 @@ import {
 } from "@/lib/achievement-rewards";
 
 import {
+  createAdminClient,
+} from "@/lib/supabase/admin";
+
+import {
+  withFeedback,
+} from "@/lib/safe-return-to";
+
+import {
   requireUser,
 } from "@/lib/supabase/queries";
+
+// Action failures go back to the page with a friendly ?error=
+// banner instead of crashing into the generic error page.
+function failTo(
+  path: string,
+  message: string
+): never {
+  redirect(
+    withFeedback(
+      path,
+      "error",
+      message
+    )
+  );
+}
 
 // =========================================================
 // TYPES
@@ -938,8 +961,9 @@ export async function equipAchievementTitle(
     );
 
   if (!reward) {
-    throw new Error(
-      "Onbekende achievement reward."
+    failTo(
+      "/profile",
+      "Unknown achievement reward."
     );
   }
 
@@ -949,7 +973,8 @@ export async function equipAchievementTitle(
     reward.rewardType !==
       "prestige"
   ) {
-    throw new Error(
+    failTo(
+      "/profile",
       "This achievement doesn't unlock a title."
     );
   }
@@ -959,47 +984,65 @@ export async function equipAchievementTitle(
     userId,
   } = await requireUser();
 
-  const unlocked =
-    await getUnlockedAchievementIds(
-      supabase,
-      userId
+  let unlocked: Set<AchievementRewardId>;
+
+  try {
+    unlocked =
+      await getUnlockedAchievementIds(
+        supabase,
+        userId
+      );
+  } catch (unlockError) {
+    failTo(
+      "/profile",
+      unlockError instanceof Error
+        ? unlockError.message
+        : "Could not check your achievements."
     );
+  }
 
   if (
     !unlocked.has(
       achievementId
     )
   ) {
-    throw new Error(
+    failTo(
+      "/profile",
       "You haven't unlocked this title yet."
     );
   }
 
+  // profiles.custom_title is not client-writable (migration
+  // 202610121620): the unlock was checked above for THIS user, so
+  // set it through the service-role-only RPC.
   const {
     error,
-  } = await supabase
-    .from("profiles")
-    .update({
-      custom_title:
+  } = await createAdminClient().rpc(
+    "set_profile_custom_title",
+    {
+      p_profile_id:
+        userId,
+      p_title:
         reward.rewardValue,
-
-      updated_at:
-        new Date().toISOString(),
-    })
-    .eq(
-      "id",
-      userId
-    );
+    }
+  );
 
   if (error) {
-    throw new Error(
+    failTo(
+      "/profile",
       `Could not equip the title: ${error.message}`
     );
   }
 
   revalidateIdentity();
 
-  redirect("/profile");
+  redirect(
+    withFeedback(
+      "/profile",
+      "success",
+      "Title equipped."
+    )
+  );
 }
 
 // =========================================================
@@ -1008,35 +1051,37 @@ export async function equipAchievementTitle(
 
 export async function unequipAchievementTitle() {
   const {
-    supabase,
     userId,
   } = await requireUser();
 
   const {
     error,
-  } = await supabase
-    .from("profiles")
-    .update({
-      custom_title:
+  } = await createAdminClient().rpc(
+    "set_profile_custom_title",
+    {
+      p_profile_id:
+        userId,
+      p_title:
         null,
-
-      updated_at:
-        new Date().toISOString(),
-    })
-    .eq(
-      "id",
-      userId
-    );
+    }
+  );
 
   if (error) {
-    throw new Error(
+    failTo(
+      "/profile",
       `Could not remove the title: ${error.message}`
     );
   }
 
   revalidateIdentity();
 
-  redirect("/profile");
+  redirect(
+    withFeedback(
+      "/profile",
+      "success",
+      "Title removed."
+    )
+  );
 }
 
 // =========================================================
@@ -1057,7 +1102,10 @@ export async function chooseBossMonster(
       );
 
   if (!id.success) {
-    return;
+    failTo(
+      "/profile",
+      "Choose a Boss Monster first."
+    );
   }
 
   const {
@@ -1087,7 +1135,10 @@ export async function chooseBossMonster(
     optionError ||
     !option
   ) {
-    return;
+    failTo(
+      "/profile",
+      "This Boss Monster is not available."
+    );
   }
 
   const {
@@ -1107,7 +1158,10 @@ export async function chooseBossMonster(
     );
 
   if (error) {
-    return;
+    failTo(
+      "/profile",
+      `Could not save your Boss Monster: ${error.message}`
+    );
   }
 
   // ======================================================
@@ -1131,7 +1185,8 @@ export async function chooseBossMonster(
     membershipError ||
     !membership
   ) {
-    throw new Error(
+    failTo(
+      "/profile",
       "League membership not found."
     );
   }
@@ -1167,7 +1222,8 @@ export async function chooseBossMonster(
     );
 
     if (draftError) {
-      throw new Error(
+      failTo(
+        "/profile",
         `Could not start the Initial Draft: ${draftError.message}`
       );
     }

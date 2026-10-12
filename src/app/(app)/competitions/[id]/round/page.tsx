@@ -152,7 +152,7 @@ function rewardText(
 
   if (rule.duel_points > 0) {
     parts.push(
-      `${rule.duel_points.toLocaleString()} DP`
+      `${rule.duel_points.toLocaleString("en-US")} DP`
     );
   }
 

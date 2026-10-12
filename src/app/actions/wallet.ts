@@ -22,15 +22,50 @@ import {
 // Rows written in the same database transaction share one
 // created_at (e.g. the last duel of a round: match DP + round
 // participation + placement + vouchers), so they are grouped into a
-// single "moment" and shown as one pop-up.
+// single "moment" and shown as one pop-up. A corrected result writes
+// reversals (negative) and new credits in one go: the pop-up shows
+// the NET change of that moment ("-125 DP, result corrected"), never
+// just the positive half.
 // =========================================================
 
-// Credits that are not really a reward (money moving between
-// players, or your own stake coming back).
+// Ledger rows that are not a reward or a correction of one: money
+// moving between players, your own stake coming back or going out,
+// and things you bought yourself.
 const NOT_A_REWARD = new Set([
   "trade",
   "practice_wager_refund",
+  "practice_wager_stake",
+  "shop_purchase",
 ]);
+
+const NOT_A_REWARD_PREFIXES = [
+  "boss_route_",
+];
+
+// A negative row is only shown when it takes back an earlier
+// reward (a corrected result). Matches round_reward_reversal,
+// match_reward_correction_N, competition_reward_reversal,
+// season_bounty_reversal, ...
+const CORRECTION_PATTERN = /reversal|correction/;
+
+function isRewardRelated(
+  row: LedgerRow
+) {
+  if (
+    NOT_A_REWARD.has(row.reason) ||
+    NOT_A_REWARD_PREFIXES.some(
+      (prefix) => row.reason.startsWith(prefix)
+    )
+  ) {
+    return false;
+  }
+
+  if (row.amount < 0) {
+    return CORRECTION_PATTERN.test(row.reason);
+  }
+
+  return row.amount > 0;
+}
 
 const LOOKBACK_LIMIT_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -42,7 +77,10 @@ export type RewardMoment = {
   key: string;
   at: string;
   ids: string[];
+  /** NET DP change of this moment (negative after a correction). */
   dp: number;
+  /** A result was corrected: rewards were taken back / re-paid. */
+  corrected: boolean;
   packs: {
     label: string;
     quantity: number;
@@ -58,6 +96,7 @@ export type RecentRewards = {
 
 type LedgerRow = {
   id: string;
+  seq: number | null;
   amount: number;
   reason: string;
   description: string | null;
@@ -77,7 +116,9 @@ type RewardItem = {
   id: string;
   at: string;
   time: number;
+  order: number;
   dp: number;
+  corrected: boolean;
   pack: {
     label: string;
     quantity: number;
@@ -139,12 +180,12 @@ export async function getRecentRewards(
   ] = await Promise.all([
     supabase
       .from("duel_point_transactions")
-      .select("id,amount,reason,description,created_at")
+      .select("id,seq,amount,reason,description,created_at")
       .eq("profile_id", userId)
-      .gt("amount", 0)
       .gt("created_at", sinceIso)
       .order("created_at", { ascending: true })
-      .limit(40),
+      .order("seq", { ascending: true })
+      .limit(60),
     supabase
       .from("reward_vouchers")
       .select("id,voucher_type,quantity,note,source_type,created_at")
@@ -181,7 +222,7 @@ export async function getRecentRewards(
       latestAt = row.created_at;
     }
 
-    if (NOT_A_REWARD.has(row.reason)) {
+    if (!isRewardRelated(row)) {
       continue;
     }
 
@@ -189,7 +230,10 @@ export async function getRecentRewards(
       id: row.id,
       at: row.created_at,
       time: Date.parse(row.created_at),
+      order: row.seq ?? 0,
       dp: row.amount,
+      corrected:
+        CORRECTION_PATTERN.test(row.reason),
       pack: null,
       line: row.description,
     });
@@ -204,7 +248,9 @@ export async function getRecentRewards(
       id: row.id,
       at: row.created_at,
       time: Date.parse(row.created_at),
+      order: Number.MAX_SAFE_INTEGER,
       dp: 0,
+      corrected: false,
       pack: {
         label: voucherLabel(row.voucher_type),
         quantity: row.quantity,
@@ -214,7 +260,9 @@ export async function getRecentRewards(
   }
 
   items.sort(
-    (a, b) => a.time - b.time
+    (a, b) =>
+      a.time - b.time ||
+      a.order - b.order
   );
 
   const moments: RewardMoment[] = [];
@@ -236,6 +284,7 @@ export async function getRecentRewards(
         at: item.at,
         ids: [],
         dp: 0,
+        corrected: false,
         packs: [],
         lines: [],
       };
@@ -246,6 +295,9 @@ export async function getRecentRewards(
     moment.ids.push(item.id);
     moment.at = item.at;
     moment.dp += item.dp;
+    moment.corrected =
+      moment.corrected ||
+      item.corrected;
 
     if (item.pack) {
       const existing = moment.packs.find(
@@ -269,6 +321,12 @@ export async function getRecentRewards(
   return {
     now: new Date(nowMs).toISOString(),
     latestAt,
-    moments,
+    // A correction that changed nothing on balance (reverse +400,
+    // pay +400 again) is not news: no pop-up for it.
+    moments: moments.filter(
+      (moment) =>
+        moment.dp !== 0 ||
+        moment.packs.length > 0
+    ),
   };
 }

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 
+import { safeReturnTo } from "@/lib/safe-return-to";
 import { requireUser } from "@/lib/supabase/queries";
 
 // =========================================================
@@ -48,9 +49,8 @@ export async function requestAchievementClaim(
     "achievement_key"
   );
 
-  const returnTo = readString(formData, "return_to");
-
-  const fallback = returnTo || "/perks";
+  // Same-site relative paths only (never an open redirect).
+  const fallback = safeReturnTo(readString(formData, "return_to"), "/perks");
 
   if (!achievementKey) {
     redirectWith(
@@ -89,9 +89,8 @@ export async function approveAchievementClaim(
 
   const claimId = readString(formData, "claim_id");
 
-  const returnTo = readString(formData, "return_to");
-
-  const fallback = returnTo || "/perks";
+  // Same-site relative paths only (never an open redirect).
+  const fallback = safeReturnTo(readString(formData, "return_to"), "/perks");
 
   if (!claimId) {
     redirectWith(
@@ -130,9 +129,8 @@ export async function rejectAchievementClaim(
 
   const claimId = readString(formData, "claim_id");
 
-  const returnTo = readString(formData, "return_to");
-
-  const fallback = returnTo || "/perks";
+  // Same-site relative paths only (never an open redirect).
+  const fallback = safeReturnTo(readString(formData, "return_to"), "/perks");
 
   if (!claimId) {
     redirectWith(

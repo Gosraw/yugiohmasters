@@ -36,12 +36,13 @@ import {
 import {
   cardVoteAttentionItem,
   computeAttentionItems,
+  getDisputedDuelAttentionItems,
   getPendingCardVoteCount,
 } from "@/lib/attention-items";
 
 import {
   duelsPerRound,
-  getActiveSeasonCompetition,
+  getLatestSeasonCompetition,
   logicalRoundFor,
   scheduleRoundsPerCycle,
   totalLogicalRounds,
@@ -126,8 +127,10 @@ async function loadThisRound(
   leagueId: string,
   myName: string
 ): Promise<HomeRoundState> {
+  // The running season, or the last finished one ("Season
+  // complete" instead of "no season yet").
   const season =
-    await getActiveSeasonCompetition(
+    await getLatestSeasonCompetition(
       supabase,
       leagueId
     );
@@ -135,6 +138,14 @@ async function loadThisRound(
   if (!season) {
     return {
       state: "none",
+    };
+  }
+
+  if (season.status === "completed") {
+    return {
+      state: "finished",
+      competitionId: season.id,
+      competitionName: season.name,
     };
   }
 
@@ -348,6 +359,7 @@ export default async function HomePage() {
     tradeResult,
     pendingVotes,
     thisRound,
+    disputeItems,
   ] = await Promise.all([
     leagueId
       ? supabase
@@ -407,14 +419,21 @@ export default async function HomePage() {
       : Promise.resolve<HomeRoundState>({
           state: "none",
         }),
+    getDisputedDuelAttentionItems(
+      supabase,
+      userId,
+      leagueId
+    ),
   ]);
 
-  const attentionItems =
-    computeAttentionItems(
+  const attentionItems = [
+    ...disputeItems,
+    ...computeAttentionItems(
       (matchResult.data ?? []) as AttentionMatchRow[],
       (tradeResult.data ?? []) as AttentionTradeRow[],
       userId
-    );
+    ),
+  ];
 
   const voteItem =
     cardVoteAttentionItem(

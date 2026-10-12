@@ -326,10 +326,17 @@ function SelectedCardTile({
         #{instance.copy_number}
       </span>
 
+      <p
+        className="truncate px-1.5 py-1 text-[10px] font-bold leading-4 text-zinc-300"
+        title={card.name}
+      >
+        {card.name}
+      </p>
+
       {removable && (
         <form
           action={removeTradeItem}
-          className="absolute bottom-1 right-1"
+          className="absolute bottom-7 right-1"
         >
           <input
             type="hidden"
@@ -774,15 +781,12 @@ export default async function TradeDetailPage({
         forTradeCount:
           group.forTradeCount,
 
-        availableInstances:
-          group.availableInstances.map(
-            (instance) => ({
-              id:
-                instance.id,
-              copy_number:
-                instance.copy_number,
-            })
-          ),
+        availableCount:
+          group.availableInstances.length,
+
+        nextInstanceId:
+          group.availableInstances[0]?.id ??
+          null,
       })
     );
 
@@ -802,17 +806,46 @@ export default async function TradeDetailPage({
         forTradeCount:
           group.forTradeCount,
 
-        availableInstances:
-          group.availableInstances.map(
-            (instance) => ({
-              id:
-                instance.id,
-              copy_number:
-                instance.copy_number,
-            })
-          ),
+        availableCount:
+          group.availableInstances.length,
+
+        nextInstanceId:
+          group.availableInstances[0]?.id ??
+          null,
       })
     );
+
+  function describeSide(
+    cardCount: number,
+    dp: number
+  ) {
+    const parts: string[] = [];
+
+    if (cardCount > 0) {
+      parts.push(
+        `${cardCount} card${cardCount === 1 ? "" : "s"}`
+      );
+    }
+
+    if (dp > 0) {
+      parts.push(
+        `${dp} DP`
+      );
+    }
+
+    return parts.length > 0
+      ? parts.join(" + ")
+      : "nothing";
+  }
+
+  const acceptConfirmMessage =
+    `Accept this trade? You give ${describeSide(
+      requestedCards.length,
+      trade.dp_requested
+    )} and get ${describeSide(
+      offeredCards.length,
+      trade.dp_offered
+    )}. This can't be undone.`;
 
   return (
     <main className="mx-auto max-w-[1700px] px-4 py-6 sm:px-6 lg:px-8">
@@ -1183,7 +1216,8 @@ export default async function TradeDetailPage({
 
                   <SubmitButton
                     disabled={
-                      offeredCards.length === 0
+                      offeredCards.length === 0 &&
+                      trade.dp_offered <= 0
                     }
                     pendingLabel="Sending..."
                     className="primary-button mt-3 inline-flex cursor-pointer items-center justify-center gap-2 transition-all hover:-translate-y-0.5 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
@@ -1191,6 +1225,32 @@ export default async function TradeDetailPage({
                     <Send size={16} />
                     Send Trade
                   </SubmitButton>
+                </form>
+
+                <form
+                  action={cancelTrade}
+                  className="mt-3"
+                >
+                  <input
+                    type="hidden"
+                    name="trade_id"
+                    value={trade.id}
+                  />
+
+                  <input
+                    type="hidden"
+                    name="was_draft"
+                    value="true"
+                  />
+
+                  <ConfirmSubmitButton
+                    confirmMessage="Discard this draft trade? It was never sent, so nothing changes for either player."
+                    pendingLabel="Discarding..."
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-2.5 text-sm font-black text-red-200 transition-all hover:-translate-y-0.5 hover:bg-red-400/20 active:scale-[0.97]"
+                  >
+                    <XCircle size={16} />
+                    Discard draft
+                  </ConfirmSubmitButton>
                 </form>
               </div>
             </div>
@@ -1233,7 +1293,8 @@ export default async function TradeDetailPage({
                   value={trade.id}
                 />
 
-                <SubmitButton
+                <ConfirmSubmitButton
+                  confirmMessage={acceptConfirmMessage}
                   pendingLabel="Accepting..."
                   className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm font-black text-emerald-200 transition-all hover:-translate-y-0.5 hover:bg-emerald-400/20 active:scale-[0.97]"
                 >
@@ -1241,7 +1302,7 @@ export default async function TradeDetailPage({
                     size={16}
                   />
                   Accept Trade
-                </SubmitButton>
+                </ConfirmSubmitButton>
               </form>
 
               <form
@@ -1272,16 +1333,20 @@ export default async function TradeDetailPage({
                   value={trade.id}
                 />
 
-                <SubmitButton
-                  title="Decline this offer and start a new one in the opposite direction, pre-filled with the same cards and DP"
+                <ConfirmSubmitButton
+                  confirmMessage={`Counter offer? This DECLINES ${playerName(sender)}'s offer right away - it can't be accepted any more. You then get a new draft with the same cards and DP (sides swapped) to adjust and send back.`}
                   pendingLabel="Preparing..."
                   className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-violet-400/30 bg-violet-400/10 px-4 py-2.5 text-sm font-black text-violet-200 transition-all hover:-translate-y-0.5 hover:bg-violet-400/20 active:scale-[0.97]"
                 >
                   <Shuffle size={16} />
                   Counter Offer
-                </SubmitButton>
+                </ConfirmSubmitButton>
               </form>
             </div>
+
+            <p className="mt-3 text-xs leading-5 text-zinc-500">
+              Counter Offer declines this offer and starts a new draft back to {playerName(sender)} with the same cards and DP.
+            </p>
           </section>
         )}
 
@@ -1368,7 +1433,10 @@ export default async function TradeDetailPage({
           </h2>
 
           <p className="mt-2 text-sm text-zinc-500">
-            All temporary trade locks have been removed.
+            {trade.status ===
+            "declined"
+              ? "No cards or Duel Points changed hands."
+              : "This trade was withdrawn - no cards or Duel Points changed hands."}
           </p>
         </section>
       )}

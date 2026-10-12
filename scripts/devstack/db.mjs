@@ -163,6 +163,44 @@ const MANUAL_DEPLOY_FIRST = "202609020910";
 const MANUAL_DEPLOY_LAST = "202609021030_zzz";
 const MANUAL_DEPLOY_NAME = "20260902_season1_release.sql";
 
+// The Special Pack slots (202608311400) and the first singles rotation
+// are generated from card_catalog while the replay's catalog is not
+// yet format-eligible, so a fresh devstack ends up with zero slots and
+// an active singles rotation without cards. Production had a real
+// catalog by then. Recreate both here, after everything is seeded
+// (idempotent: only touches empty slots / an empty active rotation).
+async function ensureShopRotations(sql) {
+  await sql.unsafe(`
+    -- Same slot -> curated pack mapping as manual_deploy section 3:
+    -- definitions 1-5 archetype, 6-10 attribute, 11-15 monster_type.
+    insert into public.shop_special_pack_slots (
+      theme_category, slot_order, theme_value, theme_label, pack_definition_id
+    )
+    select
+      case
+        when d.display_order <= 5 then 'archetype'
+        when d.display_order <= 10 then 'attribute'
+        else 'monster_type'
+      end,
+      ((d.display_order - 1) % 5) + 1,
+      d.code,
+      d.name,
+      d.id
+    from public.shop_special_pack_definitions d
+    where d.display_order between 1 and 15
+    on conflict (theme_category, slot_order) do nothing;
+
+    -- An active singles rotation without any card: close it so the
+    -- refresh below generates a real one for the current window.
+    update public.shop_rotations r
+    set status = 'completed', ends_at = greatest(r.starts_at + interval '1 second', now()), updated_at = now()
+    where r.status = 'active'
+      and not exists (select 1 from public.shop_rotation_cards c where c.rotation_id = r.id);
+
+    select public.ensure_shop_rotations_current();
+  `);
+}
+
 async function migrate({ bootstrap = false } = {}) {
   const sql = postgres(DB_URL, {
     max: 1,
@@ -264,6 +302,7 @@ async function migrate({ bootstrap = false } = {}) {
     }
 
     await createTestUsers(sql, ["bossg", "samo", "fardin"]);
+    await ensureShopRotations(sql);
 
     console.log(`✓ applied ${count} migration(s)`);
 

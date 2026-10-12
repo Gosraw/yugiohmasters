@@ -233,7 +233,7 @@ export function packDisplayName(
   code: string
 ) {
   if (code === "normal") {
-    return "Normal Pack";
+    return "Standard Pack";
   }
 
   if (code === "premium") {

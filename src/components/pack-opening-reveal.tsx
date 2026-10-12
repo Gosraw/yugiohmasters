@@ -427,7 +427,7 @@ function packLabel(
   code: string
 ) {
   if (code === "normal") {
-    return "Normal Pack";
+    return "Standard Pack";
   }
 
   if (code === "premium") {
@@ -1041,7 +1041,7 @@ export function PackOpeningReveal({
           PACK HEADER
       ================================================== */}
 
-      <section className="relative overflow-hidden rounded-[28px] border border-amber-300/20 bg-gradient-to-br from-amber-300/[0.07] via-[#0a0e22]/70 to-[#2c4590]/[0.2] p-6 sm:p-8">
+      <section className="relative overflow-hidden rounded-[28px] border border-amber-300/20 bg-gradient-to-br from-amber-300/[0.07] via-[#0a0e22]/70 to-[#2c4590]/[0.2] p-4 sm:p-8">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[radial-gradient(closest-side,rgb(242_196_90/.14),transparent)]" />
 
@@ -1053,9 +1053,11 @@ export function PackOpeningReveal({
           />
         </div>
 
-        <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/[0.07] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.2em] text-amber-200">
+        {/* Compact on phones (title + counter on one row) so the
+            sealed pack fits on the first screen above the bottom nav. */}
+        <div className="relative flex flex-row items-center justify-between gap-4 sm:gap-6">
+          <div className="min-w-0">
+            <div className="hidden items-center gap-2 rounded-full sm:inline-flex border border-amber-300/20 bg-amber-300/[0.07] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.2em] text-amber-200">
               <PackageOpen
                 size={12}
               />
@@ -1063,24 +1065,24 @@ export function PackOpeningReveal({
               Pack Opening
             </div>
 
-            <h1 className="gold-text mt-4 text-3xl font-black sm:text-4xl">
+            <h1 className="gold-text text-2xl font-black leading-tight sm:mt-4 sm:text-4xl">
               {packName ||
                 packLabel(
                   packCode
                 )}
             </h1>
 
-            <p className="mt-2 text-sm text-zinc-500">
+            <p className="mt-2 hidden text-sm text-zinc-500 sm:block">
               Reveal your new physical cards one by one.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.08] bg-black/30 px-5 py-4">
+          <div className="shrink-0 rounded-2xl border border-white/[0.08] bg-black/30 px-4 py-2.5 sm:px-5 sm:py-4">
             <p className="text-[8px] font-black uppercase tracking-[.18em] text-zinc-600">
               Revealed
             </p>
 
-            <p className="mt-1 text-2xl font-black text-amber-100">
+            <p className="mt-1 text-xl font-black text-amber-100 sm:text-2xl">
               {Math.min(
                 revealed,
                 pulls.length
@@ -1098,8 +1100,18 @@ export function PackOpeningReveal({
 
       {!complete &&
         currentPull && (
-        <section className="mt-6 overflow-x-clip">
-          <div className="mx-auto max-w-sm">
+        <section className="mt-4 overflow-x-clip sm:mt-6">
+          {/* Width follows the screen HEIGHT too: on a short phone
+              (iPhone 13: 390x664) the whole pack + "Tap to unseal"
+              must sit above the bottom nav and the home-indicator
+              safe area. 19.5rem = page nav + header + bottom nav. */}
+          <div
+            className="mx-auto max-w-sm"
+            style={{
+              width:
+                "min(100%, 24rem, max(13rem, calc((100svh - 19.5rem - env(safe-area-inset-bottom)) * 421 / 614)))",
+            }}
+          >
             <div
               className={
                 reducedMotion

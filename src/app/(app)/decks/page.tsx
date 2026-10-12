@@ -91,7 +91,7 @@ function DeckCardTile({
     <Link
       href={`/decks/${deck.id}`}
       className={`
-        panel group block p-5
+        panel group block min-w-0 p-5
         transition-all duration-150
         hover:-translate-y-1
         hover:shadow-lg
@@ -492,7 +492,7 @@ export default async function DecksPage() {
           </p>
         </div>
 
-        <div className="panel p-4">
+        <div className="panel min-w-0 p-4">
           <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
             Active deck
           </p>

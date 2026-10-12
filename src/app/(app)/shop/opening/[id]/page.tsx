@@ -352,7 +352,7 @@ export default async function PackOpeningPage({
   let packName =
     opening.pack_code ===
     "normal"
-      ? "Normal Pack"
+      ? "Standard Pack"
       : opening.pack_code ===
           "premium"
         ? "Premium Pack"

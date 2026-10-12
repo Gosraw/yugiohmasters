@@ -9,8 +9,182 @@ import {
 } from "next/navigation";
 
 import {
+  safeReturnTo,
+  withFeedback,
+} from "@/lib/safe-return-to";
+
+import {
   requireUser,
 } from "@/lib/supabase/queries";
+
+// =========================================================
+// HELPERS
+//
+// Every failure redirects back with ?error=... instead of
+// throwing, so ActionFeedbackBanner shows a dismissible banner
+// (same pattern as decks.ts / shop.ts). A thrown Error would
+// replace the whole page with the app-wide error screen and show
+// raw database text.
+// =========================================================
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function readString(
+  formData: FormData,
+  key: string
+) {
+  return String(
+    formData.get(
+      key
+    ) ?? ""
+  ).trim();
+}
+
+function fail(
+  path: string,
+  message: string
+): never {
+  redirect(
+    withFeedback(
+      path,
+      "error",
+      message
+    )
+  );
+}
+
+// Database errors -> plain-language messages. Messages the RPCs
+// already write for players pass through; technical ones
+// (constraint names, type errors) never reach the screen.
+function friendlyTradeError(
+  error: {
+    message: string;
+    code?: string;
+  }
+) {
+  const message =
+    error.message ?? "";
+
+  if (
+    error.code === "23505" ||
+    message.includes(
+      "trade_items_trade_id_card_instance_id_key"
+    )
+  ) {
+    return "That card is already in this trade.";
+  }
+
+  if (
+    message.includes(
+      "Locked cards cannot be added to a trade"
+    )
+  ) {
+    return "This card is locked (for example as a match wager) and cannot be traded right now.";
+  }
+
+  if (
+    message.includes(
+      "Offered card must be owned by sender"
+    )
+  ) {
+    return "You no longer own that card.";
+  }
+
+  if (
+    message.includes(
+      "Requested card must be owned by receiver"
+    )
+  ) {
+    return "The other player no longer owns that card.";
+  }
+
+  if (
+    message.includes(
+      "can only be edited while Draft"
+    ) ||
+    message.includes(
+      "can only be changed while trade is Draft"
+    )
+  ) {
+    return "This trade was already sent, so it can no longer be changed.";
+  }
+
+  if (
+    message.includes(
+      "This deck is locked for a competition"
+    )
+  ) {
+    return "One or more cards in this trade are in a deck that is locked for a competition, so it cannot be completed.";
+  }
+
+  if (
+    error.code === "22P02" ||
+    message.includes(
+      "invalid input syntax"
+    )
+  ) {
+    return "That trade or card could not be found.";
+  }
+
+  if (
+    !message ||
+    message.includes(
+      "violates"
+    ) ||
+    message.includes(
+      "constraint"
+    ) ||
+    message.includes(
+      "permission denied"
+    ) ||
+    message.includes(
+      "function "
+    )
+  ) {
+    return "Something went wrong. Please try again.";
+  }
+
+  return message;
+}
+
+// Card add/remove/DP forms send return_to so the player lands back
+// on the same page / search of the trade's card browser.
+function tradeReturnPath(
+  formData: FormData,
+  tradeId: string
+) {
+  return safeReturnTo(
+    readString(
+      formData,
+      "return_to"
+    ),
+    `/trades/${tradeId}`
+  );
+}
+
+function requireTradeId(
+  formData: FormData
+) {
+  const tradeId =
+    readString(
+      formData,
+      "trade_id"
+    );
+
+  if (
+    !UUID_RE.test(
+      tradeId
+    )
+  ) {
+    fail(
+      "/trades",
+      "That trade could not be found."
+    );
+  }
+
+  return tradeId;
+}
 
 // =========================================================
 // CREATE TRADE
@@ -25,23 +199,31 @@ export async function createTrade(
   } = await requireUser();
 
   const receiverId =
-    String(
-      formData.get(
-        "receiver_id"
-      ) ?? ""
-    ).trim();
+    readString(
+      formData,
+      "receiver_id"
+    );
 
-  if (!receiverId) {
-    throw new Error(
-      "Trade partner missing."
+  if (
+    !UUID_RE.test(
+      receiverId
+    )
+  ) {
+    fail(
+      "/trades/new",
+      "Pick a player to trade with."
     );
   }
+
+  const backPath =
+    `/trades/new/${receiverId}`;
 
   if (
     receiverId ===
     userId
   ) {
-    throw new Error(
+    fail(
+      "/trades/new",
       "You can't trade with yourself."
     );
   }
@@ -63,7 +245,8 @@ export async function createTrade(
     membershipError ||
     !membership
   ) {
-    throw new Error(
+    fail(
+      "/trades",
       "League not found."
     );
   }
@@ -88,7 +271,8 @@ export async function createTrade(
     receiverMembershipError ||
     !receiverMembership
   ) {
-    throw new Error(
+    fail(
+      "/trades/new",
       "This player is not in your league."
     );
   }
@@ -108,13 +292,17 @@ export async function createTrade(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    fail(
+      backPath,
+      friendlyTradeError(
+        error
+      )
     );
   }
 
   if (!tradeId) {
-    throw new Error(
+    fail(
+      backPath,
       "The trade could not be created."
     );
   }
@@ -140,32 +328,36 @@ export async function addTradeItem(
   } = await requireUser();
 
   const tradeId =
-    String(
-      formData.get(
-        "trade_id"
-      ) ?? ""
-    ).trim();
+    requireTradeId(
+      formData
+    );
+
+  const backPath =
+    tradeReturnPath(
+      formData,
+      tradeId
+    );
 
   const cardInstanceId =
-    String(
-      formData.get(
-        "card_instance_id"
-      ) ?? ""
-    ).trim();
+    readString(
+      formData,
+      "card_instance_id"
+    );
 
   const side =
-    String(
-      formData.get(
-        "side"
-      ) ?? ""
-    ).trim();
+    readString(
+      formData,
+      "side"
+    );
 
   if (
-    !tradeId ||
-    !cardInstanceId
+    !UUID_RE.test(
+      cardInstanceId
+    )
   ) {
-    throw new Error(
-      "Trade or card missing."
+    fail(
+      backPath,
+      "Pick a card to add."
     );
   }
 
@@ -173,8 +365,9 @@ export async function addTradeItem(
     side !== "offered" &&
     side !== "requested"
   ) {
-    throw new Error(
-      "Ongeldige trade side."
+    fail(
+      backPath,
+      "Choose whether you offer or request this card."
     );
   }
 
@@ -195,8 +388,11 @@ export async function addTradeItem(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    fail(
+      backPath,
+      friendlyTradeError(
+        error
+      )
     );
   }
 
@@ -205,7 +401,13 @@ export async function addTradeItem(
   );
 
   redirect(
-    `/trades/${tradeId}`
+    withFeedback(
+      backPath,
+      "success",
+      side === "offered"
+        ? "Card added to your offer."
+        : "Card added to your request."
+    )
   );
 }
 
@@ -221,25 +423,30 @@ export async function removeTradeItem(
   } = await requireUser();
 
   const tradeId =
-    String(
-      formData.get(
-        "trade_id"
-      ) ?? ""
-    ).trim();
+    requireTradeId(
+      formData
+    );
+
+  const backPath =
+    tradeReturnPath(
+      formData,
+      tradeId
+    );
 
   const tradeItemId =
-    String(
-      formData.get(
-        "trade_item_id"
-      ) ?? ""
-    ).trim();
+    readString(
+      formData,
+      "trade_item_id"
+    );
 
   if (
-    !tradeId ||
-    !tradeItemId
+    !UUID_RE.test(
+      tradeItemId
+    )
   ) {
-    throw new Error(
-      "Trade item missing."
+    fail(
+      backPath,
+      "That card is no longer in this trade."
     );
   }
 
@@ -254,8 +461,15 @@ export async function removeTradeItem(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    fail(
+      backPath,
+      error.message.includes(
+        "Trade item not found"
+      )
+        ? "That card is no longer in this trade."
+        : friendlyTradeError(
+            error
+          )
     );
   }
 
@@ -264,7 +478,7 @@ export async function removeTradeItem(
   );
 
   redirect(
-    `/trades/${tradeId}`
+    backPath
   );
 }
 
@@ -285,11 +499,15 @@ export async function setTradeDp(
   } = await requireUser();
 
   const tradeId =
-    String(
-      formData.get(
-        "trade_id"
-      ) ?? ""
-    ).trim();
+    requireTradeId(
+      formData
+    );
+
+  const backPath =
+    tradeReturnPath(
+      formData,
+      tradeId
+    );
 
   const dpOffered =
     Number(
@@ -305,12 +523,6 @@ export async function setTradeDp(
       ) ?? 0
     );
 
-  if (!tradeId) {
-    throw new Error(
-      "Trade missing."
-    );
-  }
-
   if (
     !Number.isFinite(
       dpOffered
@@ -321,8 +533,9 @@ export async function setTradeDp(
     dpOffered < 0 ||
     dpRequested < 0
   ) {
-    throw new Error(
-      "Invalid Duel Points amount."
+    fail(
+      backPath,
+      "Duel Points must be 0 or more."
     );
   }
 
@@ -347,8 +560,11 @@ export async function setTradeDp(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    fail(
+      backPath,
+      friendlyTradeError(
+        error
+      )
     );
   }
 
@@ -357,7 +573,11 @@ export async function setTradeDp(
   );
 
   redirect(
-    `/trades/${tradeId}`
+    withFeedback(
+      backPath,
+      "success",
+      "Duel Points updated."
+    )
   );
 }
 
@@ -373,30 +593,22 @@ export async function submitTrade(
   } = await requireUser();
 
   const tradeId =
-    String(
-      formData.get(
-        "trade_id"
-      ) ?? ""
-    ).trim();
+    requireTradeId(
+      formData
+    );
 
   const message =
-    String(
-      formData.get(
-        "message"
-      ) ?? ""
-    ).trim();
-
-  if (!tradeId) {
-    throw new Error(
-      "Trade missing."
+    readString(
+      formData,
+      "message"
     );
-  }
 
   if (
     message.length >
     1000
   ) {
-    throw new Error(
+    fail(
+      `/trades/${tradeId}`,
       "Messages can be at most 1000 characters."
     );
   }
@@ -423,15 +635,16 @@ export async function submitTrade(
   );
 
   if (error) {
-    // Cards are never locked, so a draft can go stale between when
-    // it was built and when it's sent (one of its cards moved on
-    // via another trade). Land back on the same page with a
-    // friendly banner instead of crashing to the error boundary -
-    // this is an expected, not exceptional, outcome.
-    redirect(
-      `/trades/${tradeId}?error=${encodeURIComponent(
-        error.message
-      )}`
+    // Cards are never reserved by a draft, so a draft can go stale
+    // between when it was built and when it's sent (one of its
+    // cards moved on via another trade, or got locked as a wager).
+    // Land back on the same page with a friendly banner instead of
+    // crashing to the error boundary.
+    fail(
+      `/trades/${tradeId}`,
+      friendlyTradeError(
+        error
+      )
     );
   }
 
@@ -452,17 +665,9 @@ export async function acceptTrade(
   } = await requireUser();
 
   const tradeId =
-    String(
-      formData.get(
-        "trade_id"
-      ) ?? ""
-    ).trim();
-
-  if (!tradeId) {
-    throw new Error(
-      "Trade missing."
+    requireTradeId(
+      formData
     );
-  }
 
   const {
     error,
@@ -473,6 +678,20 @@ export async function acceptTrade(
         tradeId,
     }
   );
+
+  if (
+    error &&
+    error.message.includes(
+      "expired"
+    )
+  ) {
+    // accept_trade() marks the trade expired and then raises - but
+    // the raise rolls that update back. The idempotent sweep below
+    // records the expiry for real, so the trade shows as Expired.
+    await supabase.rpc(
+      "expire_stale_trades"
+    );
+  }
 
   revalidatePath(
     "/trades"
@@ -487,17 +706,16 @@ export async function acceptTrade(
   );
 
   if (error) {
-    // Because cards are never locked, the same card can be offered
-    // in several pending trades at once - first valid accept wins,
-    // and every later accept for a trade touching that same card
-    // fails this live ownership re-check inside accept_trade().
-    // That is an expected outcome of the design, not a bug, so it
-    // gets a friendly banner instead of crashing to the error
-    // boundary.
-    redirect(
-      `/trades/${tradeId}?error=${encodeURIComponent(
-        error.message
-      )}`
+    // The same card can be offered in several pending trades at
+    // once - first valid accept wins, and every later accept for a
+    // trade touching that same card fails the live ownership
+    // re-check inside accept_trade(). That is an expected outcome,
+    // so it gets a friendly banner instead of the error boundary.
+    fail(
+      `/trades/${tradeId}`,
+      friendlyTradeError(
+        error
+      )
     );
   }
 
@@ -518,17 +736,9 @@ export async function declineTrade(
   } = await requireUser();
 
   const tradeId =
-    String(
-      formData.get(
-        "trade_id"
-      ) ?? ""
-    ).trim();
-
-  if (!tradeId) {
-    throw new Error(
-      "Trade missing."
+    requireTradeId(
+      formData
     );
-  }
 
   const {
     error,
@@ -541,8 +751,11 @@ export async function declineTrade(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    fail(
+      `/trades/${tradeId}`,
+      friendlyTradeError(
+        error
+      )
     );
   }
 
@@ -561,6 +774,8 @@ export async function declineTrade(
 
 // =========================================================
 // CANCEL TRADE
+//
+// Also used to discard a Draft trade (cancel_trade allows both).
 // =========================================================
 
 export async function cancelTrade(
@@ -571,17 +786,15 @@ export async function cancelTrade(
   } = await requireUser();
 
   const tradeId =
-    String(
-      formData.get(
-        "trade_id"
-      ) ?? ""
-    ).trim();
-
-  if (!tradeId) {
-    throw new Error(
-      "Trade missing."
+    requireTradeId(
+      formData
     );
-  }
+
+  const wasDraft =
+    readString(
+      formData,
+      "was_draft"
+    ) === "true";
 
   const {
     error,
@@ -594,8 +807,11 @@ export async function cancelTrade(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    fail(
+      `/trades/${tradeId}`,
+      friendlyTradeError(
+        error
+      )
     );
   }
 
@@ -608,7 +824,11 @@ export async function cancelTrade(
   );
 
   redirect(
-    `/trades?success=${encodeURIComponent("Trade cancelled.")}`
+    `/trades?success=${encodeURIComponent(
+      wasDraft
+        ? "Draft trade discarded."
+        : "Trade cancelled."
+    )}`
   );
 }
 
@@ -629,17 +849,9 @@ export async function counterTrade(
   } = await requireUser();
 
   const tradeId =
-    String(
-      formData.get(
-        "trade_id"
-      ) ?? ""
-    ).trim();
-
-  if (!tradeId) {
-    throw new Error(
-      "Trade missing."
+    requireTradeId(
+      formData
     );
-  }
 
   const {
     data: newTradeId,
@@ -653,13 +865,17 @@ export async function counterTrade(
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    fail(
+      `/trades/${tradeId}`,
+      friendlyTradeError(
+        error
+      )
     );
   }
 
   if (!newTradeId) {
-    throw new Error(
+    fail(
+      `/trades/${tradeId}`,
       "The counter-offer could not be created."
     );
   }

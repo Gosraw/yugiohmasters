@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import {
+  AlertTriangle,
   Bell,
   CheckCircle2,
   Repeat2,
@@ -31,6 +32,7 @@ const KIND_ICON = {
   confirm: CheckCircle2,
   trade: Repeat2,
   vote: Vote,
+  dispute: AlertTriangle,
 };
 
 export default async function AttentionPage() {

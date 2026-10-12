@@ -40,11 +40,25 @@ export async function signup(
 ): Promise<AuthActionState> {
   const parsed = credentialsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    return { error: "Username: 3-24 characters. Password: at least 8 characters." };
+    const usernameIssues = parsed.error.issues.filter((issue) => issue.path[0] === "username");
+    if (usernameIssues.some((issue) => issue.code === "invalid_format")) {
+      return { error: "Username can only use letters (a-z), numbers, _ and - (no spaces or other symbols)." };
+    }
+    if (usernameIssues.length > 0) return { error: "Username must be 3-24 characters." };
+    return { error: "Password must be at least 8 characters." };
   }
 
   const username = normalizeUsername(parsed.data.username);
   const supabase = await createClient();
+
+  // The private league holds 3 players. Check BEFORE creating the
+  // account, so a 4th person never ends up with a login but no
+  // league (202610121610_signup_league_capacity.sql).
+  const { data: hasRoom, error: roomError } = await supabase.rpc("private_league_has_room");
+  if (roomError) return { error: "Could not check the league right now. Try again in a moment." };
+  if (hasRoom === false) {
+    return { error: "This league is full (3 players). Ask the league admin if there is room for you." };
+  }
   const { error } = await supabase.auth.signUp({
     email: usernameToAuthEmail(username),
     password: parsed.data.password,

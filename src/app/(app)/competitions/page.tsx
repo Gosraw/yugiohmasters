@@ -21,6 +21,10 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  formatLeagueDate,
+} from "@/lib/format-date";
+
+import {
   CompetitionCreateFormV2,
 } from "@/components/competition-create-form-v2";
 
@@ -30,6 +34,7 @@ import {
 
 import {
   getActiveSeasonCompetition,
+  getCurrentSeasonName,
   SEASON_DEFAULT_ROUNDS,
   SEASON_MAX_ROUNDS,
 } from "@/lib/competitions/season";
@@ -89,19 +94,8 @@ function formatDate(
     | string
     | null
 ) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Date(
+  return formatLeagueDate(
     value
-  ).toLocaleDateString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
   );
 }
 
@@ -364,11 +358,18 @@ export default async function CompetitionsPage() {
         "completed"
     );
 
-  const activeSeason =
-    await getActiveSeasonCompetition(
+  const [
+    activeSeason,
+    seasonName,
+  ] = await Promise.all([
+    getActiveSeasonCompetition(
       supabase,
       membership.league_id
-    );
+    ),
+    getCurrentSeasonName(
+      supabase
+    ),
+  ]);
 
   const tournaments =
     competitions.filter(
@@ -401,7 +402,7 @@ export default async function CompetitionsPage() {
 
           <input
             name="name"
-            defaultValue="Season 2"
+            defaultValue={seasonName}
             maxLength={80}
             required
             className="field mt-1.5 w-full"
@@ -591,17 +592,9 @@ export default async function CompetitionsPage() {
       ) : null}
 
       {activeSeason && isAdmin && (
-        <details className="panel mt-3 p-4">
-          <summary className="cursor-pointer text-sm font-black text-zinc-300">
-            Start another season competition
-          </summary>
-
-          <p className="mt-2 text-xs text-zinc-500">
-            Only when the current season is over (or was a test). The newest, longest active competition is the one Play opens.
-          </p>
-
-          {seasonStartForm}
-        </details>
+        <p className="mt-3 text-center text-xs text-zinc-500">
+          A new season can be started once {activeSeason.name} is finished.
+        </p>
       )}
 
       {activeSeason ? null : isAdmin ? (

@@ -21,6 +21,14 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  getLatestSeasonCompetition,
+} from "@/lib/competitions/season";
+
+import {
+  formatLeagueDate,
+} from "@/lib/format-date";
+
+import {
   getPrimaryBossIdentities,
   type BossIdentity,
 } from "@/lib/boss-identity";
@@ -137,27 +145,17 @@ function formatDate(
     | string
     | null
 ) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Date(
+  return formatLeagueDate(
     value
-  ).toLocaleDateString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
   );
 }
 
 function rankLabel(
-  rank: number
+  rank: number,
+  championLabel = "League Champion"
 ) {
   if (rank === 1) {
-    return "League Champion";
+    return championLabel;
   }
 
   if (rank === 2) {
@@ -521,40 +519,130 @@ export default async function LeaguePage() {
   // - recent league history
   // ======================================================
 
-  const {
-    data: matchData,
-    error: matchError,
-  } = await supabase
-    .from("matches")
-    .select(
-      `
-        id,
-        player_one_id,
-        player_two_id,
-        winner_id,
-        result,
-        completed_at,
-        created_at
-      `
-    )
-    .eq(
-      "league_id",
+  // ======================================================
+  // SEASON (2.0)
+  //
+  // The table follows the running season competition (or the
+  // last finished one between seasons), so the leader here is the
+  // same player the season standings show. Only a league that never
+  // had a season falls back to every official league duel.
+  // ======================================================
+
+  const season =
+    await getLatestSeasonCompetition(
+      supabase,
       leagueId
-    )
-    .eq(
-      "status",
-      "completed"
-    )
-    .eq(
-      "match_type",
-      "league"
-    )
-    .order(
+    );
+
+  let matchQuery =
+    supabase
+      .from("matches")
+      .select(
+        `
+          id,
+          player_one_id,
+          player_two_id,
+          winner_id,
+          result,
+          completed_at,
+          created_at
+        `
+      )
+      .eq(
+        "league_id",
+        leagueId
+      )
+      .eq(
+        "status",
+        "completed"
+      )
+      .eq(
+        "match_type",
+        "league"
+      );
+
+  if (season) {
+    matchQuery =
+      matchQuery
+        .eq(
+          "competition_id",
+          season.id
+        )
+        .is(
+          "tiebreak_id",
+          null
+        );
+  }
+
+  const [
+    {
+      data: matchData,
+      error: matchError,
+    },
+    seasonOrderResult,
+  ] = await Promise.all([
+    matchQuery.order(
       "completed_at",
       {
         ascending: false,
       }
+    ),
+    !season
+      ? Promise.resolve({
+          data: [] as {
+            profile_id: string;
+            placement: number;
+          }[],
+          error: null,
+        })
+      : season.status ===
+          "completed"
+        ? supabase
+            .from(
+              "competition_results"
+            )
+            .select(
+              "profile_id,placement"
+            )
+            .eq(
+              "competition_id",
+              season.id
+            )
+        : supabase.rpc(
+            "get_competition_standings_v2",
+            {
+              target_competition_id:
+                season.id,
+            }
+          ),
+  ]);
+
+  // profile -> place in the season standings (same order as the
+  // competition page, including its tie-breaks).
+  const seasonPlacement =
+    new Map<string, number>(
+      (
+        (seasonOrderResult.data ??
+          []) as {
+          profile_id: string;
+          placement: number | null;
+        }[]
+      ).map(
+        (row, index) => [
+          row.profile_id,
+          row.placement ??
+            index + 1,
+        ]
+      )
     );
+
+  const championLabel =
+    !season
+      ? "League Champion"
+      : season.status ===
+          "completed"
+        ? "Season Champion"
+        : "Season Leader";
 
   if (matchError) {
     throw new Error(
@@ -659,6 +747,12 @@ export default async function LeaguePage() {
 
   standings.sort(
     (a, b) =>
+      (seasonPlacement.get(
+        a.profile.id
+      ) ?? Number.MAX_SAFE_INTEGER) -
+        (seasonPlacement.get(
+          b.profile.id
+        ) ?? Number.MAX_SAFE_INTEGER) ||
       b.points -
         a.points ||
       b.wins -
@@ -897,7 +991,9 @@ export default async function LeaguePage() {
               </h1>
 
               <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
-                Challenge your rivals, play the actual duel in person or externally, then record the confirmed result here.
+                {season
+                  ? `Standings of ${season.name}${season.status === "completed" ? " (finished)" : ""}. Season duels are scheduled for you: play them in person or online, then tap the winner on the This Round screen.`
+                  : "Play your duels in person or online, then record the confirmed result here."}
               </p>
             </div>
 
@@ -924,7 +1020,8 @@ export default async function LeaguePage() {
 
                     <p className="text-xs text-zinc-500">
                       {rankLabel(
-                        currentStanding.rank
+                        currentStanding.rank,
+                        championLabel
                       )}
                     </p>
                   </div>
@@ -951,7 +1048,9 @@ export default async function LeaguePage() {
 
           <div className="panel p-4">
             <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
-              League Duels
+              {season
+                ? "Season Duels"
+                : "League Duels"}
             </p>
 
             <p className="mt-1 text-2xl font-black text-cyan-200">
@@ -1082,7 +1181,8 @@ export default async function LeaguePage() {
                         .profile
                         .custom_title ??
                         rankLabel(
-                          standing.rank
+                          standing.rank,
+                          championLabel
                         )}
                     </p>
 

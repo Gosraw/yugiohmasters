@@ -99,11 +99,17 @@ export type TradeBrowserCard = {
 
   forTradeCount: number;
 
-  availableInstances: {
-    id: string;
-    copy_number: number;
-  }[];
+  // Only what the Offer/Request button needs - sending every copy
+  // of a 1,000+ card collection made the trade page several MB.
+  availableCount: number;
+
+  nextInstanceId:
+    | string
+    | null;
 };
+
+// Tiles rendered at once; "Show more" reveals the next batch.
+const PAGE_SIZE = 48;
 
 type CardCategory =
   | "all"
@@ -387,9 +393,7 @@ export function TradeCollectionBrowser({
             if (
               availability ===
                 "available" &&
-              group
-                .availableInstances
-                .length ===
+              group.availableCount ===
                 0
             ) {
               return false;
@@ -490,6 +494,39 @@ export function TradeCollectionBrowser({
       search,
       sort,
     ]);
+
+  // Only the first PAGE_SIZE matches are rendered; changing any
+  // filter starts again from the first batch.
+  const filterKey =
+    [
+      search,
+      category,
+      rarity,
+      race,
+      availability,
+      sort,
+    ].join("|");
+
+  const [
+    shown,
+    setShown,
+  ] =
+    useState({
+      key: filterKey,
+      count: PAGE_SIZE,
+    });
+
+  const visibleLimit =
+    shown.key ===
+    filterKey
+      ? shown.count
+      : PAGE_SIZE;
+
+  const visibleCards =
+    filteredCards.slice(
+      0,
+      visibleLimit
+    );
 
   // =======================================================
   // RESET
@@ -927,7 +964,7 @@ export function TradeCollectionBrowser({
         </div>
       ) : (
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 2xl:grid-cols-4">
-          {filteredCards.map(
+          {visibleCards.map(
             (
               group
             ) => {
@@ -945,9 +982,8 @@ export function TradeCollectionBrowser({
                 ] ??
                 rarityStyles.Normal;
 
-              const nextInstance =
-                group
-                  .availableInstances[0];
+              const nextInstanceId =
+                group.nextInstanceId;
 
               return (
                 <div
@@ -1081,7 +1117,7 @@ export function TradeCollectionBrowser({
 
                     {/* ACTION */}
 
-                    {nextInstance ? (
+                    {nextInstanceId ? (
                       <form
                         action={
                           addTradeItem
@@ -1100,7 +1136,7 @@ export function TradeCollectionBrowser({
                           type="hidden"
                           name="card_instance_id"
                           value={
-                            nextInstance.id
+                            nextInstanceId
                           }
                         />
 
@@ -1130,9 +1166,7 @@ export function TradeCollectionBrowser({
                           {" "}
                           (
                           {
-                            group
-                              .availableInstances
-                              .length
+                            group.availableCount
                           }
                           )
                         </SubmitButton>
@@ -1157,6 +1191,37 @@ export function TradeCollectionBrowser({
               );
             }
           )}
+        </div>
+      )}
+
+      {filteredCards.length >
+        visibleCards.length && (
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <p className="text-xs text-zinc-500">
+            Showing {visibleCards.length} of{" "}
+            {filteredCards.length} cards - search to find a card faster.
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              setShown({
+                key: filterKey,
+                count:
+                  visibleLimit +
+                  PAGE_SIZE,
+              })
+            }
+            className="cursor-pointer rounded-xl border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-xs font-black text-amber-200 transition hover:border-amber-300/40 hover:bg-amber-300/20 active:scale-95"
+          >
+            Show{" "}
+            {Math.min(
+              PAGE_SIZE,
+              filteredCards.length -
+                visibleCards.length
+            )}{" "}
+            more
+          </button>
         </div>
       )}
     </>

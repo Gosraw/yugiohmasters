@@ -89,7 +89,9 @@ begin
 
   select * into tx
   from public.duel_point_transactions
-  where profile_id = pg_temp.uid_of('bossg') and reason = 'boss_route_stage_evolve';
+  where profile_id = pg_temp.uid_of('bossg') and reason = 'boss_route_stage_evolve'
+  order by seq desc
+  limit 1;
   perform pg_temp.assert_eq(tx.amount, -900, 'ledger row -900');
   perform pg_temp.assert_true(tx.description like 'Boss evolved: % to stage 2 (%)', 'evolve ledger row names the route and card');
 

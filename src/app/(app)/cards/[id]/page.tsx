@@ -1280,11 +1280,11 @@ export default async function CardDetailPage({
                   <p className="text-[10px] leading-5 text-zinc-600">
                     {
                       availableCopies.length
-                    } physical copy
+                    }{" "}
                     {availableCopies.length ===
                     1
-                      ? " is"
-                      : "ies are"}{" "}
+                      ? "physical copy is"
+                      : "physical copies are"}{" "}
                     not currently tied up in a Practice Duel wager - free to trade or wager next. Being in a deck or up for trade never blocks this.
                   </p>
                 </div>

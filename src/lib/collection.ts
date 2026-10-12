@@ -600,3 +600,77 @@ export function groupCollection(
   if (groupBy === "rarity") return groupByRarity(cards);
   return null;
 }
+
+// =========================================================
+// PAGING (2026-10-12) - a big collection (1,800+ copies, 1,000+
+// unique cards) rendered every tile in one response (10 MB HTML,
+// 15+ s). The full list is still fetched and filtered/sorted (stats,
+// "Wanted from you" and Card Detail's Previous/Next need it), but
+// only one page of tiles is rendered.
+//
+// In the grouped view the page is a slice of the buckets flattened
+// in display order, so bucket order stays the same and each bucket
+// keeps its real (whole-collection) distinct/owned totals.
+// =========================================================
+
+export const COLLECTION_PAGE_SIZE = 60;
+
+export type CollectionPage = {
+  page: number;
+  pageCount: number;
+  cards: GroupedOwnedCard[];
+  buckets: CollectionGroupBucket[] | null;
+};
+
+export function paginateCollection(
+  cards: GroupedOwnedCard[],
+  buckets: CollectionGroupBucket[] | null,
+  requestedPage: number,
+  pageSize = COLLECTION_PAGE_SIZE
+): CollectionPage {
+  const pageCount = Math.max(1, Math.ceil(cards.length / pageSize));
+  const page = Math.min(
+    pageCount,
+    Math.max(1, Math.floor(Number.isFinite(requestedPage) ? requestedPage : 1))
+  );
+  const start = (page - 1) * pageSize;
+  const end = start + pageSize;
+
+  if (!buckets) {
+    return {
+      page,
+      pageCount,
+      cards: cards.slice(start, end),
+      buckets: null,
+    };
+  }
+
+  const pageBuckets: CollectionGroupBucket[] = [];
+  let offset = 0;
+
+  for (const bucket of buckets) {
+    const bucketStart = offset;
+    const bucketEnd = offset + bucket.cards.length;
+
+    offset = bucketEnd;
+
+    if (bucketEnd <= start || bucketStart >= end) {
+      continue;
+    }
+
+    pageBuckets.push({
+      ...bucket,
+      cards: bucket.cards.slice(
+        Math.max(0, start - bucketStart),
+        Math.min(bucket.cards.length, end - bucketStart)
+      ),
+    });
+  }
+
+  return {
+    page,
+    pageCount,
+    cards: pageBuckets.flatMap((bucket) => bucket.cards),
+    buckets: pageBuckets,
+  };
+}

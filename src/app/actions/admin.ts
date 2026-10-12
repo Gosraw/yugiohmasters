@@ -1,49 +1,134 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { requireUser } from "@/lib/supabase/queries";
+import {
+  revalidatePath,
+} from "next/cache";
 
-async function requireAdmin() {
-  const { supabase, userId } = await requireUser();
-  const { data } = await supabase
-    .from("league_members")
-    .select("role")
-    .eq("profile_id", userId)
-    .eq("role", "admin")
-    .limit(1);
+import {
+  redirect,
+} from "next/navigation";
 
-  if (!data?.length) throw new Error("Unauthorized");
-  return { supabase, userId };
-}
+import {
+  withFeedback,
+} from "@/lib/safe-return-to";
 
-export async function updateSetting(formData: FormData) {
-  const parsed = z.object({
-    key: z.string().min(1).max(120),
-    value: z.string().min(1).max(1000),
-  }).safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return;
+import {
+  requireUser,
+} from "@/lib/supabase/queries";
 
-  const { supabase, userId } = await requireAdmin();
-  let jsonValue: unknown;
-  try { jsonValue = JSON.parse(parsed.data.value); } catch { return; }
+// =========================================================
+// ADMIN CONFIG
+//
+// Saves one value of the REAL config tables (league economy,
+// Boss prices, weekly goals, season bonuses, mini game rewards,
+// perk cap) through admin_set_config_value() - see
+// 202610121630_admin_config_editor.sql. The database checks that
+// the caller is a league admin, which keys exist, and each
+// table's own value limits.
+// =========================================================
 
-  const { data: membership } = await supabase
-    .from("league_members")
-    .select("league_id")
-    .eq("profile_id", userId)
-    .eq("role", "admin")
-    .limit(1)
-    .single();
+export async function updateConfigValue(
+  formData: FormData
+) {
+  const {
+    supabase,
+  } = await requireUser();
 
-  if (!membership) return;
-  await supabase.from("settings").upsert({
-    league_id: membership.league_id,
-    key: parsed.data.key,
-    value: jsonValue,
-    updated_by: userId,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: "league_id,key" });
+  const key =
+    String(
+      formData.get(
+        "key"
+      ) ?? ""
+    ).trim();
+
+  const raw =
+    String(
+      formData.get(
+        "value"
+      ) ?? ""
+    ).trim();
+
+  const nullable =
+    formData.get(
+      "nullable"
+    ) === "1";
+
+  if (
+    !key ||
+    key.length > 120
+  ) {
+    redirect(
+      withFeedback(
+        "/admin",
+        "error",
+        "Unknown setting."
+      )
+    );
+  }
+
+  let value: number | null =
+    null;
+
+  if (raw === "") {
+    if (!nullable) {
+      redirect(
+        withFeedback(
+          "/admin",
+          "error",
+          "Enter a number."
+        )
+      );
+    }
+  } else {
+    value =
+      Number(raw);
+
+    if (
+      !Number.isInteger(
+        value
+      ) ||
+      value < 0 ||
+      value > 1_000_000
+    ) {
+      redirect(
+        withFeedback(
+          "/admin",
+          "error",
+          "Enter a whole number of 0 or more."
+        )
+      );
+    }
+  }
+
+  const {
+    error,
+  } = await supabase.rpc(
+    "admin_set_config_value",
+    {
+      p_key: key,
+      p_value: value,
+    }
+  );
+
+  if (error) {
+    redirect(
+      withFeedback(
+        "/admin",
+        "error",
+        error.message.includes("check constraint")
+          ? "That value is not allowed for this setting."
+          : error.message
+      )
+    );
+  }
 
   revalidatePath("/admin");
+
+  redirect(
+    withFeedback(
+      "/admin",
+      "success",
+      "Setting saved."
+    )
+  );
 }

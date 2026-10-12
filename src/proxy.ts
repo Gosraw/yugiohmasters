@@ -7,6 +7,17 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp3)$).*)",
+    {
+      source:
+        "/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp3)$).*)",
+      // Link prefetches skip the proxy (they used to run the full
+      // membership / welcome-pack / onboarding work every time). The
+      // real navigation still goes through it, and every page checks
+      // the session itself (requireUser).
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    },
   ],
 };

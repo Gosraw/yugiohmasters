@@ -22,7 +22,7 @@ export type AttentionItem = {
   href: string;
   label: string;
   hint: string;
-  kind: "challenge" | "confirm" | "trade" | "vote";
+  kind: "challenge" | "confirm" | "trade" | "vote" | "dispute";
 };
 
 type AttentionMatch = {
@@ -115,12 +115,14 @@ export async function getAttentionItems(
       .from("matches")
       .select("id,status,player_one_id,player_two_id,result_submitted_by,competition_id")
       .eq("league_id", leagueId)
+      .in("status", ["pending", "result_submitted"])
       .or(`player_one_id.eq.${userId},player_two_id.eq.${userId}`),
     supabase
       .from("trades")
       .select("id,status,sender_id,receiver_id")
       .eq("league_id", leagueId)
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`),
+      .eq("status", "pending")
+      .eq("receiver_id", userId),
   ]);
 
   const items = computeAttentionItems(
@@ -129,15 +131,89 @@ export async function getAttentionItems(
     userId
   );
 
-  const pendingVotes = await getPendingCardVoteCount(
-    supabase,
-    userId,
-    leagueId
-  );
+  const [pendingVotes, disputeItems] = await Promise.all([
+    getPendingCardVoteCount(supabase, userId, leagueId),
+    getDisputedDuelAttentionItems(supabase, userId, leagueId),
+  ]);
 
   const voteItem = cardVoteAttentionItem(pendingVotes);
 
-  return voteItem ? [...items, voteItem] : items;
+  return [
+    ...disputeItems,
+    ...items,
+    ...(voteItem ? [voteItem] : []),
+  ];
+}
+
+// =========================================================
+// DISPUTED DUELS (league admins only)
+//
+// A disputed duel stays stuck until a league admin picks the right
+// result, so every admin sees each disputed duel in the league as
+// "waiting on you". Never throws: a failed read just shows nothing.
+// =========================================================
+
+export async function getDisputedDuelAttentionItems(
+  supabase: SupabaseClient,
+  userId: string,
+  leagueId: string | null
+): Promise<AttentionItem[]> {
+  if (!leagueId) return [];
+
+  const { data: membership, error: membershipError } = await supabase
+    .from("league_members")
+    .select("role")
+    .eq("league_id", leagueId)
+    .eq("profile_id", userId)
+    .maybeSingle();
+
+  if (membershipError || membership?.role !== "admin") return [];
+
+  const { data, error } = await supabase
+    .from("matches")
+    .select("id,player_one_id,player_two_id")
+    .eq("league_id", leagueId)
+    .eq("status", "disputed")
+    .order("disputed_at", { ascending: true })
+    .limit(20);
+
+  if (error || !data || data.length === 0) return [];
+
+  const rows = data as {
+    id: string;
+    player_one_id: string;
+    player_two_id: string;
+  }[];
+
+  const ids = [
+    ...new Set(rows.flatMap((row) => [row.player_one_id, row.player_two_id])),
+  ];
+
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("id,duelist_name,username")
+    .in("id", ids);
+
+  const names = new Map(
+    ((profileData ?? []) as {
+      id: string;
+      duelist_name: string | null;
+      username: string | null;
+    }[]).map((profile) => [
+      profile.id,
+      profile.duelist_name ?? profile.username ?? "Duelist",
+    ])
+  );
+
+  return rows.map((row) => ({
+    id: `match-dispute-${row.id}`,
+    href: `/matches/${row.id}`,
+    label: "Duel disputed — needs a decision",
+    hint: `${names.get(row.player_one_id) ?? "Duelist"} vs ${
+      names.get(row.player_two_id) ?? "Duelist"
+    }: open it and pick the right result.`,
+    kind: "dispute",
+  }));
 }
 
 // =========================================================

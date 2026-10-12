@@ -3,6 +3,26 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublicEnv } from "./env";
 import { onboardingRedirectPath } from "./onboarding-gate";
 
+const ONBOARDED_COOKIE = "dc_onboarded";
+const ONBOARDED_MAX_AGE = 60 * 15;
+
+// A redirect that keeps any auth cookies Supabase just refreshed.
+function redirectWithCookies(
+  request: NextRequest,
+  response: NextResponse,
+  target: string,
+) {
+  const [targetPathname, targetQuery] = target.split("?");
+  const url = request.nextUrl.clone();
+  url.pathname = targetPathname;
+  url.search = targetQuery ? `?${targetQuery}` : "";
+
+  const redirect = NextResponse.redirect(url);
+  response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+
+  return redirect;
+}
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
   const { url, key } = getSupabasePublicEnv();
@@ -49,8 +69,8 @@ export async function updateSession(request: NextRequest) {
   // DB-state-driven gate rather than a one-time client redirect: a
   // player who closes the browser mid-onboarding and logs back in
   // lands back on exactly the right step, because the state is
-  // recomputed from the database on every request, never cached
-  // client-side.
+  // recomputed from the database until onboarding is complete (only
+  // then is a short-lived "onboarded" cookie set, see below).
   //
   // Required order (per the launch-flow spec): pick a Boss Route
   // (public.player_boss_paths, via the existing choose_boss_path RPC
@@ -70,7 +90,8 @@ export async function updateSession(request: NextRequest) {
   // without ever needing to visit that unrelated page.
   // =========================================================
 
-  const publicOnboardingPath = publicPath || pathname.startsWith("/api/");
+  const publicOnboardingPath =
+    publicPath || pathname.startsWith("/api/") || pathname === "/league-full";
 
   const onboardingExemptPath =
     pathname.startsWith("/boss") ||
@@ -93,6 +114,16 @@ export async function updateSession(request: NextRequest) {
   if (data?.claims && !publicOnboardingPath) {
     const userId = data.claims.sub as string;
 
+    // PERFORMANCE (2026-10-12): once a player is a league member and
+    // fully onboarded, a short-lived cookie bound to their user id
+    // skips the membership / welcome-pack / gate queries (~150 ms on
+    // every request before). It only skips UX redirects - every
+    // rule still lives in the database - and it expires after
+    // ONBOARDED_MAX_AGE, so e.g. a season reset is picked up again.
+    if (request.cookies.get(ONBOARDED_COOKIE)?.value === userId) {
+      return response;
+    }
+
     const { data: membership } = await supabase
       .from("league_members")
       .select("league_id")
@@ -103,42 +134,50 @@ export async function updateSession(request: NextRequest) {
     let leagueId: string | null = membership?.league_id ?? null;
 
     if (!leagueId) {
-      const { data: bootstrappedLeagueId } = await supabase.rpc(
+      const { data: bootstrappedLeagueId, error: bootstrapError } = await supabase.rpc(
         "bootstrap_private_league",
       );
+
+      // The private league holds 3 players. A 4th account (signup
+      // checks capacity first, but e.g. a race or an older account)
+      // gets one clear page instead of a half-rendered app.
+      if (bootstrapError?.message?.includes("private league is full")) {
+        return redirectWithCookies(request, response, "/league-full");
+      }
+
       leagueId = (bootstrappedLeagueId as string | null) ?? null;
     }
 
-    // Season 1 welcome bonus (1 Normal + 1 Premium + 1 Deluxe pack
-    // voucher, no DP cost) - claim_welcome_packs() is fully
-    // idempotent (a dedicated claims table, not the redeemable
-    // vouchers themselves, is the "already granted" guard), so
-    // calling it on every request for every league member is a
-    // no-op after the first time and safe to leave unconditional
-    // here rather than needing its own registration hook. Errors
-    // are swallowed rather than thrown - a hiccup granting a
-    // welcome pack must never block page rendering the way a
-    // failed auth check should.
-    if (leagueId) {
-      await supabase.rpc("claim_welcome_packs");
+    // Unknown bootstrap failure: render normally rather than
+    // redirect-loop on a state this gate cannot resolve.
+    if (!leagueId) {
+      return response;
     }
 
-    // If league bootstrap itself failed (e.g. the private league is
-    // already full at 3 members, which should never happen for the
-    // 3 real players this league is sized for), fall through and let
-    // the page render normally rather than redirect-looping on a
-    // state this gate cannot resolve.
-    if (leagueId && !onboardingExemptPath) {
-      const gatePath = await onboardingRedirectPath(supabase, userId);
+    // Welcome bonus vouchers - claim_welcome_packs() is idempotent
+    // (a claims table is the guard). It now runs only while the
+    // onboarded cookie is missing (at most once per
+    // ONBOARDED_MAX_AGE), not on every request. Errors are ignored:
+    // a hiccup here must never block a page.
+    await supabase.rpc("claim_welcome_packs");
 
-      if (gatePath) {
-        const [gatePathname, gateQuery] = gatePath.split("?");
-        const url = request.nextUrl.clone();
-        url.pathname = gatePathname;
-        url.search = gateQuery ? `?${gateQuery}` : "";
-        return NextResponse.redirect(url);
+    const gatePath = await onboardingRedirectPath(supabase, userId);
+
+    if (gatePath) {
+      if (!onboardingExemptPath) {
+        return redirectWithCookies(request, response, gatePath);
       }
+
+      return response;
     }
+
+    response.cookies.set(ONBOARDED_COOKIE, userId, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: ONBOARDED_MAX_AGE,
+    });
   }
 
   return response;

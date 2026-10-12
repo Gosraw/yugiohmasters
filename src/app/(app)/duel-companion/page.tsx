@@ -9,9 +9,43 @@ import {
   DuelCompanion,
 } from "@/components/duel-companion";
 
+import {
+  requireUser,
+} from "@/lib/supabase/queries";
+
+import {
+  getLeagueIdForUser,
+} from "@/lib/league-stats";
+
+import {
+  getActiveSeasonCompetition,
+} from "@/lib/competitions/season";
+
 export const dynamic = "force-dynamic";
 
-export default function DuelCompanionPage() {
+export default async function DuelCompanionPage() {
+  const {
+    supabase,
+    userId,
+  } = await requireUser();
+
+  const leagueId =
+    await getLeagueIdForUser(
+      supabase,
+      userId
+    );
+
+  // During a season, the result belongs on the This Round screen
+  // (a practice duel is the exception, so it stays as a second
+  // option).
+  const season =
+    leagueId
+      ? await getActiveSeasonCompetition(
+          supabase,
+          leagueId
+        )
+      : null;
+
   return (
     <main className="relative min-h-screen overflow-hidden">
       <div className="pointer-events-none absolute inset-0">
@@ -47,13 +81,32 @@ export default function DuelCompanionPage() {
           <DuelCompanion />
         </div>
 
-        <Link
-          href="/matches/new"
-          className="primary-button mt-6 flex cursor-pointer items-center justify-center gap-2"
-        >
-          <Swords size={16} />
-          Submit Duel Result
-        </Link>
+        {season ? (
+          <>
+            <Link
+              href={`/competitions/${season.id}/round`}
+              className="primary-button mt-6 flex cursor-pointer items-center justify-center gap-2"
+            >
+              <Swords size={16} />
+              Tap the Winner: This Round
+            </Link>
+
+            <Link
+              href="/matches/new"
+              className="mt-3 block py-2 text-center text-xs font-bold text-zinc-500 transition-colors hover:text-zinc-300"
+            >
+              Was it a practice duel? Record it here
+            </Link>
+          </>
+        ) : (
+          <Link
+            href="/matches/new"
+            className="primary-button mt-6 flex cursor-pointer items-center justify-center gap-2"
+          >
+            <Swords size={16} />
+            Submit Duel Result
+          </Link>
+        )}
       </div>
     </main>
   );

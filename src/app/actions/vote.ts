@@ -5,6 +5,10 @@ import {
 } from "next/navigation";
 
 import {
+  safeReturnTo,
+} from "@/lib/safe-return-to";
+
+import {
   requireUser,
 } from "@/lib/supabase/queries";
 
@@ -115,11 +119,15 @@ export async function setVoteTiebreak(
       "vote"
     );
 
+  // Same-site relative paths only (never an open redirect).
   const returnTo =
-    readString(
-      formData,
-      "return_to"
-    ) || "/vote/results";
+    safeReturnTo(
+      readString(
+        formData,
+        "return_to"
+      ),
+      "/vote/results"
+    );
 
   const join =
     returnTo.includes("?")

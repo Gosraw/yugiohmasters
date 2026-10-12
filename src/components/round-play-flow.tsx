@@ -38,7 +38,9 @@ import {
 // Top of /competitions/[id]/round: the current pairing as
 // "X vs Y" with two big winner buttons. A tap starts a short
 // "saving..." window with Undo (a mis-tap on a phone should not
-// need an admin correction); then the result goes to
+// need an admin correction; leaving the page during that window
+// saves the tap at once instead of dropping it); then the result
+// goes to
 // submit_competition_match_result_v2 and the server re-renders the
 // page, so the next open pairing slides in. Finishing the last
 // duel of a round shows a "Round N complete" banner above the next
@@ -178,6 +180,12 @@ export function RoundPlayFlow({
   const timer =
     useRef<number | null>(null);
 
+  // The tap that is still inside its Undo window. Leaving the page
+  // (link, back button, app switch, closing the tab) must not lose
+  // it: it is saved right away instead (see the effect below).
+  const pendingChoice =
+    useRef<Pending | null>(null);
+
   function clearTimer() {
     if (timer.current !== null) {
       window.clearTimeout(timer.current);
@@ -185,27 +193,15 @@ export function RoundPlayFlow({
     }
   }
 
-  useEffect(
-    () => () => {
-      if (timer.current !== null) {
-        window.clearTimeout(timer.current);
-      }
-    },
-    []
-  );
-
-  function commit(
+  function resultFormData(
     choice: Pending
   ) {
-    clearTimer();
-
     const pairing = pairings.find(
       (item) => item.id === choice.pairingId
     );
 
     if (!pairing) {
-      setPending(null);
-      return;
+      return null;
     }
 
     const score = scoreFor(
@@ -220,6 +216,34 @@ export function RoundPlayFlow({
     formData.set("competition_id", competitionId);
     formData.set("player_one_duel_wins", String(score.one));
     formData.set("player_two_duel_wins", String(score.two));
+
+    return {
+      pairing,
+      formData,
+    };
+  }
+
+  const flushRef =
+    useRef<(leaving: boolean) => void>(() => {});
+
+  function commit(
+    choice: Pending
+  ) {
+    clearTimer();
+    pendingChoice.current = null;
+
+    const built =
+      resultFormData(choice);
+
+    if (!built) {
+      setPending(null);
+      return;
+    }
+
+    const {
+      pairing,
+      formData,
+    } = built;
 
     const winnerName =
       choice.winnerId === pairing.playerOne.id
@@ -296,6 +320,8 @@ export function RoundPlayFlow({
 
     clearTimer();
 
+    pendingChoice.current = choice;
+
     timer.current = window.setTimeout(
       () => commit(choice),
       UNDO_WINDOW_MS
@@ -304,9 +330,91 @@ export function RoundPlayFlow({
 
   function undo() {
     clearTimer();
+    pendingChoice.current = null;
     setPending(null);
     setBestOfThreeWinner(null);
   }
+
+  // Updated after every render (refs may not be written during
+  // render), so the listeners always save the current tap.
+  useEffect(() => {
+    flushRef.current = (
+      leaving: boolean
+    ) => {
+      const choice =
+        pendingChoice.current;
+
+      if (!choice || timer.current === null) {
+        return;
+      }
+
+      if (!leaving) {
+        commit(choice);
+        return;
+      }
+
+      // Unmounting: no UI left to update, just save the result.
+      clearTimer();
+      pendingChoice.current = null;
+
+      const built =
+        resultFormData(choice);
+
+      if (!built) {
+        return;
+      }
+
+      void submitCompetitionMatchResultV2(
+        {
+          status: "idle",
+        },
+        built.formData
+      )
+        .then(() => {
+          requestRewardCheck();
+        })
+        .catch(() => {
+          // Nothing to show it on any more; the round screen shows
+          // the duel as still open next time.
+        });
+    };
+  });
+
+  useEffect(() => {
+    function onHide() {
+      if (document.visibilityState === "hidden") {
+        flushRef.current(false);
+      }
+    }
+
+    function onPageHide() {
+      flushRef.current(false);
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      onHide
+    );
+
+    window.addEventListener(
+      "pagehide",
+      onPageHide
+    );
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        onHide
+      );
+
+      window.removeEventListener(
+        "pagehide",
+        onPageHide
+      );
+
+      flushRef.current(true);
+    };
+  }, []);
 
   const tapWinner = (
     pairing: RoundPairing,

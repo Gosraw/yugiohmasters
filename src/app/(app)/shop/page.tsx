@@ -31,6 +31,10 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  ConfirmSubmitButton,
+} from "@/components/confirm-submit-button";
+
+import {
   SubmitButton,
 } from "@/components/submit-button";
 
@@ -242,6 +246,26 @@ type SpecialPackDefinition = {
   theme_description: string;
 };
 
+// Packs from this price up ask "are you sure?" first (Deluxe,
+// Special Packs) - a stray tap shouldn't spend 1,000+ DP.
+const CONFIRM_SPEND_DP =
+  1000;
+
+// Same names as the packs themselves ("Standard Pack", not "Normal").
+const VOUCHER_CHIP_LABELS: Record<
+  string,
+  string
+> = {
+  normal_pack:
+    "STANDARD",
+  premium_pack:
+    "PREMIUM",
+  deluxe_pack:
+    "DELUXE",
+  special_pack:
+    "SPECIAL",
+};
+
 type Voucher = {
   id: string;
 
@@ -305,7 +329,50 @@ type Purchase = {
 
   created_at:
     string;
+
+  pack_type: {
+    name: string;
+  } | null;
+
+  special_rotation: {
+    theme_label: string;
+  } | null;
+
+  rotation_card: {
+    card: {
+      name: string;
+    } | null;
+  } | null;
 };
+
+// What a Recent Purchases row shows: the pack or card name.
+function purchaseLabel(
+  purchase: Purchase
+): string {
+  if (
+    purchase.purchase_type ===
+    "single_card"
+  ) {
+    return (
+      purchase.rotation_card?.card?.name ??
+      "Single card"
+    );
+  }
+
+  if (
+    purchase.purchase_type ===
+    "special_pack"
+  ) {
+    return purchase.special_rotation?.theme_label
+      ? `${purchase.special_rotation.theme_label} (Special Pack)`
+      : "Special Pack";
+  }
+
+  return (
+    purchase.pack_type?.name ??
+    "Pack"
+  );
+}
 
 type BuyerProfile = {
   id: string;
@@ -862,7 +929,7 @@ export default async function ShopPage({
         "shop_purchases"
       )
       .select(
-        "id,purchase_type,dp_spent,created_at"
+        "id,purchase_type,dp_spent,created_at,pack_type:shop_pack_types(name),special_rotation:shop_special_pack_rotations(theme_label),rotation_card:shop_rotation_cards(card:card_catalog(name))"
       )
       .eq(
         "profile_id",
@@ -1037,15 +1104,34 @@ export default async function ShopPage({
     (voucherData ??
       []) as Voucher[];
 
+  // Two vouchers of the same type are two rows - show the total.
+  const voucherTotals =
+    new Map<
+      Voucher["voucher_type"],
+      number
+    >();
+
+  for (const voucher of vouchers) {
+    voucherTotals.set(
+      voucher.voucher_type,
+      (voucherTotals.get(
+        voucher.voucher_type
+      ) ?? 0) +
+        voucher.quantity
+    );
+  }
+
   if (purchaseError) {
     throw new Error(
       purchaseError.message
     );
   }
 
+  // Embedded many-to-one rows come back as objects (typed as arrays
+  // by the untyped client).
   const recentPurchases =
     (purchaseData ??
-      []) as Purchase[];
+      []) as unknown as Purchase[];
 
   // ======================================================
   // SOLD BUYERS
@@ -1688,15 +1774,29 @@ export default async function ShopPage({
                             }
                           />
 
-                          <SubmitButton
-                            disabled={
-                              !canAfford
-                            }
-                            pendingLabel="Opening..."
-                            className="primary-button px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-35"
-                          >
-                            Open
-                          </SubmitButton>
+                          {pack.price_dp >=
+                          CONFIRM_SPEND_DP ? (
+                            <ConfirmSubmitButton
+                              confirmMessage={`Open a ${pack.name} for ${pack.price_dp.toLocaleString()} DP?`}
+                              disabled={
+                                !canAfford
+                              }
+                              pendingLabel="Opening..."
+                              className="primary-button px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-35"
+                            >
+                              Open
+                            </ConfirmSubmitButton>
+                          ) : (
+                            <SubmitButton
+                              disabled={
+                                !canAfford
+                              }
+                              pendingLabel="Opening..."
+                              className="primary-button px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-35"
+                            >
+                              Open
+                            </SubmitButton>
+                          )}
                         </form>
                       </div>
 
@@ -1732,9 +1832,10 @@ export default async function ShopPage({
                               />
 
                               Use Voucher · x
-                              {
-                                voucher.quantity
-                              }
+                              {voucherTotals.get(
+                                voucher.voucher_type
+                              ) ??
+                                voucher.quantity}
                             </SubmitButton>
                           </form>
                         </div>
@@ -1907,7 +2008,8 @@ export default async function ShopPage({
                               }
                             />
 
-                            <SubmitButton
+                            <ConfirmSubmitButton
+                              confirmMessage={`Open this Special Pack for ${special.price_dp.toLocaleString()} DP?`}
                               disabled={
                                 profile.duel_points <
                                 special.price_dp
@@ -1916,7 +2018,7 @@ export default async function ShopPage({
                               className="primary-button px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-35"
                             >
                               Open
-                            </SubmitButton>
+                            </ConfirmSubmitButton>
                           </form>
                         </div>
 
@@ -1952,9 +2054,10 @@ export default async function ShopPage({
                               />
 
                               Use Voucher · x
-                              {
-                                voucher.quantity
-                              }
+                              {voucherTotals.get(
+                                voucher.voucher_type
+                              ) ??
+                                voucher.quantity}
                             </SubmitButton>
                           </form>
                         )}
@@ -2214,11 +2317,11 @@ export default async function ShopPage({
 
             <div>
               <p className="text-[9px] font-black uppercase tracking-[.2em] text-violet-300">
-                Tournament Rewards
+                Pack Vouchers
               </p>
 
               <h2 className="mt-1 text-lg font-black">
-                Pack Vouchers
+                Your Vouchers
               </h2>
             </div>
           </div>
@@ -2230,11 +2333,16 @@ export default async function ShopPage({
             </p>
           ) : (
             <div className="mt-4 flex flex-wrap gap-2">
-              {vouchers.map(
-                (voucher) => (
+              {[
+                ...voucherTotals,
+              ].map(
+                ([
+                  voucherType,
+                  quantity,
+                ]) => (
                   <span
                     key={
-                      voucher.id
+                      voucherType
                     }
                     className="inline-flex items-center gap-2 rounded-xl border border-violet-300/15 bg-violet-300/[0.04] px-3 py-2 text-xs font-black text-violet-200"
                   >
@@ -2242,20 +2350,14 @@ export default async function ShopPage({
                       size={13}
                     />
 
-                    {voucher.voucher_type
-                      .replace(
-                        "_pack",
-                        ""
-                      )
-                      .replace(
-                        "_",
-                        " "
-                      )
-                      .toUpperCase()}
+                    {VOUCHER_CHIP_LABELS[
+                      voucherType
+                    ] ??
+                      voucherType.toUpperCase()}
 
                     {" · "}x
                     {
-                      voucher.quantity
+                      quantity
                     }
                   </span>
                 )
@@ -2311,10 +2413,9 @@ export default async function ShopPage({
                         />
                       )}
 
-                      <p className="text-sm font-black capitalize text-zinc-300">
-                        {purchase.purchase_type.replace(
-                          "_",
-                          " "
+                      <p className="text-sm font-black text-zinc-300">
+                        {purchaseLabel(
+                          purchase
                         )}
                       </p>
                     </div>

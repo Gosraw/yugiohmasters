@@ -186,6 +186,16 @@ Dat zet alles terug naar het moment van de back-up.
 | `202610121200_security_review_fixes.sql` | Security: RLS + no client rights on `season1_welcome_bonus_claims` (closes repeatable welcome-pack claims); `perk_dp_this_week` no longer callable by anon; drops default write grants on the 2.0 season / weekly-goal / title tables. Additive. | security |
 | `202610121210_mini_game_submit_service_only.sql` | Security: `submit_game_run` / `reject_game_run` get an explicit `p_profile_id` and become service-role only (old signatures dropped), so scores only land after the server-side replay. Needs the 2.0 server actions deployed. | mini games |
 | `202610121220_competition_submit_guards.sql` | Security: `submit_competition_match_result_v2` refuses non-admin results unless the competition is `active` and the match is not cancelled / declined / completed. Admins unchanged. | competitions |
+| `202610121300_shadow_arena_ghosts.sql` | Shadow Arena: friends' ghost boards (snapshots + frozen per-run ghost list), service-role only; auto_battler max score. | arena_board_snapshots, arena_run_ghosts |
+| `202610121310_shadow_arena_lanes.sql` | Shadow Arena lanes: `board_schema` on snapshots, ghost selection by schema instead of engine version. | arena_* |
+| `202610121400_trade_deck_guards.sql` | Trades refuse wager-locked cards and cards in competition-locked decks; deck add/remove only for Draft decks. | trades, decks |
+| `202610121500_play_season_fixes.sql` | Ledger `seq` (stable order), `competitions.is_season` flag (+ back-fill rule — **check with owner**), admin result guards, loser's wager escrow marked `lost`. | ledger, competitions, wagers |
+| `202610121600_shop_pack_league_wide_scarcity.sql` | Pack pickers count copies league-wide (no more random 'scarcity limit' failures); Legendary luck kept when none available; Monster-Type Special Pack allowed. | shop |
+| `202610121610_signup_league_capacity.sql` | `private_league_has_room()` so a 4th signup is refused before an account is created. | auth |
+| `202610121620_custom_title_server_only.sql` | Players can no longer write `custom_title` directly. **Breaks title equip on the old main app — apply on launch night only.** | profiles |
+| `202610121630_admin_config_editor.sql` | Admin-only `admin_set_config_value` for the real economy config (fixed key list). | config |
+| `202610121640_welcome_bonus_label.sql` | Welcome vouchers labelled 'Welcome bonus' (season-agnostic). | vouchers |
+| `202610121650_standard_pack_name.sql` | Display name of pack `normal` → 'Standard Pack' (codes unchanged). | shop |
 
 **Backwards compatibility.** These migrations share the production database with the live `main` app.
 `202610121000` takes effect immediately: Master Duel-forbidden cards that are already `format_eligible` become offerable in the live draft and shop.

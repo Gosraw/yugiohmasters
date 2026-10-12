@@ -6,6 +6,7 @@ import {
 
 import {
   groupCollection,
+  paginateCollection,
   type CollectionCardCatalogItem,
   type CollectionCardInstance,
   type GroupedOwnedCard,
@@ -190,5 +191,42 @@ describe("groupCollection - type and rarity", () => {
 
   it("7. returns null when no grouping is requested (flat view)", () => {
     expect(groupCollection([], "")).toBeNull();
+  });
+});
+
+describe("paginateCollection", () => {
+  const cards = Array.from({ length: 7 }, (_, i) =>
+    groupedCard(
+      catalogCard({
+        id: `c${i}`,
+        name: `Card ${i}`,
+        archetype: i < 4 ? "Alpha" : "Beta",
+      }),
+      [instance(`i${i}`, `c${i}`)]
+    )
+  );
+
+  it("slices the flat list and clamps the page", () => {
+    const first = paginateCollection(cards, null, 1, 3);
+
+    expect(first.pageCount).toBe(3);
+    expect(first.cards.map((g) => g.card.id)).toEqual(["c0", "c1", "c2"]);
+
+    const last = paginateCollection(cards, null, 99, 3);
+
+    expect(last.page).toBe(3);
+    expect(last.cards.map((g) => g.card.id)).toEqual(["c6"]);
+
+    expect(paginateCollection(cards, null, Number.NaN, 3).page).toBe(1);
+  });
+
+  it("splits grouped buckets across pages but keeps their real totals", () => {
+    const buckets = groupCollection(cards, "archetype");
+    const second = paginateCollection(cards, buckets, 2, 3);
+
+    expect(second.buckets?.map((b) => b.label)).toEqual(["Alpha", "Beta"]);
+    expect(second.buckets?.[0].cards.map((g) => g.card.id)).toEqual(["c3"]);
+    expect(second.buckets?.[0].distinctCount).toBe(4);
+    expect(second.buckets?.[1].cards.map((g) => g.card.id)).toEqual(["c4", "c5"]);
   });
 });

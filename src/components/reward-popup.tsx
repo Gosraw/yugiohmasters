@@ -7,6 +7,7 @@ import {
   Gift,
   Package,
   Sparkles,
+  Undo2,
   X,
 } from "lucide-react";
 
@@ -182,7 +183,7 @@ function CountUp({
 
   return (
     <span className="tabular-nums">
-      {shown.toLocaleString()}
+      {shown.toLocaleString("en-US")}
     </span>
   );
 }
@@ -220,7 +221,9 @@ function RewardCard({
   }, [onDone]);
 
   useEffect(() => {
-    play("coins");
+    if (moment.dp >= 0) {
+      play("coins");
+    }
   }, [moment]);
 
   useEffect(() => {
@@ -258,7 +261,11 @@ function RewardCard({
 
       <div className="relative flex items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-300/40 bg-amber-300/10 text-amber-300 shadow-[0_0_20px_rgb(242_196_90/.25)]">
-          {moment.dp > 0 ? (
+          {moment.corrected ? (
+            <Undo2
+              size={20}
+            />
+          ) : moment.dp > 0 ? (
             <Sparkles
               size={20}
             />
@@ -271,7 +278,9 @@ function RewardCard({
 
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-black uppercase tracking-[.22em] text-amber-300/80">
-            Reward
+            {moment.corrected
+              ? "Result corrected"
+              : "Reward"}
           </p>
 
           <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -280,6 +289,18 @@ function RewardCard({
                 +
                 <CountUp
                   value={moment.dp}
+                />{" "}
+                DP
+              </p>
+            )}
+
+            {moment.dp < 0 && (
+              <p className="font-display text-2xl font-black leading-tight text-red-300">
+                −
+                <CountUp
+                  value={Math.abs(
+                    moment.dp
+                  )}
                 />{" "}
                 DP
               </p>
@@ -330,9 +351,13 @@ function RewardCard({
               onClick={close}
               className="primary-button px-4 py-2 text-xs"
             >
-              {remaining > 0
-                ? `Nice! (${remaining} more)`
-                : "Nice!"}
+              {moment.dp < 0
+                ? remaining > 0
+                  ? `OK (${remaining} more)`
+                  : "OK"
+                : remaining > 0
+                  ? `Nice! (${remaining} more)`
+                  : "Nice!"}
             </button>
 
             <Link

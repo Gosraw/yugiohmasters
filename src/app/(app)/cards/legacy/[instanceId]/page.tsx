@@ -333,6 +333,8 @@ export default async function CardLegacyPage({
                   src={catalog.image_url}
                   alt={catalog.name}
                   fill
+                  sizes="112px"
+                  unoptimized
                   className="object-cover"
                 />
               </div>

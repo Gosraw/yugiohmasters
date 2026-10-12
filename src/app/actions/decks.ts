@@ -126,7 +126,7 @@ export async function createDeck(
 
   if (!name) {
     redirect(
-      `/decks?error=${safeMessage(
+      `/decks/new?error=${safeMessage(
         "Deck name is required."
       )}`
     );
@@ -136,7 +136,7 @@ export async function createDeck(
     name.length > 80
   ) {
     redirect(
-      `/decks?error=${safeMessage(
+      `/decks/new?error=${safeMessage(
         "Deck name can be at most 80 characters."
       )}`
     );
@@ -165,7 +165,7 @@ export async function createDeck(
     !membership
   ) {
     redirect(
-      `/decks?error=${safeMessage(
+      `/decks/new?error=${safeMessage(
         "League not found."
       )}`
     );
@@ -187,7 +187,7 @@ export async function createDeck(
 
   if (error) {
     redirect(
-      `/decks?error=${safeMessage(
+      `/decks/new?error=${safeMessage(
         error.message
       )}`
     );
@@ -195,7 +195,7 @@ export async function createDeck(
 
   if (!deckId) {
     redirect(
-      `/decks?error=${safeMessage(
+      `/decks/new?error=${safeMessage(
         "The deck could not be created."
       )}`
     );

@@ -136,6 +136,33 @@ export function BossEvolutionCinematic({
     play("evolution", 1800);
   }, []);
 
+  // Drop ?evolved= from the address bar right away (no navigation,
+  // so the cinematic keeps playing) - a refresh must not replay it.
+  useEffect(() => {
+    const url =
+      new URL(
+        window.location.href
+      );
+
+    if (
+      !url.searchParams.has(
+        "evolved"
+      )
+    ) {
+      return;
+    }
+
+    url.searchParams.delete(
+      "evolved"
+    );
+
+    window.history.replaceState(
+      null,
+      "",
+      `${url.pathname}${url.search}${url.hash}`
+    );
+  }, []);
+
   useEffect(() => {
     if (!open) {
       return;

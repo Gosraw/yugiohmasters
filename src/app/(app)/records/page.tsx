@@ -308,7 +308,7 @@ export default async function RecordBookPage() {
                 title: "Most Active Trader",
                 description: "Accepted trades completed.",
                 holderId: mostTradesEntry.profileId,
-                holderValue: `${mostTradesEntry.count} trades`,
+                holderValue: `${mostTradesEntry.count} ${mostTradesEntry.count === 1 ? "trade" : "trades"}`,
                 eligible: true,
               }}
               icon={<Repeat2 size={17} />}

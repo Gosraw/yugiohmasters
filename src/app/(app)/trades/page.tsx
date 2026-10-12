@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -21,9 +22,8 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
-  getPrimaryBossIdentities,
-  type BossIdentity,
-} from "@/lib/boss-identity";
+  fetchInBatches,
+} from "@/lib/supabase/paginate";
 
 import {
   CardsHubTabs,
@@ -78,6 +78,26 @@ type Trade = {
     | null;
 
   auto_expired: boolean;
+
+  dp_offered: number;
+
+  dp_requested: number;
+};
+
+// What one side of a trade gives: card names (+ art) and DP.
+type TradeSideSummary = {
+  cards: {
+    name: string;
+    imageUrl:
+      | string
+      | null;
+  }[];
+  dp: number;
+};
+
+type TradeSummary = {
+  offered: TradeSideSummary;
+  requested: TradeSideSummary;
 };
 
 type Profile = {
@@ -105,10 +125,9 @@ type TradeCardProps = {
     Profile
   >;
 
-  bosses: Map<
-    string,
-    BossIdentity
-  >;
+  summary:
+    | TradeSummary
+    | undefined;
 };
 
 // =========================================================
@@ -295,22 +314,103 @@ function TradeStatusBadge({
   );
 }
 
-function bossName(
-  profile:
-    | Profile
-    | undefined,
-  bosses: Map<
-    string,
-    BossIdentity
-  >
-) {
-  if (!profile) {
-    return "Unbound";
+function TradeSideGives({
+  side,
+  align = "left",
+}: {
+  side:
+    | TradeSideSummary
+    | undefined;
+  align?:
+    | "left"
+    | "right";
+}) {
+  const cards =
+    side?.cards ?? [];
+
+  const dp =
+    side?.dp ?? 0;
+
+  if (
+    cards.length === 0 &&
+    dp <= 0
+  ) {
+    return (
+      <p className="mt-1 text-[10px] font-bold text-zinc-600">
+        Gives nothing
+      </p>
+    );
   }
 
+  const shownNames =
+    cards
+      .slice(0, 2)
+      .map(
+        (card) =>
+          card.name
+      );
+
+  const extra =
+    cards.length -
+    shownNames.length;
+
   return (
-    bosses.get(profile.id)
-      ?.name ?? "Unbound"
+    <div
+      className={`mt-2 flex min-w-0 flex-col gap-1.5 ${
+        align === "right"
+          ? "items-end"
+          : "items-start"
+      }`}
+    >
+      {cards.length > 0 && (
+        <div className="flex -space-x-2">
+          {cards
+            .slice(0, 4)
+            .map(
+              (card, index) =>
+                card.imageUrl ? (
+                  <Image
+                    key={`${card.name}-${index}`}
+                    src={card.imageUrl}
+                    alt={card.name}
+                    width={28}
+                    height={41}
+                    unoptimized
+                    className="h-[41px] w-7 rounded border border-black/60 object-cover"
+                  />
+                ) : (
+                  <span
+                    key={`${card.name}-${index}`}
+                    className="h-[41px] w-7 rounded border border-black/60 bg-zinc-800"
+                  />
+                )
+            )}
+        </div>
+      )}
+
+      {shownNames.length > 0 && (
+        <p
+          className="line-clamp-2 max-w-full text-[10px] font-bold leading-4 text-zinc-300"
+          title={cards
+            .map(
+              (card) =>
+                card.name
+            )
+            .join(", ")}
+        >
+          {shownNames.join(", ")}
+          {extra > 0
+            ? ` +${extra} more`
+            : ""}
+        </p>
+      )}
+
+      {dp > 0 && (
+        <p className="text-[10px] font-black text-amber-300">
+          {dp.toLocaleString("en-US")} DP
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -322,7 +422,7 @@ function TradeCard({
   trade,
   userId,
   profiles,
-  bosses,
+  summary,
 }: TradeCardProps) {
   const isSender =
     trade.sender_id ===
@@ -396,7 +496,7 @@ function TradeCard({
 
         <div className="min-w-0">
           <p className="text-[9px] font-black uppercase tracking-[.16em] text-zinc-600">
-            You
+            You give
           </p>
 
           <p className="mt-1 truncate text-sm font-black text-zinc-100">
@@ -405,12 +505,13 @@ function TradeCard({
             )}
           </p>
 
-          <p className="mt-1 truncate text-[10px] font-bold text-violet-300">
-            {bossName(
-              me,
-              bosses
-            )}
-          </p>
+          <TradeSideGives
+            side={
+              isSender
+                ? summary?.offered
+                : summary?.requested
+            }
+          />
         </div>
 
         {/* TRADE ICON */}
@@ -426,7 +527,7 @@ function TradeCard({
 
         <div className="min-w-0 text-right">
           <p className="text-[9px] font-black uppercase tracking-[.16em] text-zinc-600">
-            Trade Partner
+            Partner gives
           </p>
 
           <p className="mt-1 truncate text-sm font-black text-zinc-100">
@@ -435,12 +536,14 @@ function TradeCard({
             )}
           </p>
 
-          <p className="mt-1 truncate text-[10px] font-bold text-violet-300">
-            {bossName(
-              partner,
-              bosses
-            )}
-          </p>
+          <TradeSideGives
+            side={
+              isSender
+                ? summary?.requested
+                : summary?.offered
+            }
+            align="right"
+          />
         </div>
       </div>
 
@@ -564,7 +667,9 @@ export default async function TradesPage() {
         parent_trade_id,
         superseded_by,
         expires_at,
-        auto_expired
+        auto_expired,
+        dp_offered,
+        dp_requested
       `
     )
     .eq(
@@ -668,26 +773,101 @@ export default async function TradesPage() {
     );
 
   // ======================================================
-  // BOSS IDENTITIES
-  //
-  // AUDIT FIX (Season 1 audit, legacy schema-assumption item): this
-  // used to join through profiles.boss_monster_option_id ->
-  // boss_monster_options, the OLD pre-Boss-Route cosmetic concept
-  // that is never set for a Season 1 player (the mandatory
-  // onboarding gate sends new players through /boss/select, not the
-  // old /onboarding flow that used to write this field) - every
-  // trade card showed "Unbound" for a player who has clearly
-  // already chosen and is actively progressing a real Boss Route.
-  // See src/lib/boss-identity.ts for the shared, corrected lookup
-  // (player_boss_paths route_slot 1 -> current-stage evolution
-  // card), the same source Home already uses.
+  // WHAT WAS TRADED - card names/art + DP per side, so every
+  // row (history especially) shows what changed hands.
   // ======================================================
 
-  const bossMap =
-    await getPrimaryBossIdentities(
-      supabase,
-      profileIds
+  type TradeItemRow = {
+    trade_id: string;
+    side:
+      | "offered"
+      | "requested";
+    card_instances: {
+      card_catalog: {
+        name: string;
+        image_url:
+          | string
+          | null;
+      } | null;
+    } | null;
+  };
+
+  const tradeItemRows =
+    await fetchInBatches<
+      string,
+      TradeItemRow
+    >(
+      trades.map(
+        (trade) =>
+          trade.id
+      ),
+      (batch, from, to) =>
+        supabase
+          .from("trade_items")
+          .select(
+            "id,trade_id,side,card_instances(card_catalog(name,image_url))"
+          )
+          .in(
+            "trade_id",
+            batch
+          )
+          .order("id")
+          .range(
+            from,
+            to
+          )
+    ).catch(() => []);
+
+  const summaryMap =
+    new Map<
+      string,
+      TradeSummary
+    >(
+      trades.map(
+        (trade) => [
+          trade.id,
+          {
+            offered: {
+              cards: [],
+              dp:
+                trade.dp_offered ?? 0,
+            },
+            requested: {
+              cards: [],
+              dp:
+                trade.dp_requested ?? 0,
+            },
+          },
+        ]
+      )
     );
+
+  for (const row of tradeItemRows) {
+    const summary =
+      summaryMap.get(
+        row.trade_id
+      );
+
+    const card =
+      row.card_instances
+        ?.card_catalog;
+
+    if (
+      !summary ||
+      !card
+    ) {
+      continue;
+    }
+
+    summary[
+      row.side
+    ].cards.push({
+      name:
+        card.name,
+      imageUrl:
+        card.image_url,
+    });
+  }
 
   // ======================================================
   // GROUPS
@@ -957,8 +1137,10 @@ export default async function TradesPage() {
                     profiles={
                       profileMap
                     }
-                    bosses={
-                      bossMap
+                    summary={
+                      summaryMap.get(
+                        trade.id
+                      )
                     }
                   />
                 )
@@ -1007,8 +1189,10 @@ export default async function TradesPage() {
                     profiles={
                       profileMap
                     }
-                    bosses={
-                      bossMap
+                    summary={
+                      summaryMap.get(
+                        trade.id
+                      )
                     }
                   />
                 )
@@ -1057,8 +1241,10 @@ export default async function TradesPage() {
                     profiles={
                       profileMap
                     }
-                    bosses={
-                      bossMap
+                    summary={
+                      summaryMap.get(
+                        trade.id
+                      )
                     }
                   />
                 )
@@ -1113,8 +1299,10 @@ export default async function TradesPage() {
                     profiles={
                       profileMap
                     }
-                    bosses={
-                      bossMap
+                    summary={
+                      summaryMap.get(
+                        trade.id
+                      )
                     }
                   />
                 )

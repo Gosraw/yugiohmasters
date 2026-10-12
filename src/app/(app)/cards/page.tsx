@@ -12,17 +12,9 @@ import { toggleWishlist } from "@/app/actions/wishlist";
 import { SubmitButton } from "@/components/submit-button";
 import { EmptyState } from "@/components/empty-state";
 import { MONSTER_RACES } from "@/lib/card-race";
+import { fetchInBatches } from "@/lib/supabase/paginate";
 
 export const dynamic = "force-dynamic";
-
-const rarityOrder: Record<string, number> = {
-  Normal: 1,
-  Rare: 2,
-  "Super Rare": 3,
-  "Ultra Rare": 4,
-  "Secret Rare": 5,
-  Legendary: 6,
-};
 
 const rarityStyles: Record<string, string> = {
   Normal:
@@ -46,7 +38,42 @@ type SearchParams = Promise<{
   attribute?: string;
   race?: string;
   sort?: string;
+  page?: string;
 }>;
+
+const PAGE_SIZE = 120;
+
+const CARD_COLUMNS =
+  "id,name,image_url,card_type,attribute,race,archetype,atk,def,game_rarity,rarity_score";
+
+// Highest rarity first; cards without a rarity come last.
+const RARITY_TIERS: (string | null)[] = [
+  "Legendary",
+  "Secret Rare",
+  "Ultra Rare",
+  "Super Rare",
+  "Rare",
+  "Normal",
+  null,
+];
+
+type CatalogCard = {
+  id: string;
+  name: string;
+  image_url: string | null;
+  card_type: string | null;
+  attribute: string | null;
+  race: string | null;
+  archetype: string | null;
+  atk: number | null;
+  def: number | null;
+  game_rarity: string | null;
+  rarity_score: number | null;
+};
+
+function plural(count: number, word: string) {
+  return `${count.toLocaleString("en-US")} ${word}${count === 1 ? "" : "s"}`;
+}
 
 export default async function CardsPage({
   searchParams,
@@ -61,27 +88,27 @@ export default async function CardsPage({
   const attribute = params.attribute ?? "";
   const race = params.race ?? "";
   const sort = params.sort ?? "name";
+  const requestedPage = Math.max(1, Math.floor(Number(params.page) || 1));
 
   const { supabase, userId } = await requireUser();
 
   const leagueId = await getLeagueIdForUser(supabase, userId);
 
-  let query = supabase
-    .from("card_catalog")
-    .select(
-      "id,name,image_url,card_type,attribute,race,archetype,atk,def,game_rarity,rarity_score"
-    );
+  // Multi-field search: every typed word must match somewhere on the
+  // card (name, effect text, archetype, type, attribute, rarity), but
+  // the words may live in different columns. That makes searches such
+  // as "blue eyes", "machine", "dark spellcaster" and "quick effect"
+  // behave naturally instead of only matching the card name.
+  const terms = q
+    .replace(/[,()"\\%*]/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 
-  if (q) {
-    // Multi-field search: every typed word must match somewhere on the
-    // card, but the words may live in different columns. That makes
-    // searches such as "machine", "dark spellcaster" and "quick effect"
-    // behave naturally instead of only matching the card name.
-    const terms = q
-      .replace(/[,()]/g, " ")
-      .trim()
-      .split(/\\s+/)
-      .filter(Boolean);
+  function buildQuery(head = false) {
+    let query = supabase
+      .from("card_catalog")
+      .select(CARD_COLUMNS, { count: "exact", head });
 
     for (const term of terms) {
       query = query.or(
@@ -97,80 +124,122 @@ export default async function CardsPage({
         ].join(",")
       );
     }
+
+    if (rarity) {
+      query = query.eq("game_rarity", rarity);
+    }
+
+    if (attribute) {
+      query = query.eq("attribute", attribute);
+    }
+
+    if (race) {
+      query = query.eq("race", race);
+    }
+
+    if (type === "Monster" || type === "Spell" || type === "Trap") {
+      query = query.ilike("card_type", `%${type}%`);
+    }
+
+    return query;
   }
 
-  if (rarity) {
-    query = query.eq(
-      "game_rarity",
-      rarity
+  let cards: CatalogCard[] = [];
+  let total = 0;
+  let loadError: string | null = null;
+  let page = requestedPage;
+
+  if (sort === "rarity") {
+    // Rarity order can't be expressed as a column sort, so page
+    // tier by tier (Legendary first), each tier by power score.
+    const tiers = RARITY_TIERS.filter(
+      (tier) => !rarity || tier === rarity
     );
-  }
 
-  if (attribute) {
-    query = query.eq(
-      "attribute",
-      attribute
+    const countResults = await Promise.all(
+      tiers.map((tier) => {
+        const base = buildQuery(true);
+
+        return tier === null
+          ? base.is("game_rarity", null)
+          : base.eq("game_rarity", tier);
+      })
     );
-  }
 
-  if (race) {
-    query = query.eq(
-      "race",
-      race
-    );
-  }
+    loadError =
+      countResults.find((result) => result.error)?.error?.message ?? null;
 
-  if (type === "Monster") {
-    query = query.ilike(
-      "card_type",
-      "%Monster%"
-    );
-  }
+    const counts = countResults.map((result) => result.count ?? 0);
 
-  if (type === "Spell") {
-    query = query.ilike(
-      "card_type",
-      "%Spell%"
-    );
-  }
+    total = counts.reduce((sum, count) => sum + count, 0);
+    page = Math.min(page, Math.max(1, Math.ceil(total / PAGE_SIZE)));
 
-  if (type === "Trap") {
-    query = query.ilike(
-      "card_type",
-      "%Trap%"
-    );
-  }
+    let skip = (page - 1) * PAGE_SIZE;
+    let need = PAGE_SIZE;
 
-  if (sort === "power") {
-    query = query
-      .order(
-        "rarity_score",
-        {
-          ascending: false,
-          nullsFirst: false,
-        }
-      )
-      .order("name");
-  } else if (sort === "atk") {
-    query = query
-      .order(
-        "atk",
-        {
-          ascending: false,
-          nullsFirst: false,
-        }
-      )
-      .order("name");
+    for (let i = 0; i < tiers.length && need > 0 && !loadError; i += 1) {
+      if (skip >= counts[i]) {
+        skip -= counts[i];
+        continue;
+      }
+
+      const tier = tiers[i];
+      const base = buildQuery();
+      const { data, error } = await (tier === null
+        ? base.is("game_rarity", null)
+        : base.eq("game_rarity", tier))
+        .order("rarity_score", { ascending: false, nullsFirst: false })
+        .order("name")
+        .order("id")
+        .range(skip, skip + need - 1);
+
+      if (error) {
+        loadError = error.message;
+        break;
+      }
+
+      const rows = (data ?? []) as CatalogCard[];
+
+      cards.push(...rows);
+      need -= rows.length;
+      skip = 0;
+    }
   } else {
-    query = query.order("name");
+    const fetchPage = (targetPage: number) => {
+      let query = buildQuery();
+
+      if (sort === "power") {
+        query = query.order("rarity_score", { ascending: false, nullsFirst: false });
+      } else if (sort === "atk") {
+        query = query.order("atk", { ascending: false, nullsFirst: false });
+      }
+
+      const from = (targetPage - 1) * PAGE_SIZE;
+
+      return query
+        .order("name")
+        .order("id")
+        .range(from, from + PAGE_SIZE - 1);
+    };
+
+    let result = await fetchPage(page);
+
+    if (result.error && page > 1) {
+      // A page past the end (e.g. an old link after the filters
+      // changed) - show the first page instead of an error screen.
+      page = 1;
+      result = await fetchPage(page);
+    }
+
+    if (result.error) {
+      loadError = result.error.message;
+    } else {
+      cards = (result.data ?? []) as CatalogCard[];
+      total = result.count ?? cards.length;
+    }
   }
 
-  const {
-    data,
-    error,
-  } = await query.limit(120);
-
-  if (error) {
+  if (loadError) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-6">
         <div className="panel p-5">
@@ -179,64 +248,59 @@ export default async function CardsPage({
           </p>
 
           <p className="mt-2 text-sm text-zinc-500">
-            {error.message}
+            Try a different search, or{" "}
+            <Link href="/cards" className="text-amber-200 underline">
+              reset the filters
+            </Link>
+            .
           </p>
         </div>
       </main>
     );
   }
 
-  let cards = data ?? [];
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const firstShown = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const lastShown = (page - 1) * PAGE_SIZE + cards.length;
+
+  function pageHref(targetPage: number) {
+    const next = new URLSearchParams();
+
+    if (q) next.set("q", q);
+    if (rarity) next.set("rarity", rarity);
+    if (type) next.set("type", type);
+    if (attribute) next.set("attribute", attribute);
+    if (race) next.set("race", race);
+    if (sort && sort !== "name") next.set("sort", sort);
+    if (targetPage > 1) next.set("page", String(targetPage));
+
+    const search = next.toString();
+
+    return search ? `/cards?${search}` : "/cards";
+  }
+
+  // The wishlist heart sends the player back to exactly this page.
+  const currentHref = pageHref(page);
 
   const wishedCardIds = new Set<string>();
 
   if (leagueId && cards.length > 0) {
-    const { data: wishRows } = await supabase
-      .from("card_wishlist_items")
-      .select("card_catalog_id")
-      .eq("profile_id", userId)
-      .eq("league_id", leagueId)
-      .in(
-        "card_catalog_id",
-        cards.map((card) => card.id)
-      );
+    const wishRows = await fetchInBatches<string, { card_catalog_id: string }>(
+      cards.map((card) => card.id),
+      (batch, from, to) =>
+        supabase
+          .from("card_wishlist_items")
+          .select("card_catalog_id")
+          .eq("profile_id", userId)
+          .eq("league_id", leagueId)
+          .in("card_catalog_id", batch)
+          .order("card_catalog_id")
+          .range(from, to)
+    ).catch(() => []);
 
-    for (const row of wishRows ?? []) {
-      wishedCardIds.add(row.card_catalog_id as string);
+    for (const row of wishRows) {
+      wishedCardIds.add(row.card_catalog_id);
     }
-  }
-
-  if (sort === "rarity") {
-    cards = [...cards].sort(
-      (a, b) => {
-        const aRarity =
-          rarityOrder[
-            a.game_rarity ?? ""
-          ] ?? 0;
-
-        const bRarity =
-          rarityOrder[
-            b.game_rarity ?? ""
-          ] ?? 0;
-
-        if (
-          bRarity !== aRarity
-        ) {
-          return (
-            bRarity - aRarity
-          );
-        }
-
-        return (
-          Number(
-            b.rarity_score ?? 0
-          ) -
-          Number(
-            a.rarity_score ?? 0
-          )
-        );
-      }
-    );
   }
 
   return (
@@ -431,15 +495,16 @@ export default async function CardsPage({
         </div>
       </form>
 
-      <div className="mt-5 flex items-center justify-between gap-4">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-zinc-500">
-          {cards.length} cards shown
+          {total > cards.length
+            ? `Showing ${firstShown.toLocaleString("en-US")}–${lastShown.toLocaleString("en-US")} of ${plural(total, "card")}`
+            : `${plural(total, "card")} found`}
         </p>
 
-        {cards.length ===
-          120 && (
+        {pageCount > 1 && (
           <p className="text-xs text-zinc-600">
-            Showing first 120 results
+            Page {page} of {pageCount}
           </p>
         )}
       </div>
@@ -559,7 +624,7 @@ export default async function CardsPage({
                     <input
                       type="hidden"
                       name="return_to"
-                      value="/cards"
+                      value={currentHref}
                     />
 
                     <SubmitButton
@@ -582,6 +647,35 @@ export default async function CardsPage({
             }
           )}
         </div>
+      )}
+
+      {pageCount > 1 && (
+        <nav
+          aria-label="Card pages"
+          className="mt-6 flex items-center justify-center gap-3"
+        >
+          {page > 1 ? (
+            <Link
+              href={pageHref(page - 1)}
+              className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-white/5"
+            >
+              Previous
+            </Link>
+          ) : null}
+
+          <span className="text-sm text-zinc-500">
+            Page {page} of {pageCount}
+          </span>
+
+          {page < pageCount ? (
+            <Link
+              href={pageHref(page + 1)}
+              className="primary-button"
+            >
+              Next {Math.min(PAGE_SIZE, total - page * PAGE_SIZE)} cards
+            </Link>
+          ) : null}
+        </nav>
       )}
     </main>
   );

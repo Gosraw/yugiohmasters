@@ -1178,6 +1178,48 @@ export async function startSeasonCompetition(
     );
   }
 
+  // One season at a time (also enforced by the database, see
+  // mark_competition_as_season in 202610121500).
+  const {
+    data: openSeason,
+    error: openSeasonError,
+  } = await supabase
+    .from(
+      "competitions"
+    )
+    .select(
+      "id"
+    )
+    .eq(
+      "league_id",
+      leagueId
+    )
+    .eq(
+      "is_season",
+      true
+    )
+    .in(
+      "status",
+      [
+        "draft",
+        "active",
+      ]
+    )
+    .limit(1)
+    .maybeSingle();
+
+  if (openSeasonError) {
+    throw new Error(
+      openSeasonError.message
+    );
+  }
+
+  if (openSeason) {
+    redirect(
+      `/competitions?error=${encodeURIComponent("A season is already running. Finish it before starting a new one.")}`
+    );
+  }
+
   const {
     data: competitionId,
     error: createError,
@@ -1204,6 +1246,22 @@ export async function startSeasonCompetition(
   if (!competitionId) {
     throw new Error(
       "The competition could not be created."
+    );
+  }
+
+  const {
+    error: markError,
+  } = await supabase.rpc(
+    "mark_competition_as_season",
+    {
+      target_competition_id:
+        competitionId,
+    }
+  );
+
+  if (markError) {
+    redirect(
+      `/competitions?error=${encodeURIComponent(markError.message)}`
     );
   }
 

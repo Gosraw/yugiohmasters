@@ -21,6 +21,11 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  formatLeagueRelativeDay,
+  formatNumber,
+} from "@/lib/format-date";
+
+import {
   PageHeader,
 } from "@/components/page-header";
 
@@ -53,6 +58,7 @@ type TransactionRow = {
   description: string | null;
   note: string | null;
   created_at: string;
+  seq: number;
 };
 
 // Icon + short category per ledger reason. The WHY of every row is
@@ -105,29 +111,6 @@ function reasonMeta(reason: string) {
   };
 }
 
-function formatRelativeDate(iso: string) {
-  const date = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays <= 0) {
-    return "Today";
-  }
-
-  if (diffDays === 1) {
-    return "Yesterday";
-  }
-
-  if (diffDays < 7) {
-    return `${diffDays}d ago`;
-  }
-
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
 
 export default async function WalletPage() {
   const {
@@ -146,9 +129,13 @@ export default async function WalletPage() {
       .single(),
     supabase
       .from("duel_point_transactions")
-      .select("id,amount,balance_after,reason,description,note,created_at")
+      .select("id,amount,balance_after,reason,description,note,created_at,seq")
       .eq("profile_id", userId)
+      // Rows written in one transaction share created_at (e.g. a
+      // correction: reversal + new credit); seq is the insert order,
+      // so balance_after always reads as a running balance.
       .order("created_at", { ascending: false })
+      .order("seq", { ascending: false })
       .limit(100),
   ]);
 
@@ -176,7 +163,7 @@ export default async function WalletPage() {
               Balance
             </p>
             <p className="gold-text text-2xl font-black leading-tight">
-              {balance.toLocaleString()}
+              {formatNumber(balance)}
             </p>
           </div>
         }
@@ -228,7 +215,7 @@ export default async function WalletPage() {
                       {description}
                     </p>
                     <p className="text-[10px] text-zinc-600">
-                      {meta.label} · {formatRelativeDate(row.created_at)}
+                      {meta.label} · {formatLeagueRelativeDay(row.created_at)}
                     </p>
                   </div>
 
@@ -239,10 +226,10 @@ export default async function WalletPage() {
                       }`}
                     >
                       {positive ? "+" : ""}
-                      {row.amount.toLocaleString()}
+                      {formatNumber(row.amount)}
                     </p>
                     <p className="text-[10px] text-zinc-600">
-                      {row.balance_after.toLocaleString()} bal.
+                      {formatNumber(row.balance_after)} bal.
                     </p>
                   </div>
                 </li>

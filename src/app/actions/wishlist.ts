@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 
+import { safeReturnTo, withFeedback } from "@/lib/safe-return-to";
 import { requireUser } from "@/lib/supabase/queries";
 
 // =========================================================
@@ -34,13 +35,15 @@ export async function toggleWishlist(
 
   const returnTo = readString(formData, "return_to");
 
-  const fallback = returnTo || "/cards";
+  const fallback = safeReturnTo(returnTo, "/cards");
 
   if (!cardCatalogId) {
     redirect(
-      `${fallback}${fallback.includes("?") ? "&" : "?"}error=${encodeURIComponent(
+      withFeedback(
+        fallback,
+        "error",
         "Missing card."
-      )}`
+      )
     );
   }
 
@@ -53,17 +56,21 @@ export async function toggleWishlist(
 
   if (error) {
     redirect(
-      `${fallback}${fallback.includes("?") ? "&" : "?"}error=${encodeURIComponent(
+      withFeedback(
+        fallback,
+        "error",
         error.message
-      )}`
+      )
     );
   }
 
   redirect(
-    `${fallback}${fallback.includes("?") ? "&" : "?"}success=${encodeURIComponent(
+    withFeedback(
+      fallback,
+      "success",
       nowWished
         ? "Added to your Wishlist."
         : "Removed from your Wishlist."
-    )}`
+    )
   );
 }

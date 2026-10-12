@@ -248,7 +248,9 @@ test("nothing is paid twice: resubmit, re-settle, refresh", async ({ page }) => 
       target_player_two_duel_wins: 0,
     });
 
-    expect(again.error, "second submit is refused").toMatch(/already has a result/i);
+    // A finished competition refuses with "not active" (admin guard
+    // added 2026-10-12); a still-running one with "already has a result".
+    expect(again.error, "second submit is refused").toMatch(/already has a result|not active/i);
 
     // 2. The older "award DP for my match" RPC (still called by the
     //    practice-match flow) must be a no-op for an already-paid match.

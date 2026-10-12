@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 
+import { safeReturnTo, withFeedback } from "@/lib/safe-return-to";
 import { requireUser } from "@/lib/supabase/queries";
 
 // =========================================================
@@ -36,13 +37,15 @@ export async function setCardForTrade(
 
   const returnTo = readString(formData, "return_to");
 
-  const fallback = returnTo || "/cards/collection";
+  const fallback = safeReturnTo(returnTo, "/cards/collection");
 
   if (!cardInstanceId) {
     redirect(
-      `${fallback}${fallback.includes("?") ? "&" : "?"}error=${encodeURIComponent(
+      withFeedback(
+        fallback,
+        "error",
         "Missing card."
-      )}`
+      )
     );
   }
 
@@ -53,17 +56,21 @@ export async function setCardForTrade(
 
   if (error) {
     redirect(
-      `${fallback}${fallback.includes("?") ? "&" : "?"}error=${encodeURIComponent(
+      withFeedback(
+        fallback,
+        "error",
         error.message
-      )}`
+      )
     );
   }
 
   redirect(
-    `${fallback}${fallback.includes("?") ? "&" : "?"}success=${encodeURIComponent(
+    withFeedback(
+      fallback,
+      "success",
       forTrade
         ? "Card marked as For Trade."
         : "Card removed from your Trade Binder."
-    )}`
+    )
   );
 }

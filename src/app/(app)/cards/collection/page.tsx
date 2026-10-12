@@ -28,6 +28,7 @@ import {
   fetchOwnedCollection,
   filterAndSortCollection,
   groupCollection,
+  paginateCollection,
   rarityStyles,
   type CollectionGroupBy,
   type GroupedOwnedCard,
@@ -36,6 +37,10 @@ import {
 import {
   MONSTER_RACES,
 } from "@/lib/card-race";
+
+import {
+  fetchInBatches,
+} from "@/lib/supabase/paginate";
 
 import {
   setCardForTrade,
@@ -75,6 +80,7 @@ type SearchParams = Promise<{
   forTrade?: string;
   sort?: string;
   groupBy?: string;
+  page?: string;
 }>;
 
 // =========================================================
@@ -385,6 +391,12 @@ export default async function CollectionPage({
     (params.groupBy as CollectionGroupBy | undefined) ??
     "";
 
+  const requestedPage =
+    Number(
+      params.page ??
+        "1"
+    );
+
   const {
     supabase,
     userId,
@@ -451,17 +463,31 @@ export default async function CollectionPage({
   }[] = [];
 
   if (leagueId && allGroupedCards.length > 0) {
-    const { data: wishRows } = await supabase
-      .from("card_wishlist_items")
-      .select("card_catalog_id,profile_id")
-      .eq("league_id", leagueId)
-      .neq("profile_id", userId)
-      .in(
-        "card_catalog_id",
-        allGroupedCards.map((group) => group.card.id)
-      );
+    // Batched: one .in() with every owned card id overflowed the
+    // request URL on a big collection and silently returned nothing.
+    const wishRows = await fetchInBatches<
+      string,
+      {
+        card_catalog_id: string;
+        profile_id: string;
+      }
+    >(
+      allGroupedCards.map((group) => group.card.id),
+      (batch, from, to) =>
+        supabase
+          .from("card_wishlist_items")
+          .select("card_catalog_id,profile_id")
+          .eq("league_id", leagueId)
+          .neq("profile_id", userId)
+          .in(
+            "card_catalog_id",
+            batch
+          )
+          .order("id")
+          .range(from, to)
+    ).catch(() => []);
 
-    if (wishRows && wishRows.length > 0) {
+    if (wishRows.length > 0) {
       const wisherIds = Array.from(
         new Set(wishRows.map((row) => row.profile_id as string))
       );
@@ -607,11 +633,23 @@ export default async function CollectionPage({
   // filtered+sorted list above (no extra query - see groupCollection
   // in src/lib/collection.ts). null when groupBy is "" (default flat
   // grid, unchanged behavior).
-  const groupBuckets =
+  const allGroupBuckets =
     groupCollection(
       groupedCards,
       groupBy
     );
+
+  // Only one page of tiles is rendered (see paginateCollection).
+  const {
+    page,
+    pageCount,
+    cards: pageCards,
+    buckets: groupBuckets,
+  } = paginateCollection(
+    groupedCards,
+    allGroupBuckets,
+    requestedPage
+  );
 
   // Query string this exact filtered view corresponds to - used
   // both to keep "Apply/Reset" reflecting the active filters and
@@ -673,14 +711,51 @@ export default async function CollectionPage({
       groupBy
     );
 
+  const filterQueryString =
+    activeQuery.toString();
+
+  function collectionPageHref(
+    targetPage: number
+  ) {
+    const query =
+      new URLSearchParams(
+        filterQueryString
+      );
+
+    if (targetPage > 1) {
+      query.set(
+        "page",
+        String(
+          targetPage
+        )
+      );
+    }
+
+    const queryString =
+      query.toString();
+
+    return `/cards/collection${
+      queryString
+        ? `?${queryString}`
+        : ""
+    }`;
+  }
+
+  if (page > 1)
+    activeQuery.set(
+      "page",
+      String(
+        page
+      )
+    );
+
   const activeQueryString =
     activeQuery.toString();
 
-  const collectionReturnTo = `/cards/collection${
-    activeQueryString
-      ? `?${activeQueryString}`
-      : ""
-  }`;
+  const collectionReturnTo =
+    collectionPageHref(
+      page
+    );
 
   // Used for the mobile filter toggle's badge - how many distinct
   // filters (beyond the default sort) are currently narrowing the
@@ -1383,8 +1458,10 @@ export default async function CollectionPage({
               {groupedCards.length ===
               1
                 ? ""
-                : "s"}{" "}
-              shown
+                : "s"}
+              {pageCount > 1
+                ? ` · page ${page} of ${pageCount}`
+                : " shown"}
             </p>
           </div>
 
@@ -1504,7 +1581,7 @@ export default async function CollectionPage({
           ================================================== */
 
           <section className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {groupedCards.map(
+            {pageCards.map(
               (group) => (
                 <CollectionCardTile
                   key={
@@ -1520,6 +1597,39 @@ export default async function CollectionPage({
               )
             )}
           </section>
+        )}
+
+        {pageCount > 1 && (
+          <nav
+            aria-label="Collection pages"
+            className="mt-6 flex flex-wrap items-center justify-center gap-3"
+          >
+            {page > 1 && (
+              <Link
+                href={collectionPageHref(
+                  page - 1
+                )}
+                className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-300 transition hover:bg-white/5"
+              >
+                Previous
+              </Link>
+            )}
+
+            <span className="text-sm text-zinc-500">
+              Page {page} of {pageCount}
+            </span>
+
+            {page < pageCount && (
+              <Link
+                href={collectionPageHref(
+                  page + 1
+                )}
+                className="primary-button"
+              >
+                Next page
+              </Link>
+            )}
+          </nav>
         )}
 
         {/* ==================================================
@@ -1539,7 +1649,7 @@ export default async function CollectionPage({
               </p>
 
               <p className="mt-2 text-sm leading-6 text-zinc-500">
-                Every numbered copy is tracked separately. A copy locked by an active trade or Practice Duel card wager cannot be committed somewhere else until that transaction or duel is resolved.
+                Every numbered copy is tracked separately. Trades never lock a card - the same copy can sit in several offers, and the first accepted trade wins. Only a copy put up as a Practice Duel card wager is locked: it cannot be traded or added to a deck until that duel is settled.
               </p>
             </div>
           </div>

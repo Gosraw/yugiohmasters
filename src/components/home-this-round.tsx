@@ -75,9 +75,9 @@ export function HomeThisRound({
   if (round.state === "finished") {
     return (
       <HomeCard
-        title="This round"
-        href={href}
-        hrefLabel="Standings"
+        title="Season complete"
+        href={`/competitions/${round.competitionId}`}
+        hrefLabel="Final standings"
       >
         <p className="text-sm text-zinc-400">
           {round.competitionName} is complete. Every duel has been played.

@@ -1,6 +1,10 @@
 import Link from "next/link";
 
 import {
+  redirect,
+} from "next/navigation";
+
+import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
@@ -21,6 +25,11 @@ import {
 import {
   requireUser,
 } from "@/lib/supabase/queries";
+
+import {
+  formatLeagueDateTime,
+  formatNumber,
+} from "@/lib/format-date";
 
 import {
   getPrimaryBossIdentities,
@@ -103,6 +112,10 @@ type Match = {
   player_two_deck_id:
     | string
     | null;
+
+  competition_id:
+    | string
+    | null;
 };
 
 type Profile = {
@@ -165,21 +178,8 @@ function formatDate(
     | string
     | null
 ) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Date(
+  return formatLeagueDateTime(
     value
-  ).toLocaleString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }
   );
 }
 
@@ -274,8 +274,10 @@ function MatchStatusBadge({
 
 function MatchTypeBadge({
   type,
+  isSeasonDuel,
 }: {
   type: MatchType;
+  isSeasonDuel: boolean;
 }) {
   if (
     type ===
@@ -292,7 +294,9 @@ function MatchTypeBadge({
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/20 bg-amber-300/[0.07] px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-amber-200">
       <Trophy size={10} />
-      League
+      {isSeasonDuel
+        ? "Season"
+        : "League"}
     </span>
   );
 }
@@ -451,6 +455,10 @@ function MatchCard({
           type={
             match.match_type
           }
+          isSeasonDuel={
+            match.competition_id !==
+            null
+          }
         />
 
         <WagerBadge
@@ -575,11 +583,32 @@ function MatchCard({
 // PAGE
 // =========================================================
 
-export default async function MatchesPage() {
+const HISTORY_PAGE_SIZE = 20;
+
+export default async function MatchesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    history?: string;
+  }>;
+}) {
   const {
     supabase,
     userId,
   } = await requireUser();
+
+  const {
+    history: historyParam,
+  } = await searchParams;
+
+  const historyPage =
+    Math.max(
+      1,
+      Number.parseInt(
+        historyParam ?? "1",
+        10
+      ) || 1
+    );
 
   // ======================================================
   // LEAGUE
@@ -640,12 +669,11 @@ export default async function MatchesPage() {
   // MATCHES
   // ======================================================
 
-  const {
-    data: matchData,
-    error: matchError,
-  } = await supabase
-    .from("matches")
-    .select(
+  // Open duels (small: only what still needs a step) and one page
+  // of history, instead of every duel ever. Scheduled season duels
+  // are played from the This Round screen, so they are only counted
+  // here, not listed as challenges.
+  const MATCH_COLUMNS =
       `
         id,
         player_one_id,
@@ -665,22 +693,186 @@ export default async function MatchesPage() {
         disputed_by,
         disputed_at,
         player_one_deck_id,
-        player_two_deck_id
-      `
-    )
-    .eq(
-      "league_id",
-      membership.league_id
-    )
-    .or(
-      `player_one_id.eq.${userId},player_two_id.eq.${userId}`
-    )
-    .order(
-      "created_at",
-      {
-        ascending: false,
-      }
-    );
+        player_two_deck_id,
+        competition_id
+      `;
+
+  const historyFrom =
+    (historyPage - 1) *
+    HISTORY_PAGE_SIZE;
+
+  const [
+    openResult,
+    historyResult,
+    seasonCountResult,
+    practiceCountResult,
+    openWagerResult,
+  ] = await Promise.all([
+    supabase
+      .from("matches")
+      .select(
+        MATCH_COLUMNS
+      )
+      .eq(
+        "league_id",
+        membership.league_id
+      )
+      .in(
+        "status",
+        [
+          "pending",
+          "accepted",
+          "result_submitted",
+          "disputed",
+        ]
+      )
+      .or(
+        `player_one_id.eq.${userId},player_two_id.eq.${userId}`
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        }
+      )
+      .limit(200),
+    supabase
+      .from("matches")
+      .select(
+        MATCH_COLUMNS,
+        {
+          count: "exact",
+        }
+      )
+      .eq(
+        "league_id",
+        membership.league_id
+      )
+      .in(
+        "status",
+        [
+          "completed",
+          "cancelled",
+          "declined",
+        ]
+      )
+      .or(
+        `player_one_id.eq.${userId},player_two_id.eq.${userId}`
+      )
+      // Played time first; cancelled/declined (never played) last.
+      .order(
+        "completed_at",
+        {
+          ascending: false,
+          nullsFirst: false,
+        }
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false,
+        }
+      )
+      .range(
+        historyFrom,
+        historyFrom +
+          HISTORY_PAGE_SIZE -
+          1
+      ),
+    supabase
+      .from("matches")
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        }
+      )
+      .eq(
+        "league_id",
+        membership.league_id
+      )
+      .eq(
+        "match_type",
+        "league"
+      )
+      .eq(
+        "status",
+        "completed"
+      )
+      .or(
+        `player_one_id.eq.${userId},player_two_id.eq.${userId}`
+      ),
+    supabase
+      .from("matches")
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        }
+      )
+      .eq(
+        "league_id",
+        membership.league_id
+      )
+      .eq(
+        "match_type",
+        "practice"
+      )
+      .eq(
+        "status",
+        "completed"
+      )
+      .or(
+        `player_one_id.eq.${userId},player_two_id.eq.${userId}`
+      ),
+    supabase
+      .from("matches")
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        }
+      )
+      .eq(
+        "league_id",
+        membership.league_id
+      )
+      .eq(
+        "match_type",
+        "practice"
+      )
+      .neq(
+        "wager_type",
+        "none"
+      )
+      .in(
+        "wager_status",
+        [
+          "proposed",
+          "funded",
+        ]
+      )
+      .or(
+        `player_one_id.eq.${userId},player_two_id.eq.${userId}`
+      ),
+  ]);
+
+  // A history page past the end (old link, fewer duels now):
+  // back to the first page instead of an error.
+  if (
+    historyResult.error &&
+    historyPage > 1 &&
+    historyResult.status === 416
+  ) {
+    redirect("/matches");
+  }
+
+  const matchError =
+    openResult.error ??
+    historyResult.error;
 
   if (matchError) {
     return (
@@ -700,9 +892,31 @@ export default async function MatchesPage() {
     );
   }
 
-  const matches =
-    (matchData ??
+  const openMatches =
+    (openResult.data ??
       []) as Match[];
+
+  const history =
+    (historyResult.data ??
+      []) as Match[];
+
+  const historyTotal =
+    historyResult.count ??
+    history.length;
+
+  const historyPages =
+    Math.max(
+      1,
+      Math.ceil(
+        historyTotal /
+          HISTORY_PAGE_SIZE
+      )
+    );
+
+  const matches = [
+    ...openMatches,
+    ...history,
+  ];
 
   // ======================================================
   // PROFILES
@@ -866,8 +1080,16 @@ export default async function MatchesPage() {
   // GROUPS
   // ======================================================
 
+  // Ad-hoc duels only: scheduled season duels are not challenges.
+  const adHocOpen =
+    openMatches.filter(
+      (match) =>
+        match.competition_id ===
+        null
+    );
+
   const incoming =
-    matches.filter(
+    adHocOpen.filter(
       (match) =>
         match.status ===
           "pending" &&
@@ -876,7 +1098,7 @@ export default async function MatchesPage() {
     );
 
   const outgoing =
-    matches.filter(
+    adHocOpen.filter(
       (match) =>
         match.status ===
           "pending" &&
@@ -885,63 +1107,53 @@ export default async function MatchesPage() {
     );
 
   const active =
-    matches.filter(
+    adHocOpen.filter(
       (match) =>
         match.status ===
         "accepted"
     );
 
   const confirmation =
-    matches.filter(
+    openMatches.filter(
       (match) =>
         match.status ===
         "result_submitted"
     );
 
   const disputed =
-    matches.filter(
+    openMatches.filter(
       (match) =>
         match.status ===
         "disputed"
     );
 
-  const history =
-    matches.filter(
+  const scheduledSeasonDuels =
+    openMatches.filter(
       (match) =>
-        match.status ===
-          "completed" ||
-        match.status ===
-          "cancelled" ||
-        match.status ===
-          "declined"
+        match.competition_id !==
+          null &&
+        (match.status ===
+          "pending" ||
+          match.status ===
+            "accepted")
     );
 
+  const seasonCompetitionId =
+    scheduledSeasonDuels[0]
+      ?.competition_id ??
+    null;
+
   const leagueMatches =
-    matches.filter(
-      (match) =>
-        match.match_type ===
-        "league"
-    ).length;
+    seasonCountResult.count ??
+    0;
 
   const practiceMatches =
-    matches.filter(
-      (match) =>
-        match.match_type ===
-        "practice"
-    ).length;
+    practiceCountResult.count ??
+    0;
 
   const openWagers =
-    matches.filter(
-      (match) =>
-        match.match_type ===
-          "practice" &&
-        match.wager_type !==
-          "none" &&
-        match.wager_status !==
-          "settled" &&
-        match.wager_status !==
-          "released"
-    ).length;
+    openWagerResult.count ??
+    0;
 
   // ======================================================
   // SEASON DUEL DP (2.0): league_economy_defaults, the same
@@ -1079,7 +1291,9 @@ export default async function MatchesPage() {
               </div>
 
               <p className="mt-2 text-4xl font-black text-cyan-100">
-                {duelPoints}
+                {formatNumber(
+                  duelPoints
+                )}
               </p>
 
               <p className="mt-1 text-xs text-zinc-600">
@@ -1174,7 +1388,7 @@ export default async function MatchesPage() {
 
           <div className="panel p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-zinc-600">
-              League
+              Season Played
             </p>
 
             <p className="mt-1 text-2xl font-black">
@@ -1184,7 +1398,7 @@ export default async function MatchesPage() {
 
           <div className="panel p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-zinc-600">
-              Practice
+              Practice Played
             </p>
 
             <p className="mt-1 text-2xl font-black text-violet-200">
@@ -1202,6 +1416,44 @@ export default async function MatchesPage() {
             </p>
           </div>
         </section>
+
+        {/* SEASON DUELS (2.0): scheduled, played on This Round */}
+
+        {scheduledSeasonDuels.length >
+          0 && (
+          <Link
+            href={
+              seasonCompetitionId
+                ? `/competitions/${seasonCompetitionId}/round`
+                : "/play"
+            }
+            className="panel group mt-8 flex cursor-pointer items-center justify-between gap-4 p-5 transition-all hover:-translate-y-0.5 hover:border-amber-300/25"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <Trophy
+                size={20}
+                className="shrink-0 text-amber-300"
+              />
+
+              <div className="min-w-0">
+                <p className="text-xs font-black tracking-[.2em] text-amber-300">
+                  SEASON DUELS
+                </p>
+
+                <p className="mt-1 text-sm text-zinc-400">
+                  {scheduledSeasonDuels.length === 1
+                    ? "1 season duel is scheduled for you."
+                    : `${scheduledSeasonDuels.length} season duels are scheduled for you.`}{" "}
+                  Tap the winners on the This Round screen.
+                </p>
+              </div>
+            </div>
+
+            <span className="shrink-0 text-xs font-black text-amber-300 transition group-hover:text-amber-200">
+              This Round →
+            </span>
+          </Link>
+        )}
 
         {/* INCOMING */}
 
@@ -1524,6 +1776,44 @@ export default async function MatchesPage() {
                 )
               )}
             </div>
+          )}
+
+          {historyPages > 1 && (
+            <nav
+              aria-label="Duel history pages"
+              className="mt-5 flex items-center justify-between gap-3"
+            >
+              {historyPage > 1 ? (
+                <Link
+                  href={
+                    historyPage === 2
+                      ? "/matches"
+                      : `/matches?history=${historyPage - 1}`
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-black text-zinc-300 transition hover:border-amber-300/25 hover:text-amber-200"
+                >
+                  ← Newer
+                </Link>
+              ) : (
+                <span />
+              )}
+
+              <p className="text-xs font-bold text-zinc-600">
+                Page {historyPage} of{" "}
+                {historyPages}
+              </p>
+
+              {historyPage < historyPages ? (
+                <Link
+                  href={`/matches?history=${historyPage + 1}`}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-black text-zinc-300 transition hover:border-amber-300/25 hover:text-amber-200"
+                >
+                  Older →
+                </Link>
+              ) : (
+                <span />
+              )}
+            </nav>
           )}
         </section>
 

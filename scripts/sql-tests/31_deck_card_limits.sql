@@ -25,7 +25,25 @@ declare
 begin
   select league_id into league from public.league_members where profile_id = owner;
 
-  for i in 1..n loop
+  -- The league-wide copy limit (validate_new_card_instance) counts
+  -- copies that already exist in the dev DB (e.g. seeded
+  -- 'development' grants). Reuse free existing copies first, so the
+  -- test never depends on the card being unowned.
+  for new_id in
+    select ci.id
+    from public.card_instances ci
+    where ci.league_id = league
+      and ci.card_catalog_id = target_card
+      and ci.locked = false
+      and not exists (select 1 from public.deck_cards dc where dc.card_instance_id = ci.id)
+    order by ci.copy_number
+    limit n
+  loop
+    update public.card_instances set current_owner_id = owner where id = new_id;
+    ids := ids || new_id;
+  end loop;
+
+  for i in (cardinality(ids) + 1)..n loop
     insert into public.card_instances (league_id, card_catalog_id, copy_number,
       current_owner_id, original_owner_id, original_acquisition_type)
     values (league, target_card, 0, owner, owner, 'development')

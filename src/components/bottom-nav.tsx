@@ -43,6 +43,7 @@ const items: readonly NavItem[] = [
     icon: Home,
     matches: [
       "/attention",
+      "/season",
     ],
   },
   {

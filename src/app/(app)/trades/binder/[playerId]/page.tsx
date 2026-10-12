@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   Heart,
   Home,
   Repeat2,
@@ -24,6 +26,10 @@ import {
 import {
   requireUser,
 } from "@/lib/supabase/queries";
+
+import {
+  fetchInBatches,
+} from "@/lib/supabase/paginate";
 
 import {
   fetchOwnedCollection,
@@ -54,14 +60,53 @@ function playerName(
   );
 }
 
+// Cards per binder page. A friend's whole collection can be hundreds
+// of unique cards; rendering every image at once is slow on a phone.
+const BINDER_PAGE_SIZE = 60;
+
+function binderHref(
+  playerId: string,
+  params: {
+    q: string;
+    race: string;
+    show: string;
+    page?: number;
+  }
+) {
+  const query = new URLSearchParams();
+
+  if (params.q) {
+    query.set("q", params.q);
+  }
+
+  if (params.race) {
+    query.set("race", params.race);
+  }
+
+  if (params.show) {
+    query.set("show", params.show);
+  }
+
+  if (params.page && params.page > 1) {
+    query.set("page", String(params.page));
+  }
+
+  const text = query.toString();
+
+  return `/trades/binder/${playerId}${text ? `?${text}` : ""}`;
+}
+
 // =========================================================
 // PAGE
 //
-// Read-only view of one league member's "for trade" binder -
-// exactly which physical copies they've marked available, so a
-// trade partner can be found before opening a full trade draft.
-// Every card links straight into "Trade with this player" so
-// browsing a binder can lead directly into a trade offer.
+// 2.0 (docs/V2_PLAN.md "Cards & decks"): the binder shows ALL of a
+// league member's cards, not only the ones marked for trade. Copies
+// marked "For trade" carry a label, and the "For trade" tab narrows
+// the view to just those. The whole collection is fetched with
+// paging (fetchOwnedCollection -> fetchAllPages), so nothing is cut
+// off at Supabase's 1000-row cap; the grid itself is paged
+// (?page=) so a big binder stays fast on a phone.
+// For-trade cards link straight into "Trade with this player".
 // =========================================================
 
 export default async function TradeBinderDetailPage({
@@ -72,14 +117,13 @@ export default async function TradeBinderDetailPage({
     playerId: string;
   }>;
 
-  // Track 6 (2026-08-27): this page had no filter form at all before -
-  // a binder with many for-trade cards had no way to narrow the view.
-  // `q` and `race` mirror Collection's own query-param filter pattern
-  // (see cards/collection/page.tsx) so a bookmarked/shared filtered
-  // binder link behaves the same way.
+  // `q` and `race` mirror Collection's own query-param filters;
+  // `show=trade` is the "For trade" tab; `page` is the grid page.
   searchParams: Promise<{
     q?: string;
     race?: string;
+    show?: string;
+    page?: string;
   }>;
 }) {
   const { playerId } = await params;
@@ -94,6 +138,20 @@ export default async function TradeBinderDetailPage({
   const race =
     filterParams.race ??
     "";
+
+  const show =
+    filterParams.show === "trade"
+      ? "trade"
+      : "";
+
+  const requestedPage =
+    Math.max(
+      1,
+      Number.parseInt(
+        filterParams.page ?? "1",
+        10
+      ) || 1
+    );
 
   const {
     supabase,
@@ -161,55 +219,23 @@ export default async function TradeBinderDetailPage({
     playerId === userId;
 
   // ======================================================
-  // WISHLIST (P0E) - which of the cards shown in this binder has
-  // the viewer already wished, so the heart toggle here reflects
-  // the same state as the card detail page's Wish button.
+  // ALL CARDS (paged fetch) + the for-trade subset
   // ======================================================
 
-  const wishedCardIds = new Set<string>();
-
-  // ======================================================
-  // FOR-TRADE CARDS
-  // ======================================================
-
-  let forTradeCards;
-  let totalForTradeCount;
+  let owned;
 
   try {
-    const owned = await fetchOwnedCollection(
+    owned = await fetchOwnedCollection(
       supabase,
       playerId,
       membership.league_id
-    );
-
-    // Unfiltered count first, so the empty state can tell "this
-    // binder is genuinely empty" apart from "no card matches your
-    // filters" - same distinction Collection's own empty state makes
-    // (see totalCards === 0 in cards/collection/page.tsx). No extra
-    // query: both calls reuse the single already-fetched `owned` list.
-    totalForTradeCount = filterAndSortCollection(
-      owned,
-      {
-        forTrade: true,
-        sort: "name",
-      }
-    ).length;
-
-    forTradeCards = filterAndSortCollection(
-      owned,
-      {
-        q,
-        race,
-        forTrade: true,
-        sort: "name",
-      }
     );
   } catch (error) {
     return (
       <main className="mx-auto max-w-5xl px-4 py-8">
         <div className="panel p-6">
           <p className="font-bold text-red-300">
-            Binder kon niet worden geladen.
+            This binder could not be loaded.
           </p>
 
           <p className="mt-2 text-sm text-zinc-500">
@@ -222,25 +248,107 @@ export default async function TradeBinderDetailPage({
     );
   }
 
-  if (forTradeCards.length > 0) {
-    const { data: wishRows } = await supabase
-      .from("card_wishlist_items")
-      .select("card_catalog_id")
-      .eq("profile_id", userId)
-      .eq("league_id", membership.league_id)
-      .in(
-        "card_catalog_id",
-        forTradeCards.map((group) => group.card.id)
+  const totalUniqueCount =
+    owned.length;
+
+  const totalCopyCount =
+    owned.reduce(
+      (sum, group) =>
+        sum + group.quantity,
+      0
+    );
+
+  const forTradeUniqueCount =
+    owned.filter(
+      (group) =>
+        group.forTradeCount > 0
+    ).length;
+
+  const filteredCards =
+    filterAndSortCollection(
+      owned,
+      {
+        q,
+        race,
+        forTrade: show === "trade",
+        sort: "name",
+      }
+    );
+
+  const pageCount =
+    Math.max(
+      1,
+      Math.ceil(
+        filteredCards.length /
+          BINDER_PAGE_SIZE
+      )
+    );
+
+  const page =
+    Math.min(
+      requestedPage,
+      pageCount
+    );
+
+  const pageCards =
+    filteredCards.slice(
+      (page - 1) * BINDER_PAGE_SIZE,
+      page * BINDER_PAGE_SIZE
+    );
+
+  // ======================================================
+  // WISHLIST - only for the cards on this page (batched .in()).
+  // ======================================================
+
+  const wishedCardIds = new Set<string>();
+
+  if (pageCards.length > 0) {
+    try {
+      const wishRows = await fetchInBatches<
+        string,
+        {
+          card_catalog_id: string;
+        }
+      >(
+        pageCards.map((group) => group.card.id),
+        (batch, from, to) =>
+          supabase
+            .from("card_wishlist_items")
+            .select("card_catalog_id")
+            .eq("profile_id", userId)
+            .eq("league_id", membership.league_id)
+            .in("card_catalog_id", batch)
+            .order("card_catalog_id", { ascending: true })
+            .range(from, to)
       );
 
-    for (const row of wishRows ?? []) {
-      wishedCardIds.add(row.card_catalog_id as string);
+      for (const row of wishRows) {
+        wishedCardIds.add(row.card_catalog_id);
+      }
+    } catch {
+      // Hearts just render empty if the wishlist can't be read.
     }
   }
 
   const hasActiveFilters =
     Boolean(q) ||
     Boolean(race);
+
+  const tabs = [
+    {
+      key: "",
+      label: "All cards",
+      count: totalUniqueCount,
+    },
+    {
+      key: "trade",
+      label: "For trade",
+      count: forTradeUniqueCount,
+    },
+  ];
+
+  const name =
+    playerName(profile);
 
   // ======================================================
   // UI
@@ -271,26 +379,22 @@ export default async function TradeBinderDetailPage({
       {/* HEADER */}
 
       <header className="mt-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-black tracking-[.28em] text-amber-300">
-            TRADE BINDER
+            BINDER
           </p>
 
-          <h1 className="gold-text mt-2 text-4xl font-black">
-            {playerName(profile)}
+          <h1 className="gold-text mt-2 text-3xl font-black sm:text-4xl">
+            {name}
             {isOwnBinder ? " (You)" : ""}
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-            {totalForTradeCount === 0
-              ? "No physical copies marked for trade yet."
-              : hasActiveFilters
-                ? `${forTradeCards.length} of ${totalForTradeCount} card${
-                    totalForTradeCount === 1 ? "" : "s"
-                  } marked for trade shown.`
-                : `${totalForTradeCount} unique card${
-                    totalForTradeCount === 1 ? "" : "s"
-                  } currently marked for trade.`}
+            {totalUniqueCount === 0
+              ? "No cards yet."
+              : `${totalUniqueCount.toLocaleString("en-US")} unique card${
+                  totalUniqueCount === 1 ? "" : "s"
+                } (${totalCopyCount.toLocaleString("en-US")} copies) · ${forTradeUniqueCount} marked for trade.`}
           </p>
         </div>
 
@@ -300,23 +404,65 @@ export default async function TradeBinderDetailPage({
             className="primary-button inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 transition-all hover:-translate-y-0.5 active:scale-[0.97]"
           >
             <Repeat2 size={16} />
-            Start Trade with {playerName(profile)}
+            Start Trade with {name}
           </Link>
         )}
       </header>
 
-      {/* FILTERS - search + Monster Type only (this is a read-only,
-          already for-trade-scoped view, so rarity/card-type filters
-          weren't asked for here - Race is the one Track 6 explicitly
-          calls out, and search covers the rest). A plain GET form:
-          one query per page load, same as Collection's own filter
-          form, never a query per keystroke/selection. */}
+      {/* TABS: All cards / For trade */}
+
+      <div
+        role="tablist"
+        aria-label="Binder view"
+        className="mt-6 inline-flex rounded-2xl border border-white/10 bg-black/20 p-1"
+      >
+        {tabs.map((tab) => {
+          const active =
+            show === tab.key;
+
+          return (
+            <Link
+              key={tab.key || "all"}
+              role="tab"
+              aria-selected={active}
+              href={binderHref(playerId, {
+                q,
+                race,
+                show: tab.key,
+              })}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-bold transition-colors ${
+                active
+                  ? "bg-amber-300/15 text-amber-200"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              {tab.key === "trade" ? <Tag size={14} /> : null}
+              {tab.label}
+              <span className="text-xs font-semibold tabular-nums text-zinc-500">
+                {tab.count}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* FILTERS - plain GET form: one query per page load. */}
 
       <form
         method="get"
-        className="panel mt-6 grid gap-3 p-4 sm:grid-cols-[1fr_auto_auto_auto]"
+        className="panel mt-4 grid gap-3 p-4 sm:grid-cols-[1fr_auto_auto_auto]"
       >
+        {show ? (
+          <input
+            type="hidden"
+            name="show"
+            value={show}
+          />
+        ) : null}
+
         <label className="relative">
+          <span className="sr-only">Search this binder</span>
+
           <Search
             size={16}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
@@ -326,13 +472,19 @@ export default async function TradeBinderDetailPage({
             name="q"
             defaultValue={q}
             placeholder="Search this binder..."
-            className="field w-full pl-9"
+            className="field w-full"
+            // .field is unlayered CSS, so its padding beats a pl-*
+            // utility - keep room for the search icon explicitly.
+            style={{
+              paddingLeft: "2.5rem",
+            }}
           />
         </label>
 
         <select
           name="race"
           defaultValue={race}
+          aria-label="Monster type"
           className="field"
         >
           <option value="">
@@ -361,7 +513,11 @@ export default async function TradeBinderDetailPage({
 
         {hasActiveFilters && (
           <Link
-            href={`/trades/binder/${playerId}`}
+            href={binderHref(playerId, {
+              q: "",
+              race: "",
+              show,
+            })}
             className="inline-flex items-center justify-center rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-400 transition hover:bg-white/5 hover:text-zinc-200"
           >
             Clear
@@ -369,9 +525,18 @@ export default async function TradeBinderDetailPage({
         )}
       </form>
 
+      {filteredCards.length > 0 && (
+        <p className="mt-4 text-xs text-zinc-500">
+          {filteredCards.length === totalUniqueCount && !show
+            ? `${filteredCards.length} cards`
+            : `${filteredCards.length} card${filteredCards.length === 1 ? "" : "s"} shown`}
+          {pageCount > 1 ? ` · page ${page} of ${pageCount}` : ""}
+        </p>
+      )}
+
       {/* GRID */}
 
-      {forTradeCards.length === 0 ? (
+      {filteredCards.length === 0 ? (
         <section className="panel mt-8 p-10 text-center">
           <Tag
             size={36}
@@ -379,22 +544,26 @@ export default async function TradeBinderDetailPage({
           />
 
           <h2 className="mt-4 text-xl font-black">
-            {totalForTradeCount === 0
-              ? "Nothing here yet"
-              : "No cards match your filters"}
+            {hasActiveFilters
+              ? "No cards match your filters"
+              : show === "trade"
+                ? "Nothing marked for trade"
+                : "Nothing here yet"}
           </h2>
 
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
-            {totalForTradeCount === 0
-              ? isOwnBinder
-                ? "Mark physical copies as “For Trade” from a card's detail page to list them here."
-                : `${playerName(profile)} hasn't marked any cards for trade yet.`
-              : "Try clearing the search or Monster Type filter above."}
+            {hasActiveFilters
+              ? "Try clearing the search or Monster Type filter above."
+              : show === "trade"
+                ? isOwnBinder
+                  ? "Mark physical copies as “For Trade” from a card's detail page to list them here."
+                  : `${name} hasn't marked any cards for trade yet. You can still ask for any card in a trade offer.`
+                : `${name} doesn't own any cards yet.`}
           </p>
         </section>
       ) : (
-        <section className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {forTradeCards.map((group) => {
+        <section className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {pageCards.map((group) => {
             const { card } = group;
 
             const rarityName =
@@ -406,32 +575,54 @@ export default async function TradeBinderDetailPage({
 
             const isWished = wishedCardIds.has(card.id);
 
+            const forTrade =
+              group.forTradeCount > 0;
+
+            const returnTo =
+              binderHref(playerId, {
+                q,
+                race,
+                show,
+                page,
+              });
+
             return (
               <div key={card.id} className="relative">
               <Link
                 href={
-                  isOwnBinder
-                    ? `/cards/${card.id}?returnTo=${encodeURIComponent(
-                        `/trades/binder/${playerId}`
-                      )}`
-                    : `/trades/new/${playerId}`
+                  !isOwnBinder && forTrade
+                    ? `/trades/new/${playerId}`
+                    : `/cards/${card.id}?returnTo=${encodeURIComponent(returnTo)}`
                 }
-                className="panel group block transition-all duration-200 hover:-translate-y-1 hover:border-emerald-300/25"
+                className={`panel group block transition-all duration-200 hover:-translate-y-1 ${
+                  forTrade
+                    ? "border-emerald-300/30 hover:border-emerald-300/50"
+                    : "hover:border-amber-300/25"
+                }`}
               >
-                {card.image_url ? (
-                  <Image
-                    src={card.image_url}
-                    alt={card.name}
-                    width={421}
-                    height={614}
-                    className="aspect-[421/614] h-auto w-full rounded-t-2xl object-cover"
-                    unoptimized
-                  />
-                ) : (
-                  <div className="flex aspect-[421/614] items-center justify-center rounded-t-2xl bg-zinc-900 text-xs text-zinc-600">
-                    No image
-                  </div>
-                )}
+                <div className="relative">
+                  {card.image_url ? (
+                    <Image
+                      src={card.image_url}
+                      alt={card.name}
+                      width={421}
+                      height={614}
+                      className="aspect-[421/614] h-auto w-full rounded-t-2xl object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="flex aspect-[421/614] items-center justify-center rounded-t-2xl bg-zinc-900 text-xs text-zinc-600">
+                      No image
+                    </div>
+                  )}
+
+                  {forTrade ? (
+                    <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full border border-emerald-300/50 bg-emerald-950/85 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-200 shadow-lg backdrop-blur-sm">
+                      <Tag size={9} />
+                      For trade
+                    </span>
+                  ) : null}
+                </div>
 
                 <div className="p-3">
                   <p className="line-clamp-2 min-h-10 text-sm font-black leading-5 text-zinc-100">
@@ -446,10 +637,15 @@ export default async function TradeBinderDetailPage({
                       {rarityName}
                     </span>
 
-                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-200">
-                      <Tag size={8} />
-                      {group.forTradeCount} for trade
+                    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-zinc-300">
+                      ×{group.quantity}
                     </span>
+
+                    {forTrade && group.quantity > 1 ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-wider text-emerald-200">
+                        {group.forTradeCount} for trade
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               </Link>
@@ -467,20 +663,21 @@ export default async function TradeBinderDetailPage({
                 <input
                   type="hidden"
                   name="return_to"
-                  value={`/trades/binder/${playerId}`}
+                  value={returnTo}
                 />
 
                 <SubmitButton
                   pendingLabel="..."
-                  className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border backdrop-blur-sm transition-all ${
+                  className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border backdrop-blur-sm transition-all ${
                     isWished
                       ? "border-rose-400/50 bg-rose-400/25 text-rose-200"
                       : "border-white/15 bg-black/40 text-zinc-300 hover:border-rose-300/40 hover:text-rose-200"
                   }`}
                 >
                   <Heart
-                    size={12}
+                    size={13}
                     fill={isWished ? "currentColor" : "none"}
+                    aria-label={isWished ? "Remove from wishlist" : "Add to wishlist"}
                   />
                 </SubmitButton>
               </form>
@@ -488,6 +685,49 @@ export default async function TradeBinderDetailPage({
             );
           })}
         </section>
+      )}
+
+      {/* PAGER */}
+
+      {pageCount > 1 && (
+        <nav
+          aria-label="Binder pages"
+          className="mt-6 flex items-center justify-center gap-3"
+        >
+          {page > 1 ? (
+            <Link
+              href={binderHref(playerId, {
+                q,
+                race,
+                show,
+                page: page - 1,
+              })}
+              className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-white/10 px-4 text-sm font-bold text-zinc-300 transition hover:border-amber-300/30 hover:text-amber-200"
+            >
+              <ChevronLeft size={16} />
+              Previous
+            </Link>
+          ) : null}
+
+          <span className="text-sm tabular-nums text-zinc-500">
+            {page} / {pageCount}
+          </span>
+
+          {page < pageCount ? (
+            <Link
+              href={binderHref(playerId, {
+                q,
+                race,
+                show,
+                page: page + 1,
+              })}
+              className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-white/10 px-4 text-sm font-bold text-zinc-300 transition hover:border-amber-300/30 hover:text-amber-200"
+            >
+              Next
+              <ChevronRight size={16} />
+            </Link>
+          ) : null}
+        </nav>
       )}
     </main>
   );

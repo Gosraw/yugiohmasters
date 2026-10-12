@@ -229,13 +229,13 @@ export default async function TradeBinderPage() {
         </p>
 
         <h1 className="gold-text mt-2 text-4xl font-black">
-          Who&apos;s Trading?
+          Binders
         </h1>
 
         <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-          League members who have marked physical copies as available for
-          trade. Open a binder to see exactly which cards, then start a
-          trade offer directly from there.
+          Open a league member&apos;s binder to see every card they own.
+          Copies they marked as available are labelled &ldquo;For
+          trade&rdquo;; start a trade offer straight from there.
         </p>
       </header>
 
@@ -304,14 +304,12 @@ export default async function TradeBinderPage() {
                   className={`mt-5 text-sm font-black ${
                     entry.count > 0
                       ? "text-emerald-300 group-hover:text-emerald-200"
-                      : "text-zinc-600"
+                      : "text-zinc-400 group-hover:text-amber-200"
                   }`}
                 >
                   {entry.count > 0
-                    ? `${entry.count} card${
-                        entry.count === 1 ? "" : "s"
-                      } for trade →`
-                    : "Nothing marked for trade"}
+                    ? `All cards · ${entry.count} for trade →`
+                    : "Browse all cards →"}
                 </p>
               </Link>
             ))}

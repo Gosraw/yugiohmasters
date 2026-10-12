@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { fetchAllPages } from "@/lib/supabase/paginate";
 
 import {
   ArrowLeft,
@@ -8,6 +7,10 @@ import {
   Tag,
   UserRound,
 } from "lucide-react";
+
+import {
+  fetchAllPages,
+} from "@/lib/supabase/paginate";
 
 import {
   requireUser,

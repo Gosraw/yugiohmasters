@@ -20,6 +20,7 @@ import {
   Swords,
   Trophy,
   UserRound,
+  Vote,
   Zap,
 } from "lucide-react";
 
@@ -793,6 +794,42 @@ export default async function DashboardPage() {
             </div>
           </section>
         )}
+
+        {/* ==================================================
+            CARD VOTE
+        ================================================== */}
+
+        <Link
+          href="/vote"
+          className="group mt-6 flex items-center justify-between gap-4 rounded-2xl border border-amber-300/25 bg-gradient-to-r from-amber-300/[0.08] via-black/30 to-black/40 p-5 transition-all hover:-translate-y-0.5 hover:border-amber-300/45 active:scale-[0.99]"
+        >
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-300/30 bg-amber-300/10 text-amber-300">
+              <Vote
+                size={21}
+              />
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-xs font-black tracking-[.2em] text-amber-300">
+                CARD VOTE
+              </p>
+
+              <p className="mt-1 text-sm font-black text-zinc-100 group-hover:text-amber-100">
+                Rate the card pool
+              </p>
+
+              <p className="mt-0.5 text-xs leading-5 text-zinc-500">
+                Is each card&apos;s rarity or ban right? Vote with the group.
+              </p>
+            </div>
+          </div>
+
+          <ArrowRight
+            size={17}
+            className="shrink-0 text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-amber-300"
+          />
+        </Link>
 
  {/* ==================================================
     DUELIST PROGRESSION

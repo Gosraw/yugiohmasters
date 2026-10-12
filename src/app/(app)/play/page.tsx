@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import {
   ChevronRight,
+  Gamepad2,
   History,
   Swords,
   Timer,
@@ -42,9 +43,8 @@ import {
 //   - Duel Companion: Life Points counter, dice, coin, timer.
 //   - League standings: the league table.
 //
-// TODO(2.0 mini games): add the Climber and Auto battler
-// entries here once they exist (plan steps 10-11). Don't add
-// a "coming soon" placeholder card in the meantime.
+// Mini games live on their own /games hub (Pyramid Climb, Auto
+// Battler) with daily/weekly leaderboards.
 // =========================================================
 
 type PlayLink = {
@@ -60,6 +60,12 @@ const LINKS: PlayLink[] = [
     label: "Practice Duel",
     description: "Played a friendly duel? Tap who won. Add a DP or card wager if you dare.",
     icon: Swords,
+  },
+  {
+    href: "/games",
+    label: "Mini Games",
+    description: "Pyramid Climb and more — daily and weekly leaderboards with rewards.",
+    icon: Gamepad2,
   },
   {
     href: "/duel-companion",

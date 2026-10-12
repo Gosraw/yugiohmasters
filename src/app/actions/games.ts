@@ -9,6 +9,10 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  createAdminClient,
+} from "@/lib/supabase/admin";
+
+import {
   ENGINE_VERSION,
   validateRun,
 } from "@/lib/games/climber-engine";
@@ -256,9 +260,12 @@ export async function submitClimberRun(
         );
 
   if (!verdict.ok) {
-    await supabase.rpc(
+    // Service-role only RPC: the profile id is the SESSION user,
+    // never anything the client sent.
+    await createAdminClient().rpc(
       "reject_game_run",
       {
+        p_profile_id: userId,
         target_run_id: runId,
         target_reason: verdict.reason,
         target_ticks: Number.isInteger(ticks) ? ticks : null,
@@ -277,9 +284,10 @@ export async function submitClimberRun(
   const {
     data: submitData,
     error: submitError,
-  } = await supabase.rpc(
+  } = await createAdminClient().rpc(
     "submit_game_run",
     {
+      p_profile_id: userId,
       target_run_id: runId,
       target_score: verdict.score,
       target_ticks: verdict.ticks,

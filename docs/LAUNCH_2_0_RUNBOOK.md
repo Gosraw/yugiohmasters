@@ -133,6 +133,8 @@ Als laatste regel moet je `SEASON 2 RESET APPLIED (committed).` zien.
 
 ### Stap 5: De nieuwe app live zetten
 
+**Vooraf in Vercel:** `SUPABASE_SECRET_KEY` moet gezet zijn (server-only env var, nooit `NEXT_PUBLIC_`); zonder die sleutel worden mini-game-scores (Pyramid Climb / Shadow Arena) niet opgeslagen.
+
 Pas nu wordt de `v2`-branch samengevoegd met `main`. Vercel zet de nieuwe app dan vanzelf live.
 Laat dit door de ontwikkelaar doen, of doe het zelf als je weet hoe.
 Wacht tot Vercel "Ready" zegt.

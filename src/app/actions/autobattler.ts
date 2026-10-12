@@ -9,6 +9,10 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  createAdminClient,
+} from "@/lib/supabase/admin";
+
+import {
   ENGINE_VERSION,
   turnSeconds,
   validateRun,
@@ -308,9 +312,12 @@ export async function submitArenaRun(
   }
 
   if (!verdict.ok) {
-    await supabase.rpc(
+    // Service-role only RPC: the profile id is the SESSION user,
+    // never anything the client sent.
+    await createAdminClient().rpc(
       "reject_game_run",
       {
+        p_profile_id: userId,
         target_run_id: runId,
         target_reason: verdict.reason,
         target_ticks: null,
@@ -330,9 +337,10 @@ export async function submitArenaRun(
   const {
     data: submitData,
     error: submitError,
-  } = await supabase.rpc(
+  } = await createAdminClient().rpc(
     "submit_game_run",
     {
+      p_profile_id: userId,
       target_run_id: runId,
       target_score: verdict.score,
       // "Ticks" for the shared real-time sanity check: at least

@@ -1,0 +1,467 @@
+<title>Season 2 Card Vote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Night Temple: one card in focus at a time on a lapis/obsidian table, gold for decisions. */
+:root {
+  color-scheme: dark;
+  --bg: #070a17;
+  --panel: #0f1630;
+  --panel-2: #141d3d;
+  --line: rgba(242, 196, 90, .22);
+  --line-soft: rgba(255, 255, 255, .08);
+  --ink: #ece6d6;
+  --muted: #9aa0b8;
+  --gold: #f2c45a;
+  --gold-ink: #241a05;
+  --agree: #3fbf8a;
+  --strong: #e0675a;
+  --weak: #5aa8e0;
+  --display: "Cinzel", "Times New Roman", serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); }
+body { margin: 0; font-family: var(--body); font-size: 15px; line-height: 1.45; padding-inline: 16px; padding-block: 16px 40px; }
+.wrap { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: .03em; margin: 0; text-wrap: balance; }
+.eyebrow { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+.muted { color: var(--muted); }
+.head { display: flex; flex-direction: column; gap: 4px; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--panel); border: 1px solid var(--line-soft); border-radius: 14px; padding: 4px; }
+.tab { border: 0; border-radius: 10px; padding: 10px; font: 600 14px var(--body); color: var(--muted); background: transparent; cursor: pointer; min-height: 44px; }
+.tab[aria-selected="true"] { background: var(--panel-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.players { display: flex; flex-wrap: wrap; gap: 8px; }
+.player { display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line-soft); font-size: 13px; }
+.player img { width: 24px; height: 24px; border-radius: 50%; }
+.player b { font-variant-numeric: tabular-nums; font-weight: 600; }
+.bar { height: 6px; border-radius: 6px; background: rgba(255,255,255,.08); overflow: hidden; }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg, #c8922b, var(--gold)); }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; border: 1px solid var(--line-soft); background: var(--panel); color: var(--muted); border-radius: 999px; padding: 7px 12px; font: 500 13px var(--body); cursor: pointer; min-height: 36px; white-space: nowrap; }
+.chip[aria-pressed="true"] { color: var(--gold-ink); background: var(--gold); border-color: var(--gold); }
+.card { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.art { position: relative; aspect-ratio: 16 / 10; background: #000 center / cover no-repeat; }
+.art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(7,10,23,.95)); }
+.art .over { position: absolute; left: 14px; right: 14px; bottom: 12px; z-index: 1; display: flex; flex-direction: column; gap: 6px; }
+.name { font-family: var(--display); font-weight: 700; font-size: 20px; line-height: 1.2; text-wrap: balance; }
+.badge { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1px solid; letter-spacing: .02em; }
+.b-Legendary { color: #ffe39a; border-color: rgba(242,196,90,.6); background: rgba(242,196,90,.14); }
+.b-Secret { color: #f2c8ff; border-color: rgba(214,140,255,.5); background: rgba(214,140,255,.12); }
+.b-Ultra { color: #bfe3ff; border-color: rgba(120,190,255,.5); background: rgba(120,190,255,.12); }
+.b-Super { color: #bdf2d6; border-color: rgba(90,210,150,.45); background: rgba(90,210,150,.1); }
+.b-forbidden { color: #ffc9c2; border-color: rgba(224,103,90,.6); background: rgba(224,103,90,.14); }
+.b-limited_1 { color: #ffd9b0; border-color: rgba(240,160,80,.55); background: rgba(240,160,80,.12); }
+.b-other { color: var(--ink); border-color: var(--line-soft); background: rgba(255,255,255,.05); }
+.body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.reason { font-size: 14px; }
+.meta { font-size: 12px; color: var(--muted); }
+details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+details p { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.choices { display: grid; gap: 8px; }
+.choice { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; width: 100%; min-height: 56px; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--line-soft); background: rgba(255,255,255,.04); color: var(--ink); font: 600 15px var(--body); cursor: pointer; transition: transform .12s ease, background .12s ease; }
+.choice small { font-weight: 400; font-size: 12px; color: var(--muted); }
+.choice:active { transform: scale(.98); }
+.choice.agree[aria-pressed="true"] { background: rgba(63,191,138,.18); border-color: var(--agree); }
+.choice.too_strong[aria-pressed="true"] { background: rgba(224,103,90,.18); border-color: var(--strong); }
+.choice.too_weak[aria-pressed="true"] { background: rgba(90,168,224,.18); border-color: var(--weak); }
+.choice:focus-visible, .tab:focus-visible, .chip:focus-visible, .nav button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.nav { display: flex; justify-content: space-between; gap: 8px; }
+.nav button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--line-soft); background: var(--panel); color: var(--ink); font: 600 14px var(--body); cursor: pointer; }
+.nav button:disabled { opacity: .4; cursor: default; }
+.notice { border: 1px solid var(--line); background: rgba(242,196,90,.08); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
+.done { text-align: center; padding: 28px 16px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.done .big { font-family: var(--display); font-size: 22px; color: var(--gold); }
+.rlist { display: flex; flex-direction: column; gap: 10px; }
+.rgroup h2 { font-family: var(--display); font-size: 16px; margin: 10px 0 6px; }
+.row { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: start; padding: 10px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line-soft); }
+.row .thumb { width: 56px; height: 56px; border-radius: 10px; background: #000 center / cover no-repeat; }
+.row .info { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.row .top { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.row .title { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+.arrow { color: var(--muted); font-size: 12px; }
+.tally { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
+.tally span { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,.05); }
+.tally img { width: 16px; height: 16px; border-radius: 50%; }
+.dot-agree { color: var(--agree); } .dot-too_strong { color: var(--strong); } .dot-too_weak { color: var(--weak); }
+.toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.toggle input { width: 18px; height: 18px; accent-color: var(--gold); }
+.empty { color: var(--muted); font-size: 14px; padding: 16px; text-align: center; }
+@media (prefers-reduced-motion: reduce) { .choice { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="eyebrow">Duelist Circle · Season 2</div>
+    <h1>Card Vote</h1>
+    <div class="muted" id="intro">Bossg, Samo and Fardin vote on the proposed rarities and bans for the new card pool. Majority wins; on a tie, Gosraw's vote decides.</div>
+  </header>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <div class="players" id="players" aria-label="Who voted"></div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-vote" aria-selected="true">Vote</button>
+    <button class="tab" role="tab" id="tab-results" aria-selected="false">Results</button>
+  </div>
+
+  <section id="vote-view">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <span class="muted" id="progress-label">0 / 0 voted</span>
+        <label class="toggle"><input type="checkbox" id="only-open" checked> Skip voted cards</label>
+      </div>
+      <div class="bar"><i id="progress-bar" style="width:0%"></i></div>
+      <div class="chips" id="chips"></div>
+      <div id="card-slot"></div>
+    </div>
+  </section>
+
+  <section id="results-view" hidden>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <label class="toggle"><input type="checkbox" id="only-changes"> Only cards where the vote changes the proposal</label>
+      <div class="chips" id="rchips"></div>
+      <div class="rlist" id="results"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const ALL = DATA.flatMap((list) => list.items.map((item) => ({ ...item, list: list.key })));
+const BY_ID = new Map(ALL.map((item) => [item.id, item]));
+const LADDER = ["Normal", "Rare", "Super Rare", "Ultra Rare", "Secret Rare", "Legendary"];
+
+function verdictLabel(v) {
+  return { forbidden: "Forbidden", limited_1: "Max 1 per deck", unlimited: "3 per deck", allowed: "Allowed" }[v] || v;
+}
+function resolveVerdict(verdict, vote) {
+  if (vote === "agree") return verdict;
+  if (verdict === "forbidden") return vote === "too_weak" ? "allowed" : "forbidden";
+  if (verdict === "limited_1") return vote === "too_strong" ? "forbidden" : "unlimited";
+  if (verdict === "Legendary") return vote === "too_strong" ? "forbidden" : "Secret Rare";
+  const i = LADDER.indexOf(verdict);
+  if (i < 0) return verdict;
+  return LADDER[vote === "too_strong" ? Math.min(i + 1, LADDER.length - 1) : Math.max(i - 1, 0)];
+}
+function options(verdict) {
+  return verdict === "forbidden" ? ["agree", "too_weak"] : ["agree", "too_strong", "too_weak"];
+}
+function choiceText(verdict, vote) {
+  if (verdict === "forbidden") {
+    return vote === "agree" ? ["Keep it out", "It stays forbidden"] : ["Allow it", "Let it into the card pool"];
+  }
+  const result = verdictLabel(resolveVerdict(verdict, vote));
+  if (vote === "agree") return ["Agree", "Keep it at " + verdictLabel(verdict)];
+  if (vote === "too_strong") return ["Too strong", result === "Forbidden" ? "Ban it" : "Make it " + result];
+  return ["Too weak", "Make it " + result];
+}
+function badgeClass(v) {
+  if (v === "Legendary") return "b-Legendary";
+  if (v === "Secret Rare") return "b-Secret";
+  if (v === "Ultra Rare") return "b-Ultra";
+  if (v === "Super Rare") return "b-Super";
+  if (v === "forbidden") return "b-forbidden";
+  if (v === "limited_1") return "b-limited_1";
+  return "b-other";
+}
+function el(tag, attrs = {}, kids = []) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "text") node.textContent = v;
+    else if (k === "class") node.className = v;
+    else if (k === "style") node.setAttribute("style", v);
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else node.setAttribute(k, v);
+  }
+  for (const kid of [].concat(kids)) if (kid != null) node.append(kid);
+  return node;
+}
+
+// ---------- state ----------
+let db = null, user = null, uid = null, isOwner = false;
+let canWrite = true;
+let votes = {};            // uid -> { cardId: vote }
+let ownerId = null;
+let myDocExists = false;
+const mine = {};           // my votes, optimistic
+let listFilter = "all", rFilter = "all";
+let cursor = ALL[0]?.id ?? null;
+let tab = "vote";
+
+function myVote(id) { return mine[id] ?? votes[uid]?.[id]; }
+function filtered(listKey) { return listKey === "all" ? ALL : ALL.filter((i) => i.list === listKey); }
+function votedCount() { return ALL.filter((i) => myVote(i.id)).length; }
+
+function nextFrom(id, step = 1) {
+  const pool = filtered(listFilter);
+  if (!pool.length) return null;
+  const only = document.getElementById("only-open").checked;
+  let i = pool.findIndex((x) => x.id === id);
+  for (let n = 0; n < pool.length; n++) {
+    i = (i + step + pool.length) % pool.length;
+    if (!only || step < 0 || !myVote(pool[i].id)) return pool[i].id;
+  }
+  return null;
+}
+
+// ---------- render: players ----------
+async function renderPlayers() {
+  const box = document.getElementById("players");
+  const ids = Object.keys(votes);
+  if (uid && !ids.includes(uid)) ids.unshift(uid);
+  box.replaceChildren();
+  if (!ids.length) return;
+  const ps = user ? await user.profiles(ids) : {};
+  for (const id of ids) {
+    const p = ps[id] || {};
+    const n = id === uid ? votedCount() : Object.keys(votes[id] || {}).length;
+    const name = id === uid ? (p.name || "You") + " (you)" : (p.name || "Someone");
+    box.append(el("span", { class: "player" }, [
+      p.avatarUrl ? el("img", { src: p.avatarUrl, alt: "" }) : null,
+      el("span", { text: name }),
+      el("b", { text: n + " / " + ALL.length }),
+    ]));
+  }
+}
+
+// ---------- render: vote ----------
+function renderChips(boxId, current, onPick) {
+  const box = document.getElementById(boxId);
+  box.replaceChildren();
+  const all = [{ key: "all", title: "All cards" }, ...DATA];
+  for (const list of all) {
+    const pool = filtered(list.key);
+    const done = pool.filter((i) => myVote(i.id)).length;
+    const label = list.key === "all" ? "All" : list.title.replace(/ route$/, "").replace(/^Proposed: /, "");
+    box.append(el("button", {
+      class: "chip", "aria-pressed": String(current === list.key),
+      text: boxId === "chips" ? label + " " + done + "/" + pool.length : label,
+      onclick: () => onPick(list.key),
+    }));
+  }
+}
+
+function renderVote() {
+  const n = votedCount();
+  document.getElementById("progress-label").textContent = n + " / " + ALL.length + " voted";
+  document.getElementById("progress-bar").style.width = (100 * n / ALL.length).toFixed(1) + "%";
+  renderChips("chips", listFilter, (key) => { listFilter = key; cursor = filtered(key)[0]?.id ?? null; if (myVote(cursor) && document.getElementById("only-open").checked) cursor = nextFrom(cursor) ?? cursor; renderVote(); });
+
+  const slot = document.getElementById("card-slot");
+  slot.replaceChildren();
+  const pool = filtered(listFilter);
+  const only = document.getElementById("only-open").checked;
+  if (only && pool.every((i) => myVote(i.id))) {
+    slot.append(el("div", { class: "card done" }, [
+      el("div", { class: "big", text: "All voted" }),
+      el("div", { class: "muted", text: listFilter === "all" ? "You voted on every card. Check the Results tab, or untick “Skip voted cards” to change a vote." : "You voted on every card in this list. Pick another list above." }),
+    ]));
+    return;
+  }
+  const item = BY_ID.get(cursor) || pool[0];
+  if (!item) { slot.append(el("div", { class: "empty", text: "No cards here." })); return; }
+  cursor = item.id;
+  const list = DATA.find((l) => l.key === item.list);
+  const current = myVote(item.id);
+
+  const choices = el("div", { class: "choices" });
+  options(item.verdict).forEach((vote, idx) => {
+    const [title, hint] = choiceText(item.verdict, vote);
+    choices.append(el("button", {
+      class: "choice " + vote, "aria-pressed": String(current === vote), "data-key": String(idx + 1),
+      disabled: canWrite && uid ? null : "",
+      onclick: () => castVote(item.id, vote),
+    }, [el("span", { text: title }), el("small", { text: hint })]));
+  });
+  for (const b of choices.querySelectorAll("button")) if (b.getAttribute("disabled") === null) b.removeAttribute("disabled");
+
+  slot.append(el("article", { class: "card" }, [
+    el("div", { class: "art", style: item.img ? "background-image:url(" + item.img + ")" : "" }, [
+      el("div", { class: "over" }, [
+        el("span", { class: "badge " + badgeClass(item.verdict), text: "Proposal: " + verdictLabel(item.verdict) }),
+        el("div", { class: "name", text: item.name }),
+      ]),
+    ]),
+    el("div", { class: "body" }, [
+      el("div", { class: "meta", text: (list ? list.title : "") + (item.type ? " · " + item.type : "") }),
+      el("div", { class: "reason", text: item.context }),
+      item.text ? el("details", {}, [el("summary", { text: "Card text" }), el("p", { text: item.text })]) : null,
+      choices,
+      el("div", { class: "nav" }, [
+        el("button", { text: "← Back", onclick: () => { cursor = nextFrom(cursor, -1) ?? cursor; renderVote(); } }),
+        el("button", { text: "Skip →", onclick: () => { cursor = nextFrom(cursor, 1) ?? cursor; renderVote(); } }),
+      ]),
+    ]),
+  ]));
+}
+
+// ---------- voting ----------
+let writing = Promise.resolve();
+function castVote(id, vote) {
+  if (!db || !uid || !canWrite) return;
+  mine[id] = vote;
+  renderVote();
+  renderPlayers();
+  const ref = db.doc("votes/" + uid);
+  writing = writing.then(async () => {
+    try {
+      if (!myDocExists) {
+        await ref.set({ v: { ...(votes[uid] || {}), ...mine } });
+        myDocExists = true;
+      } else {
+        await ref.update({ v: { [id]: vote } });
+      }
+      if (isOwner && ownerId !== uid) {
+        await db.doc("meta/owner").set({ id: uid });
+        ownerId = uid;
+      }
+    } catch (e) {
+      if (e && e.code === "invalid_argument") {
+        canWrite = false;
+        showNotice("You can see the vote but not cast one. Ask Gosraw to share this page with you as Editor (by email).");
+        renderVote();
+      } else {
+        showNotice("Your last vote didn't save (" + (e && e.code || "error") + "). Tap it again in a moment.");
+      }
+    }
+  });
+  setTimeout(() => {
+    if (cursor === id) { cursor = nextFrom(id, 1) ?? id; renderVote(); }
+  }, 260);
+}
+
+// ---------- results ----------
+function outcome(item) {
+  const counts = {};
+  const who = {};
+  for (const [voter, v] of Object.entries(votes)) {
+    const vote = voter === uid ? myVote(item.id) : v[item.id];
+    if (!vote) continue;
+    counts[vote] = (counts[vote] || 0) + 1;
+    (who[vote] = who[vote] || []).push(voter);
+  }
+  if (uid && !votes[uid] && myVote(item.id)) { const v = myVote(item.id); counts[v] = (counts[v] || 0) + 1; (who[v] = who[v] || []).push(uid); }
+  const max = Math.max(0, ...Object.values(counts));
+  const top = Object.keys(counts).filter((k) => counts[k] === max);
+  let winner = null, how = "";
+  if (max === 0) how = "No votes yet";
+  else if (top.length === 1) winner = top[0];
+  else {
+    const ownerVote = ownerId ? (ownerId === uid ? myVote(item.id) : votes[ownerId]?.[item.id]) : null;
+    if (ownerVote && top.includes(ownerVote)) { winner = ownerVote; how = "tie, Gosraw decides"; }
+    else how = "Tied";
+  }
+  return { counts, who, winner, how };
+}
+
+async function renderResults() {
+  renderChips("rchips", rFilter, (key) => { rFilter = key; renderResults(); });
+  const box = document.getElementById("results");
+  const onlyChanges = document.getElementById("only-changes").checked;
+  const ids = Object.keys(votes);
+  const ps = user && ids.length ? await user.profiles(ids) : {};
+  box.replaceChildren();
+  let shown = 0;
+  for (const list of DATA) {
+    if (rFilter !== "all" && rFilter !== list.key) continue;
+    const rows = [];
+    for (const item of list.items) {
+      const o = outcome(item);
+      const result = o.winner ? resolveVerdict(item.verdict, o.winner) : null;
+      const changed = result && result !== item.verdict;
+      if (onlyChanges && !changed) continue;
+      const tally = el("div", { class: "tally" });
+      for (const vote of options(item.verdict)) {
+        const people = (o.who[vote] || []);
+        tally.append(el("span", {}, [
+          el("b", { class: "dot-" + vote, text: "●" }),
+          el("span", { text: choiceText(item.verdict, vote)[0] + " " + people.length }),
+          ...people.map((p) => ps[p]?.avatarUrl ? el("img", { src: ps[p].avatarUrl, alt: ps[p].name || "voter", title: ps[p].name || "" }) : null),
+        ]));
+      }
+      rows.push(el("div", { class: "row" }, [
+        el("div", { class: "thumb", style: item.img ? "background-image:url(" + item.img + ")" : "" }),
+        el("div", { class: "info" }, [
+          el("div", { class: "title", text: item.name }),
+          el("div", { class: "top" }, [
+            el("span", { class: "badge " + badgeClass(item.verdict), text: verdictLabel(item.verdict) }),
+            el("span", { class: "arrow", text: "→" }),
+            result
+              ? el("span", { class: "badge " + badgeClass(result), text: verdictLabel(result) + (o.how ? " (" + o.how + ")" : "") })
+              : el("span", { class: "muted", style: "font-size:12px", text: o.how }),
+          ]),
+          tally,
+        ]),
+      ]));
+    }
+    if (!rows.length) continue;
+    shown += rows.length;
+    box.append(el("div", { class: "rgroup" }, [el("h2", { text: list.title }), ...rows]));
+  }
+  if (!shown) box.append(el("div", { class: "empty", text: onlyChanges ? "No card changes from its proposal yet." : "No results yet." }));
+}
+
+// ---------- shell ----------
+function showNotice(text) {
+  const n = document.getElementById("notice");
+  n.textContent = text;
+  n.hidden = false;
+}
+function setTab(next) {
+  tab = next;
+  document.getElementById("tab-vote").setAttribute("aria-selected", String(next === "vote"));
+  document.getElementById("tab-results").setAttribute("aria-selected", String(next === "results"));
+  document.getElementById("vote-view").hidden = next !== "vote";
+  document.getElementById("results-view").hidden = next !== "results";
+  if (next === "results") renderResults(); else renderVote();
+}
+document.getElementById("tab-vote").addEventListener("click", () => setTab("vote"));
+document.getElementById("tab-results").addEventListener("click", () => setTab("results"));
+document.getElementById("only-open").addEventListener("change", renderVote);
+document.getElementById("only-changes").addEventListener("change", renderResults);
+document.addEventListener("keydown", (e) => {
+  if (tab !== "vote" || e.target.closest("input")) return;
+  const b = document.querySelector('.choice[data-key="' + e.key + '"]');
+  if (b && !b.disabled) b.click();
+  if (e.key === "ArrowRight") { cursor = nextFrom(cursor, 1) ?? cursor; renderVote(); }
+  if (e.key === "ArrowLeft") { cursor = nextFrom(cursor, -1) ?? cursor; renderVote(); }
+});
+
+renderVote();
+
+(async () => {
+  const api = window.claude;
+  if (!api || !api.use) { showNotice("Open this page in Claude (signed in) to vote."); return; }
+  [db, user] = await Promise.all([api.use("db"), api.use("user")]);
+  if (user) {
+    uid = await user.id();
+    isOwner = await user.isOwner();
+    const w = await user.can("data.write");
+    if (w === false && !isOwner) { /* own subtree may still be writable; let a refused write decide */ }
+  }
+  if (!db || !uid) {
+    showNotice("You can look around, but voting needs you to be signed in to Claude with access to this page.");
+    renderVote();
+    return;
+  }
+  db.collection("votes").onSnapshot((snap) => {
+    const next = {};
+    for (const d of snap.docs) next[d.id] = (d.data() || {}).v || {};
+    votes = next;
+    myDocExists = !!next[uid];
+    if (tab === "results") renderResults(); else renderVote();
+    renderPlayers();
+  }, () => showNotice("Live updates stopped. Reload the page to see the latest votes."));
+  db.doc("meta/owner").onSnapshot((snap) => {
+    ownerId = snap.exists ? (snap.data() || {}).id || null : null;
+    if (tab === "results") renderResults();
+  });
+  if (myVote(cursor) && document.getElementById("only-open").checked) cursor = nextFrom(cursor) ?? cursor;
+  renderVote();
+  renderPlayers();
+})();
+</script>

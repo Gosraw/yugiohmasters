@@ -58,10 +58,69 @@ function requiredString(
 // own numbers.
 // =========================================================
 
+// outcome (2.0, 202610121800_season_result_confirmation): a
+// player's tap is only a claim until the opponent confirms it -
+// "awaiting_confirmation" / "disputed" mean nothing was paid yet.
+export type MatchResultOutcome =
+  | "completed"
+  | "awaiting_confirmation"
+  | "disputed";
+
 export type MatchResultActionState =
   | { status: "idle" }
   | { status: "error"; error: string }
-  | { status: "success"; summary: MatchSettlementSummary | null };
+  | {
+      status: "success";
+      summary: MatchSettlementSummary | null;
+      outcome?: MatchResultOutcome;
+    };
+
+type ActionSupabase =
+  Awaited<
+    ReturnType<typeof requireUser>
+  >["supabase"];
+
+async function readMatchOutcome(
+  supabase: ActionSupabase,
+  matchId: string
+): Promise<MatchResultOutcome> {
+  const {
+    data,
+  } = await supabase
+    .from("matches")
+    .select("status")
+    .eq("id", matchId)
+    .maybeSingle();
+
+  const status =
+    (data as { status: string } | null)?.status;
+
+  if (status === "result_submitted") {
+    return "awaiting_confirmation";
+  }
+
+  if (status === "disputed") {
+    return "disputed";
+  }
+
+  return "completed";
+}
+
+function revalidateRoundPaths(
+  competitionId: string
+) {
+  revalidatePath(
+    `/competitions/${competitionId}`
+  );
+
+  revalidatePath(
+    `/competitions/${competitionId}/round`
+  );
+
+  revalidatePath("/");
+  revalidatePath("/play");
+  revalidatePath("/attention");
+}
 
 
 // =========================================================
@@ -720,16 +779,23 @@ export async function submitCompetitionMatchResultV2(
     };
   }
 
-  revalidatePath(
-    `/competitions/${competitionId}`
+  revalidateRoundPaths(
+    competitionId
   );
 
-  revalidatePath(
-    `/competitions/${competitionId}/round`
-  );
+  const outcome =
+    await readMatchOutcome(
+      supabase,
+      matchId
+    );
 
-  revalidatePath("/");
-  revalidatePath("/play");
+  if (outcome !== "completed") {
+    return {
+      status: "success",
+      summary: null,
+      outcome,
+    };
+  }
 
   let summary: MatchSettlementSummary | null = null;
 
@@ -748,7 +814,122 @@ export async function submitCompetitionMatchResultV2(
   return {
     status: "success",
     summary,
+    outcome,
   };
+}
+
+// =========================================================
+// V2 - CONFIRM / DISPUTE / WITHDRAW A PLAYER'S RESULT
+//
+// 202610121800_season_result_confirmation: the opponent confirms
+// (pays out through the normal completion path) or disputes (a
+// league admin decides); the submitter can withdraw their own claim
+// until it is confirmed. All checks (who may do what) live in the
+// database functions.
+// =========================================================
+
+async function runClaimAction(
+  formData: FormData,
+  rpc:
+    | "confirm_competition_match_result"
+    | "dispute_competition_match_result"
+    | "withdraw_competition_match_result"
+): Promise<MatchResultActionState> {
+  const {
+    supabase,
+  } = await requireUser();
+
+  let matchId: string;
+  let competitionId: string;
+
+  try {
+    matchId = requiredString(formData, "match_id");
+    competitionId = requiredString(formData, "competition_id");
+  } catch (err) {
+    return {
+      status: "error",
+      error: err instanceof Error ? err.message : "Invalid form submission.",
+    };
+  }
+
+  const settledFrom = new Date().toISOString();
+
+  const {
+    error,
+  } = await supabase.rpc(
+    rpc,
+    {
+      target_match_id:
+        matchId,
+    }
+  );
+
+  if (error) {
+    return {
+      status: "error",
+      error: error.message,
+    };
+  }
+
+  revalidateRoundPaths(
+    competitionId
+  );
+
+  if (rpc !== "confirm_competition_match_result") {
+    return {
+      status: "success",
+      summary: null,
+      outcome:
+        rpc === "dispute_competition_match_result"
+          ? "disputed"
+          : "awaiting_confirmation",
+    };
+  }
+
+  let summary: MatchSettlementSummary | null = null;
+
+  try {
+    summary = await buildMatchSettlementSummary(supabase, {
+      matchId,
+      competitionId,
+      settledFrom,
+    });
+  } catch {
+    summary = null;
+  }
+
+  return {
+    status: "success",
+    summary,
+    outcome: "completed",
+  };
+}
+
+export async function confirmCompetitionMatchResult(
+  formData: FormData
+): Promise<MatchResultActionState> {
+  return runClaimAction(
+    formData,
+    "confirm_competition_match_result"
+  );
+}
+
+export async function disputeCompetitionMatchResult(
+  formData: FormData
+): Promise<MatchResultActionState> {
+  return runClaimAction(
+    formData,
+    "dispute_competition_match_result"
+  );
+}
+
+export async function withdrawCompetitionMatchResult(
+  formData: FormData
+): Promise<MatchResultActionState> {
+  return runClaimAction(
+    formData,
+    "withdraw_competition_match_result"
+  );
 }
 
 // =========================================================

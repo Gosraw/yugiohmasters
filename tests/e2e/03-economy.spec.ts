@@ -29,8 +29,9 @@ import {
 } from "./helpers/users";
 
 // Economy bot: one full competition round with all 3 players
-// (everyone plays everyone once = 3 matches). The admin records each
-// winner on the competition page, then every DP / voucher grant must
+// (everyone plays everyone once = 3 matches). The admin sends their
+// two winners on the competition page and samo the third on the round
+// screen; each opponent confirms. Then every DP / voucher grant must
 // match economy-rules.ts exactly - and nothing may be paid twice when
 // a result is resubmitted or pages are refreshed.
 
@@ -147,11 +148,22 @@ test("a player who is not in the duel (and not admin) cannot record it", async (
   expect(row.s).not.toBe("completed");
 });
 
-test("the admin records all 3 winners on the competition page", async ({ page }) => {
+// 2.0 (202610121800_season_result_confirmation): a result sent by a
+// player - also by the admin when they play in the duel - only counts
+// after the opponent confirms it. Nothing is paid before that.
+async function confirmAs(username: Username, matchId: string) {
+  const confirmed = await rpcAs(username, "confirm_competition_match_result", {
+    target_match_id: matchId,
+  });
+
+  expect(confirmed.error, `${username} confirms`).toBeNull();
+}
+
+test("the admin sends both of their duels on the competition page; the opponent confirms", async ({ page }) => {
   test.setTimeout(300_000);
   await login(page, ADMIN);
 
-  for (const match of matches) {
+  for (const match of matches.filter((m) => pairKey(m) !== "fardin|samo")) {
     const winner = WINNER_OF[pairKey(match)];
 
     await page.goto(`/competitions/${competitionId}`);
@@ -164,9 +176,72 @@ test("the admin records all 3 winners on the competition page", async ({ page })
 
     await expect.poll(
       async () => (await db()`select status::text as s from public.matches where id = ${match.id}`)[0].s,
-      { message: `match ${pairKey(match)} saved`, timeout: 60_000 }
-    ).toBe("completed");
+      { message: `match ${pairKey(match)} sent`, timeout: 60_000 }
+    ).toBe("result_submitted");
+
+    const [paid] = await db()`select count(*)::int as n from public.duel_point_transactions where match_id = ${match.id}`;
+
+    expect(paid.n, "no DP before the opponent confirms").toBe(0);
+
+    // The admin cannot confirm their own result.
+    const self = await rpcAs(ADMIN, "confirm_competition_match_result", { target_match_id: match.id });
+
+    expect(self.error ?? "").toMatch(/opponent has to confirm/i);
+
+    const opponent = names[match.player_one_id] === ADMIN ? names[match.player_two_id] : names[match.player_one_id];
+
+    await confirmAs(opponent, match.id);
+
+    const [row] = await db()`select status::text as s from public.matches where id = ${match.id}`;
+
+    expect(row.s).toBe("completed");
   }
+});
+
+test("samo taps the winner on the round screen, fardin confirms with one tap", async ({ browser, baseURL }) => {
+  test.setTimeout(300_000);
+  const match = matches.find((m) => pairKey(m) === "fardin|samo");
+
+  expect(match).toBeTruthy();
+
+  const phone = { viewport: { width: 375, height: 812 }, baseURL };
+
+  const samoContext = await browser.newContext(phone);
+  const samo = await samoContext.newPage();
+
+  await login(samo, "samo");
+  await samo.goto(`/competitions/${competitionId}/round`);
+  await samo.getByRole("button", { name: /^samo\s*won$/i }).click();
+  await samo.getByRole("button", { name: "Save now" }).click();
+
+  await expect.poll(
+    async () => (await db()`select status::text as s from public.matches where id = ${match?.id ?? null}`)[0].s,
+    { message: "samo's result is waiting", timeout: 60_000 }
+  ).toBe("result_submitted");
+
+  await expect(samo.getByText("Waiting for fardin to confirm").first()).toBeVisible();
+  await samoContext.close();
+
+  const [round] = await db()`
+    select count(*)::int as n from public.competition_round_reward_grants where competition_id = ${competitionId}
+  `;
+
+  expect(round.n, "the round does not settle before the last confirmation").toBe(0);
+
+  const fardinContext = await browser.newContext(phone);
+  const fardin = await fardinContext.newPage();
+
+  await login(fardin, "fardin");
+  await fardin.goto(`/competitions/${competitionId}/round`);
+  await expect(fardin.getByText("samo says samo won")).toBeVisible();
+  await fardin.getByRole("button", { name: "Confirm", exact: true }).click();
+
+  await expect.poll(
+    async () => (await db()`select status::text as s from public.matches where id = ${match?.id ?? null}`)[0].s,
+    { message: "fardin confirmed", timeout: 60_000 }
+  ).toBe("completed");
+
+  await fardinContext.close();
 });
 
 test("every grant is exact: match DP + full-round rewards", async () => {

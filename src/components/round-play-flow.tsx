@@ -13,15 +13,21 @@ import {
 
 import {
   CheckCircle2,
+  Clock3,
   Crown,
   LoaderCircle,
   PartyPopper,
+  ShieldAlert,
   Swords,
   Undo2,
 } from "lucide-react";
 
 import {
+  confirmCompetitionMatchResult,
+  disputeCompetitionMatchResult,
   submitCompetitionMatchResultV2,
+  withdrawCompetitionMatchResult,
+  type MatchResultActionState,
 } from "@/app/actions/competitions";
 
 import {
@@ -45,6 +51,14 @@ import {
 // page, so the next open pairing slides in. Finishing the last
 // duel of a round shows a "Round N complete" banner above the next
 // round; the DP itself arrives through the global reward pop-up.
+//
+// Confirmation (202610121800_season_result_confirmation): a
+// player's tap is a claim - the pairing then shows "Waiting for
+// <opponent> to confirm" and the flow moves on to the next pairing.
+// The opponent gets "<name> says <winner> won" with one-tap Confirm
+// (or Dispute) as their focused card. An admin who does not play in
+// the duel is the referee: their tap is final, also on a waiting or
+// disputed duel. The round completes when every duel is confirmed.
 // =========================================================
 
 export type RoundPairing = {
@@ -57,8 +71,13 @@ export type RoundPairing = {
     id: string;
     name: string;
   };
-  status: "open" | "completed";
+  status: "open" | "awaiting" | "disputed" | "completed";
+  // While awaiting/disputed: the CLAIMED winner (not final yet).
   winnerId: string | null;
+  submittedById: string | null;
+  loserScore: 0 | 1;
+  // The viewer is a league admin who does not play in this duel.
+  isReferee: boolean;
   canSubmit: boolean;
 };
 
@@ -69,13 +88,33 @@ type Pending = {
 };
 
 type Saved = {
+  kind: "completed" | "confirmed" | "awaiting" | "disputed" | "withdrawn";
   round: number;
   winnerName: string;
   loserName: string;
+  opponentName: string;
   roundComplete: boolean;
 };
 
 const UNDO_WINDOW_MS = 2200;
+
+function nameOf(
+  pairing: RoundPairing,
+  profileId: string | null
+) {
+  return profileId === pairing.playerOne.id
+    ? pairing.playerOne.name
+    : pairing.playerTwo.name;
+}
+
+function otherOf(
+  pairing: RoundPairing,
+  profileId: string | null
+) {
+  return profileId === pairing.playerOne.id
+    ? pairing.playerTwo
+    : pairing.playerOne;
+}
 
 function scoreFor(
   pairing: RoundPairing,
@@ -125,7 +164,11 @@ export function RoundPlayFlow({
     startSaving,
   ] = useTransition();
 
-  const open = pairings.filter(
+  const unfinished = pairings.filter(
+    (pairing) => pairing.status !== "completed"
+  );
+
+  const open = unfinished.filter(
     (pairing) => pairing.status === "open"
   );
 
@@ -133,19 +176,46 @@ export function RoundPlayFlow({
     (pairing) => pairing.status === "completed"
   );
 
-  // Prefer a duel the viewer plays in, so each player lands on
-  // their own next duel when they open the page.
+  const plays = (
+    pairing: RoundPairing
+  ) =>
+    pairing.playerOne.id === currentUserId ||
+    pairing.playerTwo.id === currentUserId;
+
+  const needsMyConfirm = (
+    pairing: RoundPairing
+  ) =>
+    pairing.status === "awaiting" &&
+    plays(pairing) &&
+    pairing.submittedById !== currentUserId;
+
+  const waitsOnOpponent = (
+    pairing: RoundPairing
+  ) =>
+    pairing.status === "awaiting" &&
+    pairing.submittedById === currentUserId;
+
+  // First a result waiting for MY confirmation, then a duel the
+  // viewer plays in, so each player lands on what needs them; my
+  // own claims waiting on the opponent come last.
   const defaultFocus =
+    unfinished.find(needsMyConfirm) ??
     open.find(
       (pairing) =>
         pairing.canSubmit &&
-        (pairing.playerOne.id === currentUserId ||
-          pairing.playerTwo.id === currentUserId)
+        plays(pairing)
     ) ??
     open.find(
       (pairing) => pairing.canSubmit
     ) ??
-    open[0];
+    unfinished.find(
+      (pairing) =>
+        pairing.status === "disputed" &&
+        pairing.canSubmit
+    ) ??
+    open[0] ??
+    unfinished.find(waitsOnOpponent) ??
+    unfinished[0];
 
   const [
     chosenId,
@@ -153,7 +223,7 @@ export function RoundPlayFlow({
   ] = useState<string | null>(null);
 
   const focused =
-    open.find(
+    unfinished.find(
       (pairing) => pairing.id === chosenId
     ) ?? defaultFocus;
 
@@ -256,8 +326,17 @@ export function RoundPlayFlow({
         : pairing.playerOne.name;
 
     const roundComplete =
-      open.length === 1 &&
-      open[0].id === pairing.id;
+      pairings.every(
+        (item) =>
+          item.id === pairing.id ||
+          item.status === "completed"
+      );
+
+    const opponentName =
+      otherOf(
+        pairing,
+        currentUserId
+      ).name;
 
     startSaving(async () => {
       const result =
@@ -275,7 +354,7 @@ export function RoundPlayFlow({
       if (result.status === "error") {
         // Someone else (the opponent on their own phone) was
         // faster: the duel is already recorded, just reload.
-        if (/already has a result/i.test(result.error)) {
+        if (/already has a (confirmed )?result/i.test(result.error)) {
           setError(
             "This duel was already recorded by someone else."
           );
@@ -289,16 +368,135 @@ export function RoundPlayFlow({
 
       setError(null);
 
+      const outcome =
+        result.status === "success"
+          ? result.outcome ?? "completed"
+          : "completed";
+
       setSaved({
+        kind:
+          outcome === "awaiting_confirmation"
+            ? "awaiting"
+            : outcome,
         round: roundNumber,
         winnerName,
         loserName,
-        roundComplete,
+        opponentName,
+        roundComplete:
+          outcome === "completed" &&
+          roundComplete,
       });
 
-      play(roundComplete ? "roundComplete" : "chime");
+      play(
+        outcome === "completed" && roundComplete
+          ? "roundComplete"
+          : "chime"
+      );
 
-      requestRewardCheck();
+      if (outcome === "completed") {
+        requestRewardCheck();
+      }
+
+      router.refresh();
+    });
+  }
+
+  // Confirm / dispute (the opponent) or withdraw (the submitter) a
+  // player's claim.
+  function answerClaim(
+    pairing: RoundPairing,
+    kind: "confirm" | "dispute" | "withdraw"
+  ) {
+    if (
+      kind === "dispute" &&
+      !window.confirm(
+        "Dispute this result? A league admin will decide who won."
+      )
+    ) {
+      return;
+    }
+
+    if (
+      kind === "withdraw" &&
+      !window.confirm(
+        "Withdraw your result? You can tap the winner again afterwards."
+      )
+    ) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.set("match_id", pairing.id);
+    formData.set("competition_id", competitionId);
+
+    const winnerName =
+      nameOf(
+        pairing,
+        pairing.winnerId
+      );
+
+    const loserName =
+      otherOf(
+        pairing,
+        pairing.winnerId
+      ).name;
+
+    const opponentName =
+      otherOf(
+        pairing,
+        currentUserId
+      ).name;
+
+    const roundComplete =
+      pairings.every(
+        (item) =>
+          item.id === pairing.id ||
+          item.status === "completed"
+      );
+
+    setError(null);
+    setSaved(null);
+
+    startSaving(async () => {
+      const action =
+        kind === "confirm"
+          ? confirmCompetitionMatchResult
+          : kind === "dispute"
+            ? disputeCompetitionMatchResult
+            : withdrawCompetitionMatchResult;
+
+      const result: MatchResultActionState =
+        await action(formData);
+
+      setChosenId(null);
+
+      if (result.status === "error") {
+        setError(result.error);
+        router.refresh();
+        return;
+      }
+
+      setSaved({
+        kind:
+          kind === "confirm"
+            ? "confirmed"
+            : kind === "dispute"
+              ? "disputed"
+              : "withdrawn",
+        round: roundNumber,
+        winnerName,
+        loserName,
+        opponentName,
+        roundComplete:
+          kind === "confirm" &&
+          roundComplete,
+      });
+
+      if (kind === "confirm") {
+        play(roundComplete ? "roundComplete" : "chime");
+        requestRewardCheck();
+      }
+
       router.refresh();
     });
   }
@@ -461,7 +659,15 @@ export function RoundPlayFlow({
           <span>
             {saved.roundComplete
               ? `Round ${saved.round} complete! ${saved.winnerName} beat ${saved.loserName}.`
-              : `${saved.winnerName} beat ${saved.loserName}.`}
+              : saved.kind === "awaiting"
+                ? `Sent! Waiting for ${saved.opponentName} to confirm.`
+                : saved.kind === "disputed"
+                  ? "Result disputed. A league admin will decide who won."
+                  : saved.kind === "withdrawn"
+                    ? "Result withdrawn. Tap the winner again when you're ready."
+                    : saved.kind === "confirmed"
+                      ? `Confirmed: ${saved.winnerName} beat ${saved.loserName}.`
+                      : `${saved.winnerName} beat ${saved.loserName}.`}
           </span>
         </div>
       )}
@@ -490,7 +696,9 @@ export function RoundPlayFlow({
                   ? "bg-amber-300"
                   : pairing.id === focused?.id
                     ? "bg-amber-300/35"
-                    : "bg-white/[0.08]"
+                    : pairing.status === "awaiting"
+                      ? "bg-zinc-400/40"
+                      : "bg-white/[0.08]"
               }`}
             />
           )
@@ -620,8 +828,115 @@ export function RoundPlayFlow({
                 Back
               </button>
             </div>
+          ) : focused.status === "awaiting" && !focused.isReferee ? (
+            <div className="mt-4 rounded-2xl border border-amber-300/25 bg-amber-300/[0.06] p-4 text-center">
+              <p className="text-base font-black text-amber-100">
+                {focused.submittedById === currentUserId
+                  ? "You said "
+                  : `${nameOf(focused, focused.submittedById)} says `}
+                {nameOf(focused, focused.winnerId)} won
+                {matchFormat === "best_of_3"
+                  ? ` 2–${focused.loserScore}`
+                  : ""}
+              </p>
+
+              {needsMyConfirm(focused) ? (
+                <>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    Is that right? It only counts once you confirm.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      answerClaim(
+                        focused,
+                        "confirm"
+                      )
+                    }
+                    disabled={isSaving}
+                    className="primary-button mt-3 inline-flex min-h-14 w-full items-center justify-center gap-2 text-base"
+                  >
+                    {isSaving ? (
+                      <LoaderCircle
+                        size={17}
+                        className="animate-spin motion-reduce:animate-none"
+                      />
+                    ) : (
+                      <CheckCircle2
+                        size={17}
+                      />
+                    )}
+                    Confirm
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      answerClaim(
+                        focused,
+                        "dispute"
+                      )
+                    }
+                    disabled={isSaving}
+                    className="mt-2 inline-flex w-full items-center justify-center gap-1.5 py-2 text-xs font-bold text-zinc-500 transition-colors hover:text-red-300 disabled:opacity-40"
+                  >
+                    <ShieldAlert
+                      size={13}
+                    />
+                    That&apos;s wrong — dispute
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-zinc-300">
+                    <Clock3
+                      size={14}
+                      className="text-amber-300"
+                    />
+                    Waiting for{" "}
+                    {otherOf(focused, focused.submittedById).name} to confirm
+                  </p>
+
+                  {waitsOnOpponent(focused) && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        answerClaim(
+                          focused,
+                          "withdraw"
+                        )
+                      }
+                      disabled={isSaving}
+                      className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-[var(--dc-radius-md)] border border-white/15 px-3 py-2.5 text-sm font-black text-zinc-200 transition-colors hover:border-white/30 disabled:opacity-40"
+                    >
+                      <Undo2
+                        size={15}
+                      />
+                      Withdraw my result
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           ) : (
             <>
+              {focused.status === "disputed" && (
+                <p className="mt-4 rounded-xl border border-red-400/25 bg-red-400/[0.06] px-3 py-2.5 text-center text-xs font-bold text-red-200">
+                  {focused.isReferee
+                    ? "Disputed — tap the right winner. As admin, your decision is final."
+                    : "Disputed — a league admin will decide. Or send a new result for your opponent to confirm."}
+                </p>
+              )}
+
+              {focused.status === "awaiting" && focused.isReferee && (
+                <p className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/[0.05] px-3 py-2.5 text-center text-xs font-bold text-amber-100">
+                  {nameOf(focused, focused.submittedById)} says{" "}
+                  {nameOf(focused, focused.winnerId)} won — waiting for{" "}
+                  {otherOf(focused, focused.submittedById).name}. As admin you can set the result now.
+                </p>
+              )}
+
               <p className="mt-4 text-center text-[11px] font-black uppercase tracking-[.2em] text-zinc-500">
                 Who won?
               </p>
@@ -658,11 +973,15 @@ export function RoundPlayFlow({
                 )}
               </div>
 
-              {!focused.canSubmit && (
+              {!focused.canSubmit ? (
                 <p className="mt-3 text-center text-xs text-zinc-500">
                   Only {focused.playerOne.name}, {focused.playerTwo.name} or the admin can record this duel.
                 </p>
-              )}
+              ) : !focused.isReferee && plays(focused) ? (
+                <p className="mt-3 text-center text-xs text-zinc-500">
+                  {otherOf(focused, currentUserId).name} confirms it on their phone before it counts.
+                </p>
+              ) : null}
             </>
           )}
         </section>
@@ -674,14 +993,14 @@ export function RoundPlayFlow({
 
       {/* UP NEXT */}
 
-      {open.length > 1 && (
+      {unfinished.length > 1 && (
         <div className="mt-3">
           <p className="text-[10px] font-black uppercase tracking-[.2em] text-zinc-500">
             Also this round
           </p>
 
           <ul className="mt-1.5 grid gap-1.5">
-            {open
+            {unfinished
               .filter(
                 (pairing) => pairing.id !== focused?.id
               )
@@ -701,8 +1020,23 @@ export function RoundPlayFlow({
                         {pairing.playerOne.name} vs {pairing.playerTwo.name}
                       </span>
 
-                      <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-amber-300/80">
-                        Play this
+                      <span
+                        className={`shrink-0 text-[10px] font-black uppercase tracking-wider ${
+                          pairing.status === "disputed"
+                            ? "text-red-300/80"
+                            : pairing.status === "awaiting" &&
+                                !needsMyConfirm(pairing)
+                              ? "text-zinc-500"
+                              : "text-amber-300/80"
+                        }`}
+                      >
+                        {pairing.status === "disputed"
+                          ? "Disputed"
+                          : needsMyConfirm(pairing)
+                            ? "Confirm"
+                            : pairing.status === "awaiting"
+                              ? `Waiting for ${otherOf(pairing, pairing.submittedById).name}`
+                              : "Play this"}
                       </span>
                     </button>
                   </li>

@@ -145,7 +145,13 @@ export function CompetitionMatchResultFormV2({
     return (
       <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-300/[0.04] p-3 text-xs font-black text-emerald-200">
         <CheckCircle2 size={14} />
-        {mode === "correct" ? "Correction saved." : "Result saved."}
+        {mode === "correct"
+          ? "Correction saved."
+          : state.outcome === "awaiting_confirmation"
+            ? "Result sent - the opponent confirms it before it counts."
+            : state.outcome === "disputed"
+              ? "Different results sent - this duel is now disputed."
+              : "Result saved."}
       </div>
     );
   }

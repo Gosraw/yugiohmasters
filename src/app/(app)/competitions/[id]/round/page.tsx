@@ -52,8 +52,11 @@ export const dynamic =
 //
 // Either player of a duel (or the admin) records it by tapping the
 // winner (submit_competition_match_result_v2, migration
-// 202610120600). Match DP, round rewards and the reward pop-up all
-// come from the database; this page only reads them back.
+// 202610120600). A player's tap waits for the opponent to confirm
+// it (202610121800_season_result_confirmation); an admin who does
+// not play in the duel is the referee and their tap is final. Match
+// DP, round rewards and the reward pop-up all come from the
+// database; this page only reads them back.
 // =========================================================
 
 type CompetitionRow = {
@@ -73,6 +76,7 @@ type MatchRow = {
   player_two_id: string;
   status: string;
   winner_id: string | null;
+  result_submitted_by: string | null;
   round_number: number | null;
   tiebreak_id: string | null;
   player_one_duel_wins: number;
@@ -230,7 +234,7 @@ export default async function CompetitionRoundPage({
         supabase
           .from("matches")
           .select(
-            "id,player_one_id,player_two_id,status,winner_id,round_number,tiebreak_id,player_one_duel_wins,player_two_duel_wins"
+            "id,player_one_id,player_two_id,status,winner_id,result_submitted_by,round_number,tiebreak_id,player_one_duel_wins,player_two_duel_wins"
           )
           .eq("competition_id", competitionId)
           .order("round_number", { ascending: true, nullsFirst: false })
@@ -408,8 +412,24 @@ export default async function CompetitionRoundPage({
       status:
         match.status === "completed"
           ? "completed"
-          : "open",
+          : match.status === "result_submitted"
+            ? "awaiting"
+            : match.status === "disputed"
+              ? "disputed"
+              : "open",
       winnerId: match.winner_id,
+      submittedById: match.result_submitted_by,
+      loserScore:
+        Math.min(
+          match.player_one_duel_wins,
+          match.player_two_duel_wins
+        ) === 1
+          ? 1
+          : 0,
+      isReferee:
+        isAdmin &&
+        match.player_one_id !== userId &&
+        match.player_two_id !== userId,
       canSubmit:
         competition.status === "active" &&
         (isAdmin ||

@@ -32,8 +32,10 @@ type AttentionMatch = {
   player_two_id: string;
   result_submitted_by: string | null;
   // Optional so callers that don't select it keep compiling; when
-  // present, scheduled season duels are skipped (they're played from
-  // the round screen, not accepted one by one).
+  // present, scheduled season duels are not "challenges" (they're
+  // played from the round screen, not accepted one by one), but a
+  // season result the opponent sent still needs MY confirmation
+  // (202610121800_season_result_confirmation).
   competition_id?: string | null;
 };
 
@@ -57,6 +59,19 @@ export function computeAttentionItems(
 
   for (const match of matches) {
     if (match.competition_id) {
+      if (
+        match.status === "result_submitted" &&
+        match.result_submitted_by !== userId
+      ) {
+        items.push({
+          id: `match-confirm-${match.id}`,
+          href: `/competitions/${match.competition_id}/round`,
+          label: "Confirm your season duel result",
+          hint: "Your opponent sent a result - confirm or dispute it.",
+          kind: "confirm",
+        });
+      }
+
       continue;
     }
 
@@ -171,7 +186,7 @@ export async function getDisputedDuelAttentionItems(
 
   const { data, error } = await supabase
     .from("matches")
-    .select("id,player_one_id,player_two_id")
+    .select("id,player_one_id,player_two_id,competition_id")
     .eq("league_id", leagueId)
     .eq("status", "disputed")
     .order("disputed_at", { ascending: true })
@@ -183,6 +198,7 @@ export async function getDisputedDuelAttentionItems(
     id: string;
     player_one_id: string;
     player_two_id: string;
+    competition_id: string | null;
   }[];
 
   const ids = [
@@ -207,7 +223,11 @@ export async function getDisputedDuelAttentionItems(
 
   return rows.map((row) => ({
     id: `match-dispute-${row.id}`,
-    href: `/matches/${row.id}`,
+    // A season duel is decided on its competition page (admin result
+    // form); a practice duel on its own match page.
+    href: row.competition_id
+      ? `/competitions/${row.competition_id}`
+      : `/matches/${row.id}`,
     label: "Duel disputed — needs a decision",
     hint: `${names.get(row.player_one_id) ?? "Duelist"} vs ${
       names.get(row.player_two_id) ?? "Duelist"

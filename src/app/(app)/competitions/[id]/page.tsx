@@ -1987,6 +1987,18 @@ export default async function CompetitionDetailPage({
                   </p>
                 )}
 
+                {match.status === "result_submitted" && (
+                  <p className="mt-2 text-xs font-black text-amber-200/80">
+                    Result sent — waiting for the opponent to confirm.
+                  </p>
+                )}
+
+                {match.status === "disputed" && (
+                  <p className="mt-2 text-xs font-black text-red-300">
+                    Disputed — a league admin sets the right result.
+                  </p>
+                )}
+
                 {isAdmin &&
                   match.status !== "completed" && (
                     <CompetitionMatchResultFormV2

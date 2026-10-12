@@ -132,7 +132,9 @@ as $$
     and pg_temp.uid_of(b) in (player_one_id, player_two_id);
 $$;
 
--- Submit (as bossg, the admin) `winner` beating `loser` 1-0.
+-- Submit (as bossg, the admin) `winner` beating `loser` 1-0. When
+-- bossg plays in the duel the result waits for the opponent
+-- (202610121800_season_result_confirmation), so the opponent confirms.
 create function pg_temp.submit_winner(target_competition_id uuid, winner text, loser text, target_meeting integer default 1)
 returns uuid
 language plpgsql
@@ -148,6 +150,11 @@ begin
     case when m.player_one_id = pg_temp.uid_of(winner) then 1 else 0 end,
     case when m.player_two_id = pg_temp.uid_of(winner) then 1 else 0 end
   );
+
+  if (select status from public.matches where id = m.id) = 'result_submitted' then
+    perform pg_temp.act_as(case when winner = 'bossg' then loser else winner end);
+    perform public.confirm_competition_match_result(m.id);
+  end if;
 
   return m.id;
 end;

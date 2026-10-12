@@ -211,6 +211,7 @@ Dat zet alles terug naar het moment van de back-up.
 | `202610121650_standard_pack_name.sql` | Display name of pack `normal` → 'Standard Pack' (codes unchanged). | shop |
 | `202610121700_trade_privacy_season_start_bounty_wording.sql` | Draft trades visible only to their creator (+ `save_trade_draft_message`), one-transaction `start_season_competition`, clearer reversed-bounty wording. On old main, the sender's link to a counter still in draft shows a 404. | trades, competitions |
 | `202610121710_boss_stage1_achievements_english.sql` | Translates the 9 Dutch stage-1 Boss achievement labels. | boss achievements |
+| `202610121800_season_result_confirmation.sql` | A player-entered season result only counts after the opponent confirms (new confirm/dispute/withdraw RPCs; admin who isn't playing = referee). **Changes live behaviour immediately — launch night only.** | competitions, matches |
 
 **Backwards compatibility.** These migrations share the production database with the live `main` app.
 `202610121000` takes effect immediately: Master Duel-forbidden cards that are already `format_eligible` become offerable in the live draft and shop.

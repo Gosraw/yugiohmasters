@@ -175,6 +175,15 @@ Strong cards are fine; **unfair cards are not**.
 
 ## Open
 
-- Research: what "legacy cards" means in Master Duel unlimited rooms.
+- ~~Research: what "legacy cards" means~~ → "Legacy" = MD's free Legacy
+  Pack (~4,000 cards, can't be dismantled) — fully playable in
+  Unlimited rooms, so NOT an exclusion. Only "not in Master Duel"
+  excludes (23 Classic cards). See docs/cardpool-v2-foundation.md.
+- Owner decisions: Boss-route clashes with the concept (Chaos Emperor
+  Dragon is the Chaos/BLS stage-4 boss; Dark Magician of Chaos was
+  forbidden in 2014; board-wipe support grants vs "1 per league"; the
+  Cubic route is all post-2014). Proposal: Boss evolution monsters and
+  exclusive route grants are exempt from pool rules.
+- Owner approval: season simulator numbers (docs/season-sim-report.md).
 - Connect ElevenLabs.
 - Weekly goals deep-dive with owner.

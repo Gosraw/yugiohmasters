@@ -160,6 +160,29 @@ the owner's Mac (Cowork-style), some things to know:
   manual_deploy SQL, reports). Not yet reviewed against `main` — check
   before reusing anything from it.
 
+## Local test stack (2.0, no Docker)
+
+The Mac is short on disk, so the test DB is a native Postgres +
+Supabase stand-in, not `supabase start`:
+
+- `node scripts/devstack/db.mjs reset|start|stop|migrate` — Postgres 17
+  on 127.0.0.1:54322; `reset` replays every migration (plus the nested
+  folder and `manual_deploy/20260902_season1_release.sql`, like prod),
+  seeds the TCG catalog and the 3 test accounts
+  (`scripts/devstack/test-users.json`). Known-broken committed
+  migrations are patched in memory only — see `MIGRATION_PATCHES`.
+- `node scripts/devstack/gateway.mjs` — PostgREST + a minimal GoTrue
+  stand-in on :54321.
+- `node scripts/devstack/dev.mjs` — `next dev` on :3100 forced to the
+  local gateway (never .env.local / production).
+- Tests: `npx vitest run`, `node scripts/sql-tests/run.mjs` (each file
+  rolled back), `npx playwright test --workers=1` (bots; their global
+  setup RESETS the local DB), `npm run check:sql`.
+- `proxy.ts` must live in `src/` (the app is in `src/app`); the root
+  copy was never loaded before 2.0.
+- Plan and decisions: `docs/V2_PLAN.md`; launch steps:
+  `docs/LAUNCH_2_0_RUNBOOK.md`.
+
 ## Where things are
 
 - `src/app/(app)/` — the logged-in app: Home dashboard (`page.tsx`),
@@ -175,7 +198,7 @@ the owner's Mac (Cowork-style), some things to know:
 - `src/components/` — shared UI. Notable ones: `submit-button.tsx` /
   `confirm-submit-button.tsx` (pending/confirm form buttons),
   `action-feedback-banner.tsx` (the global success/error banner),
-  `bottom-nav.tsx` (mobile nav — currently 10 items), `page-header.tsx`
+  `bottom-nav.tsx` (mobile nav — 5 items since 2.0: Home · Play · Cards · Shop · Profile), `page-header.tsx`
   / `empty-state.tsx` / `stat-card.tsx` / `status-badge.tsx` (shared
   building blocks), `pack-opening-reveal.tsx` (Shop pack-opening
   animation — see Known Issues), `samo-rival-intro.tsx` (easter egg).

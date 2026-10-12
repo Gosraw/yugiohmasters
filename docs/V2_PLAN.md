@@ -139,8 +139,9 @@ Strong cards are fine; **unfair cards are not**.
 ## Look & feel
 
 - New **Millennium / Egypt** style for season 2 (old gold, sandstone,
-  hieroglyphs, mysterious light). Make 2–3 designs; provisional pick
-  allowed, owner may switch.
+  hieroglyphs, mysterious light). **Decided 2026-10-12: option B
+  "Night Temple"** (obsidian/lapis + glowing gold; see
+  docs/design/v2-style-options.html). A and C are not built.
 - Whole app should feel impressive: smooth motion everywhere, big
   moments for pack opening, Legendary pulls, Boss evolution, results,
   champion reveal.

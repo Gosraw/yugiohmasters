@@ -15,7 +15,7 @@ de echte database van je vrienden is **niet aangeraakt**.
 | Kaartrangschikking opnieuw + stem-scherm in de app | ✅ |
 | Beloningen gerepareerd + getest | ✅ |
 | Seizoen-simulator met voorstel-cijfers | ✅ wacht op jouw OK |
-| Millennium-stijl: 3 ontwerpen, voorlopig **B — Night Temple** | ✅ jij mag nog wisselen |
+| Millennium-stijl: **B — Night Temple** | ✅ gekozen door jou (12 okt) |
 | Nieuw menu (Home · Play · Cards · Shop · Profile) + opruimen | ✅ |
 | Nieuwe deck builder (telefoon eerst, slim zoeken) | ✅ |
 | Duels: tik op de winnaar + "This Round"-scherm + seizoenscompetitie | ✅ |
@@ -97,7 +97,7 @@ draft één keer, Samo-paaseitje staat er nog, decklimieten).
 
 ## Wat jij moet beslissen
 
-1. **Stijl:** open `docs/design/v2-style-options.html` — A, **B** of C?
+1. ~~Stijl~~ → **B gekozen** ✅
 2. **Cijfers** (`docs/season-sim-report.md`): Boss 1.800 / 3.200 / 5.500,
    2e/3e route 3.000 / 5.500, rondeplaatsen 350/200/100, weekdoelen,
    Seizoenspad, premie 75 / inhaal 50, mini-games, perk-limiet 600/week.

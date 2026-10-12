@@ -1,8 +1,6 @@
 import Link from "next/link";
 import {
-  ArrowLeft,
   CheckCircle2,
-  House,
   Layers3,
   Plus,
   ShieldCheck,
@@ -10,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { requireUser } from "@/lib/supabase/queries";
+import { CardsHubTabs } from "@/components/cards-hub-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -432,23 +431,7 @@ export default async function DecksPage() {
     <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       {/* NAV */}
 
-      <nav className="flex flex-wrap items-center gap-3">
-        <Link
-          href="/"
-          className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/5 px-3 py-2 text-sm font-bold text-amber-300 transition-all hover:-translate-x-0.5 hover:border-amber-300/40 hover:bg-amber-300/10 hover:text-amber-200 active:scale-95"
-        >
-          <ArrowLeft size={17} />
-          Back
-        </Link>
-
-        <Link
-          href="/"
-          className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-sm font-bold text-zinc-400 transition-all hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.06] hover:text-zinc-100 active:scale-95"
-        >
-          <House size={16} />
-          Home
-        </Link>
-      </nav>
+      <CardsHubTabs active="decks" />
 
       {/* HEADER */}
 

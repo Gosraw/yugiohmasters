@@ -1,11 +1,9 @@
 import Link from "next/link";
 
 import {
-  ArrowLeft,
   BookOpen,
   CheckCircle2,
   Clock3,
-  Home,
   History,
   LockKeyhole,
   MessageSquareText,
@@ -26,6 +24,10 @@ import {
   getPrimaryBossIdentities,
   type BossIdentity,
 } from "@/lib/boss-identity";
+
+import {
+  CardsHubTabs,
+} from "@/components/cards-hub-tabs";
 
 export const dynamic =
   "force-dynamic";
@@ -758,29 +760,9 @@ export default async function TradesPage() {
             NAVIGATION
         ================================================== */}
 
-        <nav className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/"
-            className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/5 px-3 py-2 text-sm font-bold text-amber-300 transition-all hover:border-amber-300/40 hover:bg-amber-300/10 active:scale-95"
-          >
-            <ArrowLeft
-              size={17}
-            />
-
-            Back
-          </Link>
-
-          <Link
-            href="/"
-            className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-sm font-bold text-zinc-400 transition-all hover:border-white/20 hover:text-zinc-100"
-          >
-            <Home
-              size={16}
-            />
-
-            Home
-          </Link>
-        </nav>
+        <CardsHubTabs
+          active="trades"
+        />
 
         {/* ==================================================
             HERO

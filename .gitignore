@@ -13,3 +13,4 @@ data/external/
 
 # local dev/test stack (scripts/devstack)
 .devstack/
+.next-devstack

@@ -185,7 +185,7 @@ export default async function BossHubPage() {
       <div className="relative mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
         <nav className="flex flex-wrap items-center gap-3">
           <Link
-            href="/explore"
+            href="/profile"
             className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/5 px-3 py-2 text-sm font-bold text-amber-300 transition-all hover:-translate-x-0.5 hover:border-amber-300/40 hover:bg-amber-300/10 active:scale-95"
           >
             <ArrowLeft

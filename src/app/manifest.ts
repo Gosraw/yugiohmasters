@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Private Yu-Gi-Oh! friends league",
     start_url: "/",
     display: "standalone",
-    background_color: "#090b10",
-    theme_color: "#090b10",
+    background_color: "#05081a",
+    theme_color: "#05081a",
     orientation: "any",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

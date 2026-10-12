@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 import {
-  Gamepad2,
-  Medal,
+  ChevronRight,
+  History,
   Swords,
   Timer,
   Trophy,
@@ -13,130 +13,160 @@ import type {
 } from "lucide-react";
 
 // =========================================================
-// GAME MODES HUB
+// PLAY HUB (2.0)
 //
-// Four ways to play, each routed to the real, already-working
-// destination for that mode rather than a parallel implementation:
-//   - Competition / Tournament: both live inside the same
-//     competitions system (competitions.competition_type), and the
-//     competitions list already sections them separately - no need
-//     for a second "tournament" page.
-//   - Best of 3: a standalone friendly challenge is already modeled
-//     as a practice match (matches.match_type = 'practice') on the
-//     existing match-creation flow - no separate flow needed.
-//     Optional DP/card stakes are NOT implemented here: while
-//     trades.ts proves a safe escrow/atomic-settlement pattern
-//     exists for cards+DP, match_dp_escrows/match_wager_cards are a
-//     SEPARATE, simpler mechanism already built for exactly this
-//     (see matches/new/page.tsx's wager UI) - stakes already work
-//     through that existing flow, so nothing new was needed here.
-//   - Life Points: the existing Duel Companion.
+// One of the five bottom-nav hubs (docs/V2_PLAN.md,
+// "Simplicity & navigation"). Everything you do at the table
+// starts here and routes to the real, already-working page:
+//   - Season competition: the competitions system (rounds,
+//     standings, championship rewards).
+//   - New duel: a practice match on the existing match
+//     creation flow (optional DP/card wager lives there).
+//   - Duel history: the matches list.
+//   - Duel Companion: Life Points counter, dice, coin, timer.
+//   - League standings: the league table.
+//
+// TODO(2.0 mini games): add the Climber and Auto battler
+// entries here once they exist (plan steps 10-11). Don't add
+// a "coming soon" placeholder card in the meantime.
 // =========================================================
 
-type GameMode = {
+type PlayLink = {
   href: string;
   label: string;
   description: string;
   icon: LucideIcon;
-  accent: string;
 };
 
-const MODES: GameMode[] = [
-  {
-    href: "/competitions",
-    label: "Competition",
-    description: "The persistent league season - rounds, standings and championship rewards.",
-    icon: Trophy,
-    accent: "amber",
-  },
+const FEATURED: PlayLink = {
+  href: "/competitions",
+  label: "Season Competition",
+  description: "This round's duels, the standings and the championship race.",
+  icon: Trophy,
+};
+
+const LINKS: PlayLink[] = [
   {
     href: "/matches/new",
-    label: "Best of 3",
-    description: "A standalone friendly challenge. Free to play, or stake DP/cards on the result.",
+    label: "New Duel",
+    description: "Challenge a friend to a practice duel. Add a DP or card wager if you dare.",
     icon: Swords,
-    accent: "cyan",
-  },
-  {
-    href: "/competitions",
-    label: "Tournament",
-    description: "A standalone bracket with its own prize, separate from the season standings.",
-    icon: Medal,
-    accent: "violet",
   },
   {
     href: "/duel-companion",
-    label: "Life Points",
-    description: "The table-side counter - Life Points, dice, coin flip and a duel timer.",
+    label: "Duel Companion",
+    description: "Life Points counter, dice, coin flip and a duel timer for the table.",
     icon: Timer,
-    accent: "red",
+  },
+  {
+    href: "/matches",
+    label: "Duel History",
+    description: "Open challenges, results to confirm and every duel you've played.",
+    icon: History,
+  },
+  {
+    href: "/league",
+    label: "League Standings",
+    description: "Who's on top, and where you stand against everyone else.",
+    icon: Trophy,
   },
 ];
 
-const ACCENT_STYLES: Record<
-  string,
-  { icon: string; hover: string }
-> = {
-  red: {
-    icon: "border-red-300/20 bg-red-300/10 text-red-300",
-    hover: "hover:border-red-300/30 hover:text-red-200",
-  },
-  amber: {
-    icon: "border-amber-300/20 bg-amber-300/10 text-amber-300",
-    hover: "hover:border-amber-300/30 hover:text-amber-200",
-  },
-  violet: {
-    icon: "border-violet-300/20 bg-violet-300/10 text-violet-300",
-    hover: "hover:border-violet-300/30 hover:text-violet-200",
-  },
-  cyan: {
-    icon: "border-cyan-300/20 bg-cyan-300/10 text-cyan-300",
-    hover: "hover:border-cyan-300/30 hover:text-cyan-200",
-  },
-};
-
 export default function PlayPage() {
+  const FeaturedIcon =
+    FEATURED.icon;
+
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
-      <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.18em] text-amber-200">
-        <Gamepad2 size={12} />
-        Game Modes
-      </div>
-
-      <h1 className="gold-text mt-3 text-3xl font-black sm:text-4xl">
-        How do you want to play?
-      </h1>
-
-      <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-500">
-        Every mode records a real physical duel - pick one, play it at the
-        table, then come back and enter the result.
+      <p className="text-xs font-bold uppercase tracking-[.22em] text-amber-300">
+        Play
       </p>
 
-      <div className="mt-6 grid gap-2.5">
-        {MODES.map((mode) => {
-          const Icon = mode.icon;
-          const styles = ACCENT_STYLES[mode.accent] ?? ACCENT_STYLES.amber;
+      <h1 className="gold-text mt-2 text-3xl font-black sm:text-4xl">
+        Ready to duel?
+      </h1>
 
-          return (
-            <Link
-              key={mode.label}
-              href={mode.href}
-              className={`panel group flex items-center gap-3.5 p-3.5 transition-all hover:-translate-y-0.5 ${styles.hover}`}
-            >
-              <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${styles.icon}`}
+      <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-400">
+        Play at the table, then come back here to record the result.
+      </p>
+
+      {/* FEATURED: the season competition */}
+
+      <Link
+        href={
+          FEATURED.href
+        }
+        className="arena-frame panel group relative mt-6 flex items-center gap-4 overflow-hidden p-5 transition-all hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      >
+        <div className="spell-glow -right-10 -top-10 h-40 w-40" />
+
+        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/40 bg-amber-300/10 text-amber-300 shadow-[0_0_20px_rgba(242,196,90,.2)]">
+          <FeaturedIcon
+            size={22}
+          />
+        </div>
+
+        <div className="relative min-w-0 flex-1">
+          <p className="font-display text-lg font-bold text-amber-100">
+            {
+              FEATURED.label
+            }
+          </p>
+
+          <p className="mt-0.5 text-sm leading-5 text-zinc-400">
+            {
+              FEATURED.description
+            }
+          </p>
+        </div>
+
+        <ChevronRight
+          size={20}
+          className="relative shrink-0 text-amber-300/70 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+        />
+      </Link>
+
+      {/* EVERYTHING ELSE */}
+
+      <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+        {LINKS.map(
+          (link) => {
+            const Icon =
+              link.icon;
+
+            return (
+              <Link
+                key={
+                  link.href
+                }
+                href={
+                  link.href
+                }
+                className="panel group flex items-start gap-3.5 p-4 transition-all hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               >
-                <Icon size={18} />
-              </div>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-300/[0.07] text-amber-300">
+                  <Icon
+                    size={18}
+                  />
+                </div>
 
-              <div className="min-w-0">
-                <p className="font-black text-zinc-100">{mode.label}</p>
-                <p className="mt-0.5 text-xs leading-5 text-zinc-500">
-                  {mode.description}
-                </p>
-              </div>
-            </Link>
-          );
-        })}
+                <div className="min-w-0">
+                  <p className="font-black text-zinc-100">
+                    {
+                      link.label
+                    }
+                  </p>
+
+                  <p className="mt-0.5 text-xs leading-5 text-zinc-400">
+                    {
+                      link.description
+                    }
+                  </p>
+                </div>
+              </Link>
+            );
+          }
+        )}
       </div>
     </main>
   );

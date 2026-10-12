@@ -1,27 +1,172 @@
 @import "tailwindcss";
 
-:root { color-scheme: dark; }
+/* =========================================================
+   NIGHT TEMPLE THEME (2.0, season 2)
+   Provisional pick from docs/design/v2-style-options.html,
+   option B: obsidian/lapis night, glowing old gold, glass
+   panels with gold hairlines, Cinzel headings + Inter body.
+   Change the look here first - the shared classes below
+   (.panel, .primary-button, .field, .gold-text) and the
+   Tailwind palette overrides carry it through every page.
+========================================================= */
+
+@theme {
+  /* Fonts come from next/font/google in src/app/layout.tsx,
+     which defines --font-cinzel / --font-inter on <html>. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cinzel), "Cinzel", Georgia, serif;
+
+  /* The app's neutral text/surface scale was stock zinc (grey
+     on near-black). Re-tinted for the lapis night: warm ivory
+     on top, cool lapis greys below. 500/600 are lifted a step
+     so the many small "text-zinc-500/600" labels stay readable
+     on the blue background. */
+  --color-zinc-50: #faf7ef;
+  --color-zinc-100: #efe9da;
+  --color-zinc-200: #ded7c6;
+  --color-zinc-300: #c5c3c8;
+  --color-zinc-400: #a7aabd;
+  --color-zinc-500: #8d91a8;
+  --color-zinc-600: #6f7491;
+  --color-zinc-700: #454b69;
+  --color-zinc-800: #272d4a;
+  --color-zinc-900: #151a34;
+  --color-zinc-950: #0a0e22;
+
+  /* Pull the app-wide "amber" accents toward temple gold. */
+  --color-amber-100: #fff2cf;
+  --color-amber-200: #ffe2a0;
+  --color-amber-300: #f2c45a;
+  --color-amber-400: #e2a93a;
+
+  /* Named temple tokens as utilities (bg-temple-..., text-gold...). */
+  --color-temple-950: #05081a;
+  --color-temple-900: #080c20;
+  --color-temple-800: #0e142c;
+  --color-temple-700: #18214a;
+  --color-gold: #f2c45a;
+  --color-gold-bright: #ffd86e;
+  --color-gold-deep: #d79b2b;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --dc-bg-0: #05081a;
+  --dc-bg-1: #080c20;
+  --dc-bg-2: #0e142c;
+  --dc-glass: rgb(14 20 44 / .72);
+  --dc-glass-strong: rgb(10 14 32 / .9);
+
+  /* Ink */
+  --dc-ink: #ece6d6;
+  --dc-ink-muted: #a7aabd;
+
+  /* Gold */
+  --dc-gold: #f2c45a;
+  --dc-gold-bright: #ffd86e;
+  --dc-gold-deep: #d79b2b;
+  --dc-gold-ink: #1d1405;
+  --dc-gold-line: rgb(242 196 90 / .28);
+  --dc-gold-line-soft: rgb(242 196 90 / .16);
+
+  /* Lapis accent */
+  --dc-lapis: #2c4590;
+  --dc-lapis-line: rgb(120 150 230 / .25);
+
+  /* Shape + light */
+  --dc-radius-sm: .75rem;
+  --dc-radius-md: .9rem;
+  --dc-radius-lg: 1.25rem;
+  --dc-glow-sm: 0 0 10px rgb(255 207 94 / .45);
+  --dc-glow-md: 0 0 24px rgb(242 196 90 / .28);
+  --dc-shadow-panel: 0 18px 50px rgb(2 4 14 / .45);
+}
 
 * { box-sizing: border-box; }
 
+html {
+  background-color: var(--dc-bg-0);
+}
+
 body {
+  position: relative;
   margin: 0;
   min-height: 100vh;
+  /* Transparent on purpose: the backdrop lives in the two
+     fixed pseudo-elements below. An opaque body background
+     would paint over them. */
+  background: transparent;
+  color: var(--dc-ink);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Backdrop, fixed behind every screen. Pseudo-elements rather
+   than background-attachment: fixed, because iOS Safari ignores
+   fixed backgrounds - these stay put while the page scrolls on
+   phones too.
+   ::before = deep lapis night (gold haze on top, lapis glow at
+              the bottom).
+   ::after  = the temple hall image, faint, fading out further
+              down so body text always sits on plain dark blue. */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::before {
   background:
-    radial-gradient(circle at 50% -10%, rgba(164, 114, 22, .18), transparent 35rem),
-    linear-gradient(180deg, #0d1017 0%, #07090d 70%);
-  color: #f4f4f5;
-  font-family: Arial, Helvetica, sans-serif;
+    radial-gradient(ellipse 70rem 32rem at 50% -8%, rgb(242 196 90 / .1), transparent 70%),
+    radial-gradient(ellipse 60rem 40rem at 50% 110%, rgb(44 69 144 / .22), transparent 70%),
+    linear-gradient(180deg, var(--dc-bg-2) 0%, var(--dc-bg-1) 45%, var(--dc-bg-0) 100%);
+}
+
+body::after {
+  background-image: url("/v2/temple-night.jpg");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  opacity: .2;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgb(0 0 0 / .7) 45%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, rgb(0 0 0 / .7) 45%, transparent 100%);
+}
+
+@layer base {
+  h1,
+  h2 {
+    font-family: var(--font-cinzel), "Cinzel", Georgia, serif;
+    letter-spacing: .01em;
+    /* Cinzel is wide - never let a long duelist or deck name
+       push the page sideways on a phone. */
+    overflow-wrap: break-word;
+  }
+
+  ::selection {
+    background: rgb(242 196 90 / .35);
+    color: #fff8e6;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--dc-gold-bright);
+    outline-offset: 2px;
+  }
 }
 
 .field {
   width: 100%;
-  border-radius: 0.9rem;
-  border: 1px solid rgb(255 255 255 / 0.1);
-  background: rgb(255 255 255 / 0.045);
+  border-radius: var(--dc-radius-md);
+  border: 1px solid rgb(242 196 90 / .18);
+  background: rgb(8 12 32 / .7);
   padding: 0.85rem 1rem;
-  color: white;
+  color: var(--dc-ink);
   outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
   /* Never let a computed font-size drop below 16px on a text
      input/textarea/select - iOS Safari auto-zooms the page on
      focus for anything smaller, which is the classic "form
@@ -33,34 +178,55 @@ body {
   font-size: 1rem;
 }
 
+.field::placeholder {
+  color: #6f7491;
+}
+
 .field:focus {
-  border-color: rgb(252 211 77 / 0.55);
-  box-shadow: 0 0 0 3px rgb(245 158 11 / 0.08);
+  border-color: rgb(255 216 110 / .6);
+  box-shadow: 0 0 0 3px rgb(242 196 90 / .12), var(--dc-glow-md);
 }
 
 .primary-button {
-  border-radius: 0.9rem;
-  border: 1px solid rgb(252 211 77 / .35);
-  background: linear-gradient(180deg, #b98934, #7a5419);
+  border-radius: var(--dc-radius-md);
+  border: 1px solid rgb(255 216 110 / .65);
+  background: linear-gradient(180deg, #ffd86e 0%, #e9b448 55%, #c98e2c 100%);
   padding: .85rem 1rem;
   font-weight: 800;
-  color: #fff7df;
-  box-shadow: 0 8px 30px rgb(180 120 20 / .14);
+  color: var(--dc-gold-ink);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .35),
+    0 8px 26px rgb(242 196 90 / .22);
+  transition: filter .15s ease, box-shadow .15s ease, transform .15s ease;
 }
 
-.primary-button:disabled { opacity: .55; }
+.primary-button:hover {
+  filter: brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .4),
+    0 10px 32px rgb(242 196 90 / .32);
+}
+
+.primary-button:disabled {
+  opacity: .55;
+  filter: saturate(.6);
+}
 
 .panel {
-  border: 1px solid rgb(255 255 255 / .08);
-  background: rgb(255 255 255 / .035);
-  border-radius: 1.25rem;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / .03);
+  border: 1px solid var(--dc-gold-line-soft);
+  background: linear-gradient(180deg, rgb(18 26 56 / .74), rgb(10 14 34 / .78));
+  border-radius: var(--dc-radius-lg);
+  box-shadow:
+    inset 0 1px 0 rgb(255 216 110 / .06),
+    var(--dc-shadow-panel);
 }
 
 .gold-text {
-  background: linear-gradient(90deg, #fff1b3, #d6a23e, #fff0ad);
+  background: linear-gradient(90deg, #fff1c4, #f2c45a 45%, #ffd86e 70%, #fff0bd);
   color: transparent;
+  -webkit-background-clip: text;
   background-clip: text;
+  filter: drop-shadow(0 0 14px rgb(242 196 90 / .22));
 }
 
 /* =========================================================
@@ -370,6 +536,9 @@ body {
    reveal (pull-*) animations predate this rule and were never
    covered by it. */
 @media (prefers-reduced-motion: reduce) {
+  .primary-button,
+  .field { transition: none; }
+
   .pack-sheen { animation: none; }
 
   .pull-shake-once { animation: none; }

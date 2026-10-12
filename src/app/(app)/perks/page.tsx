@@ -537,7 +537,7 @@ export default async function PerksPage() {
 
         <nav className="flex flex-wrap items-center gap-3">
           <Link
-            href="/explore"
+            href="/profile"
             className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/5 px-3 py-2 text-sm font-bold text-amber-300 transition-all hover:border-amber-300/40 hover:bg-amber-300/10 active:scale-95"
           >
             <ArrowLeft size={17} />

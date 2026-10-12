@@ -4,20 +4,19 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Award,
-  Bell,
   BookOpen,
   CheckCircle2,
+  Coins,
   Crown,
   Flame,
+  Gift,
   Home,
   LockKeyhole,
   Medal,
-  Rss,
   ScrollText,
   ShieldCheck,
   Sparkles,
   Swords,
-  Timer,
   Trophy,
   UserRound,
   Zap,
@@ -28,6 +27,10 @@ import {
   equipAchievementTitle,
   unequipAchievementTitle,
 } from "@/app/actions/profile";
+
+import type {
+  LucideIcon,
+} from "lucide-react";
 
 import {
   ProfileForm,
@@ -64,6 +67,73 @@ import {
 
 export const dynamic =
   "force-dynamic";
+
+// =========================================================
+// PROFILE HUB LINKS
+//
+// 2.0 menu: Profile is the home for Boss Path, wallet, perks
+// and Stats (rivalries + records + achievements). These used
+// to live on the old /explore "More" page.
+// =========================================================
+
+type ProfileHubLink = {
+  href: string;
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+};
+
+const PROFILE_HUB_GROUPS: {
+  title: string;
+  links: ProfileHubLink[];
+}[] = [
+  {
+    title: "Your Path",
+    links: [
+      {
+        href: "/boss",
+        label: "Boss Path",
+        hint: "Evolve your signature monster",
+        icon: Crown,
+      },
+      {
+        href: "/wallet",
+        label: "DP Wallet",
+        hint: "Every Duel Point in and out",
+        icon: Coins,
+      },
+      {
+        href: "/perks",
+        label: "Perks",
+        hint: "Real-life deals worth DP",
+        icon: Gift,
+      },
+    ],
+  },
+  {
+    title: "Stats",
+    links: [
+      {
+        href: "/rivalries",
+        label: "Rivalries",
+        hint: "Head-to-head records",
+        icon: Swords,
+      },
+      {
+        href: "/records",
+        label: "Records",
+        hint: "League bragging rights",
+        icon: BookOpen,
+      },
+      {
+        href: "/achievements",
+        label: "Achievements",
+        hint: "Badges and milestones",
+        icon: Award,
+      },
+    ],
+  },
+];
 
 // =========================================================
 // TYPES
@@ -322,7 +392,7 @@ export default async function ProfilePage() {
     !profileData
   ) {
     throw new Error(
-      "Profiel kon niet worden geladen."
+      "Could not load your profile."
     );
   }
 
@@ -1045,6 +1115,70 @@ export default async function ProfilePage() {
         </section>
 
         {/* ==================================================
+            PROFILE HUB - Boss Path, wallet, perks and Stats
+        ================================================== */}
+
+        <section className="mt-6 grid gap-4 lg:grid-cols-2">
+          {PROFILE_HUB_GROUPS.map(
+            (group) => (
+              <nav
+                key={
+                  group.title
+                }
+                aria-label={
+                  group.title
+                }
+                className="panel p-4"
+              >
+                <h2 className="text-xs font-bold uppercase tracking-[.18em] text-amber-300">
+                  {
+                    group.title
+                  }
+                </h2>
+
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {group.links.map(
+                    (link) => {
+                      const Icon =
+                        link.icon;
+
+                      return (
+                        <Link
+                          key={
+                            link.href
+                          }
+                          href={
+                            link.href
+                          }
+                          className="group flex min-w-0 cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-amber-300/10 bg-white/[0.025] px-2 py-3 text-center transition-all hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/[0.06] active:scale-[0.97] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                        >
+                          <Icon
+                            size={20}
+                            className="text-amber-300 transition-transform group-hover:scale-110 motion-reduce:transition-none"
+                          />
+
+                          <span className="w-full truncate text-xs font-black text-zinc-100">
+                            {
+                              link.label
+                            }
+                          </span>
+
+                          <span className="hidden text-[11px] leading-4 text-zinc-500 sm:block">
+                            {
+                              link.hint
+                            }
+                          </span>
+                        </Link>
+                      );
+                    }
+                  )}
+                </div>
+              </nav>
+            )
+          )}
+        </section>
+
+        {/* ==================================================
             BOSS ROUTE (Season 1 - the real, currently-evolving
             identity; see src/lib/boss-identity.ts)
         ================================================== */}
@@ -1556,48 +1690,6 @@ export default async function ProfilePage() {
               Play your first duel to start a rivalry.
             </div>
           )}
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            <Link
-              href="/rivalries"
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-red-300/25 hover:text-red-200"
-            >
-              <Swords size={14} />
-              Rivalries
-            </Link>
-
-            <Link
-              href="/records"
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-amber-300/25 hover:text-amber-200"
-            >
-              <BookOpen size={14} />
-              Record Book
-            </Link>
-
-            <Link
-              href="/activity"
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-violet-300/25 hover:text-violet-200"
-            >
-              <Rss size={14} />
-              Activity
-            </Link>
-
-            <Link
-              href="/attention"
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-amber-300/25 hover:text-amber-200"
-            >
-              <Bell size={14} />
-              Attention
-            </Link>
-
-            <Link
-              href="/duel-companion"
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs font-black uppercase tracking-wider text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-cyan-300/25 hover:text-cyan-200"
-            >
-              <Timer size={14} />
-              Duel Tools
-            </Link>
-          </div>
 
           {winStreak >= 2 && (
             <div className="mt-4 flex items-center gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[0.03] px-4 py-3">

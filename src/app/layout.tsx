@@ -1,6 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import { Cinzel, Inter } from "next/font/google";
 import "./globals.css";
 import { PwaRegister } from "@/components/pwa-register";
+
+// Night Temple theme fonts (2.0). Exposed as CSS variables;
+// globals.css uses --font-cinzel for h1/h2 (+ the font-display
+// utility) and --font-inter for body text.
+const cinzel = Cinzel({
+  subsets: ["latin"],
+  variable: "--font-cinzel",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Duelist Circle",
@@ -24,7 +40,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#090b10",
+  themeColor: "#05081a",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -37,7 +53,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="nl">
+    <html lang="en" className={`${cinzel.variable} ${inter.variable}`}>
       <body>
         <PwaRegister />
         {children}

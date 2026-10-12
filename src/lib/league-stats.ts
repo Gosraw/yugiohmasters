@@ -5,8 +5,8 @@ import type {
 // =========================================================
 // SHARED LEAGUE STATS
 //
-// Read-only helpers for Rivalries, the League Record Book,
-// the Activity Feed and the Trophy Room. Everything here is
+// Read-only helpers for Rivalries, the League Record Book
+// and the Trophy Room. Everything here is
 // derived from data the app already collects automatically
 // (matches, card_instances, competition results). Nothing
 // here requires a player to type in anything about how a

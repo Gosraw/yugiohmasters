@@ -28,11 +28,12 @@ de echte database van je vrienden is **niet aangeraakt**.
 | Testbots (Playwright): start, 17 pagina's × 3 spelers, economie, shop | ✅ **132/132 groen** (telefoon + desktop) |
 | 20 Boss-arena's, seizoensposter/banner, 6 emblemen (fal.ai) | ✅ |
 | Beweging: Millennium pack-opening, Boss-evolutie-filmpje, tab-overgangen | ✅ (nog op echte iPhone testen) |
-| Video's + omroeper (ElevenLabs) | ❌ nog niet (ElevenLabs niet gekoppeld) |
+| Engelse arena-omroeper + geluidseffecten (ElevenLabs-stem via fal.ai), aan/uit op Profiel | ✅ (even zelf luisteren) |
+| Korte video's | ❌ nog niet (wachten op jouw stijlkeuze) |
 
 **Eindcontrole (04:40):** typecheck schoon, lint schoon, 271 unit-tests
 groen, 13 SQL-testbestanden groen, testbots 132/132 groen, productie-build
-slaagt (05:00).
+slaagt (05:00). Testbots na de veiligheidsfixes opnieuw: 132/132 groen (05:15).
 
 Ook gedaan na de eerste versie van dit rapport:
 - Nieuwe kaartenpool + onze banlist + Classic v2 staan klaar in de database
@@ -61,7 +62,7 @@ Ook gedaan na de eerste versie van dit rapport:
 3. **Ik heb geïnstalleerd:** Postgres 17, PostgREST, Colima/Docker en
    Supabase CLI (via Homebrew) en `postgres` + Playwright in het project.
    npm-cache en Homebrew-downloadcache leeggemaakt voor ruimte.
-4. **fal.ai:** ~$2,50 uitgegeven (3 stijlproeven + 28 beelden). Budget was $10.
+4. **fal.ai:** ~$2,55 uitgegeven (3 stijlproeven + 28 beelden + 18 geluiden). Budget was $10.
 5. **Nog een fout in de live app (gevonden door de testbots):** het bestand
    dat nieuwe spelers door de start leidt (Boss kiezen → draft →
    welkomstpacks) en je inlog ververst, stond op de verkeerde plek en werd

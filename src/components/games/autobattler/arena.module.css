@@ -1,0 +1,133 @@
+/* =========================================================
+   SHADOW ARENA - motion. Everything here is decoration: with
+   prefers-reduced-motion the game still shows every number,
+   just without movement.
+   ========================================================= */
+
+.art {
+  position: absolute;
+  /* Crop the full card picture (image_url_small) down to its art
+     window: the art sits ~12-88% across and ~18-73% down a card. */
+  width: 131.6%;
+  max-width: none;
+  height: auto;
+  left: -15.8%;
+  top: -34.6%;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.float {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  z-index: 5;
+  transform: translate(-50%, 0);
+  pointer-events: none;
+  font-weight: 900;
+  font-size: 1.05rem;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: 0 2px 6px rgb(0 0 0 / .9), 0 0 2px #000;
+  animation: float-up 900ms cubic-bezier(.2, .7, .3, 1) forwards;
+}
+
+@keyframes float-up {
+  0% { opacity: 0; transform: translate(-50%, 6px) scale(.7); }
+  15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); }
+  70% { opacity: 1; transform: translate(-50%, -14px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -22px) scale(1); }
+}
+
+.dying {
+  animation: dying 320ms ease-in forwards;
+}
+
+@keyframes dying {
+  0% { opacity: 1; filter: none; transform: scale(1); }
+  40% { opacity: 1; filter: brightness(2.2) saturate(0); transform: scale(1.06); }
+  100% { opacity: 0; filter: brightness(.4) saturate(0); transform: scale(.7) rotate(-6deg); }
+}
+
+.appear {
+  animation: appear 320ms cubic-bezier(.2, .9, .3, 1.2) both;
+}
+
+@keyframes appear {
+  from { opacity: 0; transform: scale(.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.hit {
+  animation: hit 260ms ease-out;
+}
+
+@keyframes hit {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+.timerLow {
+  animation: timer-pulse 1s ease-in-out infinite;
+}
+
+@keyframes timer-pulse {
+  50% { opacity: .55; }
+}
+
+.golden {
+  box-shadow:
+    0 0 0 1.5px #ffd86e,
+    0 0 14px rgb(255 216 110 / .55);
+}
+
+.shimmer {
+  background: linear-gradient(110deg, transparent 30%, rgb(255 240 190 / .35) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: shimmer 2.4s linear infinite;
+}
+
+@keyframes shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -100% 0; }
+}
+
+.banner {
+  animation: banner 420ms cubic-bezier(.2, .9, .3, 1.15) both;
+}
+
+@keyframes banner {
+  from { opacity: 0; transform: scale(.8) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .float {
+    animation: float-fade 900ms linear forwards;
+  }
+
+  @keyframes float-fade {
+    0%, 80% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, 0); }
+  }
+
+  .dying {
+    animation: dying-fade 200ms linear forwards;
+  }
+
+  @keyframes dying-fade {
+    to { opacity: 0; }
+  }
+
+  .appear,
+  .hit,
+  .banner,
+  .timerLow,
+  .shimmer {
+    animation: none;
+  }
+}

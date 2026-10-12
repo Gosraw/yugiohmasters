@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:mobile": "playwright test --project=mobile",
     "seed:dev": "node scripts/seed-dev.mjs",
     "season:reset": "node scripts/season-reset.mjs",
     "season:reset:apply": "node scripts/season-reset.mjs --apply",
@@ -25,6 +27,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4.1.14",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.3",

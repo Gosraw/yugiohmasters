@@ -125,7 +125,7 @@ select unnest(array[
   'format_card_overrides',
   'goal_templates', 'league_economy_defaults', 'league_members', 'leagues',
   'mini_game_daily_seeds', 'mini_game_reward_config',
-  'profile_titles', 'profiles',
+  'perk_config', 'profile_titles', 'profiles',
   'season_bonus_config', 'season_path_tiers', 'season_path_xp_sources', 'seasons',
   'settings',
   'shop_pack_types', 'shop_rotation_cards', 'shop_rotations',
@@ -199,6 +199,14 @@ begin
   select count(*) into v_limits
   from public.duelist_circle_card_limits
   where format_code = v_format.code;
+
+  -- Run-once guard: activating Classic v2 is part of a successful
+  -- apply, so if it's already active this reset already happened.
+  -- A second apply would wipe the new season (drafts, cards, DP) and
+  -- hand out another Initial Draft + welcome packs.
+  if v_format.is_active then
+    raise exception 'PRE-FLIGHT ABORTED: duelist_circle_classic_v2 is already active - the Season 2 reset has already been applied. Running it again would wipe the new season.';
+  end if;
 
   if v_includes <> 6136 or v_rarities <> 6136 or v_limits = 0 then
     raise exception 'PRE-FLIGHT ABORTED: Classic v2 data incomplete (includes %, proposed rarities %, banlist rows %; expected 6136 / 6136 / >0). If the pool changed after the vote, update the expected numbers here deliberately.', v_includes, v_rarities, v_limits;

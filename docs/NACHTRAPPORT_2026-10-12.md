@@ -82,8 +82,18 @@ Ook gedaan na de eerste versie van dit rapport:
    `SUPABASE_SECRET_KEY` staan (staat in het draaiboek).
 9. **Uitslagen invoeren:** in 2.0 mag elke speler de uitslag van zijn eigen
    seizoensduel invoeren, zonder bevestiging van de tegenstander. Wie het
-   eerst invoert bepaalt de uitslag; alleen de admin kan corrigeren. Wil je
-   toch een bevestiging door de tegenstander?
+   eerst invoert bepaalt de uitslag; alleen de admin kan corrigeren. Een
+   speler kan dus in zijn eigen voordeel invullen (en direct DP + premie
+   krijgen). Mijn advies: tegenstander laten bevestigen, zoals bij
+   oefenduels. Wil je dat?
+10. **Lanceerscript** kan niet meer per ongeluk twee keer draaien (dat zou
+    het nieuwe seizoen opnieuw wissen). Proefdraai lokaal: alles OK.
+
+**Laatste ronde (06:50–07:10):** telefoon-check (tikflits weg, juiste
+schermhoogte op iPhone, geen 'blijvende' hover, games scrollen de pagina niet
+mee) en een spelregel-controle: geen enkele vaste regel gebroken
+(kaart-schaarste, DP alleen via de server, geen inzet bij league-duels,
+draft één keer, Samo-paaseitje staat er nog, decklimieten).
 
 ## Wat jij moet beslissen
 

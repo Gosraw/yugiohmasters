@@ -914,9 +914,9 @@ describe("lane combat", () => {
     expect(outcome.damage).toBe(1);
     expect(outcome.dealt).toBe(1);
     expect(outcome.recap).toEqual([
-      "Left: You held the lane",
-      "Mid: Quiet",
-      "Right: They held the lane",
+      "Left: Only you stood here → 1 damage to their castle",
+      "Mid: No fight here",
+      "Right: Only they stood here → 1 damage to your castle",
     ]);
 
     // A 0-ATK attacker stuck on a 0-counter wall: ends after STALL_TICKS.
@@ -951,8 +951,17 @@ describe("lane combat", () => {
       );
 
     expect(deaths).toEqual([expect.objectContaining({ side: 1, lane: 1, by: "sakuretsu-armor" })]);
-    expect(outcome.recap[0]).toMatch(/^Left: .* broke through, -\d+ LP to their castle/);
-    expect(outcome.recap[1]).toBe("Mid: Your Sakuretsu Armor destroyed an attacker");
+    expect(outcome.recap[0]).toMatch(/^Left: You walked through unopposed → \d+ damage to their castle$/);
+    expect(outcome.recap[1]).toBe("Mid: Your Sakuretsu Armor destroyed Dummy (9)");
+
+    // Battle kills name both monsters with their ATK.
+    const clash =
+      fight(
+        [unitOf(plain, 9, 9, false, 1)],
+        [enemy(2, 3, [], 1, 1)]
+      );
+
+    expect(clash.recap[1]).toMatch(/^Mid: Your .* \(9\) beat Dummy \(2\)/);
   });
 
   it("is deterministic for the same input", () => {

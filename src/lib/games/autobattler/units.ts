@@ -359,3 +359,105 @@ export const SYNERGY_THRESHOLDS = [
   3,
   5,
 ] as const;
+
+// ---------------------------------------------------------
+// Short texts for small tiles (one plain line each).
+// ---------------------------------------------------------
+
+/** "Last Will: +1/+1 to an ally when destroyed" (fits one line). */
+export function abilityShort(
+  ability: Ability,
+  power: number,
+  extra?: {
+    rallyBy?: "tribe" | "attribute";
+    tribe?: Tribe | null;
+    attribute?: string | null;
+  }
+) {
+  switch (ability) {
+    case "taunt":
+      return "Guardian: triple DEF as a wall";
+    case "shield":
+      return "Spellbound: ignores the first hit";
+    case "revive":
+      return "Reborn: returns once with 1 DEF";
+    case "pierce":
+      return "Pierce: extra damage hits the one behind";
+    case "rally": {
+      const group =
+        extra?.rallyBy === "tribe"
+          ? extra.tribe ?? "same type"
+          : extra?.attribute ?? "same attribute";
+
+      return `Rally: other ${group} +${power}/+${power} when placed`;
+    }
+    case "lastwill":
+      return `Last Will: +${power}/+${power} to an ally when destroyed`;
+    case "spawn":
+      return `Summon: leaves a ${power}/${power} Token when destroyed`;
+    case "double":
+      return "Double Attack: hits twice";
+    case "venom":
+      return "Venom: destroys whatever it damages";
+    case "ascend":
+      return `Ascend: +${power}/+${power} every turn`;
+    case "ambush":
+      return `Ambush: ${power} damage to the front enemy at the start`;
+  }
+}
+
+export function trapShort(
+  trap: Pick<TrapDef, "effect" | "value">
+) {
+  switch (trap.effect) {
+    case "destroy_min_atk":
+      return `Destroys the first attacker with ${trap.value}+ ATK`;
+    case "bounce":
+      return "Sends the first attacker back";
+    case "no_castle_damage":
+      return "No castle damage from this lane";
+    case "destroy":
+      return "Destroys the first attacker";
+    case "reflect":
+      return "Sends back the first attacker and burns their castle";
+    case "revive":
+      return "Revives your first monster destroyed here";
+    case "destroy_two":
+      return "Destroys the first 2 attackers";
+    case "banish":
+      return "Banishes the first attacker (no Reborn)";
+    case "wipe_lane":
+      return "Destroys EVERY monster in this lane";
+  }
+}
+
+/** Attribute colour + 1-letter glyph for tiny badges. */
+export const ATTRIBUTE_STYLE: Record<Attribute, {
+  glyph: string;
+  className: string;
+}> = {
+  DARK: {
+    glyph: "D",
+    className: "bg-violet-700 text-violet-50",
+  },
+  LIGHT: {
+    glyph: "L",
+    className: "bg-amber-200 text-amber-900",
+  },
+  EARTH: {
+    glyph: "E",
+    className: "bg-amber-800 text-amber-50",
+  },
+  WATER: {
+    glyph: "W",
+    className: "bg-sky-600 text-sky-50",
+  },
+  FIRE: {
+    glyph: "F",
+    className: "bg-red-600 text-red-50",
+  },
+  WIND: {
+    glyph: "Wi",
+    className: "bg-emerald-600 text-emerald-50",
+  },
+};

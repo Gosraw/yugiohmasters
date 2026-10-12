@@ -18,6 +18,7 @@ import {
 import {
   LANE_LEN,
   LANES,
+  START_HEALTH,
   type CombatFrame,
   type CombatResult,
   type CombatSnap,
@@ -125,6 +126,14 @@ export function ArenaCombat({
   const [flashed, setFlashed] =
     useState<Set<number>>(new Set());
 
+  // Attackers lunging this tick: uid -> towards the top or bottom.
+  const [lunging, setLunging] =
+    useState<Map<number, "up" | "down">>(new Map());
+
+  // Lanes with action this tick (glyphs glow).
+  const [busyLanes, setBusyLanes] =
+    useState<Set<number>>(new Set());
+
   const [trapBanner, setTrapBanner] =
     useState<{
       id: string;
@@ -172,7 +181,9 @@ export function ArenaCombat({
       prefersReducedMotion();
 
     async function run() {
-      await wait(350);
+      play("duel");
+
+      await wait(450);
 
       for (let i = 1; i < frames.length; i++) {
         if (
@@ -316,6 +327,47 @@ export function ArenaCombat({
         ]);
 
         setFlashed(new Set(hits.filter((hit) => hit.amt > 0).map((hit) => hit.dst)));
+
+        const mineNow =
+          new Set(prev.mine.map((unit) => unit.uid));
+
+        if (!reduced) {
+          setLunging(
+            new Map(
+              hits
+                .filter(
+                  (hit) => "cause" in hit && (hit.cause === "attack" || hit.cause === "counter")
+                )
+                .map(
+                  (hit) => [hit.src, mineNow.has(hit.src) ? "up" : "down"] as const
+                )
+            )
+          );
+        }
+
+        const lanesNow =
+          new Set<number>();
+
+        for (const hit of hits) {
+          const at =
+            where.get(hit.dst);
+
+          if (at) {
+            lanesNow.add(at.lane);
+          }
+        }
+
+        if (ev.k === "tick") {
+          for (const hit of ev.castle) {
+            lanesNow.add(hit.lane);
+          }
+
+          for (const flip of ev.traps) {
+            lanesNow.add(flip.lane);
+          }
+        }
+
+        setBusyLanes(lanesNow);
         setFloaters((list) => [...list.slice(-10), ...next]);
         setIndex(i);
 
@@ -335,6 +387,7 @@ export function ArenaCombat({
         setShake(null);
         setDying([]);
         setFlashed(new Set());
+        setLunging(new Map());
       }
 
       if (
@@ -342,7 +395,12 @@ export function ArenaCombat({
         !skipped.current
       ) {
         setIndex(frames.length - 1);
+        setBusyLanes(new Set());
         setFinished(true);
+
+        if (combat.result === "win") {
+          play("victory");
+        }
       }
     }
 
@@ -351,7 +409,7 @@ export function ArenaCombat({
     return () => {
       cancelled = true;
     };
-  }, [frames]);
+  }, [frames, combat.result]);
 
   // Old floaters fade out on their own (CSS), then get dropped.
   useEffect(() => {
@@ -373,6 +431,28 @@ export function ArenaCombat({
   const myLp =
     Math.max(0, healthBefore - shown.castle[0]);
 
+  const cap =
+    combat.cap;
+
+  // Their castle: this wave's damage cap is its "HP" bar.
+  const theirLeft =
+    Math.max(0, cap - shown.castle[1]);
+
+  const enemyArt =
+    combat.route === "ghost"
+      ? "/v2/temple-night.jpg"
+      : `/v2/arenas/${combat.route}.jpg`;
+
+  // Victory / Draw / Castle hit / Heavy hit.
+  const verdict =
+    combat.result === "win"
+      ? "Victory"
+      : combat.result === "tie"
+        ? "Draw"
+        : combat.damage * 2 <= cap
+          ? "Castle hit"
+          : "Heavy hit";
+
   const tokenStyle = (
     lane: number,
     row: number
@@ -389,9 +469,12 @@ export function ArenaCombat({
   ) => (
     <div
       key={`${mine ? "m" : "f"}-${unit.uid}`}
-      className={`absolute z-10 aspect-square -translate-x-1/2 p-[2px] ${styles.marcher} ${gone ? styles.dying : ""} ${flashed.has(unit.uid) ? styles.shake : ""}`}
+      className={`absolute z-10 aspect-square -translate-x-1/2 p-[2px] ${styles.marcher} ${gone ? styles.shatter : ""}`}
       style={tokenStyle(unit.lane, rowOf(unit, mine))}
     >
+      <div
+        className={`${flashed.has(unit.uid) && !gone ? styles.hitFlash : ""} ${lunging.get(unit.uid) === "up" ? styles.lungeUp : lunging.get(unit.uid) === "down" ? styles.lungeDown : ""}`}
+      >
       <FieldToken
         img={unit.img}
         atk={unit.atk}
@@ -402,11 +485,9 @@ export function ArenaCombat({
         enemy={!mine}
         small
       />
+      </div>
     </div>
   );
-
-  const result =
-    combat.result;
 
   return (
     <div className="flex h-full flex-col">
@@ -463,37 +544,64 @@ export function ArenaCombat({
           }}
         />
 
-        {/* enemy castle */}
+        {/* enemy castle: temple art + a bar that drains */}
         <div
-          className={`relative flex min-h-11 items-center justify-center gap-2 border-b border-red-400/30 bg-[linear-gradient(180deg,rgba(120,20,20,.6),rgba(60,10,10,.2))] ${shake === 1 ? styles.shake : ""}`}
+          className={`relative h-[74px] shrink-0 overflow-hidden border-b-2 border-red-400/40 ${shake === 1 ? styles.shake : ""}`}
         >
-          <span className={styles.castle} aria-hidden />
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${enemyArt})`,
+            }}
+          />
 
-          <span className="text-[11px] font-bold uppercase tracking-[.16em] text-red-100">
-            Enemy castle
-            {
-              shown.castle[1] > 0
-                ? ` · hit for ${shown.castle[1]}`
-                : ""
-            }
-          </span>
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-[linear-gradient(180deg,rgba(40,4,4,.35),rgba(60,8,8,.85))]"
+          />
 
-          {
-            shown.traps[1].length > 0
-              ? (
-                  <span className="flex gap-0.5" aria-label="Enemy traps">
-                    {shown.traps[1].map(
-                      (trap) => (
-                        <span
-                          key={trap.lane}
-                          className={`h-5 w-3.5 rounded-[2px] border ${trap.used ? "border-pink-200/20 bg-pink-950/40" : "border-[#e58ab9]/70 bg-[radial-gradient(circle,#b2477f,#3d0f29)]"}`}
-                        />
-                      )
-                    )}
-                  </span>
-                )
-              : null
-          }
+          <div className="relative flex h-full flex-col justify-end gap-1 px-3 pb-1.5">
+            <div className="flex items-end gap-2">
+              <span className={styles.temple} aria-hidden />
+
+              <span className="min-w-0 flex-1 truncate text-[11px] font-black uppercase tracking-[.16em] text-red-50 drop-shadow">
+                {routeName}
+              </span>
+
+              {
+                shown.traps[1].length > 0
+                  ? (
+                      <span className="flex gap-0.5" aria-label="Enemy traps">
+                        {shown.traps[1].map(
+                          (trap) => (
+                            <span
+                              key={trap.lane}
+                              className={`h-5 w-3.5 rounded-[2px] border ${trap.used ? "border-pink-200/20 bg-pink-950/40" : "border-[#e58ab9]/70 bg-[radial-gradient(circle,#b2477f,#3d0f29)]"}`}
+                            />
+                          )
+                        )}
+                      </span>
+                    )
+                  : null
+              }
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-black/60 ring-1 ring-red-300/30">
+                <span
+                  className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,#ef4444,#fca5a5)] transition-[width] duration-300"
+                  style={{
+                    width: `${(theirLeft * 100) / Math.max(1, cap)}%`,
+                  }}
+                />
+              </span>
+
+              <span className="w-16 text-right font-display text-xs font-black tabular-nums text-red-100">
+                {shown.castle[1] > 0 ? `-${shown.castle[1]}` : "0"} / {cap}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* the lanes */}
@@ -506,7 +614,7 @@ export function ArenaCombat({
               (_, lane) => (
                 <div
                   key={lane}
-                  className={`${styles.lanePath} rounded-lg`}
+                  className={`${styles.lanePath} ${styles.laneGlyphs} rounded-lg ${busyLanes.has(lane) ? styles.laneActive : ""}`}
                 />
               )
             )}
@@ -521,12 +629,12 @@ export function ArenaCombat({
               (floater) => (
                 <span
                   key={floater.key}
-                  className={`pointer-events-none absolute z-20 -translate-x-1/2 whitespace-nowrap font-display text-sm font-black drop-shadow-[0_2px_2px_rgba(0,0,0,.9)] ${styles.float} ${
+                  className={`pointer-events-none absolute z-20 -translate-x-1/2 whitespace-nowrap font-display font-black drop-shadow-[0_2px_2px_rgba(0,0,0,.9)] ${styles.float} ${
                     floater.tone === "castle"
-                      ? "text-red-300"
+                      ? "text-lg text-red-300"
                       : floater.tone === "zero"
-                        ? "text-sky-200"
-                        : "text-amber-100"
+                        ? "text-sm text-sky-200"
+                        : "text-base text-amber-100"
                   }`}
                   style={tokenStyle(floater.lane, floater.row)}
                 >
@@ -539,13 +647,26 @@ export function ArenaCombat({
 
         {/* your castle */}
         <div
-          className={`relative flex min-h-12 items-center justify-center gap-2 border-t border-sky-300/30 bg-[linear-gradient(0deg,rgba(20,50,120,.6),rgba(10,20,50,.2))] ${shake === 0 ? styles.shake : ""}`}
+          className={`relative flex h-14 shrink-0 items-center gap-2 overflow-hidden border-t-2 border-sky-300/40 bg-[linear-gradient(0deg,rgba(20,50,120,.75),rgba(10,20,50,.35))] px-3 ${shake === 0 ? styles.shake : ""}`}
         >
-          <span className={styles.castle} aria-hidden />
+          <span className={styles.temple} aria-hidden />
+
+          <span className="text-[10px] font-black uppercase tracking-[.16em] text-sky-100">
+            You
+          </span>
+
+          <span className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-black/60 ring-1 ring-sky-300/30">
+            <span
+              className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,#38bdf8,#a5f3fc)] transition-[width] duration-300"
+              style={{
+                width: `${(myLp * 100) / START_HEALTH}%`,
+              }}
+            />
+          </span>
 
           <span className="font-display text-lg font-black tabular-nums text-sky-50">
             {myLp}
-            <span className="ml-1 text-[11px] font-bold text-sky-200/70">
+            <span className="ml-0.5 text-[10px] font-bold text-sky-200/70">
               LP
             </span>
           </span>
@@ -603,7 +724,7 @@ export function ArenaCombat({
                   <div className={`rounded-2xl border border-amber-300/25 bg-[#0a0e1f]/95 p-4 text-center shadow-[0_-8px_30px_rgba(0,0,0,.6)] ${styles.banner}`}>
                     <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-amber-300/40 bg-amber-300/10">
                       {
-                        result === "win"
+                        verdict === "Victory"
                           ? (
                               <Trophy
                                 size={20}
@@ -611,7 +732,7 @@ export function ArenaCombat({
                                 aria-hidden
                               />
                             )
-                          : result === "loss"
+                          : verdict !== "Draw"
                             ? (
                                 <Skull
                                   size={20}
@@ -629,32 +750,66 @@ export function ArenaCombat({
                       }
                     </div>
 
-                    <p className="mt-1 font-display text-2xl font-black text-amber-100">
-                      {result === "win" ? "Victory" : result === "loss" ? "Defeat" : "Draw"}
+                    <p
+                      className={`mt-1 font-display text-2xl font-black ${
+                        verdict === "Victory"
+                          ? "text-amber-100"
+                          : verdict === "Heavy hit"
+                            ? "text-red-300"
+                            : verdict === "Castle hit"
+                              ? "text-rose-200"
+                              : "text-zinc-100"
+                      }`}
+                    >
+                      {verdict}
                     </p>
 
-                    <p className="mt-1 text-sm text-zinc-300">
-                      {
-                        combat.damage > 0
-                          ? `Your castle took ${combat.damage} damage (max ${combat.cap}) · ${Math.max(0, healthBefore - combat.damage)} LP left`
-                          : (
-                              <span className="inline-flex items-center gap-1">
-                                <Shield
-                                  size={14}
-                                  className="text-sky-300"
-                                  aria-hidden
-                                />
-                                Your castle held. No damage.
-                              </span>
-                            )
-                      }
-                    </p>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-center">
+                      <div className="rounded-xl border border-red-400/25 bg-red-950/30 px-2 py-1.5">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-red-200/80">
+                          Their castle
+                        </p>
 
-                    <ul className="mt-2 grid gap-0.5 text-left text-[12px] leading-4 text-zinc-300">
+                        <p className="font-display text-lg font-black tabular-nums text-red-100">
+                          {combat.dealt > 0 ? `-${combat.dealt}` : "0"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-sky-400/25 bg-sky-950/30 px-2 py-1.5">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-sky-200/80">
+                          Your castle
+                        </p>
+
+                        <p className="font-display text-lg font-black tabular-nums text-sky-100">
+                          {
+                            combat.damage > 0
+                              ? `-${combat.damage}`
+                              : (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Shield
+                                      size={14}
+                                      aria-hidden
+                                    />
+                                    0
+                                  </span>
+                                )
+                          }
+                        </p>
+
+                        <p className="text-[10px] text-sky-200/70">
+                          {Math.max(0, healthBefore - combat.damage)} LP left · max {combat.cap}/wave
+                        </p>
+                      </div>
+                    </div>
+
+                    <ul className="mt-2 grid gap-1 text-left text-[12px] leading-4 text-zinc-200">
                       {combat.recap.map(
                         (line) => (
                           <li key={line}>
-                            {line}
+                            <span className="font-black text-amber-200">
+                              {line.split(":")[0]}:
+                            </span>
+                            {line.slice(line.indexOf(":") + 1)}
                           </li>
                         )
                       )}

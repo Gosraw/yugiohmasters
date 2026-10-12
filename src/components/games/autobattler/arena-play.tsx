@@ -1,8 +1,11 @@
 "use client";
 
 import {
+  ChevronDown,
+  ChevronUp,
   ChevronsUp,
   Coins,
+  Gift,
   Heart,
   Layers,
   Lock,
@@ -38,7 +41,6 @@ import {
   restoreRun,
   runScore,
   turnSeconds,
-  BENCH_MAX,
   BOARD_MAX,
   ENGINE_VERSION,
   LANE_MAX,
@@ -46,7 +48,6 @@ import {
   MAX_WAVES,
   ROLL_COST,
   SELL_VALUE,
-  START_HEALTH,
   SUMMON_UNLOCK_WAVE,
   TRAP_UNLOCK_WAVE,
   UNIT_COST,
@@ -59,10 +60,10 @@ import {
 } from "@/lib/games/autobattler/engine";
 
 import {
-  ABILITY_LABEL,
   SYNERGY_TEXT,
   TRAP_BY_ID,
   UNIT_BY_ID,
+  abilityShort,
   abilityText,
   trapText,
   type SynergyKey,
@@ -78,10 +79,18 @@ import {
 } from "./card-frame";
 
 import {
+  FieldToken,
   LANE_NAMES,
-  LaneBoard,
+  MyField,
+  OpponentStrip,
   ScoutField,
+  ShopRow,
+  threatsByLane,
 } from "./lane-board";
+
+import {
+  RewardPick,
+} from "./reward-pick";
 
 import {
   SummonFlash,
@@ -215,6 +224,8 @@ type Props = {
   onLeave: () => void;
 };
 
+const TUTORIAL_KEY = "dc.shadowArena.tutorialSeen";
+
 const UNLOCKS: Record<number, string> = {
   [TRAP_UNLOCK_WAVE]: "Traps unlocked: buy one and set it face-down on a lane.",
   [SUMMON_UNLOCK_WAVE]: "Fusion & Xyz unlocked: watch for the glowing button.",
@@ -271,6 +282,29 @@ export function ArenaPlay({
 
   const [confirmLeave, setConfirmLeave] =
     useState(false);
+
+  const [confirmFight, setConfirmFight] =
+    useState<string | null>(null);
+
+  const [shopOpen, setShopOpen] =
+    useState(true);
+
+  const [detailOpen, setDetailOpen] =
+    useState(false);
+
+  /** "Later" on the reward pick hides it for that turn. */
+  const [rewardHiddenTurn, setRewardHiddenTurn] =
+    useState<number | null>(null);
+
+  // First run on this device: a few more tips (localStorage).
+  const [tutorialSeen] =
+    useState(() => {
+      try {
+        return window.localStorage.getItem(TUTORIAL_KEY) === "1";
+      } catch {
+        return false;
+      }
+    });
 
   const endingRef =
     useRef(false);
@@ -463,6 +497,12 @@ export function ArenaPlay({
       }
 
       if (run.state.over) {
+        try {
+          window.localStorage.setItem(TUTORIAL_KEY, "1");
+        } catch {
+          // ignore
+        }
+
         onFinished({
           score: runScore(run.state),
           log: {
@@ -639,6 +679,62 @@ export function ArenaPlay({
     }
   };
 
+  // ---- fight (with a check for empty / open lanes) ----
+  const threats =
+    threatsByLane(nextFoe);
+
+  const counts =
+    laneCounts(view.board);
+
+  const openLanes =
+    [0, 1, 2].filter(
+      (lane) => threats[lane] > 0 && counts[lane] === 0
+    );
+
+  const fightWarning =
+    view.board.length === 0
+      ? "Your field is empty: every enemy walks straight to your castle."
+      : openLanes.length > 0
+        ? `No monsters in the ${openLanes.map((lane) => LANE_NAMES[lane].toLowerCase()).join(" and ")} lane${openLanes.length > 1 ? "s" : ""}: ${openLanes.reduce((sum, lane) => sum + threats[lane], 0)} enemy attacker${openLanes.reduce((sum, lane) => sum + threats[lane], 0) > 1 ? "s" : ""} walk straight to your castle.`
+        : null;
+
+  const fight = () => {
+    if (fightWarning) {
+      setConfirmFight(fightWarning);
+
+      return;
+    }
+
+    endTurn();
+  };
+
+  // ---- one short, contextual tip ----
+  const tip =
+    selected?.kind === "shop"
+      ? "Tap a lane to buy it there (or tap the card again)."
+      : selectedUnit && !view.board.some((unit) => unit.uid === selectedUnit.uid)
+        ? "Tap a lane to place it."
+        : selectedTrap
+          ? "Tap a lane to move your trap there."
+          : view.board.length === 0
+            ? "Tap a shop card, then a lane."
+            : openLanes.length > 0
+              ? "Red lane = nobody guards it: enemies there walk to your castle."
+              : !tutorialSeen
+                ? "Tap a monster: ATK marches, DEF holds. Hold for more."
+                : null;
+
+  const rewardOpen =
+    view.reward !== null &&
+    rewardHiddenTurn !== view.turn &&
+    !combat &&
+    !view.discover;
+
+  const showDetail =
+    selected?.kind === "syn" ||
+    selectedTrap !== null ||
+    (selectedUnit !== null && view.board.some((unit) => unit.uid === selectedUnit.uid) && detailOpen);
+
   // ---- render ----
   return (
     <div
@@ -661,9 +757,9 @@ export function ArenaPlay({
               </div>
             )
           : (
-              <div className="mx-auto flex h-full w-full max-w-md flex-col gap-2 overflow-y-auto overscroll-contain px-3 pb-[max(.75rem,env(safe-area-inset-bottom))] pt-[max(.5rem,env(safe-area-inset-top))]">
-                {/* ---- header ---- */}
-                <div className="flex items-center gap-2">
+              <div className="mx-auto flex h-full w-full max-w-md flex-col gap-1.5 px-2.5 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-[max(.4rem,env(safe-area-inset-top))]">
+                {/* ---- header: leave · LP · gold · timer ---- */}
+                <div className="flex shrink-0 items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setConfirmLeave(true)}
@@ -676,18 +772,38 @@ export function ArenaPlay({
                     />
                   </button>
 
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-bold uppercase tracking-[.2em] text-amber-300/80">
-                      {mode === "daily" ? "Daily Arena" : "Practice"} · Wave {view.turn}/{MAX_WAVES}
-                    </p>
-
-                    <p className="truncate font-display text-[15px] font-bold leading-5 text-amber-100">
-                      Shadow Arena
-                    </p>
+                  <div className="flex h-11 items-center gap-1 rounded-xl border border-rose-400/25 bg-rose-500/10 px-2 text-sm font-black tabular-nums text-rose-100">
+                    <Heart
+                      size={14}
+                      className="text-rose-400"
+                      aria-hidden
+                    />
+                    {view.health}
+                    <span className="text-[10px] font-semibold text-rose-200/60">
+                      LP
+                    </span>
                   </div>
 
+                  <div className="flex h-11 items-center gap-1 rounded-xl border border-amber-300/30 bg-amber-300/10 px-2 text-sm font-black tabular-nums text-amber-100">
+                    <Coins
+                      size={14}
+                      className="text-amber-300"
+                      aria-hidden
+                    />
+                    {view.gold}
+                    <span className="text-[10px] font-semibold text-amber-200/60">
+                      /{view.maxGold}
+                    </span>
+                  </div>
+
+                  <p className="min-w-0 flex-1 truncate text-center text-[10px] font-bold uppercase tracking-[.16em] text-amber-300/80">
+                    {mode === "daily" ? "Daily" : "Practice"}
+                    <br />
+                    Wave {view.turn}/{MAX_WAVES}
+                  </p>
+
                   <div
-                    className={`flex h-11 min-w-[4.5rem] items-center justify-center gap-1.5 rounded-xl border px-2.5 font-display text-lg font-black tabular-nums ${
+                    className={`flex h-11 min-w-[4rem] items-center justify-center gap-1 rounded-xl border px-2 font-display text-lg font-black tabular-nums ${
                       lowTime
                         ? `border-red-400/60 bg-red-500/15 text-red-200 ${styles.timerLow}`
                         : "border-amber-300/30 bg-amber-300/10 text-amber-100"
@@ -696,198 +812,51 @@ export function ArenaPlay({
                     aria-label={`${secondsLeft} seconds left`}
                   >
                     <Timer
-                      size={16}
+                      size={15}
                       aria-hidden
                     />
                     {secondsLeft}
                   </div>
                 </div>
 
-                {/* ---- HUD ---- */}
-                <div className="grid grid-cols-3 gap-1.5">
-                  <div className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-400/25 bg-rose-500/10 text-sm font-black tabular-nums text-rose-100">
-                    <Heart
-                      size={15}
-                      className="text-rose-400"
-                      aria-hidden
-                    />
-                    {view.health}
-                    <span className="text-[11px] font-semibold text-rose-200/60">
-                      /{START_HEALTH} LP
-                    </span>
-                  </div>
+                {/* ---- opponent (tap = scout) ---- */}
+                <OpponentStrip
+                  foe={nextFoe}
+                  label={foeName(nextFoe)}
+                  wave={view.turn}
+                  onOpen={() => setScoutOpen(true)}
+                />
 
-                  <div className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-amber-300/30 bg-amber-300/10 text-sm font-black tabular-nums text-amber-100">
-                    <Coins
-                      size={15}
-                      className="text-amber-300"
-                      aria-hidden
-                    />
-                    {view.gold}
-                    <span className="text-[11px] font-semibold text-amber-200/60">
-                      /{view.maxGold}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => act("u")}
-                    disabled={view.tier >= MAX_TIER || view.gold < view.tierCost}
-                    className="flex h-10 items-center justify-center gap-1 rounded-xl border border-sky-300/30 bg-sky-400/10 text-sm font-black text-sky-100 transition active:scale-95 disabled:opacity-60"
-                    aria-label={
-                      view.tier >= MAX_TIER
-                        ? `Shop tier ${view.tier}, maximum`
-                        : `Shop tier ${view.tier}. Upgrade for ${view.tierCost} gold`
-                    }
-                  >
-                    <span className="tabular-nums">
-                      T{view.tier}
-                    </span>
-
-                    {
-                      view.tier < MAX_TIER
-                        ? (
-                            <span className="flex items-center gap-0.5 rounded-md bg-sky-300/15 px-1 text-[11px]">
-                              <ChevronsUp
-                                size={12}
-                                aria-hidden
-                              />
-                              {view.tierCost}
-                            </span>
-                          )
-                        : null
-                    }
-                  </button>
-                </div>
-
-                {/* ---- shop ---- */}
-                <section
-                  aria-label="Shop"
-                  className="rounded-2xl border border-[rgb(242_196_90/.18)] bg-[linear-gradient(180deg,rgba(18,26,56,.8),rgba(10,14,34,.85))] p-2"
-                >
-                  <div className="mb-1.5 flex items-center gap-1.5">
-                    <p className="flex-1 text-[11px] font-bold uppercase tracking-[.18em] text-amber-200/80">
-                      Shop · {UNIT_COST}
-                      <Coins
-                        size={11}
-                        className="mb-0.5 ml-0.5 inline text-amber-300"
-                        aria-hidden
-                      />
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={() => act("f")}
-                      aria-pressed={view.frozen}
-                      className={`flex h-11 items-center gap-1 rounded-xl border px-2.5 text-xs font-bold transition active:scale-95 ${
-                        view.frozen
-                          ? "border-cyan-300/70 bg-cyan-400/20 text-cyan-100"
-                          : "border-white/10 bg-white/5 text-zinc-300"
-                      }`}
-                    >
-                      {
-                        view.frozen
-                          ? (
-                              <Lock
-                                size={14}
-                                aria-hidden
-                              />
-                            )
-                          : (
-                              <Snowflake
-                                size={14}
-                                aria-hidden
-                              />
-                            )
-                      }
-                      {view.frozen ? "Frozen" : "Freeze"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (act("r")) {
-                          setSelected(null);
-                        }
-                      }}
-                      disabled={view.gold < ROLL_COST}
-                      className="flex h-11 items-center gap-1 rounded-xl border border-amber-300/40 bg-amber-300/10 px-2.5 text-xs font-bold text-amber-100 transition active:scale-95 disabled:opacity-50"
-                    >
-                      <RefreshCw
-                        size={14}
-                        aria-hidden
-                      />
-                      Refresh {ROLL_COST}
-                    </button>
-                  </div>
-
-                  <div
-                    className="grid gap-1.5"
-                    style={{
-                      gridTemplateColumns: `repeat(${Math.max(4, view.shop.length)}, minmax(0, 1fr))`,
-                    }}
-                  >
-                    {view.shop.map(
-                      (id, slot) => {
-                        if (!id) {
-                          return (
-                            <div
-                              key={`shop-${slot}`}
-                              className="aspect-[59/86] rounded-[5px] border border-dashed border-white/10"
-                            />
-                          );
-                        }
-
-                        const unit =
-                          UNIT_BY_ID.get(id);
-
-                        const trap =
-                          TRAP_BY_ID.get(id);
-
-                        return (
+                {/* ---- synergies + Fusion/Xyz + reward ---- */}
+                <div className="flex h-8 shrink-0 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
+                  {
+                    view.reward && !rewardOpen
+                      ? (
                           <button
-                            key={`shop-${slot}-${id}`}
                             type="button"
-                            onClick={() =>
-                              setSelected(
-                                selected?.kind === "shop" && selected.slot === slot
-                                  ? null
-                                  : {
-                                      kind: "shop",
-                                      slot,
-                                    }
-                              )
-                            }
-                            aria-label={
-                              unit
-                                ? `${unit.name}, tier ${unit.tier}, ${unit.atk} ATK ${unit.hp} DEF, ${ABILITY_LABEL[unit.ability]}`
-                                : `Trap: ${trap?.name}`
-                            }
-                            className={`relative transition active:scale-95 ${view.gold < UNIT_COST ? "opacity-60" : ""}`}
+                            onClick={() => setRewardHiddenTurn(null)}
+                            className={`flex h-8 shrink-0 items-center gap-1 rounded-full border border-amber-200 bg-amber-300/25 px-3 text-xs font-black text-amber-50 ${styles.summonGlow}`}
                           >
-                            <CardFrame
-                              id={id}
-                              selected={selected?.kind === "shop" && selected.slot === slot}
+                            <Gift
+                              size={13}
+                              aria-hidden
                             />
+                            Reward
                           </button>
-                        );
-                      }
-                    )}
-                  </div>
-                </section>
+                        )
+                      : null
+                  }
 
-                {/* ---- synergies + Fusion/Xyz ---- */}
-                <div className="flex min-h-9 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
                   {
                     summons > 0
                       ? (
                           <button
                             type="button"
                             onClick={() => setSummonOpen(true)}
-                            className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-fuchsia-300/60 bg-[linear-gradient(90deg,rgba(168,85,247,.35),rgba(56,130,246,.35))] px-3 text-xs font-black text-fuchsia-50 ${styles.summonGlow}`}
+                            className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-fuchsia-300/60 bg-[linear-gradient(90deg,rgba(168,85,247,.35),rgba(56,130,246,.35))] px-3 text-xs font-black text-fuchsia-50 ${styles.summonGlow}`}
                           >
                             <Layers
-                              size={14}
+                              size={13}
                               aria-hidden
                             />
                             Fusion / Xyz
@@ -899,47 +868,48 @@ export function ArenaPlay({
                       : null
                   }
 
+                  {synergies.map(
+                    (syn) => (
+                      <button
+                        key={syn.key}
+                        type="button"
+                        onClick={() =>
+                          setSelected({
+                            kind: "syn",
+                            key: syn.key,
+                          })
+                        }
+                        className={`flex h-8 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold ${
+                          syn.level === 2
+                            ? "border-amber-200 bg-amber-300/30 text-amber-50"
+                            : syn.level === 1
+                              ? "border-amber-300/60 bg-amber-300/15 text-amber-100"
+                              : "border-white/10 bg-white/5 text-zinc-400"
+                        }`}
+                      >
+                        {syn.key}
+                        <span className="tabular-nums opacity-80">
+                          {syn.count}/{syn.count >= 3 ? 5 : 3}
+                        </span>
+                      </button>
+                    )
+                  )}
+
                   {
-                    synergies.length === 0 && summons === 0
+                    synergies.length === 0 && summons === 0 && !view.reward
                       ? (
-                          <p className="text-[11px] text-zinc-500">
-                            3 monsters of one attribute or type = a synergy bonus.
+                          <p className="truncate text-[11px] text-zinc-500">
+                            3 of one attribute or type on your field = a bonus.
                           </p>
                         )
-                      : synergies.map(
-                          (syn) => (
-                            <button
-                              key={syn.key}
-                              type="button"
-                              onClick={() =>
-                                setSelected({
-                                  kind: "syn",
-                                  key: syn.key,
-                                })
-                              }
-                              className={`flex h-9 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold ${
-                                syn.level === 2
-                                  ? "border-amber-200 bg-amber-300/30 text-amber-50"
-                                  : syn.level === 1
-                                    ? "border-amber-300/60 bg-amber-300/15 text-amber-100"
-                                    : "border-white/10 bg-white/5 text-zinc-400"
-                              }`}
-                            >
-                              {syn.key}
-                              <span className="tabular-nums opacity-80">
-                                {syn.count}/{syn.count >= 3 ? 5 : 3}
-                              </span>
-                            </button>
-                          )
-                        )
+                      : null
                   }
                 </div>
 
-                {/* ---- battlefield ---- */}
-                <LaneBoard
+                {/* ---- your field ---- */}
+                <MyField
                   view={view}
-                  foe={nextFoe}
-                  foeLabel={foeName(nextFoe)}
+                  threats={threats}
                   placing={placing}
                   selectedUid={selectedUnit?.uid ?? selectedTrap?.uid ?? null}
                   onTapUnit={(unit) => {
@@ -952,12 +922,13 @@ export function ArenaPlay({
                     setSelected(null);
                     act(`t${unit.uid}`);
                   }}
-                  onHoldUnit={(unit) =>
+                  onHoldUnit={(unit) => {
                     setSelected({
                       kind: "unit",
                       uid: unit.uid,
-                    })
-                  }
+                    });
+                    setDetailOpen(true);
+                  }}
                   onTapTrap={(trap) =>
                     setSelected(
                       selectedTrap?.uid === trap.uid
@@ -969,83 +940,254 @@ export function ArenaPlay({
                     )
                   }
                   onTapLane={tapLane}
-                  onScout={() => setScoutOpen(true)}
+                  grow={!shopOpen}
                 />
 
-                {/* ---- bench ---- */}
                 {
-                  view.bench.length > 0
+                  tip
                     ? (
-                        <section aria-label="Bench">
-                          <p className="mb-1 text-[11px] font-bold uppercase tracking-[.18em] text-zinc-400">
-                            Bench {view.bench.length}/{BENCH_MAX} · tap, then tap a lane
-                          </p>
-
-                          <div className="grid grid-cols-6 gap-1.5">
-                            {view.bench.map(
-                              (unit) => {
-                                const def =
-                                  UNIT_BY_ID.get(unit.id) as UnitDef;
-
-                                return (
-                                  <button
-                                    key={`b-${unit.uid}`}
-                                    type="button"
-                                    onClick={() =>
-                                      setSelected(
-                                        selectedUnit?.uid === unit.uid
-                                          ? null
-                                          : {
-                                              kind: "unit",
-                                              uid: unit.uid,
-                                            }
-                                      )
-                                    }
-                                    aria-label={`${def.name} on the bench, ${unit.atk} ATK ${unit.hp} DEF`}
-                                    className="min-h-11 active:scale-95"
-                                  >
-                                    <CardFrame
-                                      id={unit.id}
-                                      atk={unit.atk}
-                                      hp={unit.hp}
-                                      golden={unit.golden}
-                                      selected={selectedUnit?.uid === unit.uid}
-                                      size="sm"
-                                    />
-                                  </button>
-                                );
-                              }
-                            )}
-                          </div>
-                        </section>
+                        <p className="shrink-0 truncate text-center text-[11px] font-semibold text-amber-200/80">
+                          {tip}
+                        </p>
                       )
                     : null
                 }
 
-                {/* ---- detail ---- */}
-                <DetailPanel
-                  view={view}
-                  selected={selected}
-                  selectedUnit={selectedUnit}
-                  selectedTrap={selectedTrap}
-                  selectedShopId={selectedShopId}
-                  act={act}
-                  onClose={() => setSelected(null)}
-                />
+                {/* ---- shop tray ---- */}
+                <section
+                  aria-label="Shop"
+                  className={`flex flex-col rounded-2xl border border-[rgb(242_196_90/.22)] bg-[linear-gradient(180deg,rgba(18,26,56,.92),rgba(10,14,34,.95))] p-1.5 ${shopOpen ? "min-h-0 flex-1" : "shrink-0"}`}
+                >
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setShopOpen(!shopOpen)}
+                      aria-expanded={shopOpen}
+                      className="flex h-11 items-center gap-1 rounded-xl px-1.5 text-[11px] font-black uppercase tracking-[.14em] text-amber-200"
+                    >
+                      {
+                        shopOpen
+                          ? (
+                              <ChevronDown
+                                size={15}
+                                aria-hidden
+                              />
+                            )
+                          : (
+                              <ChevronUp
+                                size={15}
+                                aria-hidden
+                              />
+                            )
+                      }
+                      Shop · {UNIT_COST}
+                      <Coins
+                        size={11}
+                        className="text-amber-300"
+                        aria-hidden
+                      />
+                    </button>
 
-                <div className="mt-auto pt-1">
-                  <button
-                    type="button"
-                    onClick={endTurn}
-                    className="primary-button flex min-h-[3.25rem] w-full items-center justify-center gap-2 text-base"
-                  >
-                    <Swords
-                      size={18}
-                      aria-hidden
-                    />
-                    Fight wave {view.turn}
-                  </button>
-                </div>
+                    <span className="flex-1" />
+
+                    <button
+                      type="button"
+                      onClick={() => act("u")}
+                      disabled={view.tier >= MAX_TIER || view.gold < view.tierCost}
+                      className="flex h-11 items-center gap-1 rounded-xl border border-sky-300/30 bg-sky-400/10 px-2 text-[11px] font-black text-sky-100 transition active:scale-95 disabled:opacity-55"
+                      aria-label={
+                        view.tier >= MAX_TIER
+                          ? `Shop tier ${view.tier}, maximum`
+                          : `Upgrade shop from tier ${view.tier} to ${view.tier + 1} for ${view.tierCost} gold`
+                      }
+                    >
+                      <ChevronsUp
+                        size={13}
+                        aria-hidden
+                      />
+                      {
+                        view.tier >= MAX_TIER
+                          ? `Tier ${view.tier} max`
+                          : `Tier ${view.tier}→${view.tier + 1}: ${view.tierCost}`
+                      }
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => act("f")}
+                      aria-pressed={view.frozen}
+                      aria-label={view.frozen ? "Unfreeze the shop" : "Freeze the shop for next turn"}
+                      className={`flex h-11 w-11 items-center justify-center rounded-xl border transition active:scale-95 ${
+                        view.frozen
+                          ? "border-cyan-300/70 bg-cyan-400/20 text-cyan-100"
+                          : "border-white/10 bg-white/5 text-zinc-300"
+                      }`}
+                    >
+                      {
+                        view.frozen
+                          ? (
+                              <Lock
+                                size={15}
+                                aria-hidden
+                              />
+                            )
+                          : (
+                              <Snowflake
+                                size={15}
+                                aria-hidden
+                              />
+                            )
+                      }
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (act("r")) {
+                          setSelected(null);
+                        }
+                      }}
+                      disabled={view.gold < ROLL_COST}
+                      aria-label={`Refresh the shop for ${ROLL_COST} gold`}
+                      className="flex h-11 items-center gap-1 rounded-xl border border-amber-300/40 bg-amber-300/10 px-2 text-[11px] font-black text-amber-100 transition active:scale-95 disabled:opacity-50"
+                    >
+                      <RefreshCw
+                        size={13}
+                        aria-hidden
+                      />
+                      {ROLL_COST}
+                    </button>
+                  </div>
+
+                  {
+                    shopOpen
+                      ? (
+                          <div className="mt-1 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain">
+                            {
+                              view.bench.length > 0
+                                ? (
+                                    <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto rounded-xl border border-white/10 bg-black/25 p-1">
+                                      <span className="px-1 text-[9px] font-black uppercase tracking-wider text-zinc-400">
+                                        Bench
+                                      </span>
+
+                                      {view.bench.map(
+                                        (unit) => {
+                                          const def =
+                                            UNIT_BY_ID.get(unit.id) as UnitDef;
+
+                                          return (
+                                            <button
+                                              key={`b-${unit.uid}`}
+                                              type="button"
+                                              onClick={() =>
+                                                setSelected(
+                                                  selectedUnit?.uid === unit.uid
+                                                    ? null
+                                                    : {
+                                                        kind: "unit",
+                                                        uid: unit.uid,
+                                                      }
+                                                )
+                                              }
+                                              aria-label={`${def.name} on the bench, ${unit.atk} ATK ${unit.hp} DEF. Tap, then tap a lane.`}
+                                              className="w-10 shrink-0 active:scale-95"
+                                            >
+                                              <FieldToken
+                                                img={def.art ?? def.img}
+                                                atk={unit.atk}
+                                                hp={unit.hp}
+                                                golden={unit.golden}
+                                                selected={selectedUnit?.uid === unit.uid}
+                                                small
+                                              />
+                                            </button>
+                                          );
+                                        }
+                                      )}
+
+                                      {
+                                        selectedUnit && view.bench.some((unit) => unit.uid === selectedUnit.uid)
+                                          ? (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  if (act(`s${selectedUnit.uid}`)) {
+                                                    setSelected(null);
+                                                  }
+                                                }}
+                                                className="ml-auto flex min-h-11 items-center gap-1 rounded-xl border border-red-300/30 bg-red-500/10 px-2.5 text-xs font-bold text-red-100"
+                                              >
+                                                <Trash2
+                                                  size={13}
+                                                  aria-hidden
+                                                />
+                                                +{SELL_VALUE}
+                                              </button>
+                                            )
+                                          : null
+                                      }
+                                    </div>
+                                  )
+                                : null
+                            }
+
+                            {view.shop.map(
+                              (id, slot) =>
+                                id
+                                  ? (
+                                      <ShopRow
+                                        key={`shop-${slot}-${id}`}
+                                        id={id}
+                                        board={view.board}
+                                        affordable={view.gold >= UNIT_COST}
+                                        selected={selected?.kind === "shop" && selected.slot === slot}
+                                        onTap={() => {
+                                          if (selected?.kind === "shop" && selected.slot === slot) {
+                                            if (act(`b${slot}`)) {
+                                              setSelected(null);
+                                            }
+
+                                            return;
+                                          }
+
+                                          setSelected({
+                                            kind: "shop",
+                                            slot,
+                                          });
+                                        }}
+                                      />
+                                    )
+                                  : null
+                            )}
+
+                            {
+                              view.shop.every((id) => !id)
+                                ? (
+                                    <p className="py-2 text-center text-[11px] text-zinc-500">
+                                      Sold out. Refresh for new cards.
+                                    </p>
+                                  )
+                                : null
+                            }
+                          </div>
+                        )
+                      : null
+                  }
+                </section>
+
+                {/* ---- fight (thumb zone) ---- */}
+                <button
+                  type="button"
+                  onClick={fight}
+                  className="primary-button flex min-h-[3.25rem] w-full shrink-0 items-center justify-center gap-2 text-base"
+                >
+                  <Swords
+                    size={18}
+                    aria-hidden
+                  />
+                  Fight wave {view.turn}
+                </button>
               </div>
             )
       }
@@ -1056,7 +1198,7 @@ export function ArenaPlay({
           ? (
               <div
                 role="status"
-                className="pointer-events-none fixed inset-x-0 top-20 z-[75] flex justify-center px-4"
+                className="pointer-events-none fixed inset-x-0 top-16 z-[76] flex justify-center px-4"
               >
                 <p
                   className={`rounded-full border px-4 py-2 text-center text-sm font-semibold shadow-lg ${
@@ -1068,6 +1210,23 @@ export function ArenaPlay({
                   {toast.text}
                 </p>
               </div>
+            )
+          : null
+      }
+
+      {/* ---- reward after a won wave ---- */}
+      {
+        rewardOpen && view.reward
+          ? (
+              <RewardPick
+                key={`reward-${view.turn}`}
+                options={view.reward}
+                board={view.board}
+                onPick={(index, uid) => {
+                  act(`w${index}${uid === null ? "" : `.${uid}`}`);
+                }}
+                onSkip={() => setRewardHiddenTurn(view.turn)}
+              />
             )
           : null
       }
@@ -1098,13 +1257,75 @@ export function ArenaPlay({
                             size="lg"
                           />
 
-                          <span className="mt-1.5 block text-[11px] leading-4 text-zinc-400">
-                            {ABILITY_LABEL[def.ability]}
+                          <span className="mt-1.5 block text-[10.5px] leading-4 text-zinc-300">
+                            {abilityShort(def.ability, def.power, { rallyBy: def.rallyBy, tribe: def.tribe, attribute: def.attribute })}
                           </span>
                         </button>
                       );
                     }
                   )}
+                </div>
+              </Sheet>
+            )
+          : null
+      }
+
+      {/* ---- held unit / trap / synergy ---- */}
+      {
+        showDetail && !combat
+          ? (
+              <Sheet
+                title={selected?.kind === "syn" ? `${selected.key} synergy` : "Card"}
+                onClose={() => {
+                  setSelected(null);
+                  setDetailOpen(false);
+                }}
+              >
+                <DetailPanel
+                  view={view}
+                  selected={selected}
+                  selectedUnit={selectedUnit}
+                  selectedTrap={selectedTrap}
+                  selectedShopId={null}
+                  act={act}
+                  onClose={() => {
+                    setSelected(null);
+                    setDetailOpen(false);
+                  }}
+                />
+              </Sheet>
+            )
+          : null
+      }
+
+      {/* ---- fight anyway? ---- */}
+      {
+        confirmFight
+          ? (
+              <Sheet
+                title="Fight anyway?"
+                subtitle={confirmFight}
+                onClose={() => setConfirmFight(null)}
+              >
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmFight(null)}
+                    className="min-h-12 rounded-xl border border-white/15 bg-white/5 text-sm font-bold text-zinc-200"
+                  >
+                    Back to the shop
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmFight(null);
+                      endTurn();
+                    }}
+                    className="min-h-12 rounded-xl border border-red-300/40 bg-red-500/15 text-sm font-bold text-red-100"
+                  >
+                    Fight
+                  </button>
                 </div>
               </Sheet>
             )

@@ -148,6 +148,70 @@ function summonSpecials(
   }
 }
 
+/** Greedy reward pick: higher card > card > ATK on the best > gold > trap > DEF. */
+function pickReward(
+  run: Run
+) {
+  const {
+    state,
+  } = run;
+
+  const options =
+    state.reward;
+
+  if (!options) {
+    return;
+  }
+
+  const rank = (
+    kind: string,
+    up: boolean
+  ) =>
+    kind === "card"
+      ? up
+        ? 0
+        : 1
+      : ["atk", "gold", "trap", "def"].indexOf(kind) + 2;
+
+  const best =
+    [...state.board].sort(
+      (a, b) => b.atk + b.hp - (a.atk + a.hp)
+    )[0];
+
+  const order =
+    options
+      .map(
+        (option, i) => ({
+          option,
+          i,
+        })
+      )
+      .sort(
+        (a, b) =>
+          rank(a.option.kind, a.option.kind === "card" && a.option.up) -
+          rank(b.option.kind, b.option.kind === "card" && b.option.up)
+      );
+
+  for (const {
+    option,
+    i,
+  } of order) {
+    const target =
+      option.kind === "atk" || option.kind === "def"
+        ? best
+          ? `.${best.uid}`
+          : null
+        : "";
+
+    if (
+      target !== null &&
+      act(run, `w${i}${target}`)
+    ) {
+      return;
+    }
+  }
+}
+
 export function playBotTurn(
   run: Run,
   options: {
@@ -160,6 +224,8 @@ export function playBotTurn(
 
   const smart =
     options.smart ?? true;
+
+  pickReward(run);
 
   for (let guard = 0; guard < 60 && !state.over; guard++) {
     if (state.discover) {

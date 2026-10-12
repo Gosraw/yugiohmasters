@@ -668,6 +668,12 @@ function Rules() {
         </p>
 
         <p>
+          <strong className="text-amber-100">Rewards:</strong> after every won wave, pick 1
+          of 3: a free card (sometimes from the next tier), a trap, +2 gold, or a permanent
+          ATK / DEF boost for one monster. Fight without picking and it is gone.
+        </p>
+
+        <p>
           <strong className="text-amber-100">Fusion &amp; Xyz</strong> (from wave{" "}
           {SUMMON_UNLOCK_WAVE}): classic pairs (Dark Magician + Buster Blader, Red-Eyes +
           Summoned Skull, ...) fuse for free; two monsters of the same Level (3-8) overlay

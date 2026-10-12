@@ -820,7 +820,144 @@ describe("ghost runs", () => {
 // Old (v1) runs
 // ---------------------------------------------------------
 
-describe("legacy v1 / v2 logs", () => {
+describe("reward pick after a won wave", () => {
+  /** A run that just won wave 1 (an unbeatable board). */
+  const wonRun = (
+    seed: string
+  ) => {
+    const run =
+      createRun(seed);
+
+    give(run, ["kuriboh"])[0].atk = 99;
+
+    applyAction(run, "e");
+
+    return run;
+  };
+
+  it("offers 3 seeded options, the same on replay", () => {
+    const a =
+      wonRun("reward-1");
+
+    const b =
+      wonRun("reward-1");
+
+    expect(a.state.history[0].result).toBe("win");
+    expect(a.state.reward).toHaveLength(3);
+    expect(a.state.reward).toEqual(b.state.reward);
+    expect(new Set(a.state.reward!.map((o) => o.kind === "card" ? `card${o.up}` : o.kind)).size).toBe(3);
+  });
+
+  it("each kind applies; unchosen cards go back to the pool", () => {
+    let checked = 0;
+
+    for (let i = 0; i < 40 && checked < 5; i++) {
+      const run =
+        wonRun(`reward-kinds-${i}`);
+
+      const options =
+        run.state.reward ?? [];
+
+      options.forEach(
+        (option, index) => {
+          // Same seed + same steps = the same offer.
+          const copy =
+            wonRun(`reward-kinds-${i}`);
+
+          copy.state.gold = 0;
+
+          const target =
+            copy.state.board[0];
+
+          const before = {
+            atk: target.atk,
+            hp: target.hp,
+            units: copy.state.board.length + copy.state.bench.length,
+            traps: copy.state.traps.length,
+            pool: Object.values(copy.state.pool).reduce((sum, n) => sum + n, 0),
+          };
+
+          const action =
+            option.kind === "atk" || option.kind === "def"
+              ? `w${index}.${target.uid}`
+              : `w${index}`;
+
+          expect(applyAction(copy, action).ok).toBe(true);
+          expect(copy.state.reward).toBeNull();
+
+          const pool =
+            Object.values(copy.state.pool).reduce((sum, n) => sum + n, 0);
+
+          const reserved =
+            options.filter((o) => o.kind === "card" || o.kind === "trap").length;
+
+          if (option.kind === "card") {
+            expect(copy.state.board.length + copy.state.bench.length).toBe(before.units + 1);
+            expect(pool).toBe(before.pool + reserved - 1);
+          } else if (option.kind === "trap") {
+            expect(copy.state.traps.length).toBe(before.traps + 1);
+            expect(pool).toBe(before.pool + reserved - 1);
+          } else {
+            expect(pool).toBe(before.pool + reserved);
+          }
+
+          if (option.kind === "gold") expect(copy.state.gold).toBe(option.amount);
+          if (option.kind === "atk") expect(target.atk).toBe(before.atk + option.amount);
+          if (option.kind === "def") expect(target.hp).toBe(before.hp + option.amount);
+
+          checked += 1;
+        }
+      );
+    }
+
+    expect(checked).toBeGreaterThanOrEqual(5);
+  });
+
+  it("boosts need a monster on your field; bad picks are rejected", () => {
+    const run =
+      wonRun("reward-bad");
+
+    expect(applyAction(run, "w7").ok).toBe(false);
+
+    const boost =
+      run.state.reward!.findIndex((o) => o.kind === "atk" || o.kind === "def");
+
+    if (boost >= 0) {
+      expect(applyAction(run, `w${boost}`).ok).toBe(false);
+      expect(applyAction(run, `w${boost}.99999`).ok).toBe(false);
+    }
+  });
+
+  it("an untaken reward is forfeited at the end of the turn", () => {
+    const run =
+      wonRun("reward-skip");
+
+    const pool =
+      Object.values(run.state.pool).reduce((sum, n) => sum + n, 0);
+
+    const reserved =
+      run.state.reward!.filter((o) => o.kind === "card" || o.kind === "trap").length;
+
+    run.state.board = [];
+
+    applyAction(run, "e");
+
+    expect(run.state.reward).toBeNull();
+    expect(Object.values(run.state.pool).reduce((sum, n) => sum + n, 0)).toBeGreaterThanOrEqual(pool + reserved - 9);
+  });
+
+  it("no reward after a lost or drawn wave", () => {
+    const run =
+      createRun("reward-none");
+
+    applyAction(run, "e");
+
+    expect(run.state.history[0].result).not.toBe("win");
+    expect(run.state.reward).toBeNull();
+  });
+});
+
+describe("legacy v1 / v2 / v3 logs", () => {
   it("are rejected cleanly, never crash", () => {
     const legacy = {
       v: 1,
@@ -840,11 +977,13 @@ describe("legacy v1 / v2 logs", () => {
 
     expect(validateRun("old-run", legacy, 50000).ok).toBe(false);
 
-    // v2 (pre-lanes) logs too.
-    expect(replayLog("old-run", { v: 2, a: ["e"], g: [] })).toEqual({
-      ok: false,
-      reason: LEGACY_LOG_REASON,
-    });
+    // v2 (pre-lanes) and v3 (pre-rewards) logs too.
+    for (const v of [2, 3]) {
+      expect(replayLog("old-run", { v, a: ["e"], g: [] })).toEqual({
+        ok: false,
+        reason: LEGACY_LOG_REASON,
+      });
+    }
 
     // A v1 log that used v1-only numbers (wave 20 etc.) is the same.
     expect(

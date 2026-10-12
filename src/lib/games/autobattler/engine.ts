@@ -71,7 +71,10 @@ import {
 //   x<a>.<b>       Overlay: units <a> + <b> (same Level) -> Xyz
 //                  (1 gold, once per turn)
 //   c<r>.<a>[.<b>] Polymerization: fusion recipe <r> (free)
+//   w<i>[.<uid>]   take reward option <i> (after a won wave; the
+//                  ATK / DEF boosts name the monster <uid>)
 //   e              end the turn -> combat vs this wave's opponent
+//                  (an untaken reward is forfeited)
 //
 // Opponents: a league-mate's "ghost" board (units, lanes,
 // positions, traps) when the server assigned one for that turn
@@ -79,8 +82,8 @@ import {
 // computer Boss. The LAST wave is always a Boss.
 // =========================================================
 
-/** v3 (2026-10-12): lanes, castles, positions, traps. */
-export const ENGINE_VERSION = 3;
+/** v4 (2026-10-12): v3 lanes + a reward pick after won waves. */
+export const ENGINE_VERSION = 4;
 
 /**
  * Shape of a stored ghost board, separate from ENGINE_VERSION so
@@ -233,12 +236,12 @@ export function damageCap(
 export function bossBudget(
   wave: number
 ) {
-  // Hand-tuned with the greedy bot (balance.test.ts): median
-  // ~wave 8-9, a full clear of all 12 only now and then.
+  // Hand-tuned with the greedy bot (balance.test.ts, rewards
+  // included): median ~wave 9, a full clear ~1 in 5.
   const table = [
     0,
-    4, 7, 13, 20, 29, 39, 51, 66, 86, 108,
-    138, 176,
+    4, 7, 13, 21, 32, 44, 59, 77, 100, 128,
+    164, 210,
   ];
 
   return table[Math.min(wave, MAX_WAVES)];
@@ -266,6 +269,31 @@ export type TrapCard = {
   id: string;
   lane: number;
 };
+
+/** One of the 3 rewards offered after a won wave (seeded). */
+export type RewardOption =
+  | {
+      kind: "card";
+      id: string;
+      /** Drawn one tier above your shop tier. */
+      up: boolean;
+    }
+  | {
+      kind: "trap";
+      id: string;
+    }
+  | {
+      kind: "gold";
+      amount: number;
+    }
+  | {
+      kind: "atk";
+      amount: number;
+    }
+  | {
+      kind: "def";
+      amount: number;
+    };
 
 export type WaveRecord = {
   wave: number;
@@ -325,6 +353,8 @@ export type RunState = {
   pool: Record<string, number>;
   discover: string[] | null;
   discoverQueue: number;
+  /** Reward options after a won wave (null = none open). */
+  reward: RewardOption[] | null;
   nextUid: number;
   overlayUsed: boolean;
   wins: number;
@@ -714,6 +744,7 @@ export function createRun(
     pool,
     discover: null,
     discoverQueue: 0,
+    reward: null,
     nextUid: 1,
     overlayUsed: false,
     wins: 0,
@@ -801,6 +832,8 @@ function drawFromPool(
   options: {
     exclude?: Set<string>;
     unitsOnly?: boolean;
+    trapsOnly?: boolean;
+    rng?: Prng;
   } = {}
 ): string | null {
   const {
@@ -817,6 +850,7 @@ function drawFromPool(
     card.tier >= minTier &&
     card.tier <= maxTier &&
     !(noTraps && card.trap) &&
+    !(options.trapsOnly && !card.trap) &&
     !options.exclude?.has(card.id);
 
   let total = 0;
@@ -832,7 +866,7 @@ function drawFromPool(
   }
 
   let pick =
-    run.shopRng.int(0, total - 1);
+    (options.rng ?? run.shopRng).int(0, total - 1);
 
   for (const card of SHOP_CARDS) {
     if (!usable(card)) {
@@ -1269,6 +1303,223 @@ function freeTrapLane(
   return LANE_ORDER.find(
     (lane) => !state.traps.some((trap) => trap.lane === lane)
   ) ?? -1;
+}
+
+// ---------------------------------------------------------
+// Rewards (after a won wave)
+// ---------------------------------------------------------
+
+/** Card / trap options are taken out of the pool until resolved. */
+function releaseReward(
+  state: RunState,
+  keep: RewardOption | null
+) {
+  for (const option of state.reward ?? []) {
+    if (
+      option !== keep &&
+      (option.kind === "card" || option.kind === "trap")
+    ) {
+      state.pool[option.id] += 1;
+    }
+  }
+
+  state.reward = null;
+}
+
+/** 3 seeded options for the wave just won (`${seed}:reward:${wave}`). */
+function offerReward(
+  run: Run,
+  wave: number
+) {
+  const {
+    state,
+  } = run;
+
+  const rng =
+    createPrng(`${state.seed}:reward:${wave}`);
+
+  const kinds = [
+    "card",
+    "card_up",
+    "trap",
+    "gold",
+    "atk",
+    "def",
+  ].filter(
+    (kind) =>
+      (kind !== "trap" || state.turn >= TRAP_UNLOCK_WAVE) &&
+      ((kind !== "atk" && kind !== "def") || state.board.length > 0) &&
+      (kind !== "card_up" || state.tier < MAX_TIER)
+  );
+
+  for (let i = kinds.length - 1; i > 0; i--) {
+    const j =
+      rng.int(0, i);
+
+    [kinds[i], kinds[j]] = [kinds[j], kinds[i]];
+  }
+
+  const boost =
+    Math.floor(wave / 3);
+
+  const options: RewardOption[] = [];
+
+  for (const kind of kinds) {
+    if (options.length >= 3) {
+      break;
+    }
+
+    if (
+      kind === "card" ||
+      kind === "card_up"
+    ) {
+      const tier =
+        kind === "card_up"
+          ? state.tier + 1
+          : state.tier;
+
+      const id =
+        drawFromPool(
+          run,
+          tier,
+          tier,
+          {
+            unitsOnly: true,
+            rng,
+          }
+        );
+
+      if (id) {
+        options.push({
+          kind: "card",
+          id,
+          up: kind === "card_up",
+        });
+      }
+    } else if (kind === "trap") {
+      const id =
+        drawFromPool(
+          run,
+          1,
+          state.tier,
+          {
+            trapsOnly: true,
+            rng,
+          }
+        );
+
+      if (id) {
+        options.push({
+          kind: "trap",
+          id,
+        });
+      }
+    } else if (kind === "gold") {
+      options.push({
+        kind: "gold",
+        amount: 2,
+      });
+    } else if (kind === "atk") {
+      options.push({
+        kind: "atk",
+        amount: 2 + boost,
+      });
+    } else {
+      options.push({
+        kind: "def",
+        amount: 3 + boost,
+      });
+    }
+  }
+
+  state.reward =
+    options.length > 0
+      ? options
+      : null;
+}
+
+function takeReward(
+  run: Run,
+  index: number,
+  uid: number | null
+): string | null {
+  const {
+    state,
+  } = run;
+
+  const option =
+    state.reward?.[index];
+
+  if (!option) {
+    return "No such reward.";
+  }
+
+  switch (option.kind) {
+    case "card":
+      if (!hasRoom(state)) {
+        return "No room: sell a unit first.";
+      }
+
+      releaseReward(state, option);
+
+      placeUnit(
+        state,
+        newUnit(
+          state,
+          option.id
+        )
+      );
+
+      checkTriples(run);
+
+      return null;
+    case "trap": {
+      const free =
+        freeTrapLane(state);
+
+      if (free < 0) {
+        return "All 3 trap zones are full: sell a trap first.";
+      }
+
+      releaseReward(state, option);
+
+      state.traps.push({
+        uid: state.nextUid,
+        id: option.id,
+        lane: free,
+      });
+
+      state.nextUid += 1;
+
+      return null;
+    }
+    case "gold":
+      releaseReward(state, option);
+      state.gold += option.amount;
+
+      return null;
+    case "atk":
+    case "def": {
+      const target =
+        state.board.find(
+          (unit) => unit.uid === uid
+        );
+
+      if (!target) {
+        return "Pick a monster on your field.";
+      }
+
+      releaseReward(state, option);
+
+      if (option.kind === "atk") {
+        target.atk += option.amount;
+      } else {
+        target.hp += option.amount;
+      }
+
+      return null;
+    }
+  }
 }
 
 // ---------------------------------------------------------
@@ -2482,8 +2733,12 @@ export function resolveCombat(
   const names =
     new Map<number, string>();
 
+  const byUid =
+    new Map<number, CUnit>();
+
   for (const unit of [...sides[0], ...sides[1]]) {
     names.set(unit.uid, unit.name);
+    byUid.set(unit.uid, unit);
   }
 
   // Recap raw material, per lane.
@@ -2492,13 +2747,11 @@ export function resolveCombat(
       {
         length: LANES,
       },
-      () => ({
-        flips: [] as TrapFlip[],
-        breaks: [[], []] as {
-          name: string;
-          amt: number;
-        }[][],
-        lost: [0, 0],
+      (): LaneNotes => ({
+        flips: [],
+        kills: [],
+        castle: [0, 0],
+        breaks: [0, 0],
         held: [0, 0],
       })
     );
@@ -2579,7 +2832,13 @@ export function resolveCombat(
     };
 
     flips.push(event);
-    notes[trap.lane].flips.push(event);
+    notes[trap.lane].flips.push({
+      side,
+      trap: trap.def.id,
+      targets: dst.map(
+        (uid) => `${names.get(uid) ?? "a monster"} (${byUid.get(uid)?.atk ?? 0})`
+      ),
+    });
   };
 
   const hitCastle = (
@@ -2612,11 +2871,10 @@ export function resolveCombat(
       cause: why,
     });
 
+    notes[lane].castle[side] += amount;
+
     if (why === "breakthrough") {
-      notes[lane].breaks[side === 0 ? 1 : 0].push({
-        name: names.get(src) ?? "A monster",
-        amt: amount,
-      });
+      notes[lane].breaks[side === 0 ? 1 : 0] += 1;
     }
   };
 
@@ -2847,7 +3105,20 @@ export function resolveCombat(
             src: why.src,
           });
 
-          notes[unit.lane].lost[side] += 1;
+          const killer =
+            byUid.get(why.src);
+
+          if (
+            killer &&
+            (why.by === "battle" || why.by === "venom")
+          ) {
+            notes[unit.lane].kills.push({
+              side,
+              killer: `${killer.name} (${killer.atk})`,
+              victim: `${unit.name} (${unit.atk})`,
+            });
+          }
+
           cause.delete(unit.uid);
         }
 
@@ -2905,6 +3176,7 @@ export function resolveCombat(
           tokenUid += 1;
 
           names.set(token.uid, "Token");
+          byUid.set(token.uid, token);
 
           token.atk = unit.spawn;
           token.hp = unit.spawn;
@@ -3225,6 +3497,7 @@ export function resolveCombat(
 
     if (mine > 0 && theirs === 0) {
       notes[lane].held[0] = 1;
+      // (chip damage below is counted in notes[lane].castle)
       hitCastle(1, lane, 1, -1, "held");
     } else if (theirs > 0 && mine === 0) {
       notes[lane].held[1] = 1;
@@ -3283,21 +3556,35 @@ const TRAP_VERB: Record<string, string> = {
   bounce: "sent back",
   reflect: "reflected",
   revive: "revived",
-  no_castle_damage: "blocked",
+  no_castle_damage: "blocked damage from",
 };
 
-/** "Left: Dark Magician broke through, -2 LP to their castle". */
+type LaneNotes = {
+  flips: {
+    side: 0 | 1;
+    trap: string;
+    targets: string[];
+  }[];
+  kills: {
+    /** The side that lost the monster. */
+    side: 0 | 1;
+    killer: string;
+    victim: string;
+  }[];
+  /** Castle damage taken this combat from this lane: [yours, theirs]. */
+  castle: [number, number];
+  /** Breakthroughs: [yours, theirs]. */
+  breaks: [number, number];
+  held: [number, number];
+};
+
+/**
+ * "Left: Gaia (5) beat your Celtic Guardian (3) → 2 damage to your
+ * castle". Numbers in brackets are ATK. Damage is before the cap.
+ */
 function laneRecapLine(
   lane: number,
-  note: {
-    flips: TrapFlip[];
-    breaks: {
-      name: string;
-      amt: number;
-    }[][];
-    lost: number[];
-    held: number[];
-  },
+  note: LaneNotes,
   myWall: boolean
 ) {
   const label =
@@ -3305,59 +3592,54 @@ function laneRecapLine(
 
   const parts: string[] = [];
 
-  for (const flip of note.flips) {
+  for (const flip of note.flips.slice(0, 1)) {
     const trap =
-      TRAP_BY_ID.get(flip.id);
+      TRAP_BY_ID.get(flip.trap);
 
-    parts.push(
-      `${flip.side === 0 ? "your" : "their"} ${trap?.name ?? "trap"} ${TRAP_VERB[trap?.effect ?? "destroy"]} ${flip.dst.length > 1 ? `${flip.dst.length} monsters` : "an attacker"}`
-    );
+    const what =
+      flip.targets.length === 0
+        ? "the lane"
+        : flip.targets.length === 1
+          ? flip.targets[0]
+          : `${flip.targets.length} monsters`;
+
+    parts.push(`${flip.side === 0 ? "your" : "their"} ${trap?.name ?? "trap"} ${TRAP_VERB[trap?.effect ?? "destroy"]} ${what}`);
   }
 
-  const broke = (
-    list: {
-      name: string;
-      amt: number;
-    }[],
-    whose: string
-  ) => {
-    if (list.length === 0) {
-      return;
-    }
+  const kill =
+    note.kills[0];
 
-    const total =
-      list.reduce(
-        (sum, entry) => sum + entry.amt,
-        0
-      );
+  if (kill) {
+    parts.push(
+      kill.side === 0
+        ? `${kill.killer} beat your ${kill.victim}`
+        : `your ${kill.killer} beat ${kill.victim}`
+    );
 
-    const who =
-      list.length === 1
-        ? list[0].name
-        : `${list.length} monsters`;
+  }
 
-    parts.push(`${who} broke through, -${total} LP to ${whose} castle`);
-  };
+  const damage: string[] = [];
 
-  broke(note.breaks[0], "their");
-  broke(note.breaks[1], "your");
+  if (note.castle[0] > 0) {
+    damage.push(`${note.castle[0]} damage to your castle`);
+  }
 
-  if (note.held[0]) {
-    parts.push("you held the lane");
-  } else if (note.held[1]) {
-    parts.push("they held the lane");
+  if (note.castle[1] > 0) {
+    damage.push(`${note.castle[1]} damage to their castle`);
   }
 
   if (parts.length === 0) {
-    if (note.lost[0] + note.lost[1] > 0) {
-      parts.push(`${note.lost[1]} destroyed, ${note.lost[0]} lost`);
+    if (note.breaks[0] + note.breaks[1] > 0) {
+      parts.push(note.breaks[1] > note.breaks[0] ? "they walked through unopposed" : "you walked through unopposed");
+    } else if (note.held[0] || note.held[1]) {
+      parts.push(note.held[0] ? "only you stood here" : "only they stood here");
     } else {
-      parts.push(myWall ? "wall held" : "quiet");
+      parts.push(myWall ? "your wall held" : "no fight here");
     }
   }
 
   const text =
-    parts.slice(0, 2).join(" · ");
+    `${parts.join(" · ")}${damage.length > 0 ? ` → ${damage.join(", ")}` : ""}`;
 
   return `${label}: ${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
@@ -3394,6 +3676,9 @@ function endTurn(
   const {
     state,
   } = run;
+
+  // An untaken reward is forfeited.
+  releaseReward(state, null);
 
   // An open discover is resolved for you (first option), or
   // dropped back into the pool when there is no room at all.
@@ -3497,7 +3782,17 @@ function endTurn(
       state.over = true;
       state.victory = true;
     } else {
+      const won =
+        combat.result === "win";
+
       startNextTurn(run);
+
+      if (won) {
+        offerReward(
+          run,
+          state.turn - 1
+        );
+      }
     }
   }
 
@@ -3515,7 +3810,7 @@ function endTurn(
 }
 
 const ACTION_RE =
-  /^(?:b(\d)|s(\d{1,5})|p(\d{1,5})\.(\d)|m(\d{1,5})\.(\d)|(r)|(f)|(u)|d(\d)|(e)|x(\d{1,5})\.(\d{1,5})|c(\d{1,2})\.(\d{1,5})(?:\.(\d{1,5}))?|t(\d{1,5}))$/;
+  /^(?:b(\d)|s(\d{1,5})|p(\d{1,5})\.(\d)|m(\d{1,5})\.(\d)|(r)|(f)|(u)|d(\d)|(e)|x(\d{1,5})\.(\d{1,5})|c(\d{1,2})\.(\d{1,5})(?:\.(\d{1,5}))?|t(\d{1,5})|w(\d)(?:\.(\d{1,5}))?)$/;
 
 const MAX_ACTION_LENGTH = 16;
 
@@ -3918,6 +4213,15 @@ function applyMatched(
       run,
       Number(match[14]),
       uids
+    );
+  }
+
+  // ---- reward pick ----
+  if (match[18] !== undefined) {
+    return takeReward(
+      run,
+      Number(match[18]),
+      match[19] !== undefined ? Number(match[19]) : null
     );
   }
 

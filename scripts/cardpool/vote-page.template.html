@@ -171,6 +171,7 @@ function badgeClass(v) {
 function el(tag, attrs = {}, kids = []) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
+    if (v === null || v === undefined || v === false) continue;
     if (k === "text") node.textContent = v;
     else if (k === "class") node.className = v;
     else if (k === "style") node.setAttribute("style", v);
@@ -277,7 +278,6 @@ function renderVote() {
       onclick: () => castVote(item.id, vote),
     }, [el("span", { text: title }), el("small", { text: hint })]));
   });
-  for (const b of choices.querySelectorAll("button")) if (b.getAttribute("disabled") === null) b.removeAttribute("disabled");
 
   slot.append(el("article", { class: "card" }, [
     el("div", { class: "art", style: item.img ? "background-image:url(" + item.img + ")" : "" }, [

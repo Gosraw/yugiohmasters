@@ -69,9 +69,20 @@ Ook gedaan na de eerste versie van dit rapport:
    nieuwe spelers kunnen de draft overslaan en krijgen geen welkomstpacks.
 6. **Seizoen-1 "welkomstpacks al gehad"-vinkjes** worden door de reset niet
    gewist → bij de 2.0-reset moeten die mee (staat in het lanceerscript).
-7. **Mini-games:** een handige speler kan de score-controle omzeilen door de
-   database direct aan te roepen. Volledig dichtzetten kan pas als er een
-   geheime server-sleutel in Vercel staat (jij moet die instellen).
+7. **Veiligheidscontrole (05:00) — 🔴 lek in de live app:** spelers konden
+   hun eigen "welkomstpacks al gehad"-vinkje wissen en daarna **onbeperkt**
+   nieuwe welkomstpacks (Normal + Premium + Deluxe) claimen. Dat zit hoogst
+   waarschijnlijk ook in de echte app. In 2.0 dicht
+   (`202610121200_security_review_fixes.sql`). **Wil je dit eerder live
+   dichtzetten?** Dat is één klein database-script.
+8. **Mini-games:** spelers konden scores vervalsen door de database direct
+   aan te roepen. Nu dicht: alleen de server mag scores opslaan, na een
+   controle. Hiervoor moet in Vercel de geheime sleutel
+   `SUPABASE_SECRET_KEY` staan (staat in het draaiboek).
+9. **Uitslagen invoeren:** in 2.0 mag elke speler de uitslag van zijn eigen
+   seizoensduel invoeren, zonder bevestiging van de tegenstander. Wie het
+   eerst invoert bepaalt de uitslag; alleen de admin kan corrigeren. Wil je
+   toch een bevestiging door de tegenstander?
 
 ## Wat jij moet beslissen
 

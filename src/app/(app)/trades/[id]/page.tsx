@@ -3,6 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
+  fetchAllPages,
+  fetchInBatches,
+} from "@/lib/supabase/paginate";
+
+import {
   ArrowLeft,
   CheckCircle2,
   Clock3,
@@ -478,40 +483,54 @@ export default async function TradeDetailPage({
       )
     );
 
-  const {
-    data: instanceData,
-    error: instanceError,
-  } = await supabase
-    .from("card_instances")
-    .select(
-      "id,card_catalog_id,current_owner_id,copy_number,locked,lock_type,for_trade"
-    )
-    .eq(
-      "league_id",
-      trade.league_id
-    )
-    .in(
-      "current_owner_id",
-      [
-        trade.sender_id,
-        trade.receiver_id,
-      ]
-    )
-    .order(
-      "copy_number",
-      {
-        ascending: true,
-      }
-    );
+  // Both players' instances, paged: a single select stops at 1000
+  // rows, so with a big collection the extra copies (and whole
+  // cards) silently vanished from the trade view.
+  let instances: CardInstance[];
 
-  if (instanceError) {
+  try {
+    instances = await fetchAllPages<CardInstance>(
+      (
+        from,
+        to
+      ) => supabase
+        .from("card_instances")
+        .select(
+          "id,card_catalog_id,current_owner_id,copy_number,locked,lock_type,for_trade"
+        )
+        .eq(
+          "league_id",
+          trade.league_id
+        )
+        .in(
+          "current_owner_id",
+          [
+            trade.sender_id,
+            trade.receiver_id,
+          ]
+        )
+        .order(
+          "copy_number",
+          {
+            ascending: true,
+          }
+        )
+        .order(
+          "id",
+          {
+            ascending: true,
+          }
+        )
+        .range(
+          from,
+          to
+        )
+    );
+  } catch (error) {
     throw new Error(
-      `Collections konden niet worden geladen: ${instanceError.message}`
+      `Collections could not be loaded: ${(error as Error).message}`
     );
   }
-
-  const instances =
-    (instanceData ?? []) as CardInstance[];
 
   const catalogIds = [
     ...new Set(
@@ -522,42 +541,19 @@ export default async function TradeDetailPage({
     ),
   ];
 
-  const catalog:
-    CardCatalog[] =
-    [];
+  let catalog:
+    CardCatalog[];
 
-  if (
-    catalogIds.length > 0
-  ) {
-    // BossG currently has a much larger collection than the other
-    // players. Sending every catalog UUID through one PostgREST
-    // `.in("id", catalogIds)` filter can make the GET URL exceed
-    // the gateway/request-line limit, which surfaces in production
-    // only as React Server Components error #441.
-    //
-    // Fetch the catalog in bounded chunks instead. This keeps the
-    // trade page behaviour identical while making it safe for large
-    // collections and future growth.
-    const CATALOG_QUERY_CHUNK_SIZE =
-      75;
-
-    for (
-      let offset = 0;
-      offset < catalogIds.length;
-      offset +=
-        CATALOG_QUERY_CHUNK_SIZE
-    ) {
-      const idsChunk =
-        catalogIds.slice(
-          offset,
-          offset +
-            CATALOG_QUERY_CHUNK_SIZE
-        );
-
-      const {
-        data: catalogData,
-        error: catalogError,
-      } = await supabase
+  try {
+    // Batched: one `.in("id", catalogIds)` with every id overflows
+    // the request URL on big collections (React error #441 in prod).
+    catalog = await fetchInBatches<string, CardCatalog>(
+      catalogIds,
+      (
+        idsChunk,
+        from,
+        to
+      ) => supabase
         .from("card_catalog")
         .select(
           "id,name,image_url,card_type,race,archetype,description,attribute,monster_type,level,rank,game_rarity,rarity_score,atk,def"
@@ -565,19 +561,19 @@ export default async function TradeDetailPage({
         .in(
           "id",
           idsChunk
-        );
-
-      if (catalogError) {
-        throw new Error(
-          `Card catalog could not be loaded: ${catalogError.message}`
-        );
-      }
-
-      catalog.push(
-        ...((catalogData ??
-          []) as CardCatalog[])
-      );
-    }
+        )
+        .order(
+          "id"
+        )
+        .range(
+          from,
+          to
+        )
+    );
+  } catch (error) {
+    throw new Error(
+      `Card catalog could not be loaded: ${(error as Error).message}`
+    );
   }
 
   const cardMap =

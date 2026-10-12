@@ -1,6 +1,11 @@
 import Link from "next/link";
 
 import {
+  fetchAllPages,
+  fetchInBatches,
+} from "@/lib/supabase/paginate";
+
+import {
   notFound,
 } from "next/navigation";
 
@@ -875,45 +880,54 @@ export default async function MatchDetailPage({
     match.wager_type ===
       "card"
   ) {
-    const {
-      data: availableData,
-      error: availableError,
-    } = await supabase
-      .from(
-        "card_instances"
-      )
-      .select(
-        `
-          id,
-          card_catalog_id,
-          copy_number,
-          locked
-        `
-      )
-      .eq(
-        "current_owner_id",
-        userId
-      )
-      .eq(
-        "locked",
-        false
-      )
-      .order(
-        "copy_number",
-        {
-          ascending: true,
-        }
-      );
-
-    if (availableError) {
-      throw new Error(
-        availableError.message
-      );
-    }
-
+    // Paged + scoped to this match's league: a big collection used
+    // to stop at 1000 rows, hiding wager-able cards.
     availableInstances =
-      (availableData ??
-        []) as CardInstance[];
+      await fetchAllPages<CardInstance>(
+        (
+          from,
+          to
+        ) => supabase
+          .from(
+            "card_instances"
+          )
+          .select(
+            `
+              id,
+              card_catalog_id,
+              copy_number,
+              locked
+            `
+          )
+          .eq(
+            "current_owner_id",
+            userId
+          )
+          .eq(
+            "league_id",
+            match.league_id
+          )
+          .eq(
+            "locked",
+            false
+          )
+          .order(
+            "copy_number",
+            {
+              ascending: true,
+            }
+          )
+          .order(
+            "id",
+            {
+              ascending: true,
+            }
+          )
+          .range(
+            from,
+            to
+          )
+      );
   }
 
   const allCatalogIds = [
@@ -937,28 +951,32 @@ export default async function MatchDetailPage({
     allCatalogIds.length >
     0
   ) {
-    const {
-      data: catalogData,
-      error: catalogError,
-    } = await supabase
-      .from("card_catalog")
-      .select(
-        "id,name,game_rarity"
-      )
-      .in(
-        "id",
-        allCatalogIds
-      );
-
-    if (catalogError) {
-      throw new Error(
-        catalogError.message
-      );
-    }
-
+    // Batched: one .in() with every id overflowed the request URL
+    // and crashed this page for big collections.
     catalogCards =
-      (catalogData ??
-        []) as CatalogCard[];
+      await fetchInBatches<string, CatalogCard>(
+        allCatalogIds,
+        (
+          batch,
+          from,
+          to
+        ) => supabase
+          .from("card_catalog")
+          .select(
+            "id,name,game_rarity"
+          )
+          .in(
+            "id",
+            batch
+          )
+          .order(
+            "id"
+          )
+          .range(
+            from,
+            to
+          )
+      );
   }
 
   const catalogMap =

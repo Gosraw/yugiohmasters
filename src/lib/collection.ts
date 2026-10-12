@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { matchesRace } from "@/lib/card-race";
 import { matchesCardSearch } from "@/lib/card-search";
+import { fetchAllPages, fetchInBatches } from "@/lib/supabase/paginate";
 
 // =========================================================
 // SHARED COLLECTION LOGIC
@@ -146,25 +147,33 @@ export async function fetchOwnedCollection(
   userId: string,
   leagueId: string | null
 ): Promise<GroupedOwnedCard[]> {
-  let instanceQuery = supabase
-    .from("card_instances")
-    .select("id,card_catalog_id,copy_number,acquired_at,locked,for_trade")
-    .eq("current_owner_id", userId);
+  let instances: CollectionCardInstance[];
 
-  if (leagueId) {
-    instanceQuery = instanceQuery.eq("league_id", leagueId);
-  }
+  try {
+    // Paged: a single select stops at 1000 rows, which silently hid
+    // the rest of a big collection (Collection, binder, card detail).
+    instances = await fetchAllPages<CollectionCardInstance>(
+      (from, to) => {
+        let instanceQuery = supabase
+          .from("card_instances")
+          .select("id,card_catalog_id,copy_number,acquired_at,locked,for_trade")
+          .eq("current_owner_id", userId);
 
-  const { data: instanceData, error: instanceError } =
-    await instanceQuery.order("acquired_at", { ascending: false });
+        if (leagueId) {
+          instanceQuery = instanceQuery.eq("league_id", leagueId);
+        }
 
-  if (instanceError) {
+        return instanceQuery
+          .order("acquired_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, to);
+      }
+    );
+  } catch (error) {
     throw new Error(
-      `Collection kon niet worden geladen: ${instanceError.message}`
+      `Collection could not be loaded: ${(error as Error).message}`
     );
   }
-
-  const instances = (instanceData ?? []) as CollectionCardInstance[];
 
   const instanceIds = instances.map((instance) => instance.id);
 
@@ -177,32 +186,42 @@ export async function fetchOwnedCollection(
   const inPendingOfferIds = new Set<string>();
 
   if (instanceIds.length > 0) {
-    const { data: deckCardData } = await supabase
-      .from("deck_cards")
-      .select("card_instance_id")
-      .in("card_instance_id", instanceIds);
+    // Batched: one .in() with every instance id overflowed the
+    // request URL on big collections and the error was swallowed,
+    // so In Deck / Pending flags quietly went blank.
+    const [deckCardData, tradeItemData] = await Promise.all([
+      fetchInBatches<string, { card_instance_id: string }>(
+        instanceIds,
+        (batch, from, to) => supabase
+          .from("deck_cards")
+          .select("card_instance_id")
+          .in("card_instance_id", batch)
+          .order("card_instance_id")
+          .range(from, to)
+      ),
+      // RLS on trade_items only surfaces trades the current viewer is
+      // a participant in, so when viewing another player's binder this
+      // will only reflect pending trades between the two of you - not
+      // every pending trade that player happens to be in. That's a
+      // reasonable default (not a bug): you shouldn't see the shape of
+      // someone else's unrelated trades.
+      fetchInBatches<string, { card_instance_id: string }>(
+        instanceIds,
+        (batch, from, to) => supabase
+          .from("trade_items")
+          .select("card_instance_id,trades!inner(status)")
+          .in("card_instance_id", batch)
+          .eq("trades.status", "pending")
+          .order("card_instance_id")
+          .range(from, to)
+      ),
+    ]);
 
-    for (const row of (deckCardData ?? []) as {
-      card_instance_id: string;
-    }[]) {
+    for (const row of deckCardData) {
       inDeckIds.add(row.card_instance_id);
     }
 
-    // RLS on trade_items only surfaces trades the current viewer is
-    // a participant in, so when viewing another player's binder this
-    // will only reflect pending trades between the two of you - not
-    // every pending trade that player happens to be in. That's a
-    // reasonable default (not a bug): you shouldn't see the shape of
-    // someone else's unrelated trades.
-    const { data: tradeItemData } = await supabase
-      .from("trade_items")
-      .select("card_instance_id,trades!inner(status)")
-      .in("card_instance_id", instanceIds)
-      .eq("trades.status", "pending");
-
-    for (const row of (tradeItemData ?? []) as {
-      card_instance_id: string;
-    }[]) {
+    for (const row of tradeItemData) {
       inPendingOfferIds.add(row.card_instance_id);
     }
   }
@@ -216,36 +235,26 @@ export async function fetchOwnedCollection(
     ...new Set(instances.map((instance) => instance.card_catalog_id)),
   ];
 
-  const catalogCards: CollectionCardCatalogItem[] = [];
+  let catalogCards: CollectionCardCatalogItem[];
 
-  if (catalogIds.length > 0) {
-    // PostgREST encodes .in("id", [...]) in the request URL. Once a
-    // collection grows large enough, one giant id list can exceed the
-    // request/proxy URL limit and Supabase returns HTTP 400 Bad Request.
-    // Fetch the catalog in small batches instead. This is the same class
-    // of large-collection failure previously fixed on the trade page.
-    const CATALOG_BATCH_SIZE = 75;
-
-    for (let offset = 0; offset < catalogIds.length; offset += CATALOG_BATCH_SIZE) {
-      const batchIds = catalogIds.slice(offset, offset + CATALOG_BATCH_SIZE);
-
-      const { data: catalogData, error: catalogError } = await supabase
+  try {
+    // Batched (URL length) and run a few batches in parallel instead
+    // of one after another.
+    catalogCards = await fetchInBatches<string, CollectionCardCatalogItem>(
+      catalogIds,
+      (batch, from, to) => supabase
         .from("card_catalog")
         .select(
           "id,name,image_url,card_type,attribute,race,atk,def,game_rarity,rarity_score,master_duel_status,archetype,description"
         )
-        .in("id", batchIds);
-
-      if (catalogError) {
-        throw new Error(
-          `Kaartinformatie kon niet worden geladen: ${catalogError.message}`
-        );
-      }
-
-      catalogCards.push(
-        ...((catalogData ?? []) as CollectionCardCatalogItem[])
-      );
-    }
+        .in("id", batch)
+        .order("id")
+        .range(from, to)
+    );
+  } catch (error) {
+    throw new Error(
+      `Card details could not be loaded: ${(error as Error).message}`
+    );
   }
 
   const cardMap = new Map(catalogCards.map((card) => [card.id, card]));

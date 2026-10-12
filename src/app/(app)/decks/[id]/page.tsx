@@ -3,6 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
+  fetchAllPages,
+} from "@/lib/supabase/paginate";
+
+import {
   ArrowLeft,
   CheckCircle2,
   ChevronDown,
@@ -763,40 +767,50 @@ export default async function DeckBuilderPage({
   // COLLECTION
   // =======================================================
 
-  const {
-    data: instanceData,
-    error: instanceError,
-  } = await supabase
-    .from("card_instances")
-    .select(
-      "id,card_catalog_id,copy_number,locked"
-    )
-    .eq(
-      "current_owner_id",
-      userId
-    )
-    .eq(
-      "league_id",
-      deck.league_id
-    )
-    .order(
-      "copy_number",
-      {
-        ascending: true,
-      }
-    );
+  // Paged: a single select stops at 1000 rows, so big collections
+  // were missing cards (and deck tiles) in the builder.
+  let instances: CardInstance[];
 
-  if (
-    instanceError
-  ) {
+  try {
+    instances = await fetchAllPages<CardInstance>(
+      (
+        from,
+        to
+      ) => supabase
+        .from("card_instances")
+        .select(
+          "id,card_catalog_id,copy_number,locked"
+        )
+        .eq(
+          "current_owner_id",
+          userId
+        )
+        .eq(
+          "league_id",
+          deck.league_id
+        )
+        .order(
+          "copy_number",
+          {
+            ascending: true,
+          }
+        )
+        .order(
+          "id",
+          {
+            ascending: true,
+          }
+        )
+        .range(
+          from,
+          to
+        )
+    );
+  } catch (error) {
     throw new Error(
-      `Collection kon niet worden geladen: ${instanceError.message}`
+      `Collection could not be loaded: ${(error as Error).message}`
     );
   }
-
-  const instances =
-    (instanceData ??
-      []) as CardInstance[];
 
   // =======================================================
   // CATALOG

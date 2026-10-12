@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fetchAllPages } from "@/lib/supabase/paginate";
 
 import {
   ArrowLeft,
@@ -146,24 +147,25 @@ export default async function TradeBinderPage() {
   // to find out how many of their cards are up for trade.
   // ======================================================
 
-  const {
-    data: instanceData,
-    error: instanceError,
-  } = await supabase
-    .from("card_instances")
-    .select("current_owner_id")
-    .eq("league_id", leagueId)
-    .eq("for_trade", true)
-    .eq("locked", false);
+  let instances: CardInstanceRow[];
 
-  if (instanceError) {
+  try {
+    // Paged: league-wide this easily passes the 1000-row cap.
+    instances = await fetchAllPages<CardInstanceRow>(
+      (from, to) => supabase
+        .from("card_instances")
+        .select("current_owner_id")
+        .eq("league_id", leagueId)
+        .eq("for_trade", true)
+        .eq("locked", false)
+        .order("id")
+        .range(from, to)
+    );
+  } catch (error) {
     throw new Error(
-      `Trade binders konden niet worden geladen: ${instanceError.message}`
+      `Trade binders could not be loaded: ${(error as Error).message}`
     );
   }
-
-  const instances =
-    (instanceData ?? []) as CardInstanceRow[];
 
   const forTradeCounts = new Map<
     string,

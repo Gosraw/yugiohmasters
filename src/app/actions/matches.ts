@@ -199,20 +199,26 @@ async function finalizeCompletedMatch(
     return;
   }
 
-  const {
-    error: rewardError,
-  } = await supabase.rpc(
-    "award_match_duel_points",
-    {
-      target_match_id:
-        matchId,
-    }
-  );
-
-  if (rewardError) {
-    throw new Error(
-      `DP reward mislukt: ${rewardError.message}`
+  // 2.0: only competition matches earn DP (the RPC is a no-op for
+  // ad-hoc and practice duels, so skip the round trip for those).
+  if (
+    match.competition_id
+  ) {
+    const {
+      error: rewardError,
+    } = await supabase.rpc(
+      "award_match_duel_points",
+      {
+        target_match_id:
+          matchId,
+      }
     );
+
+    if (rewardError) {
+      throw new Error(
+        `DP reward mislukt: ${rewardError.message}`
+      );
+    }
   }
 
   if (

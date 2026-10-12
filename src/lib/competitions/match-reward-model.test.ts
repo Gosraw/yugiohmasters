@@ -4,6 +4,7 @@ import {
   computeCappedDebit,
   computeCorrectionDelta,
   computeLeagueMatchReward,
+  matchEarnsDuelPoints,
   nextCorrectionReason,
   sumPriorMatchRewardAmounts,
 } from "./match-reward-model";
@@ -11,22 +12,33 @@ import {
 // =========================================================
 // See match-reward-model.ts's header: these tests exercise a
 // hand-transcribed TypeScript port of the reward/correction
-// arithmetic that actually lives in
-// 202608270930_competition_reward_and_match_dp_fixes.sql, because
-// this sandbox cannot run the real Postgres functions or execute
-// vitest against this repo's native-binary dependencies. They verify
-// the ALGORITHM as designed; running the equivalent scenarios
-// against a live Supabase instance is the recommended follow-up.
-//
-// NOT covered here (verified by reading the SQL text directly
-// instead): the idempotency guard in _award_match_duel_points_
-// internal (`not exists (... reason = 'match_reward')`), the
-// participant-check-free nature of that internal helper vs. the
-// public wrapper's participant check, and the unique index
-// (duel_point_transactions_match_reason_unique) that makes a
-// repeated literal correction reason fail - which is exactly why the
-// numbered-reason scheme below exists in the first place.
+// arithmetic that lives in _compute_league_match_reward,
+// _award_match_duel_points_internal (202610120110) and
+// correct_competition_match_result_v2 (202610120120). The same
+// scenarios run against the real functions in
+// scripts/sql-tests/01_match_dp_competition_only.sql and
+// 03_correction_resettles_round.sql (node scripts/sql-tests/run.mjs).
 // =========================================================
+
+describe("matchEarnsDuelPoints (2.0: competition matches only)", () => {
+  it("pays for a league match inside a competition", () => {
+    expect(
+      matchEarnsDuelPoints("league", "comp-1")
+    ).toBe(true);
+  });
+
+  it("pays nothing for an ad-hoc league duel (no competition)", () => {
+    expect(
+      matchEarnsDuelPoints("league", null)
+    ).toBe(false);
+  });
+
+  it("pays nothing for a practice duel", () => {
+    expect(
+      matchEarnsDuelPoints("practice", null)
+    ).toBe(false);
+  });
+});
 
 describe("computeLeagueMatchReward", () => {
   it("pays 100 to the winner", () => {
@@ -35,10 +47,10 @@ describe("computeLeagueMatchReward", () => {
     ).toBe(100);
   });
 
-  it("pays 50 to the loser", () => {
+  it("pays 75 to the loser", () => {
     expect(
       computeLeagueMatchReward("alice", "bob", "alice")
-    ).toBe(50);
+    ).toBe(75);
   });
 
   it("pays 75 to both players on a draw (null winner)", () => {
@@ -110,12 +122,12 @@ describe("correction delta + capped debit (end-to-end scenarios)", () => {
 
   it("credits the difference when a loss is corrected to a win", () => {
     const priorTotal = sumPriorMatchRewardAmounts([
-      { reason: "match_reward", amount: 50 },
+      { reason: "match_reward", amount: 75 },
     ]);
 
     expect(
       computeCorrectionDelta(100, priorTotal)
-    ).toBe(50);
+    ).toBe(25);
   });
 
   it("debits the difference when a win is corrected to a loss, capped at the current balance", () => {
@@ -124,42 +136,42 @@ describe("correction delta + capped debit (end-to-end scenarios)", () => {
     ]);
 
     const delta = computeCorrectionDelta(
-      50,
+      75,
       priorTotal
     );
 
-    expect(delta).toBe(-50);
+    expect(delta).toBe(-25);
     expect(computeCappedDebit(delta, 1000)).toBe(
-      50
+      25
     );
     // Player already spent most of it - debit is capped at what's
     // left, never driving the balance negative.
-    expect(computeCappedDebit(delta, 30)).toBe(
-      30
+    expect(computeCappedDebit(delta, 10)).toBe(
+      10
     );
   });
 
   it("correctly re-numbers and re-sums across a second correction of the same match", () => {
-    // Original: win (100). First correction: to a loss (50) -> -50.
+    // Original: win (100). First correction: to a loss (75) -> -25.
     const afterFirstCorrection = [
       { reason: "match_reward", amount: 100 },
       {
         reason: nextCorrectionReason(0),
-        amount: -50,
+        amount: -25,
       },
     ];
 
-    // Second correction: back to a win (100). Prior total is now 50,
-    // so the delta credits the remaining 50, and the new reason is
+    // Second correction: back to a win (100). Prior total is now 75,
+    // so the delta credits the remaining 25, and the new reason is
     // numbered _2 (one existing correction row found).
     const priorTotal = sumPriorMatchRewardAmounts(
       afterFirstCorrection
     );
 
-    expect(priorTotal).toBe(50);
+    expect(priorTotal).toBe(75);
     expect(
       computeCorrectionDelta(100, priorTotal)
-    ).toBe(50);
+    ).toBe(25);
     expect(nextCorrectionReason(1)).toBe(
       "match_reward_correction_2"
     );

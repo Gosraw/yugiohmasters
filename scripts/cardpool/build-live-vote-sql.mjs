@@ -176,16 +176,13 @@ ${migration}
 -- proposed_verdict, context, card name (name only for messages).
 -- =========================================================
 
-do $seed_table$
-begin
-  -- Only when this session already ran the file once.
-  if to_regclass('pg_temp.live_card_vote_seed') is not null then
-    drop table pg_temp.live_card_vote_seed;
-  end if;
-end;
-$seed_table$;
+-- A regular helper table (not TEMP): the Supabase SQL Editor can run
+-- statements on different connections, where a temp table vanishes.
+-- It is dropped again at the end of this file and is never readable
+-- by the app (no grants, RLS on).
+drop table if exists public.live_card_vote_seed;
 
-create temp table live_card_vote_seed (
+create table public.live_card_vote_seed (
   external_card_id bigint primary key,
   list_key text not null,
   list_title text not null,
@@ -194,7 +191,11 @@ create temp table live_card_vote_seed (
   proposed_verdict text not null,
   context text not null,
   card_name text not null
-) on commit drop;
+);
+
+alter table public.live_card_vote_seed enable row level security;
+
+revoke all on public.live_card_vote_seed from public, anon, authenticated;
 
 insert into live_card_vote_seed (
   external_card_id,
@@ -484,6 +485,8 @@ select set_config('request.jwt.claims', '', true);
 
 -- Let the API (PostgREST) see the new functions straight away;
 -- delivered at commit.
+drop table if exists public.live_card_vote_seed;
+
 notify pgrst, 'reload schema';
 
 commit;

@@ -269,7 +269,7 @@ describe("replay validation", () => {
           score
         );
 
-      expect(verdict).toEqual({
+      expect(verdict).toMatchObject({
         ok: true,
         score,
         turns: run.state.history.length,
@@ -386,7 +386,7 @@ describe("replay validation", () => {
     }
   });
 
-  it("a run cannot go past wave 20", () => {
+  it("a run cannot go past the last wave", () => {
     const run =
       createRun("cap");
 

@@ -242,6 +242,23 @@
    "art": "https://images.ygoprodeck.com/images/cards_cropped/90810762.jpg"
   },
   {
+   "id": "time-wizard",
+   "name": "Time Wizard",
+   "tier": 1,
+   "attribute": "LIGHT",
+   "race": "Spellcaster",
+   "tribe": "Spellcaster",
+   "level": 2,
+   "cardAtk": 500,
+   "cardDef": 400,
+   "atk": 3,
+   "hp": 2,
+   "ability": "shield",
+   "power": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/71625222.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/71625222.jpg"
+  },
+  {
    "id": "armed-dragon-lv3",
    "name": "Armed Dragon LV3",
    "tier": 2,
@@ -721,6 +738,23 @@
    "power": 3,
    "img": "https://images.ygoprodeck.com/images/cards_small/50903514.jpg",
    "art": "https://images.ygoprodeck.com/images/cards_cropped/50903514.jpg"
+  },
+  {
+   "id": "curse-of-dragon",
+   "name": "Curse of Dragon",
+   "tier": 3,
+   "attribute": "DARK",
+   "race": "Dragon",
+   "tribe": "Dragon",
+   "level": 5,
+   "cardAtk": 2000,
+   "cardDef": 1500,
+   "atk": 6,
+   "hp": 5,
+   "ability": "pierce",
+   "power": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/28279543.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/28279543.jpg"
   },
   {
    "id": "dark-magician-girl",
@@ -1339,6 +1373,354 @@
    "power": 8,
    "img": "https://images.ygoprodeck.com/images/cards_small/94568601.jpg",
    "art": "https://images.ygoprodeck.com/images/cards_cropped/94568601.jpg"
+  }
+ ],
+ "specials": [
+  {
+   "id": "number-17-leviathan-dragon",
+   "name": "Number 17: Leviathan Dragon",
+   "tier": 3,
+   "kind": "xyz",
+   "attribute": "WATER",
+   "race": "Dragon",
+   "tribe": "Dragon",
+   "level": 0,
+   "rank": 3,
+   "cardAtk": 2000,
+   "cardDef": 0,
+   "atk": 7,
+   "hp": 3,
+   "ability": "ascend",
+   "power": 2,
+   "img": "https://images.ygoprodeck.com/images/cards_small/69610924.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/69610924.jpg"
+  },
+  {
+   "id": "number-39-utopia",
+   "name": "Number 39: Utopia",
+   "tier": 3,
+   "kind": "xyz",
+   "attribute": "LIGHT",
+   "race": "Warrior",
+   "tribe": "Warrior",
+   "level": 0,
+   "rank": 4,
+   "cardAtk": 2500,
+   "cardDef": 2000,
+   "atk": 9,
+   "hp": 8,
+   "ability": "shield",
+   "power": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/84013237.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/84013237.jpg"
+  },
+  {
+   "id": "number-61-volcasaurus",
+   "name": "Number 61: Volcasaurus",
+   "tier": 4,
+   "kind": "xyz",
+   "attribute": "FIRE",
+   "race": "Dinosaur",
+   "tribe": "Beast",
+   "level": 0,
+   "rank": 5,
+   "cardAtk": 2500,
+   "cardDef": 1000,
+   "atk": 16,
+   "hp": 7,
+   "ability": "ambush",
+   "power": 5,
+   "img": "https://images.ygoprodeck.com/images/cards_small/29669359.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/29669359.jpg"
+  },
+  {
+   "id": "constellar-ptolemy-m7",
+   "name": "Constellar Ptolemy M7",
+   "tier": 5,
+   "kind": "xyz",
+   "attribute": "LIGHT",
+   "race": "Machine",
+   "tribe": "Machine",
+   "level": 0,
+   "rank": 6,
+   "cardAtk": 2700,
+   "cardDef": 2000,
+   "atk": 14,
+   "hp": 10,
+   "ability": "double",
+   "power": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/38495396.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/38495396.jpg"
+  },
+  {
+   "id": "number-11-big-eye",
+   "name": "Number 11: Big Eye",
+   "tier": 6,
+   "kind": "xyz",
+   "attribute": "DARK",
+   "race": "Spellcaster",
+   "tribe": "Spellcaster",
+   "level": 0,
+   "rank": 7,
+   "cardAtk": 2600,
+   "cardDef": 2000,
+   "atk": 16,
+   "hp": 13,
+   "ability": "venom",
+   "power": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/80117527.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/80117527.jpg"
+  },
+  {
+   "id": "number-62-galaxy-eyes-prime-photon-dragon",
+   "name": "Number 62: Galaxy-Eyes Prime Photon Dragon",
+   "tier": 6,
+   "kind": "xyz",
+   "attribute": "LIGHT",
+   "race": "Dragon",
+   "tribe": "Dragon",
+   "level": 0,
+   "rank": 8,
+   "cardAtk": 4000,
+   "cardDef": 3000,
+   "atk": 26,
+   "hp": 19,
+   "ability": "pierce",
+   "power": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/31801517.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/31801517.jpg"
+  },
+  {
+   "id": "thousand-dragon",
+   "name": "Thousand Dragon",
+   "tier": 6,
+   "kind": "fusion",
+   "attribute": "WIND",
+   "race": "Dragon",
+   "tribe": "Dragon",
+   "level": 7,
+   "cardAtk": 2400,
+   "cardDef": 2000,
+   "atk": 8,
+   "hp": 6,
+   "ability": "ascend",
+   "power": 2,
+   "img": "https://images.ygoprodeck.com/images/cards_small/41462083.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/41462083.jpg"
+  },
+  {
+   "id": "elemental-hero-rampart-blaster",
+   "name": "Elemental HERO Rampart Blaster",
+   "tier": 6,
+   "kind": "fusion",
+   "attribute": "EARTH",
+   "race": "Warrior",
+   "tribe": "Warrior",
+   "level": 6,
+   "cardAtk": 2000,
+   "cardDef": 2500,
+   "atk": 9,
+   "hp": 16,
+   "ability": "taunt",
+   "power": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/47737087.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/47737087.jpg"
+  },
+  {
+   "id": "dark-magician-girl-the-dragon-knight",
+   "name": "Dark Magician Girl the Dragon Knight",
+   "tier": 6,
+   "kind": "fusion",
+   "attribute": "DARK",
+   "race": "Dragon",
+   "tribe": "Dragon",
+   "level": 7,
+   "cardAtk": 2600,
+   "cardDef": 1700,
+   "atk": 19,
+   "hp": 12,
+   "ability": "shield",
+   "power": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/43892409.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/43892409.jpg"
+  },
+  {
+   "id": "elemental-hero-neos-knight",
+   "name": "Elemental HERO Neos Knight",
+   "tier": 6,
+   "kind": "fusion",
+   "attribute": "LIGHT",
+   "race": "Warrior",
+   "tribe": "Warrior",
+   "level": 7,
+   "cardAtk": 2500,
+   "cardDef": 1000,
+   "atk": 22,
+   "hp": 9,
+   "ability": "double",
+   "power": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/72926163.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/72926163.jpg"
+  },
+  {
+   "id": "gaia-the-dragon-champion",
+   "name": "Gaia the Dragon Champion",
+   "tier": 6,
+   "kind": "fusion",
+   "attribute": "WIND",
+   "race": "Dragon",
+   "tribe": "Dragon",
+   "level": 7,
+   "cardAtk": 2600,
+   "cardDef": 2100,
+   "atk": 22,
+   "hp": 18,
+   "ability": "pierce",
+   "power": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/66889139.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/66889139.jpg"
+  },
+  {
+   "id": "black-skull-dragon",
+   "name": "Black Skull Dragon",
+   "tier": 6,
+   "kind": "fusion",
+   "attribute": "DARK",
+   "race": "Dragon",
+   "tribe": "Dragon",
+   "level": 9,
+   "cardAtk": 3200,
+   "cardDef": 2500,
+   "atk": 21,
+   "hp": 17,
+   "ability": "ambush",
+   "power": 6,
+   "img": "https://images.ygoprodeck.com/images/cards_small/11901678.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/11901678.jpg"
+  },
+  {
+   "id": "dark-paladin",
+   "name": "Dark Paladin",
+   "tier": 6,
+   "kind": "fusion",
+   "attribute": "DARK",
+   "race": "Spellcaster",
+   "tribe": "Spellcaster",
+   "level": 8,
+   "cardAtk": 2900,
+   "cardDef": 2400,
+   "atk": 19,
+   "hp": 16,
+   "ability": "venom",
+   "power": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/98502113.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/98502113.jpg"
+  },
+  {
+   "id": "blue-eyes-ultimate-dragon",
+   "name": "Blue-Eyes Ultimate Dragon",
+   "tier": 6,
+   "kind": "fusion",
+   "attribute": "LIGHT",
+   "race": "Dragon",
+   "tribe": "Dragon",
+   "level": 12,
+   "cardAtk": 4500,
+   "cardDef": 3800,
+   "atk": 39,
+   "hp": 33,
+   "ability": "pierce",
+   "power": 0,
+   "img": "https://images.ygoprodeck.com/images/cards_small/23995348.jpg",
+   "art": "https://images.ygoprodeck.com/images/cards_cropped/23995348.jpg"
+  }
+ ],
+ "fusions": [
+  {
+   "result": "thousand-dragon",
+   "materials": [
+    {
+     "unit": "time-wizard"
+    },
+    {
+     "unit": "baby-dragon"
+    }
+   ]
+  },
+  {
+   "result": "elemental-hero-rampart-blaster",
+   "materials": [
+    {
+     "unit": "elemental-hero-clayman"
+    },
+    {
+     "unit": "elemental-hero-burstinatrix"
+    }
+   ]
+  },
+  {
+   "result": "dark-magician-girl-the-dragon-knight",
+   "materials": [
+    {
+     "unit": "dark-magician-girl"
+    },
+    {
+     "tribe": "Dragon"
+    }
+   ]
+  },
+  {
+   "result": "elemental-hero-neos-knight",
+   "materials": [
+    {
+     "unit": "elemental-hero-neos"
+    },
+    {
+     "tribe": "Warrior"
+    }
+   ]
+  },
+  {
+   "result": "gaia-the-dragon-champion",
+   "materials": [
+    {
+     "unit": "gaia-the-fierce-knight"
+    },
+    {
+     "unit": "curse-of-dragon"
+    }
+   ]
+  },
+  {
+   "result": "black-skull-dragon",
+   "materials": [
+    {
+     "unit": "summoned-skull"
+    },
+    {
+     "unit": "red-eyes-black-dragon"
+    }
+   ]
+  },
+  {
+   "result": "dark-paladin",
+   "materials": [
+    {
+     "unit": "dark-magician"
+    },
+    {
+     "unit": "buster-blader"
+    }
+   ]
+  },
+  {
+   "result": "blue-eyes-ultimate-dragon",
+   "materials": [
+    {
+     "unit": "blue-eyes-white-dragon",
+     "golden": true
+    }
+   ]
   }
  ],
  "routes": [

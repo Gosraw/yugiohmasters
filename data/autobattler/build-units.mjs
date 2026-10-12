@@ -46,6 +46,7 @@ const UNITS = [
   ["Spirit Reaper", 1, "shield", 0],
   ["Sangan", 1, "lastwill", 1],
   ["Raging Flame Sprite", 1, "double", 0],
+  ["Time Wizard", 1, "shield", 0],
 
   // ---- Tier 2 ----
   ["Armed Dragon LV3", 2, "ascend", 1],
@@ -78,6 +79,7 @@ const UNITS = [
   ["Amphibious Bugroth MK-3", 3, "pierce", 0],
   ["Mirage Dragon", 3, "rally", 2, { by: "tribe" }],
   ["Blue Flame Swordsman", 3, "spawn", 3],
+  ["Curse of Dragon", 3, "pierce", 0],
 
   // ---- Tier 4 ----
   ["Dark Magician Girl", 4, "rally", 2, { by: "tribe" }],
@@ -120,6 +122,47 @@ const UNITS = [
   ["Destiny HERO - Dogma", 6, "lastwill", 6],
   ["Vampire Genesis", 6, "spawn", 5],
   ["Tyrant Dragon", 6, "ambush", 8],
+];
+
+// ---- Fusion + Xyz "specials" (never in the shop pool) ----
+// Made in a run from units you own: Polymerization (a recipe
+// below) or Overlay (two units with the same Level -> the Xyz of
+// that Rank). `budget` is the special's own stat budget (before
+// its ability cost); the engine adds half of the stats the
+// materials had gained on top of their base stats.
+//   [name, kind, budget, ability, power, extra]
+const SPECIALS = [
+  // Xyz: one per Rank 3-8 (2 Level-N units -> Rank N).
+  ["Number 17: Leviathan Dragon", "xyz", 16, "ascend", 2, { rank: 3 }],
+  ["Number 39: Utopia", "xyz", 22, "shield", 0, { rank: 4 }],
+  ["Number 61: Volcasaurus", "xyz", 28, "ambush", 5, { rank: 5 }],
+  ["Constellar Ptolemy M7", "xyz", 34, "double", 0, { rank: 6 }],
+  ["Number 11: Big Eye", "xyz", 42, "venom", 0, { rank: 7 }],
+  ["Number 62: Galaxy-Eyes Prime Photon Dragon", "xyz", 50, "pierce", 0, { rank: 8 }],
+  // Fusions (materials: FUSIONS below).
+  ["Thousand Dragon", "fusion", 22, "ascend", 2],
+  ["Elemental HERO Rampart Blaster", "fusion", 26, "taunt", 0],
+  ["Dark Magician Girl the Dragon Knight", "fusion", 40, "shield", 0],
+  ["Elemental HERO Neos Knight", "fusion", 44, "double", 0],
+  ["Gaia the Dragon Champion", "fusion", 44, "pierce", 0],
+  ["Black Skull Dragon", "fusion", 46, "ambush", 6],
+  ["Dark Paladin", "fusion", 52, "venom", 0],
+  ["Blue-Eyes Ultimate Dragon", "fusion", 80, "pierce", 0],
+];
+
+// Classic recipes whose materials are shop units. A material is
+// a unit name ({ unit, golden? }) or "any <Tribe>" ({ tribe }).
+// Blue-Eyes x3: three copies always merge into a golden unit
+// first, so the recipe takes a golden Blue-Eyes White Dragon.
+const FUSIONS = [
+  ["Thousand Dragon", [{ unit: "Time Wizard" }, { unit: "Baby Dragon" }]],
+  ["Elemental HERO Rampart Blaster", [{ unit: "Elemental HERO Clayman" }, { unit: "Elemental HERO Burstinatrix" }]],
+  ["Dark Magician Girl the Dragon Knight", [{ unit: "Dark Magician Girl" }, { tribe: "Dragon" }]],
+  ["Elemental HERO Neos Knight", [{ unit: "Elemental HERO Neos" }, { tribe: "Warrior" }]],
+  ["Gaia the Dragon Champion", [{ unit: "Gaia The Fierce Knight" }, { unit: "Curse of Dragon" }]],
+  ["Black Skull Dragon", [{ unit: "Summoned Skull" }, { unit: "Red-Eyes Black Dragon" }]],
+  ["Dark Paladin", [{ unit: "Dark Magician" }, { unit: "Buster Blader" }]],
+  ["Blue-Eyes Ultimate Dragon", [{ unit: "Blue-Eyes White Dragon", golden: true }]],
 ];
 
 // Combat keywords each Boss route leans on (bosses never use
@@ -260,6 +303,75 @@ for (const unit of units) {
   }
 }
 
+// ---- Fusion + Xyz specials ----
+const specialRows = await lookup(SPECIALS.map((row) => row[0]));
+const unitIdByName = new Map(units.map((unit) => [unit.name.toLowerCase(), unit.id]));
+
+const specials = SPECIALS.map(([name, kind, budget, ability, power, extra = {}]) => {
+  const card = specialRows.get(name.toLowerCase());
+  if (!card) {
+    problems.push(`not in catalog: ${name}`);
+    return null;
+  }
+  if (!poolNames.has(name.toLowerCase())) {
+    problems.push(`not in Classic pool: ${name}`);
+  }
+  if (!card.image_url_small) {
+    problems.push(`no image: ${name}`);
+  }
+  const expected = kind === "xyz" ? /XYZ/i : /Fusion/i;
+  if (!expected.test(card.card_type)) {
+    problems.push(`${name} is not a ${kind} monster (${card.card_type})`);
+  }
+  const stats = split(Math.round(budget * (1 - ABILITY_COST[ability])), card.atk, card.def, ability);
+  return {
+    id: slug(card.name),
+    name: card.name,
+    tier: kind === "xyz" ? Math.min(6, Math.max(3, extra.rank - 1)) : 6,
+    kind,
+    attribute: card.attribute,
+    race: card.race,
+    tribe: TRIBE_OF_RACE[card.race] ?? null,
+    level: kind === "xyz" ? 0 : card.level,
+    ...(kind === "xyz" ? { rank: extra.rank } : {}),
+    cardAtk: card.atk,
+    cardDef: card.def,
+    atk: stats.atk,
+    hp: stats.hp,
+    ability,
+    power,
+    img: card.image_url_small,
+    art: card.image_url_cropped ?? null,
+  };
+}).filter(Boolean);
+
+const fusions = FUSIONS.map(([name, materials]) => {
+  const result = specials.find((special) => special.name.toLowerCase() === name.toLowerCase());
+  if (!result) {
+    problems.push(`fusion result missing: ${name}`);
+    return null;
+  }
+  return {
+    result: result.id,
+    materials: materials.map((material) => {
+      if (material.tribe) {
+        return { tribe: material.tribe };
+      }
+      const id = unitIdByName.get(material.unit.toLowerCase());
+      if (!id) {
+        problems.push(`fusion material is not a shop unit: ${material.unit} (${name})`);
+      }
+      return material.golden ? { unit: id, golden: true } : { unit: id };
+    }),
+  };
+}).filter(Boolean);
+
+for (let rank = 3; rank <= 8; rank++) {
+  if (specials.filter((special) => special.rank === rank).length !== 1) {
+    problems.push(`need exactly one Xyz of Rank ${rank}`);
+  }
+}
+
 // ---- Boss routes ----
 const routeNames = BOSS_ROUTES.flatMap((route) => [
   ...route.stages.map((stage) => stage.evolutionCard),
@@ -330,10 +442,10 @@ for (const unit of units) {
 
 writeFileSync(
   OUT,
-  `${JSON.stringify({ generatedBy: "data/autobattler/build-units.mjs", units, routes }, null, 1)}\n`
+  `${JSON.stringify({ generatedBy: "data/autobattler/build-units.mjs", units, specials, fusions, routes }, null, 1)}\n`
 );
 
-console.log(`wrote ${units.length} units, ${routes.length} routes -> ${path.relative(ROOT, OUT)}`);
+console.log(`wrote ${units.length} units, ${specials.length} specials, ${fusions.length} fusions, ${routes.length} routes -> ${path.relative(ROOT, OUT)}`);
 console.log("tiers", byTier);
 console.log("attributes", byAttr);
 console.log("tribes", byTribe);

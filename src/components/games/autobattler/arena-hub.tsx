@@ -30,6 +30,7 @@ import {
   resumeArenaRun,
   startArenaRun,
   submitArenaRun,
+  type ArenaGhosts,
   type SubmitArenaResult,
 } from "@/app/actions/autobattler";
 
@@ -85,6 +86,7 @@ type Playing = {
   seed: string;
   mode: "daily" | "practice";
   actions: string[];
+  ghosts: ArenaGhosts;
   openedAt: number;
 };
 
@@ -206,6 +208,7 @@ export function ArenaHub({
       seed: result.seed,
       mode: result.mode,
       actions: [],
+      ghosts: result.ghosts,
       openedAt: Date.now(),
     });
   };
@@ -239,6 +242,7 @@ export function ArenaHub({
       seed: result.seed,
       mode: result.mode,
       actions: current.actions,
+      ghosts: result.ghosts,
       openedAt: Date.now(),
     });
   };
@@ -320,6 +324,7 @@ export function ArenaHub({
         seed={playing.seed}
         mode={playing.mode}
         initialActions={playing.actions}
+        ghosts={playing.ghosts}
         openedAt={playing.openedAt}
         onFinished={onFinished}
         onLeave={() => {
@@ -375,8 +380,8 @@ export function ArenaHub({
 
       <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-400">
         Recruit monsters from a shared shop, build synergies, then watch them fight
-        20 Boss waves on their own. You have {START_HEALTH} health and a turn
-        timer. How far can you get?
+        {MAX_WAVES} waves on their own: your friends&apos; boards and computer
+        Bosses. You have {START_HEALTH} health and a turn timer. How far can you get?
       </p>
 
       {
@@ -645,9 +650,22 @@ function Rules() {
         </p>
 
         <p>
+          <strong className="text-amber-100">Fusion &amp; Xyz:</strong> two monsters of the
+          same Level (3-8) can be overlaid into an Xyz monster, and classic pairs (Dark
+          Magician + Buster Blader, Red-Eyes + Summoned Skull, ...) can be fused. Both are
+          free: the two monsters are the price, and half of the stats they gained carry over.
+        </p>
+
+        <p>
+          <strong className="text-amber-100">Friends:</strong> every board you finish a turn
+          with is saved. When a run starts, friends who played before you are locked in as
+          that run&apos;s opponents (one per wave); waves nobody has reached yet are Bosses.
+        </p>
+
+        <p>
           <strong className="text-amber-100">Losing</strong> a wave costs health (wave tier +
-          1 per enemy left, the Boss counts 2). At 0 health the run ends. Score = waves
-          survived, then health left. Clear all {MAX_WAVES} Bosses for a perfect run.
+          1 per enemy left, a Boss counts 2). At 0 health the run ends. Score = waves
+          survived, then health left. Survive all {MAX_WAVES} waves for a perfect run.
         </p>
 
         <div>
@@ -748,7 +766,7 @@ function GameOver({
 
   const fellTo =
     lastWave
-      ? ROUTE_BY_CODE.get(lastWave.route)?.name ?? null
+      ? lastWave.foe ?? ROUTE_BY_CODE.get(lastWave.route)?.name ?? null
       : null;
 
   const submit =
@@ -790,8 +808,8 @@ function GameOver({
         <p className="relative mt-2 text-sm text-zinc-300">
           {
             state.victory
-              ? `All ${MAX_WAVES} Bosses defeated with ${health} health left.`
-              : `You survived ${survived} ${survived === 1 ? "wave" : "waves"}${fellTo ? ` and fell to the ${fellTo} wave` : ""}.`
+              ? `All ${MAX_WAVES} waves cleared with ${health} health left.`
+              : `You survived ${survived} ${survived === 1 ? "wave" : "waves"}${fellTo ? ` and fell to ${fellTo}` : ""}.`
           }
         </p>
 

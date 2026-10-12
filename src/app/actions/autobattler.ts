@@ -12,11 +12,23 @@ import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 
+import type {
+  SupabaseClient,
+} from "@supabase/supabase-js";
+
 import {
   ENGINE_VERSION,
+  normalizeGhosts,
   turnSeconds,
   validateRun,
+  type GhostBoard,
 } from "@/lib/games/autobattler/engine";
+
+import {
+  ghostTableFromRows,
+  pickGhosts,
+  type FrozenGhostRow,
+} from "@/lib/games/autobattler/ghosts";
 
 import {
   loadArenaBoards,
@@ -38,6 +50,13 @@ import {
 // It also checks the run did not take longer than the turn
 // timers allow (the timer is what keeps it a strategy game
 // instead of a "look it up" game).
+//
+// Ghosts (engine v2): startArenaRun() freezes one league-mate
+// board per turn into the run (arena_run_ghosts, service role,
+// picked by ghosts.ts from the run seed). The browser plays
+// against exactly those; submitArenaRun() replays against the
+// frozen rows from the DATABASE and, once the run validates,
+// stores this run's boards (from the replay) as new ghosts.
 // =========================================================
 
 const ARENA_GAME = "auto_battler";
@@ -45,10 +64,13 @@ const ARENA_GAME = "auto_battler";
 const ARENA_PATH = "/games/autobattler";
 
 /** Combat playback + loading between turns, per turn (seconds). */
-const COMBAT_ALLOWANCE = 45;
+const COMBAT_ALLOWANCE = 30;
 
 /** Extra slack for one interruption (phone call, reload). */
 const RUN_SLACK = 10 * 60;
+
+export type ArenaGhosts =
+  (GhostBoard | null)[];
 
 export type StartArenaResult =
   | {
@@ -56,6 +78,7 @@ export type StartArenaResult =
       runId: string;
       seed: string;
       mode: "daily" | "practice";
+      ghosts: ArenaGhosts;
     }
   | {
       ok: false;
@@ -102,6 +125,107 @@ function cleanError(
   );
 }
 
+/** The ghosts frozen into one of your runs (RLS: own runs only). */
+async function loadRunGhosts(
+  supabase: SupabaseClient,
+  runId: string
+): Promise<ArenaGhosts | null> {
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("arena_run_ghosts")
+    .select("turn, snapshot_id, ghost_name, board")
+    .eq("run_id", runId);
+
+  if (error) {
+    return null;
+  }
+
+  return ghostTableFromRows(
+    (data ?? []) as FrozenGhostRow[]
+  );
+}
+
+/**
+ * Pick + freeze league-mates' boards for a fresh run. Never blocks
+ * the run: on any problem it simply has no ghosts (Boss waves).
+ * The frozen rows are read back, so browser and replay agree.
+ */
+async function freezeGhosts(
+  supabase: SupabaseClient,
+  userId: string,
+  runId: string,
+  seed: string
+): Promise<ArenaGhosts> {
+  try {
+    const admin =
+      createAdminClient();
+
+    const {
+      data,
+      error,
+    } = await admin.rpc(
+      "arena_ghost_candidates",
+      {
+        p_profile_id: userId,
+        target_run_id: runId,
+      }
+    );
+
+    const candidates =
+      (data ?? []) as {
+        snapshot_id: string;
+        profile_id: string;
+        duelist_name: string;
+        turn: number;
+      }[];
+
+    if (
+      !error &&
+      candidates.length > 0
+    ) {
+      const picks =
+        pickGhosts(
+          seed,
+          candidates.map(
+            (row) => ({
+              snapshotId: row.snapshot_id,
+              profileId: row.profile_id,
+              name: row.duelist_name,
+              turn: row.turn,
+            })
+          )
+        );
+
+      if (picks.length > 0) {
+        await admin.rpc(
+          "assign_arena_ghosts",
+          {
+            p_profile_id: userId,
+            target_run_id: runId,
+            target_ghosts: picks.map(
+              (pick) => ({
+                turn: pick.turn,
+                snapshot_id: pick.snapshotId,
+              })
+            ),
+          }
+        );
+      }
+    }
+  } catch (error) {
+    console.error("Shadow Arena: could not assign ghosts", error);
+  }
+
+  return (
+    await loadRunGhosts(
+      supabase,
+      runId
+    )
+  ) ?? normalizeGhosts([]);
+}
+
 function isRunId(
   runId: unknown
 ): runId is string {
@@ -126,6 +250,7 @@ export async function startArenaRun(
 
   const {
     supabase,
+    userId,
   } = await requireUser();
 
   const {
@@ -161,6 +286,12 @@ export async function startArenaRun(
     runId: row.run_id,
     seed: row.run_seed,
     mode,
+    ghosts: await freezeGhosts(
+      supabase,
+      userId,
+      row.run_id,
+      row.run_seed
+    ),
   };
 }
 
@@ -172,6 +303,7 @@ export async function resumeArenaRun(
       ok: true;
       seed: string;
       mode: "daily" | "practice";
+      ghosts: ArenaGhosts;
     }
   | {
       ok: false;
@@ -213,10 +345,24 @@ export async function resumeArenaRun(
     };
   }
 
+  const ghosts =
+    await loadRunGhosts(
+      supabase,
+      runId
+    );
+
+  if (!ghosts) {
+    return {
+      ok: false,
+      error: "Could not load your opponents. Try again.",
+    };
+  }
+
   return {
     ok: true,
     seed: run.run_seed,
     mode: run.run_mode,
+    ghosts,
   };
 }
 
@@ -278,7 +424,23 @@ export async function submitArenaRun(
       ? log
       : null;
 
-  let verdict =
+  // The ghosts this run was frozen with (from the database,
+  // never from the browser). A failed read is retryable.
+  const ghosts =
+    await loadRunGhosts(
+      supabase,
+      runId
+    );
+
+  if (!ghosts) {
+    return {
+      ok: false,
+      error: "Could not reach the server. Check your connection and retry.",
+      boards: null,
+    };
+  }
+
+  let verdict: ReturnType<typeof validateRun> =
     run.run_engine_version !== ENGINE_VERSION
       ? {
           ok: false as const,
@@ -287,7 +449,8 @@ export async function submitArenaRun(
       : validateRun(
           run.run_seed,
           safeLog,
-          Number.isInteger(claimedScore) ? claimedScore : -1
+          Number.isInteger(claimedScore) ? claimedScore : -1,
+          ghosts
         );
 
   // Time sanity: a run can't take (much) longer than its turn
@@ -380,6 +543,29 @@ export async function submitArenaRun(
       error: `Run not counted: ${submitted.run_reject_reason ?? "rejected"}`,
       boards,
     };
+  }
+
+  // This run's boards (from OUR replay) become ghosts for friends.
+  const {
+    error: snapshotError,
+  } = await createAdminClient().rpc(
+    "record_arena_snapshots",
+    {
+      p_profile_id: userId,
+      target_run_id: runId,
+      target_snapshots: verdict.snapshots.map(
+        (snapshot) => ({
+          turn: snapshot.turn,
+          board: {
+            units: snapshot.units,
+          },
+        })
+      ),
+    }
+  );
+
+  if (snapshotError) {
+    console.error("Shadow Arena: could not store ghosts", snapshotError.message);
   }
 
   const board =

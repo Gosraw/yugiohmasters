@@ -63,6 +63,24 @@ export type UnitDef = {
   rallyBy?: "tribe" | "attribute";
   img: string;
   art: string | null;
+  /** Fusion / Xyz "specials": made in a run, never in the shop. */
+  kind?: "fusion" | "xyz";
+  /** Xyz only: made from two units of this Level. */
+  rank?: number;
+};
+
+export type FusionMaterial =
+  | {
+      unit: string;
+      golden?: boolean;
+    }
+  | {
+      tribe: Tribe;
+    };
+
+export type FusionRecipe = {
+  result: string;
+  materials: FusionMaterial[];
 };
 
 export type BossRouteUnit = {
@@ -88,11 +106,30 @@ export type BossRoute = {
 const data =
   unitData as unknown as {
     units: UnitDef[];
+    specials: UnitDef[];
+    fusions: FusionRecipe[];
     routes: BossRoute[];
   };
 
+/** Shop units (the run's shared pool). */
 export const UNITS: readonly UnitDef[] =
   data.units;
+
+/** Fusion + Xyz monsters: only made in a run, never in the pool. */
+export const SPECIALS: readonly UnitDef[] =
+  data.specials;
+
+export const FUSIONS: readonly FusionRecipe[] =
+  data.fusions;
+
+export const XYZ_BY_RANK: ReadonlyMap<number, UnitDef> =
+  new Map(
+    SPECIALS.filter(
+      (unit) => unit.kind === "xyz" && unit.rank !== undefined
+    ).map(
+      (unit) => [unit.rank as number, unit]
+    )
+  );
 
 export const ROUTES: readonly BossRoute[] =
   [...data.routes].sort(
@@ -101,7 +138,7 @@ export const ROUTES: readonly BossRoute[] =
 
 export const UNIT_BY_ID: ReadonlyMap<string, UnitDef> =
   new Map(
-    UNITS.map(
+    [...UNITS, ...SPECIALS].map(
       (unit) => [unit.id, unit]
     )
   );

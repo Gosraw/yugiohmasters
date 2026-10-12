@@ -1,9 +1,12 @@
 import {
   applyAction,
   createRun,
+  fusionOptions,
+  xyzOptions,
   BOARD_MAX,
   MAX_TIER,
   UNIT_COST,
+  type GhostBoard,
   type Run,
 } from "./engine";
 
@@ -15,8 +18,8 @@ import {
 // =========================================================
 // SHADOW ARENA - a simple greedy bot. Used by the tests (to
 // produce realistic action logs) and for balance checks: a good
-// human should beat it comfortably; it must never clear all 20
-// waves. Not shipped to the UI.
+// human should beat it comfortably; it should only now and then
+// clear all the waves. Not shipped to the UI.
 // =========================================================
 
 function value(
@@ -72,6 +75,68 @@ function act(
   ).ok;
 }
 
+/** Fuse whenever a recipe is ready; overlay when it pays off. */
+function summonSpecials(
+  run: Run
+) {
+  const {
+    state,
+  } = run;
+
+  for (let guard = 0; guard < 6; guard++) {
+    const fusion =
+      fusionOptions(state)[0];
+
+    if (fusion) {
+      if (act(run, `c${fusion.recipe}.${fusion.uids.join(".")}`)) {
+        continue;
+      }
+    }
+
+    const crowded =
+      state.board.length + state.bench.length >= BOARD_MAX;
+
+    const xyz =
+      xyzOptions(state).find(
+        (option) => {
+          const def =
+            UNIT_BY_ID.get(option.result) as UnitDef;
+
+          const pair =
+            [...option.units]
+              .sort(
+                (a, b) => a.atk + a.hp - (b.atk + b.hp)
+              )
+              .slice(0, 2);
+
+          const pairStats =
+            pair.reduce(
+              (sum, unit) => sum + unit.atk + unit.hp,
+              0
+            );
+
+          return (
+            !pair.some((unit) => unit.golden) &&
+            (crowded || def.atk + def.hp >= pairStats * 0.9)
+          );
+        }
+      );
+
+    if (!xyz) {
+      return;
+    }
+
+    const [a, b] =
+      [...xyz.units].sort(
+        (x, y) => x.atk + x.hp - (y.atk + y.hp)
+      );
+
+    if (!act(run, `x${a.uid}.${b.uid}`)) {
+      return;
+    }
+  }
+}
+
 export function playBotTurn(
   run: Run,
   options: {
@@ -91,6 +156,8 @@ export function playBotTurn(
 
       continue;
     }
+
+    summonSpecials(run);
 
     // Tier up when it is cheap enough or the board is full.
     if (
@@ -225,10 +292,14 @@ export function playBotRun(
   seed: string,
   options: {
     smart?: boolean;
+    ghosts?: (GhostBoard | null)[];
   } = {}
 ) {
   const run =
-    createRun(seed);
+    createRun(
+      seed,
+      options.ghosts ?? []
+    );
 
   while (!run.state.over) {
     playBotTurn(

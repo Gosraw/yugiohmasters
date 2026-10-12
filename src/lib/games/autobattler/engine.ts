@@ -4,13 +4,16 @@ import {
 } from "../prng";
 
 import {
+  FUSIONS,
   ROUTES,
   ROUTE_BY_CODE,
   UNITS,
   UNIT_BY_ID,
+  XYZ_BY_RANK,
   type Attribute,
   type BossRouteUnit,
   type CombatKeyword,
+  type FusionMaterial,
   type SynergyKey,
   type Tribe,
   type UnitDef,
@@ -25,7 +28,7 @@ import {
 // score the replay produces. Everything random draws from the
 // seeded PRNG (src/lib/games/prng.ts):
 //   `${seed}:shop`           every shop roll / discover, in order
-//   `${seed}:bosses`         the order of the 20 Boss waves
+//   `${seed}:bosses`         the order of the Boss waves
 //   `${seed}:combat:${turn}` target picks inside one combat
 // Only integer math is used, so V8 and JavaScriptCore agree.
 //
@@ -38,14 +41,28 @@ import {
 //   f              freeze / unfreeze the shop
 //   u              upgrade the shop tier
 //   d<i>           pick discover option <i> (after a triple)
-//   e              end the turn -> combat vs this wave's Boss
+//   x<a>.<b>       Overlay: units <a> + <b> (same Level) -> Xyz
+//   c<r>.<a>[.<b>] Polymerization: fusion recipe <r> from <a>(,<b>)
+//   e              end the turn -> combat vs this wave's opponent
+//
+// Opponents (v2): a league-mate's "ghost" board when the server
+// assigned one for that turn when the run started (frozen with
+// the run, see ghosts.ts), otherwise the wave's computer Boss.
+// After every shop phase the board is recorded in
+// state.snapshots; the server stores those (from ITS replay)
+// as ghosts for friends once the run validates.
+//
+// Fusion / Xyz cost no gold (the materials are the price): the
+// materials leave the run for good (not back to the pool) and
+// the new monster keeps half of the stats they had gained.
 // =========================================================
 
-export const ENGINE_VERSION = 1;
+/** v2 (2026-10-12): 12 waves, ghosts, Fusion + Xyz. */
+export const ENGINE_VERSION = 2;
 
-export const MAX_WAVES = 20;
+export const MAX_WAVES = 12;
 
-export const START_HEALTH = 30;
+export const START_HEALTH = 20;
 
 export const BOARD_MAX = 7;
 
@@ -101,15 +118,22 @@ export const MAX_LOG_ACTIONS =
 
 const MAX_COMBAT_STEPS = 400;
 
+/** Max damage of one lost fight: waves 1-3, 4-6, 7+. */
+export const DAMAGE_CAP = [
+  4,
+  7,
+  10,
+] as const;
+
 /** Shop-phase timer (seconds) for a turn. */
 export function turnSeconds(
   turn: number
 ) {
-  return turn <= 2
+  return turn <= 3
     ? 30
     : Math.min(
-        60,
-        30 + turn * 3
+        45,
+        30 + (turn - 3) * 3
       );
 }
 
@@ -118,7 +142,7 @@ export function waveTier(
 ) {
   return Math.min(
     MAX_TIER,
-    1 + Math.floor((wave - 1) / 3)
+    1 + Math.floor((wave - 1) / 2)
   );
 }
 
@@ -126,12 +150,12 @@ export function waveTier(
 export function bossBudget(
   wave: number
 ) {
-  // Hand-tuned with the greedy bot (bot.ts): it should clear the
-  // first ~8 waves and die well before wave 20.
+  // Hand-tuned with the greedy bot (balance.test.ts): median
+  // ~wave 9, a full clear of all 12 only now and then.
   const table = [
     0,
-    4, 8, 13, 21, 31, 43, 56, 71, 90, 112,
-    140, 172, 206, 244, 286, 332, 382, 436, 494, 560,
+    4, 7, 13, 21, 31, 43, 56, 72, 92, 118,
+    152, 196,
   ];
 
   return table[Math.min(wave, MAX_WAVES)];
@@ -151,9 +175,35 @@ export type Unit = {
 
 export type WaveRecord = {
   wave: number;
+  /** Boss route code, or "ghost" for a friend's board. */
   route: string;
+  /** Display name of the opponent. */
+  foe: string;
   result: "win" | "loss" | "tie";
   damage: number;
+};
+
+/** One unit of a recorded board (a "ghost" for friends). */
+export type GhostUnit = {
+  id: string;
+  atk: number;
+  hp: number;
+  golden: boolean;
+};
+
+/** A league-mate's recorded board, frozen into a run at start. */
+export type GhostBoard = {
+  /** Snapshot id (server row id). */
+  id: string;
+  /** The friend's duelist name. */
+  name: string;
+  units: GhostUnit[];
+};
+
+/** Your board as it went into the fight of `turn`. */
+export type BoardSnapshot = {
+  turn: number;
+  units: GhostUnit[];
 };
 
 export type RunState = {
@@ -179,6 +229,9 @@ export type RunState = {
   over: boolean;
   victory: boolean;
   bossOrder: string[];
+  /** Index turn - 1: the ghost you fight that turn, or null (Boss). */
+  ghosts: (GhostBoard | null)[];
+  snapshots: BoardSnapshot[];
   history: WaveRecord[];
   actionsThisTurn: number;
   log: string[];
@@ -234,6 +287,7 @@ export type CombatFrame = {
 export type CombatResult = {
   wave: number;
   route: string;
+  foe: string;
   result: "win" | "loss" | "tie";
   damage: number;
   frames: CombatFrame[];
@@ -274,8 +328,104 @@ function shuffledBossOrder(
   return codes.slice(0, MAX_WAVES);
 }
 
+/**
+ * Clean up a ghost list (from the server or the browser): index
+ * turn - 1, unknown units dropped, numbers clamped. Both the
+ * browser and the server replay run this, so they agree.
+ */
+export function normalizeGhosts(
+  input: unknown
+): (GhostBoard | null)[] {
+  const out: (GhostBoard | null)[] =
+    new Array(MAX_WAVES).fill(null);
+
+  if (!Array.isArray(input)) {
+    return out;
+  }
+
+  input.forEach(
+    (entry, index) => {
+      if (
+        index >= MAX_WAVES ||
+        typeof entry !== "object" ||
+        entry === null
+      ) {
+        return;
+      }
+
+      const raw =
+        entry as {
+          id?: unknown;
+          name?: unknown;
+          units?: unknown;
+        };
+
+      if (
+        typeof raw.id !== "string" ||
+        raw.id.length === 0 ||
+        raw.id.length > 64 ||
+        !Array.isArray(raw.units)
+      ) {
+        return;
+      }
+
+      const units: GhostUnit[] = [];
+
+      for (const item of raw.units.slice(0, BOARD_MAX)) {
+        const unit =
+          item as Partial<GhostUnit> | null;
+
+        if (
+          !unit ||
+          typeof unit.id !== "string" ||
+          !UNIT_BY_ID.has(unit.id) ||
+          !Number.isInteger(unit.atk) ||
+          !Number.isInteger(unit.hp)
+        ) {
+          continue;
+        }
+
+        units.push({
+          id: unit.id,
+          atk: Math.min(9999, Math.max(0, unit.atk as number)),
+          hp: Math.min(9999, Math.max(1, unit.hp as number)),
+          golden: unit.golden === true,
+        });
+      }
+
+      if (units.length === 0) {
+        return;
+      }
+
+      out[index] = {
+        id: raw.id,
+        name:
+          typeof raw.name === "string" && raw.name.trim()
+            ? raw.name.trim().slice(0, 40)
+            : "A friend",
+        units,
+      };
+    }
+  );
+
+  return out;
+}
+
+/** The ghost snapshot id per turn (null = Boss): goes into the log. */
+export function ghostIds(
+  ghosts: readonly (GhostBoard | null)[]
+) {
+  return Array.from(
+    {
+      length: MAX_WAVES,
+    },
+    (_, i) => ghosts[i]?.id ?? null
+  );
+}
+
 export function createRun(
-  seed: string
+  seed: string,
+  ghosts: unknown = []
 ): Run {
   const pool: Record<string, number> = {};
 
@@ -307,6 +457,8 @@ export function createRun(
     over: false,
     victory: false,
     bossOrder: shuffledBossOrder(seed),
+    ghosts: normalizeGhosts(ghosts),
+    snapshots: [],
     history: [],
     actionsThisTurn: 0,
     log: [],
@@ -537,7 +689,10 @@ function checkTriples(
       null;
 
     for (const unit of [...state.board, ...state.bench]) {
-      if (unit.golden) {
+      if (
+        unit.golden ||
+        isSpecialUnit(unit)
+      ) {
         continue;
       }
 
@@ -753,6 +908,354 @@ function findUnit(
 }
 
 // ---------------------------------------------------------
+// Fusion + Xyz
+// ---------------------------------------------------------
+
+/** The Xyz two units of this Level make (Rank = Level), if any. */
+export function xyzForLevel(
+  level: number
+): UnitDef | null {
+  return XYZ_BY_RANK.get(level) ?? null;
+}
+
+function canBeXyzMaterial(
+  unit: Unit
+) {
+  const def =
+    UNIT_BY_ID.get(unit.id);
+
+  return (
+    def !== undefined &&
+    def.kind === undefined &&
+    xyzForLevel(def.level) !== null
+  );
+}
+
+function matchesMaterial(
+  unit: Unit,
+  material: FusionMaterial
+) {
+  const def =
+    UNIT_BY_ID.get(unit.id);
+
+  if (
+    !def ||
+    def.kind !== undefined
+  ) {
+    return false;
+  }
+
+  if ("tribe" in material) {
+    return def.tribe === material.tribe;
+  }
+
+  return (
+    unit.id === material.unit &&
+    (!material.golden || unit.golden)
+  );
+}
+
+/**
+ * Replace the materials with the new monster: it takes the board
+ * slot of the leftmost material on the board (else the bench slot
+ * of the first one) and keeps half of the stats the materials had
+ * gained above their base stats.
+ */
+function summonSpecial(
+  run: Run,
+  resultId: string,
+  materials: Unit[]
+) {
+  const {
+    state,
+  } = run;
+
+  const def =
+    UNIT_BY_ID.get(resultId) as UnitDef;
+
+  let bonusAtk = 0;
+  let bonusHp = 0;
+
+  for (const unit of materials) {
+    const base =
+      UNIT_BY_ID.get(unit.id) as UnitDef;
+
+    bonusAtk += Math.max(0, unit.atk - base.atk);
+    bonusHp += Math.max(0, unit.hp - base.hp);
+  }
+
+  const result: Unit = {
+    uid: state.nextUid,
+    id: resultId,
+    atk: def.atk + Math.floor(bonusAtk / 2),
+    hp: def.hp + Math.floor(bonusHp / 2),
+    golden: false,
+  };
+
+  state.nextUid += 1;
+
+  const uids =
+    new Set(
+      materials.map(
+        (unit) => unit.uid
+      )
+    );
+
+  const boardIndex =
+    state.board.findIndex(
+      (unit) => uids.has(unit.uid)
+    );
+
+  if (boardIndex >= 0) {
+    state.board[boardIndex] = result;
+  } else {
+    const benchIndex =
+      state.bench.findIndex(
+        (unit) => uids.has(unit.uid)
+      );
+
+    state.bench[benchIndex] = result;
+  }
+
+  state.board =
+    state.board.filter(
+      (unit) => !uids.has(unit.uid)
+    );
+
+  state.bench =
+    state.bench.filter(
+      (unit) => !uids.has(unit.uid)
+    );
+
+  if (boardIndex >= 0) {
+    triggerRally(
+      state,
+      result
+    );
+  }
+
+  return result;
+}
+
+function overlay(
+  run: Run,
+  uidA: number,
+  uidB: number
+): string | null {
+  const {
+    state,
+  } = run;
+
+  if (uidA === uidB) {
+    return "Pick two different units.";
+  }
+
+  const a =
+    findUnit(state, uidA);
+
+  const b =
+    findUnit(state, uidB);
+
+  if (
+    !a ||
+    !b
+  ) {
+    return "No such unit.";
+  }
+
+  if (
+    !canBeXyzMaterial(a.unit) ||
+    !canBeXyzMaterial(b.unit)
+  ) {
+    return "Only Level 3-8 shop monsters can be overlaid.";
+  }
+
+  const level =
+    (UNIT_BY_ID.get(a.unit.id) as UnitDef).level;
+
+  if ((UNIT_BY_ID.get(b.unit.id) as UnitDef).level !== level) {
+    return "Overlay needs two monsters of the same Level.";
+  }
+
+  summonSpecial(
+    run,
+    (xyzForLevel(level) as UnitDef).id,
+    [
+      a.unit,
+      b.unit,
+    ]
+  );
+
+  return null;
+}
+
+function fuse(
+  run: Run,
+  recipeIndex: number,
+  uids: number[]
+): string | null {
+  const {
+    state,
+  } = run;
+
+  const recipe =
+    FUSIONS[recipeIndex];
+
+  if (!recipe) {
+    return "Unknown fusion.";
+  }
+
+  if (
+    uids.length !== recipe.materials.length ||
+    new Set(uids).size !== uids.length
+  ) {
+    return "Wrong fusion materials.";
+  }
+
+  const materials: Unit[] = [];
+
+  for (let i = 0; i < uids.length; i++) {
+    const found =
+      findUnit(state, uids[i]);
+
+    if (
+      !found ||
+      !matchesMaterial(found.unit, recipe.materials[i])
+    ) {
+      return "Wrong fusion materials.";
+    }
+
+    materials.push(found.unit);
+  }
+
+  summonSpecial(
+    run,
+    recipe.result,
+    materials
+  );
+
+  return null;
+}
+
+/** Fusions you can make right now, with the materials auto-picked. */
+export function fusionOptions(
+  state: Pick<RunState, "board" | "bench">
+): {
+  recipe: number;
+  result: string;
+  uids: number[];
+}[] {
+  const owned =
+    [...state.bench, ...state.board];
+
+  const options: {
+    recipe: number;
+    result: string;
+    uids: number[];
+  }[] = [];
+
+  FUSIONS.forEach(
+    (recipe, index) => {
+      const used =
+        new Set<number>();
+
+      // Named materials first, so "any Dragon" can't eat the
+      // unit a named slot needs.
+      const order =
+        recipe.materials
+          .map(
+            (material, i) => ({
+              material,
+              i,
+            })
+          )
+          .sort(
+            (x, y) => Number("tribe" in x.material) - Number("tribe" in y.material)
+          );
+
+      const picked: number[] =
+        new Array(recipe.materials.length).fill(-1);
+
+      for (const {
+        material,
+        i,
+      } of order) {
+        const candidates =
+          owned
+            .filter(
+              (unit) => !used.has(unit.uid) && matchesMaterial(unit, material)
+            )
+            // Spare golden units and big stats where possible.
+            .sort(
+              (x, y) => Number(x.golden) - Number(y.golden) || x.atk + x.hp - (y.atk + y.hp) || x.uid - y.uid
+            );
+
+        if (candidates.length === 0) {
+          return;
+        }
+
+        used.add(candidates[0].uid);
+
+        picked[i] = candidates[0].uid;
+      }
+
+      options.push({
+        recipe: index,
+        result: recipe.result,
+        uids: picked,
+      });
+    }
+  );
+
+  return options;
+}
+
+/** Levels with 2+ units that can be overlaid, and their units. */
+export function xyzOptions(
+  state: Pick<RunState, "board" | "bench">
+): {
+  rank: number;
+  result: string;
+  units: Unit[];
+}[] {
+  const byLevel =
+    new Map<number, Unit[]>();
+
+  for (const unit of [...state.board, ...state.bench]) {
+    if (!canBeXyzMaterial(unit)) {
+      continue;
+    }
+
+    const level =
+      (UNIT_BY_ID.get(unit.id) as UnitDef).level;
+
+    byLevel.set(level, [...(byLevel.get(level) ?? []), unit]);
+  }
+
+  return [...byLevel.entries()]
+    .filter(
+      ([, units]) => units.length >= 2
+    )
+    .sort(
+      ([a], [b]) => b - a
+    )
+    .map(
+      ([level, units]) => ({
+        rank: level,
+        result: (xyzForLevel(level) as UnitDef).id,
+        units,
+      })
+    );
+}
+
+/** Fusion / Xyz monster (not in the shop pool, never triples). */
+export function isSpecialUnit(
+  unit: Pick<Unit, "id">
+) {
+  return UNIT_BY_ID.get(unit.id)?.kind !== undefined;
+}
+
+// ---------------------------------------------------------
 // Boss waves
 // ---------------------------------------------------------
 
@@ -767,6 +1270,7 @@ export type BossUnitSpec = {
 };
 
 export type BossWave = {
+  kind?: "boss";
   wave: number;
   route: string;
   routeName: string;
@@ -813,7 +1317,7 @@ export function bossWave(
     );
 
   const includeBoss =
-    wave >= 5;
+    wave >= 4;
 
   const regular =
     route.units.filter(
@@ -874,11 +1378,11 @@ export function bossWave(
   const keywordUnits =
     Math.min(
       picks.length,
-      Math.floor((wave + 1) / 3)
+      Math.floor(wave / 2)
     );
 
   const power =
-    1 + Math.floor(wave / 3);
+    1 + Math.floor(wave / 2);
 
   let regularIndex = 0;
 
@@ -902,7 +1406,7 @@ export function bossWave(
         if (pick.boss) {
           keywords.push(route.keywords[0]);
 
-          if (wave >= 12) {
+          if (wave >= 9) {
             keywords.push(route.keywords[1]);
           }
         } else {
@@ -926,12 +1430,66 @@ export function bossWave(
     );
 
   return {
+    kind: "boss",
     wave,
     route: route.code,
     routeName: route.name,
     tier: waveTier(wave),
     units,
   };
+}
+
+/** A friend's recorded board as this turn's opponent. */
+export type GhostWave = {
+  kind: "ghost";
+  wave: number;
+  tier: number;
+  ghostId: string;
+  name: string;
+  units: GhostUnit[];
+};
+
+export type Foe =
+  | BossWave
+  | GhostWave;
+
+export function isGhostFoe(
+  foe: Foe
+): foe is GhostWave {
+  return foe.kind === "ghost";
+}
+
+/** Who you fight on `turn`: the frozen ghost, else the Boss wave. */
+export function foeFor(
+  state: Pick<RunState, "bossOrder" | "ghosts">,
+  turn: number
+): Foe {
+  const ghost =
+    state.ghosts[turn - 1] ?? null;
+
+  if (ghost) {
+    return {
+      kind: "ghost",
+      wave: turn,
+      tier: waveTier(turn),
+      ghostId: ghost.id,
+      name: ghost.name,
+      units: ghost.units,
+    };
+  }
+
+  return bossWave(
+    state.bossOrder,
+    turn
+  );
+}
+
+export function foeName(
+  foe: Foe
+) {
+  return isGhostFoe(foe)
+    ? `${foe.name}'s board`
+    : foe.routeName;
 }
 
 // ---------------------------------------------------------
@@ -1039,7 +1597,7 @@ export type SynergyState = {
 
 /** Attribute + tribe counts over different units on the board. */
 export function boardSynergies(
-  board: Unit[]
+  board: Pick<Unit, "id">[]
 ): SynergyState[] {
   const counts =
     new Map<SynergyKey, Set<string>>();
@@ -1084,7 +1642,8 @@ export function boardSynergies(
 }
 
 function playerCombatUnits(
-  board: Unit[]
+  board: Pick<Unit, "id" | "atk" | "hp" | "golden">[],
+  side: 0 | 1 = 0
 ): {
   units: CUnit[];
   fire: 0 | 1 | 2;
@@ -1103,14 +1662,14 @@ function playerCombatUnits(
 
   const units =
     board.map(
-      (unit): CUnit => {
+      (unit, index): CUnit => {
         const def =
           UNIT_BY_ID.get(unit.id) as UnitDef;
 
         const cu =
           blankCUnit(
-            unit.uid,
-            0,
+            side === 0 ? (unit as Unit).uid : 10000 + index,
+            side,
             def.name,
             def.img
           );
@@ -1324,7 +1883,7 @@ function snap(
 
 export function resolveCombat(
   board: Unit[],
-  wave: BossWave,
+  wave: Foe,
   rng: Prng,
   record: boolean
 ): {
@@ -1335,9 +1894,22 @@ export function resolveCombat(
   const player =
     playerCombatUnits(board);
 
+  // A ghost is a player board too: same synergies, other side.
+  const foe =
+    isGhostFoe(wave)
+      ? playerCombatUnits(
+          wave.units,
+          1
+        )
+      : {
+          units: bossCombatUnits(wave),
+          fire: 0 as const,
+          fiend: 0 as const,
+        };
+
   const sides: [CUnit[], CUnit[]] = [
     player.units,
-    bossCombatUnits(wave),
+    foe.units,
   ];
 
   const frames: CombatFrame[] = [];
@@ -1497,20 +2069,45 @@ export function resolveCombat(
   });
 
   // ---- Start of combat ----
-  if (player.fiend > 0) {
-    for (const unit of sides[1]) {
-      unit.atk = Math.max(
-        0,
-        unit.atk - (player.fiend === 2 ? 3 : 1)
-      );
+  // (Bosses have no FIRE / Fiend synergy, so a Boss fight draws
+  // exactly the same random numbers as before ghosts existed.)
+  const synergyOf = [
+    player,
+    foe,
+  ] as const;
+
+  for (const side of [0, 1] as const) {
+    const fiend =
+      synergyOf[side].fiend;
+
+    if (fiend > 0) {
+      for (const unit of sides[side === 0 ? 1 : 0]) {
+        unit.atk = Math.max(
+          0,
+          unit.atk - (fiend === 2 ? 3 : 1)
+        );
+      }
     }
   }
 
-  if (player.fire > 0) {
+  for (const side of [0, 1] as const) {
+    const fire =
+      synergyOf[side].fire;
+
+    const enemy =
+      sides[side === 0 ? 1 : 0];
+
+    if (
+      fire === 0 ||
+      enemy.length === 0
+    ) {
+      continue;
+    }
+
     const targets =
-      player.fire === 2
-        ? [...sides[1]]
-        : [sides[1][rng.int(0, sides[1].length - 1)]];
+      fire === 2
+        ? [...enemy]
+        : [enemy[rng.int(0, enemy.length - 1)]];
 
     for (const target of targets) {
       hit(target, 3, false, false);
@@ -1711,10 +2308,10 @@ export function resolveCombat(
 
     const cap =
       wave.wave <= 3
-        ? 5
-        : wave.wave <= 7
-          ? 10
-          : 15;
+        ? DAMAGE_CAP[0]
+        : wave.wave <= 6
+          ? DAMAGE_CAP[1]
+          : DAMAGE_CAP[2];
 
     damage = Math.min(cap, damage);
   }
@@ -1791,11 +2388,32 @@ function endTurn(
     }
   }
 
+  // The board that goes into this fight: a ghost for friends.
+  state.snapshots.push({
+    turn: state.turn,
+    units: state.board.map(
+      (unit) => ({
+        id: unit.id,
+        atk: unit.atk,
+        hp: unit.hp,
+        golden: unit.golden,
+      })
+    ),
+  });
+
   const wave =
-    bossWave(
-      state.bossOrder,
+    foeFor(
+      state,
       state.turn
     );
+
+  const name =
+    foeName(wave);
+
+  const route =
+    isGhostFoe(wave)
+      ? "ghost"
+      : wave.route;
 
   const combat =
     resolveCombat(
@@ -1816,7 +2434,8 @@ function endTurn(
 
   state.history.push({
     wave: state.turn,
-    route: wave.route,
+    route,
+    foe: name,
     result: combat.result,
     damage: combat.damage,
   });
@@ -1837,7 +2456,8 @@ function endTurn(
 
   return {
     wave: wave.wave,
-    route: wave.route,
+    route,
+    foe: name,
     result: combat.result,
     damage: combat.damage,
     frames: combat.frames,
@@ -1845,14 +2465,16 @@ function endTurn(
 }
 
 const ACTION_RE =
-  /^(?:b(\d)|s(\d{1,5})|p(\d{1,5})\.(\d)|m(\d{1,5})\.(\d)|(r)|(f)|(u)|d(\d)|(e))$/;
+  /^(?:b(\d)|s(\d{1,5})|p(\d{1,5})\.(\d)|m(\d{1,5})\.(\d)|(r)|(f)|(u)|d(\d)|(e)|x(\d{1,5})\.(\d{1,5})|c(\d{1,2})\.(\d{1,5})(?:\.(\d{1,5}))?)$/;
+
+const MAX_ACTION_LENGTH = 16;
 
 export function isActionString(
   action: unknown
 ): action is string {
   return (
     typeof action === "string" &&
-    action.length <= 12 &&
+    action.length <= MAX_ACTION_LENGTH &&
     ACTION_RE.test(action)
   );
 }
@@ -1881,7 +2503,7 @@ export function applyAction(
   }
 
   const match =
-    typeof action === "string" && action.length <= 12
+    typeof action === "string" && action.length <= MAX_ACTION_LENGTH
       ? ACTION_RE.exec(action)
       : null;
 
@@ -2008,7 +2630,11 @@ function applyMatched(
       state.bench.splice(found.index, 1);
     }
 
-    state.pool[found.unit.id] += found.unit.golden ? 3 : 1;
+    // Fusion / Xyz monsters never were in the pool.
+    if (found.unit.id in state.pool) {
+      state.pool[found.unit.id] += found.unit.golden ? 3 : 1;
+    }
+
     state.gold += SELL_VALUE;
 
     return null;
@@ -2132,6 +2758,40 @@ function applyMatched(
     );
   }
 
+  // ---- Overlay (Xyz) ----
+  if (match[12] !== undefined) {
+    if (blockedByDiscover) {
+      return "Pick a discover option first.";
+    }
+
+    return overlay(
+      run,
+      Number(match[12]),
+      Number(match[13])
+    );
+  }
+
+  // ---- Polymerization (Fusion) ----
+  if (match[14] !== undefined) {
+    if (blockedByDiscover) {
+      return "Pick a discover option first.";
+    }
+
+    const uids = [
+      Number(match[15]),
+    ];
+
+    if (match[16] !== undefined) {
+      uids.push(Number(match[16]));
+    }
+
+    return fuse(
+      run,
+      Number(match[14]),
+      uids
+    );
+  }
+
   // ---- end turn ----
   return {
     end: true,
@@ -2145,7 +2805,12 @@ function applyMatched(
 export type RunLog = {
   v: number;
   a: string[];
+  /** Ghost snapshot id per turn the browser played against. */
+  g?: (string | null)[];
 };
+
+export const LEGACY_LOG_REASON =
+  "This run was played on an older version of the Shadow Arena.";
 
 export type ReplayOutcome =
   | {
@@ -2158,10 +2823,28 @@ export type ReplayOutcome =
       reason: string;
     };
 
+/**
+ * Replay a run. `ghosts` must be the list the SERVER froze for
+ * this run at start (never the browser's copy): the log only says
+ * which ghost ids the browser saw, and they must match.
+ */
 export function replayLog(
   seed: string,
-  log: unknown
+  log: unknown,
+  ghosts: unknown = []
 ): ReplayOutcome {
+  if (
+    typeof log === "object" &&
+    log !== null &&
+    typeof (log as RunLog).v === "number" &&
+    (log as RunLog).v < ENGINE_VERSION
+  ) {
+    return {
+      ok: false,
+      reason: LEGACY_LOG_REASON,
+    };
+  }
+
   if (
     typeof log !== "object" ||
     log === null ||
@@ -2171,6 +2854,28 @@ export function replayLog(
     return {
       ok: false,
       reason: "Malformed action log.",
+    };
+  }
+
+  const table =
+    normalizeGhosts(ghosts);
+
+  const expected =
+    ghostIds(table);
+
+  const claimed =
+    (log as RunLog).g ?? [];
+
+  if (
+    !Array.isArray(claimed) ||
+    claimed.length > MAX_WAVES ||
+    expected.some(
+      (id, i) => (claimed[i] ?? null) !== id
+    )
+  ) {
+    return {
+      ok: false,
+      reason: "The ghost opponents do not match this run.",
     };
   }
 
@@ -2185,7 +2890,10 @@ export function replayLog(
   }
 
   const run =
-    createRun(seed);
+    createRun(
+      seed,
+      table
+    );
 
   for (let i = 0; i < actions.length; i++) {
     const action =
@@ -2231,6 +2939,8 @@ export type RunVerdict =
       ok: true;
       score: number;
       turns: number;
+      /** From the replay: what friends may fight as ghosts. */
+      snapshots: BoardSnapshot[];
     }
   | {
       ok: false;
@@ -2240,12 +2950,14 @@ export type RunVerdict =
 export function validateRun(
   seed: string,
   log: unknown,
-  claimedScore: number
+  claimedScore: number,
+  ghosts: unknown = []
 ): RunVerdict {
   const outcome =
     replayLog(
       seed,
-      log
+      log,
+      ghosts
     );
 
   if (!outcome.ok) {
@@ -2263,16 +2975,21 @@ export function validateRun(
     ok: true,
     score: outcome.score,
     turns: outcome.state.history.length,
+    snapshots: outcome.state.snapshots,
   };
 }
 
 /** Rebuild a run (e.g. after the tab was closed) from its log. */
 export function restoreRun(
   seed: string,
-  actions: string[]
+  actions: string[],
+  ghosts: unknown = []
 ): Run | null {
   const run =
-    createRun(seed);
+    createRun(
+      seed,
+      ghosts
+    );
 
   for (const action of actions) {
     if (!applyAction(run, action).ok) {

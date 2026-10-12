@@ -105,6 +105,45 @@
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* Fusion / Xyz summon moment (summon.tsx) */
+.summonFade {
+  animation: summon-fade 1600ms ease-out both;
+}
+
+@keyframes summon-fade {
+  0% { opacity: 0; }
+  8%, 85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.summonFlash,
+.summonFlashXyz {
+  animation: summon-flash 900ms ease-out both;
+}
+
+.summonFlash {
+  background: radial-gradient(circle at 50% 45%, rgba(255, 236, 190, .95), rgba(214, 112, 255, .45) 35%, transparent 70%);
+}
+
+.summonFlashXyz {
+  background: radial-gradient(circle at 50% 45%, rgba(230, 245, 255, .95), rgba(80, 150, 255, .45) 35%, transparent 70%);
+}
+
+@keyframes summon-flash {
+  0% { opacity: 0; transform: scale(.6); }
+  25% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.4); }
+}
+
+.summonRise {
+  animation: summon-rise 700ms 250ms cubic-bezier(.2, .9, .3, 1.15) both;
+}
+
+@keyframes summon-rise {
+  from { opacity: 0; transform: translateY(70px) scale(.7); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .float {
     animation: float-fade 900ms linear forwards;
@@ -127,7 +166,14 @@
   .hit,
   .banner,
   .timerLow,
-  .shimmer {
+  .shimmer,
+  .summonRise {
     animation: none;
+  }
+
+  /* No flash: just the card, faded in and out. */
+  .summonFlash,
+  .summonFlashXyz {
+    display: none;
   }
 }

@@ -140,17 +140,18 @@ export function ArenaCombat({
       prefersReducedMotion();
 
     // Long fights play faster so a wave never takes ages.
+    // (v2: twice as fast as v1, so a whole run fits ~10 minutes.)
     const beat =
       Math.max(
-        reduced ? 220 : 260,
+        reduced ? 110 : 130,
         Math.min(
-          620,
-          Math.floor(15000 / Math.max(1, frames.length))
+          310,
+          Math.floor(7500 / Math.max(1, frames.length))
         )
       );
 
     async function run() {
-      await wait(450);
+      await wait(250);
 
       for (let i = 1; i < frames.length; i++) {
         if (

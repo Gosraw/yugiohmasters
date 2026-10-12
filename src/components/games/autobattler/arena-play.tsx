@@ -7,6 +7,7 @@ import {
   Coins,
   Eye,
   Heart,
+  Layers,
   Lock,
   LogOut,
   RefreshCw,
@@ -32,12 +33,17 @@ import type {
 import {
   applyAction,
   boardSynergies,
-  bossWave,
+  foeFor,
+  foeName,
+  ghostIds,
+  isGhostFoe,
   restoreRun,
   runScore,
   turnSeconds,
   BENCH_MAX,
   BOARD_MAX,
+  DAMAGE_CAP,
+  ENGINE_VERSION,
   MAX_TIER,
   MAX_WAVES,
   ROLL_COST,
@@ -45,6 +51,7 @@ import {
   START_HEALTH,
   UNIT_COST,
   type CombatResult,
+  type GhostBoard,
   type Run,
   type RunState,
   type Unit,
@@ -63,6 +70,13 @@ import {
 import {
   ArenaCombat,
 } from "./arena-combat";
+
+import {
+  SummonFlash,
+  SummonPanel,
+  summonCount,
+  type SummonMoment,
+} from "./summon";
 
 import {
   UnitTile,
@@ -85,7 +99,9 @@ import styles from "./arena.module.css";
 //     unit -> the sell zone (over the shop) sells
 // =========================================================
 
-export const ARENA_SAVE_KEY = "dc.shadowArena.run.v1";
+// v2: engine v2 (ghosts, 12 waves). An old v1 save is simply
+// never read again (that run can't be submitted anymore anyway).
+export const ARENA_SAVE_KEY = "dc.shadowArena.run.v2";
 
 export type SavedArenaRun = {
   runId: string;
@@ -148,6 +164,7 @@ export type ArenaFinish = {
   log: {
     v: number;
     a: string[];
+    g: (string | null)[];
   };
   state: RunState;
 };
@@ -194,6 +211,8 @@ type Props = {
   seed: string;
   mode: "daily" | "practice";
   initialActions: string[];
+  /** Friends' boards frozen into this run by the server. */
+  ghosts: (GhostBoard | null)[];
   /** Date.now() at the moment the hub opened this screen. */
   openedAt: number;
   onFinished: (finish: ArenaFinish) => void;
@@ -223,6 +242,7 @@ export function ArenaPlay({
   seed,
   mode,
   initialActions,
+  ghosts,
   openedAt,
   onFinished,
   onLeave,
@@ -255,6 +275,12 @@ export function ArenaPlay({
   const [scoutOpen, setScoutOpen] =
     useState(false);
 
+  const [summonOpen, setSummonOpen] =
+    useState(false);
+
+  const [summonMoment, setSummonMoment] =
+    useState<SummonMoment | null>(null);
+
   const [confirmLeave, setConfirmLeave] =
     useState(false);
 
@@ -275,8 +301,9 @@ export function ArenaPlay({
     const run =
       restoreRun(
         seed,
-        initialActions
-      ) ?? restoreRun(seed, []);
+        initialActions,
+        ghosts
+      ) ?? restoreRun(seed, [], ghosts);
 
     runRef.current = run;
 
@@ -296,7 +323,7 @@ export function ArenaPlay({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [seed, initialActions]);
+  }, [seed, initialActions, ghosts]);
 
   const flash = useCallback(
     (message: string) => {
@@ -330,9 +357,6 @@ export function ArenaPlay({
       const healthBefore =
         run.state.health;
 
-      const wave =
-        run.state.turn;
-
       const outcome =
         applyAction(
           run,
@@ -357,20 +381,35 @@ export function ArenaPlay({
       });
 
       if (outcome.combat) {
-        const route =
-          bossWave(
-            run.state.bossOrder,
-            wave
-          );
-
         setDeadline(null);
         setSelected(null);
         setScoutOpen(false);
+        setSummonOpen(false);
         setCombat({
           result: outcome.combat,
-          routeName: route.routeName,
+          routeName: outcome.combat.foe,
           healthBefore,
         });
+      }
+
+      // Fusion / Xyz: the newest unit is the summoned monster.
+      if (/^[cx]/.test(action)) {
+        const made =
+          [...run.state.board, ...run.state.bench].find(
+            (unit) => unit.uid === run.state.nextUid - 1
+          );
+
+        setSummonOpen(false);
+        setSelected(null);
+
+        if (made) {
+          setSummonMoment({
+            kind: action.startsWith("x") ? "xyz" : "fusion",
+            id: made.id,
+            atk: made.atk,
+            hp: made.hp,
+          });
+        }
       }
 
       setView(clone(run.state));
@@ -378,6 +417,11 @@ export function ArenaPlay({
       return true;
     },
     [flash, mode, runId, seed]
+  );
+
+  const summonDone = useCallback(
+    () => setSummonMoment(null),
+    []
   );
 
   const endTurn = useCallback(
@@ -438,8 +482,9 @@ export function ArenaPlay({
         onFinished({
           score: runScore(run.state),
           log: {
-            v: 1,
+            v: ENGINE_VERSION,
             a: [...run.state.log],
+            g: ghostIds(run.state.ghosts),
           },
           state: clone(run.state),
         });
@@ -680,11 +725,70 @@ export function ArenaPlay({
           Math.ceil((deadline - now) / 1000)
         );
 
-  const nextWave =
-    bossWave(
-      view.bossOrder,
+  const nextFoe =
+    foeFor(
+      view,
       view.turn
     );
+
+  const nextIsGhost =
+    isGhostFoe(nextFoe);
+
+  // One list for the scout strip + sheet (Boss or friend's board).
+  const scoutUnits =
+    isGhostFoe(nextFoe)
+      ? nextFoe.units.map(
+          (unit) => {
+            const def =
+              UNIT_BY_ID.get(unit.id) as UnitDef;
+
+            return {
+              name: def.name,
+              img: def.img,
+              atk: unit.atk,
+              hp: unit.hp,
+              boss: false,
+              golden: unit.golden,
+              text: abilityText(
+                def.ability,
+                def.power * (unit.golden ? 2 : 1),
+                {
+                  rallyBy: def.rallyBy,
+                  tribe: def.tribe,
+                  attribute: def.attribute,
+                }
+              ),
+            };
+          }
+        )
+      : nextFoe.units.map(
+          (unit) => ({
+            name: unit.name,
+            img: unit.img,
+            atk: unit.atk,
+            hp: unit.hp,
+            boss: unit.boss,
+            golden: false,
+            text:
+              unit.keywords.length > 0
+                ? unit.keywords
+                    .map(
+                      (keyword) => abilityText(keyword, unit.power)
+                    )
+                    .join(" ")
+                : "No ability.",
+          })
+        );
+
+  const damageCap =
+    view.turn <= 3
+      ? DAMAGE_CAP[0]
+      : view.turn <= 6
+        ? DAMAGE_CAP[1]
+        : DAMAGE_CAP[2];
+
+  const summons =
+    summonCount(view);
 
   const synergies =
     boardSynergies(view.board)
@@ -937,20 +1041,20 @@ export function ArenaPlay({
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block text-[10px] font-bold uppercase tracking-[.18em] text-red-300/80">
-                      Next: wave {view.turn}
+                      Next: wave {view.turn}{nextIsGhost ? " · friend" : ""}
                     </span>
 
                     <span className="block truncate text-[13px] font-semibold text-zinc-100">
-                      {nextWave.routeName}
+                      {foeName(nextFoe)}
                     </span>
                   </span>
 
                   <span className="flex -space-x-2">
-                    {nextWave.units.slice(0, 5).map(
+                    {scoutUnits.slice(0, 5).map(
                       (unit, i) => (
                         <span
                           key={`${unit.name}-${i}`}
-                          className={`relative h-8 w-8 overflow-hidden rounded-full border-2 bg-[#0b1024] ${unit.boss ? "border-red-400" : "border-[#03050f]"}`}
+                          className={`relative h-8 w-8 overflow-hidden rounded-full border-2 bg-[#0b1024] ${unit.boss ? "border-red-400" : unit.golden ? "border-amber-300" : "border-[#03050f]"}`}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -1150,6 +1254,28 @@ export function ArenaPlay({
                         )
                   }
                 </div>
+
+                {/* ---- Fusion / Xyz ---- */}
+                {
+                  summons > 0
+                    ? (
+                        <button
+                          type="button"
+                          onClick={() => setSummonOpen(true)}
+                          className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-fuchsia-300/40 bg-[linear-gradient(90deg,rgba(168,85,247,.22),rgba(56,130,246,.22))] px-3 text-sm font-black text-fuchsia-50 shadow-[0_0_18px_rgba(168,85,247,.25)] active:scale-[.98]"
+                        >
+                          <Layers
+                            size={16}
+                            aria-hidden
+                          />
+                          Polymerization / Overlay
+                          <span className="rounded-md bg-white/15 px-1.5 text-xs tabular-nums">
+                            {summons}
+                          </span>
+                        </button>
+                      )
+                    : null
+                }
 
                 {/* ---- board ---- */}
                 <section aria-label="Your board">
@@ -1436,12 +1562,16 @@ export function ArenaPlay({
         scoutOpen && !combat
           ? (
               <Sheet
-                title={`Wave ${view.turn}: ${nextWave.routeName}`}
-                subtitle={`Lose and you take ${nextWave.tier} damage + 1 per enemy left standing (Boss counts 2).`}
+                title={`Wave ${view.turn}: ${foeName(nextFoe)}`}
+                subtitle={
+                  nextIsGhost
+                    ? `A friend's board from their own run, with their synergies. Lose and you take ${nextFoe.tier} damage + 1 per enemy left standing (max ${damageCap}).`
+                    : `Lose and you take ${nextFoe.tier} damage + 1 per enemy left standing (Boss counts 2, max ${damageCap}).`
+                }
                 onClose={() => setScoutOpen(false)}
               >
                 <ul className="grid gap-1.5">
-                  {nextWave.units.map(
+                  {scoutUnits.map(
                     (unit, i) => (
                       <li
                         key={`${unit.name}-${i}`}
@@ -1454,26 +1584,19 @@ export function ArenaPlay({
                             atk={unit.atk}
                             hp={unit.hp}
                             boss={unit.boss}
+                            golden={unit.golden}
                             size="sm"
                           />
                         </div>
 
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold text-zinc-100">
-                            {unit.boss ? "BOSS · " : ""}
+                            {unit.boss ? "BOSS · " : unit.golden ? "Golden " : ""}
                             {unit.name}
                           </p>
 
                           <p className="text-xs leading-4 text-zinc-400">
-                            {
-                              unit.keywords.length > 0
-                                ? unit.keywords
-                                    .map(
-                                      (keyword) => abilityText(keyword, unit.power)
-                                    )
-                                    .join(" ")
-                                : "No ability."
-                            }
+                            {unit.text}
                           </p>
                         </div>
                       </li>
@@ -1481,6 +1604,37 @@ export function ArenaPlay({
                   )}
                 </ul>
               </Sheet>
+            )
+          : null
+      }
+
+      {/* ---- Fusion / Xyz ---- */}
+      {
+        summonOpen && !combat && !view.discover
+          ? (
+              <Sheet
+                title="Fusion & Xyz"
+                subtitle="Polymerization fuses a classic pair. Overlay turns two monsters of the same Level into an Xyz of that Rank."
+                onClose={() => setSummonOpen(false)}
+              >
+                <SummonPanel
+                  state={view}
+                  onSummon={(action) => {
+                    act(action);
+                  }}
+                />
+              </Sheet>
+            )
+          : null
+      }
+
+      {
+        summonMoment
+          ? (
+              <SummonFlash
+                moment={summonMoment}
+                onDone={summonDone}
+              />
             )
           : null
       }
@@ -1585,7 +1739,8 @@ function DetailPanel({
           aria-hidden
         />
         Tap a card to inspect it. Drag from the shop to the board to buy, drag a unit
-        onto the shop to sell. 3 copies merge into a golden unit.
+        onto the shop to sell. 3 copies merge into a golden unit; 2 of the same Level
+        can become an Xyz.
       </p>
     );
   }
@@ -1615,7 +1770,7 @@ function DetailPanel({
       </p>
 
       <p className="text-[11px] text-zinc-400">
-        Tier {def.tier} · {def.attribute}
+        {def.kind === "xyz" ? `Xyz Rank ${def.rank}` : def.kind === "fusion" ? "Fusion" : `Tier ${def.tier} · Level ${def.level}`} · {def.attribute}
         {def.tribe ? ` · ${def.tribe}` : ""} ·{" "}
         <span className="font-bold text-amber-200">
           {selectedUnit?.atk ?? def.atk}

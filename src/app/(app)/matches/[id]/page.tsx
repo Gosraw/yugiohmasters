@@ -184,19 +184,6 @@ type Profile = {
   duel_points: number;
 };
 
-type BossConfirmationEventOption = {
-  id: string;
-  label: string;
-  isFinishingBlow: boolean;
-  alreadyConfirmed: boolean;
-};
-
-type BossConfirmationPathOption = {
-  pathId: string;
-  routeName: string;
-  events: BossConfirmationEventOption[];
-};
-
 type Deck = {
   id: string;
   name: string;
@@ -1128,236 +1115,42 @@ export default async function MatchDetailPage({
     !playerTwoEscrow;
 
   // ======================================================
-  // BOSS ROUTE CONFIRMATION OPTIONS (task 141)
-  //
-  // Shown only to the opponent about to confirm this match's
-  // result - they are the sole eyewitness who can attest to the
-  // result-submitter's Boss Route milestones from this duel.
-  // Y/N checkboxes only (no free text), matching what
-  // confirm_boss_achievement_event requires and what the spec
-  // asks for.
+  // MATCH DP (2.0): only season/competition duels pay DP, at the
+  // league_economy_defaults rates _award_match_duel_points_internal
+  // uses. Ad-hoc and practice duels pay nothing.
   // ======================================================
 
-  let bossConfirmationOptions: BossConfirmationPathOption[] =
-    [];
+  let competitionDp:
+    | {
+        win: number;
+        loss: number;
+      }
+    | null =
+    null;
 
   if (
-    canConfirm &&
-    match.result_submitted_by
+    match.competition_id
   ) {
     const {
-      data: bossPathsData,
-      error: bossPathsError,
+      data: economy,
     } = await supabase
-      .from("player_boss_paths")
+      .from(
+        "league_economy_defaults"
+      )
       .select(
-        "id,route_id,mastered_at"
+        "match_win_dp,match_loss_dp"
       )
       .eq(
-        "profile_id",
-        match.result_submitted_by
+        "id",
+        true
       )
-      .eq(
-        "league_id",
-        match.league_id
-      );
+      .maybeSingle();
 
-    if (bossPathsError) {
-      throw new Error(
-        bossPathsError.message
-      );
-    }
-
-    const activeBossPaths =
-      (
-        (bossPathsData ??
-          []) as Array<{
-          id: string;
-          route_id: string;
-          mastered_at:
-            | string
-            | null;
-        }>
-      ).filter(
-        (path) =>
-          !path.mastered_at
-      );
-
-    if (
-      activeBossPaths.length >
-      0
-    ) {
-      const routeIds = [
-        ...new Set(
-          activeBossPaths.map(
-            (path) =>
-              path.route_id
-          )
-        ),
-      ];
-
-      const pathIds =
-        activeBossPaths.map(
-          (path) => path.id
-        );
-
-      const [
-        {
-          data: routesData,
-          error: routesError,
-        },
-        {
-          data: eventsData,
-          error: eventsError,
-        },
-        {
-          data: confirmedData,
-          error:
-            confirmedError,
-        },
-      ] = await Promise.all([
-        supabase
-          .from(
-            "boss_routes"
-          )
-          .select("id,name")
-          .in(
-            "id",
-            routeIds
-          ),
-        supabase
-          .from(
-            "boss_route_achievement_events"
-          )
-          .select(
-            "id,route_id,label,is_finishing_blow"
-          )
-          .in(
-            "route_id",
-            routeIds
-          ),
-        supabase
-          .from(
-            "player_boss_achievement_events"
-          )
-          .select(
-            "player_boss_path_id,event_id"
-          )
-          .eq(
-            "match_id",
-            match.id
-          )
-          .in(
-            "player_boss_path_id",
-            pathIds
-          ),
-      ]);
-
-      if (routesError) {
-        throw new Error(
-          routesError.message
-        );
-      }
-
-      if (eventsError) {
-        throw new Error(
-          eventsError.message
-        );
-      }
-
-      if (confirmedError) {
-        throw new Error(
-          confirmedError.message
-        );
-      }
-
-      const routeNameMap =
-        new Map(
-          (
-            routesData ??
-            []
-          ).map(
-            (route) => [
-              route.id as string,
-              route.name as string,
-            ]
-          )
-        );
-
-      const confirmedSet =
-        new Set(
-          (
-            confirmedData ??
-            []
-          ).map(
-            (row) =>
-              `${row.player_boss_path_id}:${row.event_id}`
-          )
-        );
-
-      bossConfirmationOptions =
-        activeBossPaths
-          .map(
-            (path) => {
-              const events =
-                (
-                  eventsData ??
-                  []
-                )
-                  .filter(
-                    (
-                      event
-                    ) =>
-                      event.route_id ===
-                      path.route_id
-                  )
-                  .map(
-                    (
-                      event
-                    ) => ({
-                      id: event.id as string,
-                      label:
-                        event.label as string,
-                      isFinishingBlow:
-                        Boolean(
-                          event.is_finishing_blow
-                        ),
-                      alreadyConfirmed:
-                        confirmedSet.has(
-                          `${path.id}:${event.id}`
-                        ),
-                    })
-                  )
-                  .sort(
-                    (
-                      a,
-                      b
-                    ) =>
-                      Number(
-                        a.isFinishingBlow
-                      ) -
-                      Number(
-                        b.isFinishingBlow
-                      )
-                  );
-
-              return {
-                pathId:
-                  path.id,
-                routeName:
-                  routeNameMap.get(
-                    path.route_id
-                  ) ??
-                  "Boss Route",
-                events,
-              };
-            }
-          )
-          .filter(
-            (option) =>
-              option.events
-                .length > 0
-          );
+    if (economy) {
+      competitionDp = {
+        win: economy.match_win_dp as number,
+        loss: economy.match_loss_dp as number,
+      };
     }
   }
 
@@ -1414,6 +1207,69 @@ export default async function MatchDetailPage({
             </Link>
           )}
         </nav>
+
+        {/* ==================================================
+            ONE-TAP CONFIRM (2.0): the first thing the opponent
+            sees when they open this duel from Home / Attention.
+        ================================================== */}
+
+        {canConfirm && (
+          <section className="arena-frame panel relative mt-4 overflow-hidden border-amber-300/35 p-4 sm:p-5">
+            <p className="text-[10px] font-black uppercase tracking-[.2em] text-amber-300">
+              Confirm the result
+            </p>
+
+            <p className="font-display mt-1 text-2xl font-black text-zinc-100">
+              {resultText}
+            </p>
+
+            <p className="mt-1 text-xs text-zinc-500">
+              Recorded by{" "}
+              {playerName(
+                profileMap.get(
+                  match.result_submitted_by ??
+                    ""
+                )
+              )}
+              {match.wager_type !==
+              "none"
+                ? ". Confirming settles the wager."
+                : "."}
+            </p>
+
+            <form
+              action={
+                confirmMatchResult
+              }
+              className="mt-4"
+            >
+              <input
+                type="hidden"
+                name="match_id"
+                value={
+                  match.id
+                }
+              />
+
+              <SubmitButton
+                pendingLabel="Confirming..."
+                className="primary-button inline-flex min-h-14 w-full items-center justify-center gap-2 text-base"
+              >
+                <CheckCircle2
+                  size={18}
+                />
+                That&apos;s right — confirm
+              </SubmitButton>
+            </form>
+
+            <a
+              href="#dispute"
+              className="mt-2 block py-1.5 text-center text-xs font-bold text-zinc-500 transition-colors hover:text-zinc-300"
+            >
+              Something wrong? Dispute it
+            </a>
+          </section>
+        )}
 
         {/* ==================================================
             DUEL HERO
@@ -1553,6 +1409,8 @@ export default async function MatchDetailPage({
             DECKS
         ================================================== */}
 
+        {(match.player_one_deck_id ||
+          match.player_two_deck_id) && (
         <section className="mt-5 grid gap-3 md:grid-cols-2">
           <div className="panel p-4">
             <p className="text-[9px] font-black uppercase tracking-[.18em] text-zinc-600">
@@ -1596,9 +1454,10 @@ export default async function MatchDetailPage({
             </p>
           </div>
         </section>
+        )}
 
         {/* ==================================================
-            LEAGUE REWARD
+            DUEL POINTS (2.0: season duels only)
         ================================================== */}
 
         {match.match_type ===
@@ -1611,27 +1470,34 @@ export default async function MatchDetailPage({
               />
 
               <h2 className="font-black text-amber-200">
-                Official League Duel
+                {competition
+                  ? "Season Duel"
+                  : "League Duel"}
               </h2>
             </div>
 
-            <p className="mt-2 text-sm leading-6 text-zinc-500">
-              This duel affects the League Ranking and awards Duel Points after the result is confirmed.
-            </p>
+            {competition &&
+            competitionDp ? (
+              <>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">
+                  Counts for the season standings. Both players earn Duel Points when the result is saved.
+                </p>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-1 text-[10px] font-black text-emerald-200">
-                WIN +100 DP
-              </span>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-1 text-[10px] font-black text-emerald-200">
+                    WIN +{competitionDp.win} DP
+                  </span>
 
-              <span className="rounded-full border border-zinc-500/20 bg-zinc-500/[0.05] px-3 py-1 text-[10px] font-black text-zinc-300">
-                DRAW +75 DP
-              </span>
-
-              <span className="rounded-full border border-red-400/20 bg-red-400/[0.05] px-3 py-1 text-[10px] font-black text-red-200">
-                LOSS +50 DP
-              </span>
-            </div>
+                  <span className="rounded-full border border-zinc-500/20 bg-zinc-500/[0.05] px-3 py-1 text-[10px] font-black text-zinc-300">
+                    LOSS +{competitionDp.loss} DP
+                  </span>
+                </div>
+              </>
+            ) : (
+              <p className="mt-2 text-sm leading-6 text-zinc-500">
+                A duel outside the season competition. It earns no Duel Points.
+              </p>
+            )}
           </section>
         )}
 
@@ -1807,7 +1673,39 @@ export default async function MatchDetailPage({
         ================================================== */}
 
         {match.status ===
-          "pending" && (
+          "pending" &&
+          competition && (
+          <section className="panel mt-4 p-4 sm:mt-6 sm:p-6">
+            <div className="flex items-center gap-2">
+              <Swords
+                size={19}
+                className="text-amber-300"
+              />
+
+              <h2 className="text-xl font-black">
+                Season duel
+              </h2>
+            </div>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              Played it? Tap the winner on the season&apos;s This Round screen.
+            </p>
+
+            <Link
+              href={`/competitions/${competition.id}/round`}
+              className="primary-button mt-4 inline-flex w-full items-center justify-center gap-2 text-sm sm:w-auto"
+            >
+              <Trophy
+                size={16}
+              />
+              Open This Round
+            </Link>
+          </section>
+        )}
+
+        {match.status ===
+          "pending" &&
+          !competition && (
           <section className="panel mt-4 p-4 sm:mt-6 sm:p-6">
             {isPlayerTwo ? (
               <>
@@ -2151,83 +2049,73 @@ export default async function MatchDetailPage({
             </div>
 
             <p className="mt-2 text-sm leading-6 text-zinc-500">
-              Play the duel in person. When finished, one player submits the result and the other confirms it.
+              Played it? Tap the winner. The other player confirms with one tap.
             </p>
 
-            <form
-              action={
-                completeMatch
-              }
-              className="mt-4 space-y-3 sm:mt-5 sm:space-y-4"
-            >
-              <input
-                type="hidden"
-                name="match_id"
-                value={
-                  match.id
-                }
-              />
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
+              {(
+                [
+                  [
+                    "player_one_win",
+                    playerOne,
+                  ],
+                  [
+                    "player_two_win",
+                    playerTwo,
+                  ],
+                ] as const
+              ).map(
+                ([
+                  resultValue,
+                  player,
+                ]) => (
+                  <form
+                    key={
+                      resultValue
+                    }
+                    action={
+                      completeMatch
+                    }
+                  >
+                    <input
+                      type="hidden"
+                      name="match_id"
+                      value={
+                        match.id
+                      }
+                    />
 
-              <label className="block">
-                <span className="text-xs font-black uppercase tracking-wider text-zinc-500">
-                  Result
-                </span>
+                    <input
+                      type="hidden"
+                      name="result"
+                      value={
+                        resultValue
+                      }
+                    />
 
-                <select
-                  name="result"
-                  required
-                  defaultValue=""
-                  className="field mt-2 w-full"
-                >
-                  <option value="">
-                    Select result...
-                  </option>
+                    <SubmitButton
+                      pendingLabel="Saving..."
+                      className="flex min-h-24 w-full flex-col items-center justify-center gap-1.5 rounded-2xl border border-amber-300/30 bg-gradient-to-b from-amber-300/[0.12] to-amber-300/[0.03] px-2 py-3 text-center transition-[transform,border-color] duration-150 ease-out hover:border-amber-300/60 active:scale-[.97] motion-reduce:active:scale-100"
+                    >
+                      <Crown
+                        size={20}
+                        className="text-amber-300"
+                      />
 
-                  <option value="player_one_win">
-                    {playerName(
-                      playerOne
-                    )}{" "}
-                    wins
-                  </option>
+                      <span className="w-full truncate text-base font-black text-zinc-100">
+                        {playerName(
+                          player
+                        )}
+                      </span>
 
-                  <option value="player_two_win">
-                    {playerName(
-                      playerTwo
-                    )}{" "}
-                    wins
-                  </option>
-
-                  <option value="draw">
-                    Draw
-                  </option>
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-black uppercase tracking-wider text-zinc-500">
-                  Notes
-                </span>
-
-                <textarea
-                  name="notes"
-                  rows={3}
-                  maxLength={1000}
-                  placeholder="Optional duel notes..."
-                  className="field mt-2 w-full resize-y"
-                />
-              </label>
-
-              <SubmitButton
-                pendingLabel="Submitting..."
-                className="primary-button inline-flex items-center gap-2"
-              >
-                <CheckCircle2
-                  size={16}
-                />
-
-                Submit Result
-              </SubmitButton>
-            </form>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-300/70">
+                        won
+                      </span>
+                    </SubmitButton>
+                  </form>
+                )
+              )}
+            </div>
           </section>
         )}
 
@@ -2271,119 +2159,10 @@ export default async function MatchDetailPage({
                 Waiting for the other duelist to confirm the result.
               </p>
             ) : canConfirm ? (
-              <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
-                <form
-                  action={
-                    confirmMatchResult
-                  }
-                  className="space-y-4"
-                >
-                  <input
-                    type="hidden"
-                    name="match_id"
-                    value={
-                      match.id
-                    }
-                  />
-
-                  {bossConfirmationOptions.length >
-                    0 && (
-                    <div className="space-y-3 rounded-xl border border-amber-300/15 bg-amber-300/[0.03] p-4">
-                      <p className="text-xs font-black uppercase tracking-wider text-amber-300">
-                        Confirm{" "}
-                        {playerName(
-                          profileMap.get(
-                            match.result_submitted_by ??
-                              ""
-                          )
-                        )}
-                        &apos;s Boss progress this duel
-                      </p>
-
-                      <p className="text-xs text-zinc-600">
-                        Only check what you personally witnessed. No pressure — these can be confirmed on a later duel too.
-                      </p>
-
-                      {bossConfirmationOptions.map(
-                        (option) => (
-                          <div
-                            key={
-                              option.pathId
-                            }
-                            className="space-y-2 border-t border-white/5 pt-3 first:border-t-0 first:pt-0"
-                          >
-                            <p className="text-sm font-bold text-zinc-300">
-                              {
-                                option.routeName
-                              }
-                            </p>
-
-                            {option.events.map(
-                              (
-                                event
-                              ) => (
-                                <label
-                                  key={
-                                    event.id
-                                  }
-                                  className="flex cursor-pointer items-center gap-2 text-sm text-zinc-400"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    name="boss_event"
-                                    value={`${option.pathId}:${event.id}`}
-                                    defaultChecked={
-                                      event.alreadyConfirmed
-                                    }
-                                    disabled={
-                                      event.alreadyConfirmed
-                                    }
-                                    className="h-4 w-4 rounded border-white/20 bg-transparent accent-amber-400"
-                                  />
-
-                                  {event.isFinishingBlow ? (
-                                    <span className="inline-flex items-center gap-1">
-                                      <Trophy
-                                        size={
-                                          13
-                                        }
-                                        className="text-amber-400"
-                                      />
-
-                                      Finishing blow:{" "}
-                                      {
-                                        event.label
-                                      }
-                                    </span>
-                                  ) : (
-                                    event.label
-                                  )}
-
-                                  {event.alreadyConfirmed && (
-                                    <span className="text-xs text-emerald-400">
-                                      (confirmed)
-                                    </span>
-                                  )}
-                                </label>
-                              )
-                            )}
-                          </div>
-                        )
-                      )}
-                    </div>
-                  )}
-
-                  <SubmitButton
-                    pendingLabel="Confirming..."
-                    className="primary-button inline-flex items-center gap-2"
-                  >
-                    <CheckCircle2
-                      size={16}
-                    />
-
-                    Confirm Result
-                  </SubmitButton>
-                </form>
+              <div
+                id="dispute"
+                className="mt-4 scroll-mt-4 space-y-4 sm:mt-5 sm:space-y-5"
+              >
 
                 <form
                   action={
@@ -2566,7 +2345,9 @@ export default async function MatchDetailPage({
             {match.match_type ===
             "league" ? (
               <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-zinc-500">
-                League Ranking and Duel Point rewards are awarded after the confirmed result.
+                {competition
+                  ? "Season duel complete. The standings and both players' Duel Points are updated."
+                  : "League duel complete. Duels outside the season competition earn no Duel Points."}
               </p>
             ) : match.wager_type !==
               "none" ? (
@@ -2575,7 +2356,7 @@ export default async function MatchDetailPage({
               </p>
             ) : (
               <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-zinc-500">
-                Practice Duel complete. No ranking points or automatic DP were awarded.
+                Practice duel complete. Practice duels don&apos;t change the standings or earn Duel Points.
               </p>
             )}
 

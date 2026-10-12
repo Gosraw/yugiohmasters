@@ -57,6 +57,11 @@ import {
 } from "@/components/competition-match-result-form-v2";
 
 import {
+  logicalRoundFor,
+  totalLogicalRounds,
+} from "@/lib/competitions/season";
+
+import {
   voucherLabel,
 } from "@/lib/match-settlement-summary";
 
@@ -1388,8 +1393,16 @@ export default async function CompetitionDetailPage({
                   competition.total_rounds &&
                   competition.current_round && (
                     <span className="rounded-full border border-cyan-300/20 bg-cyan-300/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-cyan-200">
-                      Round {competition.current_round} of{" "}
-                      {competition.total_rounds}
+                      Round{" "}
+                      {logicalRoundFor(
+                        competition.current_round,
+                        participatingProfiles.length
+                      )}{" "}
+                      of{" "}
+                      {totalLogicalRounds(
+                        competition.total_rounds,
+                        participatingProfiles.length
+                      )}
                     </span>
                   )}
               </div>
@@ -1853,8 +1866,14 @@ export default async function CompetitionDetailPage({
               continue;
             }
 
+            // 2.0: group by SEASON round (one full cycle where
+            // everyone plays everyone once), the same "Round N" the
+            // round rewards, wallet and This Round screen use.
             const roundKey =
-              match.round_number ?? 0;
+              logicalRoundFor(
+                match.round_number ?? 1,
+                participatingProfiles.length
+              );
 
             const existing =
               roundGroups.get(roundKey) ?? [];
@@ -1863,12 +1882,42 @@ export default async function CompetitionDetailPage({
             roundGroups.set(roundKey, existing);
           }
 
+          const currentRoundNumber =
+            competition.current_round !== null
+              ? logicalRoundFor(
+                  competition.current_round,
+                  participatingProfiles.length
+                )
+              : null;
+
+          const seasonRoundCount =
+            totalLogicalRounds(
+              competition.total_rounds,
+              participatingProfiles.length
+            );
+
+          // Current round first, then finished rounds newest first.
+          // Rounds that have not started yet are summarised in one
+          // line instead of listing the whole season.
           const sortedRounds = Array.from(
             roundGroups.keys()
-          ).sort((a, b) => a - b);
+          )
+            .filter(
+              (roundNumber) =>
+                currentRoundNumber === null ||
+                roundNumber <= currentRoundNumber
+            )
+            .sort((a, b) => b - a);
 
-          const currentRoundNumber =
-            competition.current_round;
+          const upcomingRoundCount =
+            currentRoundNumber === null
+              ? 0
+              : Array.from(
+                  roundGroups.keys()
+                ).filter(
+                  (roundNumber) =>
+                    roundNumber > currentRoundNumber
+                ).length;
 
           function matchLabel(
             match: CompetitionMatch
@@ -1968,6 +2017,19 @@ export default async function CompetitionDetailPage({
 
           return (
             <section className="mt-6 space-y-6">
+              {competition.status === "active" &&
+                currentRoundNumber !== null && (
+                  <Link
+                    href={`/competitions/${competition.id}/round`}
+                    className="primary-button flex w-full items-center justify-center gap-2 text-sm"
+                  >
+                    <Play
+                      size={16}
+                    />
+                    Play Round {currentRoundNumber}: tap the winners
+                  </Link>
+                )}
+
               {sortedRounds.map((roundNumber) => {
                 const roundMatches =
                   roundGroups.get(roundNumber) ?? [];
@@ -2022,7 +2084,7 @@ export default async function CompetitionDetailPage({
 
                       <span className="text-xs font-black text-zinc-600">
                         Round {roundNumber} of{" "}
-                        {competition.total_rounds}
+                        {seasonRoundCount}
                       </span>
 
                       {roundMatches.length > 0 && (
@@ -2060,6 +2122,16 @@ export default async function CompetitionDetailPage({
                   </div>
                 );
               })}
+
+              {upcomingRoundCount > 0 && (
+                <p className="text-center text-xs font-bold text-zinc-600">
+                  {upcomingRoundCount} more{" "}
+                  {upcomingRoundCount === 1
+                    ? "round"
+                    : "rounds"}{" "}
+                  scheduled
+                </p>
+              )}
             </section>
           );
         })()}

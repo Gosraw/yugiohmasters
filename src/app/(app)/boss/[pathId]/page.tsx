@@ -40,17 +40,17 @@ export const dynamic =
 //
 // The full 4-stage evolution chain for one chosen Boss Path.
 //
-// MYSTERY RULE (a deliberate product decision, documented here
-// since the spec only says "mystery/silhouette states for
-// locked future stages" without spelling out exactly how much
-// to hide): the very next stage's ACHIEVEMENT REQUIREMENTS are
-// always shown with live progress, because a player can't grind
-// toward a goal they can't see. What stays hidden until a stage
-// is actually reached is its REWARD - the evolution monster's
-// name and its permanent support cards. Anything beyond the
-// next stage is a full silhouette: no requirements, no reward,
-// just "???" and a lock, preserving the nostalgia-surprise the
-// route's teaser_story is written to protect.
+// 2.0: evolution is DP ONLY (docs/V2_PLAN.md - the Boss
+// achievement questions are gone, see migration 202610120130).
+// Every stage shows its price straight from
+// boss_route_stages.dp_cost_to_reach, the exact number
+// evolve_boss_stage charges.
+//
+// MYSTERY RULE: what stays hidden until a stage is actually
+// reached is its REWARD - the evolution monster's name and its
+// permanent support cards - preserving the surprise the route's
+// teaser_story is written to protect. Prices are never hidden: a
+// player can't save toward a goal they can't see.
 // =========================================================
 
 type BossRoute = {
@@ -96,21 +96,6 @@ type GrantRow = {
   card_catalog_id: string;
   is_route_exclusive: boolean;
   quantity: number;
-};
-
-type RequirementRow = {
-  event_id: string;
-  target_count: number;
-};
-
-type EventRow = {
-  id: string;
-  event_key: string;
-  label: string;
-  description:
-    | string
-    | null;
-  is_finishing_blow: boolean;
 };
 
 export default async function BossPathDetailPage({
@@ -285,26 +270,12 @@ export default async function BossPathDetailPage({
       path.current_stage + 1
   );
 
-  const [
-    {
-      data: grantsData,
-      error: grantsError,
-    },
-    {
-      data: requirementsData,
-      error: requirementsError,
-    },
-    {
-      data: eventsData,
-      error: eventsError,
-    },
-    {
-      data: progressData,
-      error: progressError,
-    },
-  ] = await Promise.all([
+  const {
+    data: grantsData,
+    error: grantsError,
+  } =
     stageIds.length > 0
-      ? supabase
+      ? await supabase
           .from(
             "boss_route_stage_grants"
           )
@@ -315,47 +286,10 @@ export default async function BossPathDetailPage({
             "stage_id",
             stageIds
           )
-      : Promise.resolve({
+      : {
           data: [] as GrantRow[],
           error: null,
-        }),
-    nextStage
-      ? supabase
-          .from(
-            "boss_route_achievement_requirements"
-          )
-          .select(
-            "event_id,target_count"
-          )
-          .eq(
-            "target_stage_id",
-            nextStage.id
-          )
-      : Promise.resolve({
-          data: [] as RequirementRow[],
-          error: null,
-        }),
-    supabase
-      .from(
-        "boss_route_achievement_events"
-      )
-      .select(
-        "id,event_key,label,description,is_finishing_blow"
-      )
-      .eq(
-        "route_id",
-        path.route_id
-      ),
-    supabase
-      .from(
-        "player_boss_achievement_events"
-      )
-      .select("event_id")
-      .eq(
-        "player_boss_path_id",
-        path.id
-      ),
-  ]);
+        };
 
   if (grantsError) {
     throw new Error(
@@ -363,73 +297,36 @@ export default async function BossPathDetailPage({
     );
   }
 
-  if (requirementsError) {
-    throw new Error(
-      requirementsError.message
-    );
-  }
-
-  if (eventsError) {
-    throw new Error(
-      eventsError.message
-    );
-  }
-
-  if (progressError) {
-    throw new Error(
-      progressError.message
-    );
-  }
-
   const grants =
     (grantsData ??
       []) as GrantRow[];
-
-  const requirements =
-    (requirementsData ??
-      []) as RequirementRow[];
-
-  const events = new Map(
-    (
-      (eventsData ??
-        []) as EventRow[]
-    ).map((event) => [
-      event.id,
-      event,
-    ])
-  );
-
-  const progressCounts =
-    new Map<
-      string,
-      number
-    >();
-
-  for (const row of (progressData ??
-    []) as Array<{
-    event_id: string;
-  }>) {
-    progressCounts.set(
-      row.event_id,
-      (progressCounts.get(
-        row.event_id
-      ) ?? 0) + 1
-    );
-  }
 
   let cardNameMap = new Map<
     string,
     string
   >();
 
-  if (cardIds.length > 0) {
+  // Evolution monsters + the support cards each unlocked stage
+  // grants (the grant names used to be missing here, so every
+  // support card showed as "Unknown Card").
+  const namedCardIds = [
+    ...new Set([
+      ...cardIds,
+      ...grants.map(
+        (grant) =>
+          grant.card_catalog_id
+      ),
+    ]),
+  ];
+
+  if (namedCardIds.length > 0) {
     const {
       data: cardsData,
       error: cardsError,
     } = await supabase
       .from("card_catalog")
       .select("id,name")
-      .in("id", cardIds);
+      .in("id", namedCardIds);
 
     if (cardsError) {
       throw new Error(
@@ -461,17 +358,6 @@ export default async function BossPathDetailPage({
     path.mastered_at
   );
 
-  const requirementsMet =
-    requirements.length ===
-      0 ||
-    requirements.every(
-      (req) =>
-        (progressCounts.get(
-          req.event_id
-        ) ?? 0) >=
-        req.target_count
-    );
-
   const canAffordNext =
     nextStage?.dp_cost_to_reach !=
       null &&
@@ -481,8 +367,21 @@ export default async function BossPathDetailPage({
   const canEvolve =
     isOwner &&
     Boolean(nextStage) &&
-    requirementsMet &&
     canAffordNext;
+
+  const dpToMasterTotal =
+    stages
+      .filter(
+        (stage) =>
+          stage.stage_number >
+          path.current_stage
+      )
+      .reduce(
+        (total, stage) =>
+          total +
+          (stage.dp_cost_to_reach ?? 0),
+        0
+      );
 
   return (
     <main className="relative min-h-screen overflow-hidden pb-28">
@@ -575,6 +474,22 @@ export default async function BossPathDetailPage({
           </div>
         )}
 
+        {!mastered &&
+          dpToMasterTotal > 0 && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-300/20 bg-amber-300/[0.05] px-4 py-3">
+              <p className="text-xs font-bold text-zinc-300">
+                Evolution is paid with Duel Points only.
+              </p>
+
+              <p className="inline-flex items-center gap-1.5 text-xs font-black text-amber-200">
+                <Coins
+                  size={13}
+                />
+                {dpToMasterTotal.toLocaleString()} DP to Stage 4
+              </p>
+            </div>
+          )}
+
         <div className="mt-6 space-y-4 sm:mt-8">
           {[1, 2, 3, 4].map(
             (stageNumber) => {
@@ -628,6 +543,19 @@ export default async function BossPathDetailPage({
                         ???
                       </p>
                     </div>
+
+                    {stage?.dp_cost_to_reach !=
+                      null && (
+                      <span className="ml-auto inline-flex items-center gap-1.5 text-sm font-black text-zinc-400">
+                        <Coins
+                          size={
+                            13
+                          }
+                        />
+                        {stage.dp_cost_to_reach.toLocaleString()}{" "}
+                        DP
+                      </span>
+                    )}
                   </div>
                 );
               }
@@ -720,9 +648,8 @@ export default async function BossPathDetailPage({
                 );
               }
 
-              // isNext (stage not yet unlocked, but stage
-              // requirements + DP cost are shown, not the
-              // reward — see MYSTERY RULE above.
+              // isNext: the price and the evolve button are
+              // shown, not the reward - see MYSTERY RULE above.
               return (
                 <div
                   key={
@@ -760,92 +687,9 @@ export default async function BossPathDetailPage({
                   </div>
 
                   <p className="mt-3 text-lg font-black tracking-wide text-zinc-500">
-                    ??? — reward revealed on
-                    evolution
+                    ??? — revealed when you
+                    evolve
                   </p>
-
-                  {requirements.length >
-                    0 && (
-                    <div className="mt-4 space-y-3">
-                      {requirements.map(
-                        (
-                          req
-                        ) => {
-                          const event =
-                            events.get(
-                              req.event_id
-                            );
-
-                          const count =
-                            progressCounts.get(
-                              req.event_id
-                            ) ??
-                            0;
-
-                          const pct =
-                            Math.min(
-                              100,
-                              Math.round(
-                                (count /
-                                  req.target_count) *
-                                  100
-                              )
-                            );
-
-                          const met =
-                            count >=
-                            req.target_count;
-
-                          return (
-                            <div
-                              key={
-                                req.event_id
-                              }
-                            >
-                              <div className="flex items-center justify-between text-xs">
-                                <span
-                                  className={`inline-flex items-center gap-1.5 font-bold ${met ? "text-emerald-300" : "text-zinc-400"}`}
-                                >
-                                  {event?.is_finishing_blow && (
-                                    <Trophy
-                                      size={
-                                        12
-                                      }
-                                      className="text-amber-400"
-                                    />
-                                  )}
-                                  {event?.label ??
-                                    "Achievement"}
-                                </span>
-
-                                <span
-                                  className={`font-black ${met ? "text-emerald-300" : "text-zinc-500"}`}
-                                >
-                                  {Math.min(
-                                    count,
-                                    req.target_count
-                                  )}
-                                  /
-                                  {
-                                    req.target_count
-                                  }
-                                </span>
-                              </div>
-
-                              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-                                <div
-                                  className={`h-full rounded-full ${met ? "bg-emerald-400" : "bg-gradient-to-r from-amber-500 to-amber-300"}`}
-                                  style={{
-                                    width: `${pct}%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        }
-                      )}
-                    </div>
-                  )}
 
                   {isOwner && (
                     <form
@@ -888,19 +732,15 @@ export default async function BossPathDetailPage({
                         }
                       </SubmitButton>
 
-                      {!requirementsMet && (
-                        <p className="mt-2 text-xs text-zinc-600">
-                          Complete the
-                          achievements above
-                          to unlock evolution.
-                        </p>
-                      )}
-
-                      {requirementsMet &&
-                        !canAffordNext && (
-                          <p className="mt-2 text-xs text-red-300">
-                            Not enough Duel
-                            Points yet.
+                      {!canAffordNext &&
+                        stage?.dp_cost_to_reach != null && (
+                          <p className="mt-2 text-xs text-zinc-400">
+                            You need{" "}
+                            {(
+                              stage.dp_cost_to_reach -
+                              ownerDp
+                            ).toLocaleString()}{" "}
+                            more DP. Season round duels earn DP.
                           </p>
                         )}
                     </form>

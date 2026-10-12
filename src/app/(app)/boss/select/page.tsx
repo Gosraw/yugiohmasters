@@ -30,6 +30,11 @@ import {
   unlockBossPathSlot,
 } from "@/app/actions/boss-routes";
 
+import {
+  getBossSlotPrices,
+  getRouteStagePrices,
+} from "@/lib/boss-prices";
+
 export const dynamic =
   "force-dynamic";
 
@@ -38,18 +43,12 @@ export const dynamic =
 //
 // Grid of all 20 routes for whichever slot the player is
 // currently filling (?slot=1|2|3, linked from the Boss Hub).
-// Slot 1 is always free; slots 2/3 show their locked DP cost.
+// Slot 1 is always free; slots 2/3 show their DP price. Every route
+// card also lists what its evolutions cost - Boss evolution is DP
+// only in 2.0, and all prices come from the database (see
+// src/lib/boss-prices.ts), never from constants in this file.
 // A route already chosen in another slot is shown but disabled.
 // =========================================================
-
-const SLOT_COST: Record<
-  number,
-  number | null
-> = {
-  1: null,
-  2: 7000,
-  3: 10000,
-};
 
 type StarProfile = {
   startStrength?: number;
@@ -239,8 +238,23 @@ export default async function BossPathSelectPage({
     (routesData ??
       []) as BossRoute[];
 
+  const [
+    slotPrices,
+    stagePrices,
+  ] = await Promise.all([
+    getBossSlotPrices(
+      supabase
+    ),
+    getRouteStagePrices(
+      supabase,
+      routes.map(
+        (route) => route.id
+      )
+    ),
+  ]);
+
   const cost =
-    SLOT_COST[slot];
+    slotPrices[slot];
 
   const canAfford =
     cost === null ||
@@ -430,6 +444,47 @@ export default async function BossPathSelectPage({
                           )
                         )}
                       </div>
+
+                      {(() => {
+                        const routePrices =
+                          stagePrices.get(
+                            route.id
+                          );
+
+                        if (!routePrices || routePrices.size === 0) {
+                          return null;
+                        }
+
+                        return (
+                          <div className="mt-4 rounded-xl border border-amber-300/15 bg-amber-300/[0.04] px-3 py-2.5">
+                            <p className="text-[9px] font-black uppercase tracking-wider text-amber-300/80">
+                              Evolution cost
+                            </p>
+
+                            <div className="mt-1.5 grid grid-cols-3 gap-2">
+                              {[2, 3, 4].map(
+                                (stageNumber) => (
+                                  <div
+                                    key={
+                                      stageNumber
+                                    }
+                                  >
+                                    <p className="text-[9px] font-black uppercase tracking-wider text-zinc-600">
+                                      Stage {stageNumber}
+                                    </p>
+
+                                    <p className="text-xs font-black text-zinc-200">
+                                      {routePrices.has(stageNumber)
+                                        ? `${routePrices.get(stageNumber)?.toLocaleString()} DP`
+                                        : "—"}
+                                    </p>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       <div className="mt-5">
                         {alreadyChosenElsewhere ? (

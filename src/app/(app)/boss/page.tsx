@@ -24,6 +24,11 @@ import {
   EmptyState,
 } from "@/components/empty-state";
 
+import {
+  getBossSlotPrices,
+  getRouteStagePrices,
+} from "@/lib/boss-prices";
+
 export const dynamic =
   "force-dynamic";
 
@@ -31,22 +36,14 @@ export const dynamic =
 // BOSS HUB (task 142)
 //
 // The flagship landing screen for the Boss Route system: one
-// card per route slot (1st free, 2nd 7000 DP, 3rd 10000 DP).
+// card per route slot (1st free; slot 2/3 prices come from
+// league_economy_defaults, see src/lib/boss-prices.ts).
 // A chosen slot shows current stage progress at a glance; an
 // empty slot shows what it costs and links to Boss Path
 // Select to fill it. Full evolution-chain detail (the actual
-// cards, achievement requirements, evolve action) lives on the
+// cards, DP evolution prices, evolve action) lives on the
 // per-path screen at /boss/[pathId] - this page is the overview.
 // =========================================================
-
-const SLOT_COST: Record<
-  1 | 2 | 3,
-  number | null
-> = {
-  1: null,
-  2: 7000,
-  3: 10000,
-};
 
 type BossRoute = {
   id: string;
@@ -163,6 +160,19 @@ export default async function BossHubPage() {
     );
   }
 
+  const [
+    slotPrices,
+    stagePrices,
+  ] = await Promise.all([
+    getBossSlotPrices(
+      supabase
+    ),
+    getRouteStagePrices(
+      supabase,
+      routeIds
+    ),
+  ]);
+
   const pathBySlot = new Map(
     paths.map((path) => [
       path.route_slot,
@@ -255,6 +265,15 @@ export default async function BossHubPage() {
                   path.mastered_at
                 );
 
+              const nextPrice =
+                path.current_stage < 4
+                  ? stagePrices
+                      .get(path.route_id)
+                      ?.get(
+                        path.current_stage + 1
+                      ) ?? null
+                  : null;
+
               return (
                 <Link
                   key={slot}
@@ -322,6 +341,27 @@ export default async function BossHubPage() {
                     </div>
                   </div>
 
+                  {!mastered &&
+                    nextPrice != null && (
+                      <p
+                        className={`mt-4 inline-flex items-center gap-1.5 text-xs font-black ${
+                          duelPoints >= nextPrice
+                            ? "text-emerald-300"
+                            : "text-zinc-400"
+                        }`}
+                      >
+                        <Coins
+                          size={13}
+                        />
+                        Stage{" "}
+                        {path.current_stage + 1}:{" "}
+                        {nextPrice.toLocaleString()} DP
+                        {duelPoints >= nextPrice
+                          ? " — ready to evolve"
+                          : ""}
+                      </p>
+                    )}
+
                   <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-black text-amber-300 group-hover:text-amber-200">
                     <Sword
                       size={14}
@@ -335,7 +375,7 @@ export default async function BossHubPage() {
             }
 
             const cost =
-              SLOT_COST[slot];
+              slotPrices[slot];
 
             const prerequisiteMet =
               slot === 1 ||

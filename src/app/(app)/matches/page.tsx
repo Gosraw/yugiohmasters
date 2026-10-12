@@ -609,7 +609,7 @@ export default async function MatchesPage() {
     return (
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="panel p-6">
-          Geen league gevonden.
+          You are not in a league yet.
         </div>
       </main>
     );
@@ -687,7 +687,7 @@ export default async function MatchesPage() {
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="panel p-6">
           <p className="font-bold text-red-300">
-            Matches konden niet worden geladen.
+            Duels could not be loaded.
           </p>
 
           <p className="mt-2 text-sm text-zinc-500">
@@ -944,6 +944,34 @@ export default async function MatchesPage() {
     ).length;
 
   // ======================================================
+  // SEASON DUEL DP (2.0): league_economy_defaults, the same
+  // rates the database pays out. Ad-hoc duels earn nothing.
+  // ======================================================
+
+  const {
+    data: economy,
+  } = await supabase
+    .from(
+      "league_economy_defaults"
+    )
+    .select(
+      "match_win_dp,match_loss_dp"
+    )
+    .eq(
+      "id",
+      true
+    )
+    .maybeSingle();
+
+  const seasonDp =
+    economy
+      ? {
+          win: economy.match_win_dp as number,
+          loss: economy.match_loss_dp as number,
+        }
+      : null;
+
+  // ======================================================
   // UI
   // ======================================================
 
@@ -1008,7 +1036,7 @@ export default async function MatchesPage() {
               </h1>
 
               <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
-                Fight official League Duels for ranking and DP, or challenge a rival to a Practice Duel with optional stakes.
+                Season duels count for the standings and earn DP. Practice duels are just for fun, with an optional wager.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
@@ -1020,7 +1048,7 @@ export default async function MatchesPage() {
                     size={17}
                   />
 
-                  Challenge Player
+                  Record a Duel
                 </Link>
 
                 <Link
@@ -1061,7 +1089,7 @@ export default async function MatchesPage() {
           </div>
         </header>
 
-        {/* RULE CARDS */}
+        {/* RULE CARDS (2.0) */}
 
         <section className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="panel p-5">
@@ -1072,27 +1100,25 @@ export default async function MatchesPage() {
               />
 
               <h2 className="font-black text-amber-200">
-                League Duel
+                Season Duel
               </h2>
             </div>
 
             <p className="mt-3 text-sm leading-6 text-zinc-500">
-  No League Ranking impact and no automatic DP rewards. Duel for fun or raise the stakes with DP or physical cards.
-</p>
+              Part of the season competition: counts for the standings, earns Duel Points, and a finished round pays out round rewards. Record it on the This Round screen under Play.
+            </p>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-1 text-[10px] font-black text-emerald-200">
-                WIN +100 DP
-              </span>
+            {seasonDp && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-1 text-[10px] font-black text-emerald-200">
+                  WIN +{seasonDp.win} DP
+                </span>
 
-              <span className="rounded-full border border-zinc-500/20 bg-zinc-500/[0.05] px-3 py-1 text-[10px] font-black text-zinc-300">
-                DRAW +75 DP
-              </span>
-
-              <span className="rounded-full border border-red-400/20 bg-red-400/[0.06] px-3 py-1 text-[10px] font-black text-red-200">
-                LOSS +50 DP
-              </span>
-            </div>
+                <span className="rounded-full border border-zinc-500/20 bg-zinc-500/[0.05] px-3 py-1 text-[10px] font-black text-zinc-300">
+                  LOSS +{seasonDp.loss} DP
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="panel p-5">
@@ -1108,7 +1134,7 @@ export default async function MatchesPage() {
             </div>
 
             <p className="mt-3 text-sm leading-6 text-zinc-500">
-              No League Ranking impact. Smaller DP rewards with optional DP or physical-card wagers.
+              Just for fun: no standings and no DP. Tap the winner, your opponent confirms. Optionally play for a DP or card wager.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-2">
@@ -1307,7 +1333,7 @@ export default async function MatchesPage() {
                 href="/matches/new"
                 className="primary-button inline-flex items-center gap-2 px-4 py-2 text-xs"
               >
-                Challenge a Duelist
+                Record a Duel
               </Link>
             </div>
           ) : (

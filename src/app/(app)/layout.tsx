@@ -1,5 +1,6 @@
 import { BottomNav } from "@/components/bottom-nav";
 import { ActionFeedbackBanner } from "@/components/action-feedback-banner";
+import { RewardPopup } from "@/components/reward-popup";
 import { requireUser } from "@/lib/supabase/queries";
 import { getLeagueIdForUser } from "@/lib/league-stats";
 import { getAttentionItems } from "@/lib/attention-items";
@@ -24,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <>
       <ActionFeedbackBanner />
+      <RewardPopup userId={userId} />
       <div className="pb-24">{children}</div>
       <BottomNav attentionCount={attentionCount} />
     </>

@@ -103,7 +103,7 @@ async function getMatchSettlementInfo(
     !data
   ) {
     throw new Error(
-      "Match kon niet worden geladen."
+      "Could not load this duel."
     );
   }
 
@@ -143,7 +143,7 @@ async function getMatchAcceptInfo(
     !data
   ) {
     throw new Error(
-      "Match kon niet worden geladen."
+      "Could not load this duel."
     );
   }
 
@@ -216,7 +216,7 @@ async function finalizeCompletedMatch(
 
     if (rewardError) {
       throw new Error(
-        `DP reward mislukt: ${rewardError.message}`
+        `DP reward failed: ${rewardError.message}`
       );
     }
   }
@@ -243,7 +243,7 @@ async function finalizeCompletedMatch(
 
     if (wagerError) {
       throw new Error(
-        `Wager settlement mislukt: ${wagerError.message}`
+        `Wager settlement failed: ${wagerError.message}`
       );
     }
   }
@@ -313,7 +313,7 @@ async function releaseMatchWagerIfNeeded(
 
   if (error) {
     throw new Error(
-      `Wager vrijgeven mislukt: ${error.message}`
+      `Releasing the wager failed: ${error.message}`
     );
   }
 }
@@ -367,7 +367,7 @@ export async function createMatchChallenge(
 
   if (!opponentId) {
     throw new Error(
-      "Tegenstander ontbreekt."
+      "Pick an opponent."
     );
   }
 
@@ -376,7 +376,7 @@ export async function createMatchChallenge(
     userId
   ) {
     throw new Error(
-      "Je kunt jezelf niet uitdagen."
+      "You cannot challenge yourself."
     );
   }
 
@@ -387,7 +387,7 @@ export async function createMatchChallenge(
       "practice"
   ) {
     throw new Error(
-      "Ongeldig dueltype."
+      "Invalid duel type."
     );
   }
 
@@ -400,7 +400,7 @@ export async function createMatchChallenge(
       "card"
   ) {
     throw new Error(
-      "Ongeldig wager type."
+      "Invalid wager type."
     );
   }
 
@@ -427,7 +427,7 @@ export async function createMatchChallenge(
       wagerDpAmount <= 0
     ) {
       throw new Error(
-        "Kies een geldige DP inzet."
+        "Enter a valid DP wager."
       );
     }
   }
@@ -440,7 +440,7 @@ export async function createMatchChallenge(
     !cardInstanceId
   ) {
     throw new Error(
-      "Kies een kaart om in te zetten."
+      "Pick a card to wager."
     );
   }
 
@@ -459,7 +459,7 @@ export async function createMatchChallenge(
     !membership
   ) {
     throw new Error(
-      "League niet gevonden."
+      "League not found."
     );
   }
 
@@ -486,7 +486,7 @@ export async function createMatchChallenge(
     !opponentMembership
   ) {
     throw new Error(
-      "Deze speler zit niet in jouw league."
+      "That player is not in your league."
     );
   }
 
@@ -523,7 +523,7 @@ export async function createMatchChallenge(
 
   if (!activeDeck) {
     throw new Error(
-      "Je hebt eerst een Active Ready Deck nodig."
+      "You need an active Ready deck first."
     );
   }
 
@@ -549,7 +549,7 @@ export async function createMatchChallenge(
 
   if (!matchId) {
     throw new Error(
-      "Challenge kon niet worden aangemaakt."
+      "The challenge could not be created."
     );
   }
 
@@ -578,7 +578,7 @@ export async function createMatchChallenge(
 
     if (configError) {
       throw new Error(
-        `Practice Duel instellen mislukt: ${configError.message}`
+        `Setting up the practice duel failed: ${configError.message}`
       );
     }
 
@@ -606,7 +606,7 @@ export async function createMatchChallenge(
         );
 
         throw new Error(
-          `DP inzet mislukt: ${fundError.message}`
+          `DP wager failed: ${fundError.message}`
         );
       }
     }
@@ -639,7 +639,7 @@ export async function createMatchChallenge(
         );
 
         throw new Error(
-          `Kaart inzet mislukt: ${cardError.message}`
+          `Card wager failed: ${cardError.message}`
         );
       }
     }
@@ -652,6 +652,89 @@ export async function createMatchChallenge(
 
   redirect(
     `/matches/${matchId}?success=${encodeURIComponent("Challenge sent!")}`
+  );
+}
+
+// =========================================================
+// RECORD A PRACTICE DUEL (2.0: tap the winner)
+//
+// One screen: pick the opponent, tap who won. The duel was already
+// played at the table, so there is no challenge/accept step -
+// record_practice_duel puts it straight into "result submitted" and
+// the opponent confirms it with one tap (Home / Attention -> duel
+// page). No wager and no DP: a wagered duel still goes through
+// createMatchChallenge above so both stakes are escrowed first.
+// =========================================================
+
+export async function recordPracticeDuel(
+  formData: FormData
+) {
+  const {
+    supabase,
+    userId,
+  } = await requireUser();
+
+  const opponentId =
+    String(
+      formData.get(
+        "opponent_id"
+      ) ?? ""
+    ).trim();
+
+  const winnerId =
+    String(
+      formData.get(
+        "winner_id"
+      ) ?? ""
+    ).trim();
+
+  if (!opponentId) {
+    throw new Error(
+      "Pick an opponent."
+    );
+  }
+
+  if (
+    winnerId !== userId &&
+    winnerId !== opponentId
+  ) {
+    throw new Error(
+      "Tap who won the duel."
+    );
+  }
+
+  const {
+    data: matchId,
+    error,
+  } = await supabase.rpc(
+    "record_practice_duel",
+    {
+      target_opponent_id:
+        opponentId,
+      target_winner_id:
+        winnerId,
+    }
+  );
+
+  if (error) {
+    throw new Error(
+      error.message
+    );
+  }
+
+  if (!matchId) {
+    throw new Error(
+      "The duel could not be recorded."
+    );
+  }
+
+  revalidatePath("/");
+  revalidatePath("/matches");
+  revalidatePath("/attention");
+  revalidatePath("/profile");
+
+  redirect(
+    `/matches/${matchId}?success=${encodeURIComponent("Result saved — your opponent just has to confirm it.")}`
   );
 }
 
@@ -694,7 +777,7 @@ export async function acceptMatchChallenge(
 
   if (!matchId) {
     throw new Error(
-      "Match ontbreekt."
+      "Duel is missing."
     );
   }
 
@@ -709,7 +792,7 @@ export async function acceptMatchChallenge(
     userId
   ) {
     throw new Error(
-      "Alleen de uitgedaagde speler kan deze match accepteren."
+      "Only the challenged player can accept this duel."
     );
   }
 
@@ -718,7 +801,7 @@ export async function acceptMatchChallenge(
     "pending"
   ) {
     throw new Error(
-      "Deze challenge kan niet meer worden geaccepteerd."
+      "This challenge can no longer be accepted."
     );
   }
 
@@ -776,7 +859,7 @@ export async function acceptMatchChallenge(
 
     if (fundError) {
       throw new Error(
-        `DP inzet mislukt: ${fundError.message}`
+        `DP wager failed: ${fundError.message}`
       );
     }
   }
@@ -793,7 +876,7 @@ export async function acceptMatchChallenge(
   ) {
     if (!cardInstanceId) {
       throw new Error(
-        "Kies eerst een kaart om in te zetten."
+        "Pick a card to wager first."
       );
     }
 
@@ -812,7 +895,7 @@ export async function acceptMatchChallenge(
 
     if (cardError) {
       throw new Error(
-        `Kaart inzet mislukt: ${cardError.message}`
+        `Card wager failed: ${cardError.message}`
       );
     }
   }
@@ -849,7 +932,7 @@ export async function declineMatchChallenge(
 
   if (!matchId) {
     throw new Error(
-      "Match ontbreekt."
+      "Duel is missing."
     );
   }
 
@@ -906,7 +989,7 @@ export async function cancelMatchChallenge(
 
   if (!matchId) {
     throw new Error(
-      "Match ontbreekt."
+      "Duel is missing."
     );
   }
 
@@ -978,7 +1061,7 @@ export async function completeMatch(
 
   if (!matchId) {
     throw new Error(
-      "Match ontbreekt."
+      "Duel is missing."
     );
   }
 
@@ -991,7 +1074,7 @@ export async function completeMatch(
       "draw"
   ) {
     throw new Error(
-      "Ongeldig matchresultaat."
+      "Invalid duel result."
     );
   }
 
@@ -1016,7 +1099,7 @@ export async function completeMatch(
     !match
   ) {
     throw new Error(
-      "Match niet gevonden."
+      "Duel not found."
     );
   }
 
@@ -1027,7 +1110,7 @@ export async function completeMatch(
       userId
   ) {
     throw new Error(
-      "Je bent geen deelnemer aan deze match."
+      "You are not a player in this duel."
     );
   }
 
@@ -1036,7 +1119,7 @@ export async function completeMatch(
     "accepted"
   ) {
     throw new Error(
-      "Alleen een geaccepteerde match kan worden afgerond."
+      "Only an accepted duel can get a result."
     );
   }
 
@@ -1092,7 +1175,7 @@ export async function confirmMatchResult(
 
   if (!matchId) {
     throw new Error(
-      "Match ontbreekt."
+      "Duel is missing."
     );
   }
 
@@ -1117,64 +1200,8 @@ export async function confirmMatchResult(
     matchId
   );
 
-  // ======================================================
-  // BOSS ROUTE ACHIEVEMENT CONFIRMATION (task 141)
-  //
-  // The "Confirm Result" form doubles as the opponent-witness
-  // step for Boss Route progress: any checked
-  // "boss_event" values (encoded "pathId:eventId", never free
-  // text) are submitted here as well, right after the match
-  // itself flips to completed - matching what
-  // confirm_boss_achievement_event requires. Each confirmation
-  // is best-effort: the match result is already safely
-  // confirmed above, so a single failed/duplicate Boss
-  // confirmation must never roll back or block the rest of the
-  // page.
-  // ======================================================
-
-  const bossEventSelections =
-    formData
-      .getAll("boss_event")
-      .map((value) =>
-        String(value)
-      );
-
-  for (const selection of bossEventSelections) {
-    const [
-      playerBossPathId,
-      eventId,
-    ] = selection.split(":");
-
-    if (
-      !playerBossPathId ||
-      !eventId
-    ) {
-      continue;
-    }
-
-    const {
-      error: bossEventError,
-    } = await supabase.rpc(
-      "confirm_boss_achievement_event",
-      {
-        target_match_id:
-          matchId,
-        target_player_boss_path_id:
-          playerBossPathId,
-        target_event_id:
-          eventId,
-      }
-    );
-
-    if (bossEventError) {
-      // Non-fatal: log server-side and let the player retry
-      // individual Boss confirmations later from the match page.
-      console.error(
-        "confirm_boss_achievement_event failed:",
-        bossEventError.message
-      );
-    }
-  }
+  // 2.0: Boss evolution is DP-only, so the old Boss achievement
+  // checkboxes on this form are gone.
 
   revalidatePath("/");
   revalidatePath("/matches");
@@ -1217,7 +1244,7 @@ export async function disputeMatchResult(
 
   if (!matchId) {
     throw new Error(
-      "Match ontbreekt."
+      "Duel is missing."
     );
   }
 
@@ -1226,7 +1253,7 @@ export async function disputeMatchResult(
     1000
   ) {
     throw new Error(
-      "De reden mag maximaal 1000 tekens bevatten."
+      "The reason can be at most 1000 characters."
     );
   }
 
@@ -1294,7 +1321,7 @@ export async function resolveDisputedMatch(
 
   if (!matchId) {
     throw new Error(
-      "Match ontbreekt."
+      "Duel is missing."
     );
   }
 
@@ -1307,7 +1334,7 @@ export async function resolveDisputedMatch(
       "draw"
   ) {
     throw new Error(
-      "Ongeldig resultaat."
+      "Invalid result."
     );
   }
 
@@ -1316,7 +1343,7 @@ export async function resolveDisputedMatch(
     1000
   ) {
     throw new Error(
-      "Admin note mag maximaal 1000 tekens bevatten."
+      "The admin note can be at most 1000 characters."
     );
   }
 
@@ -1336,7 +1363,7 @@ export async function resolveDisputedMatch(
     !match
   ) {
     throw new Error(
-      "Match niet gevonden."
+      "Duel not found."
     );
   }
 
@@ -1345,7 +1372,7 @@ export async function resolveDisputedMatch(
     "disputed"
   ) {
     throw new Error(
-      "Alleen een disputed match kan worden opgelost."
+      "Only a disputed duel can be resolved."
     );
   }
 
@@ -1372,7 +1399,7 @@ export async function resolveDisputedMatch(
     !membership
   ) {
     throw new Error(
-      "League membership niet gevonden."
+      "League membership not found."
     );
   }
 
@@ -1381,7 +1408,7 @@ export async function resolveDisputedMatch(
     "admin"
   ) {
     throw new Error(
-      "Alleen een league-admin kan een disputed match oplossen."
+      "Only a league admin can resolve a disputed duel."
     );
   }
 

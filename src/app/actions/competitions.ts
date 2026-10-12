@@ -13,6 +13,11 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  SEASON_DEFAULT_ROUNDS,
+  SEASON_MAX_ROUNDS,
+} from "@/lib/competitions/season";
+
+import {
   buildMatchSettlementSummary,
   type MatchSettlementSummary,
 } from "@/lib/match-settlement-summary";
@@ -33,7 +38,7 @@ function requiredString(
 
   if (!value) {
     throw new Error(
-      `${key} ontbreekt.`
+      `${key} is missing.`
     );
   }
 
@@ -95,7 +100,7 @@ export async function createCompetition(
       "tournament"
   ) {
     throw new Error(
-      "Ongeldig competition type."
+      "Invalid competition type."
     );
   }
 
@@ -127,7 +132,7 @@ export async function createCompetition(
 
   if (!competitionId) {
     throw new Error(
-      "Competition kon niet worden aangemaakt."
+      "The competition could not be created."
     );
   }
 
@@ -443,7 +448,7 @@ export async function createCompetitionV2(
     meetings < 1
   ) {
     throw new Error(
-      "Meetings per pairing moet minimaal 1 zijn."
+      "Meetings per pairing must be at least 1."
     );
   }
 
@@ -460,7 +465,7 @@ export async function createCompetitionV2(
       "best_of_3"
   ) {
     throw new Error(
-      "Ongeldig match format."
+      "Invalid match format."
     );
   }
 
@@ -488,7 +493,7 @@ export async function createCompetitionV2(
 
   if (!competitionId) {
     throw new Error(
-      "Competition kon niet worden aangemaakt."
+      "The competition could not be created."
     );
   }
 
@@ -718,6 +723,13 @@ export async function submitCompetitionMatchResultV2(
   revalidatePath(
     `/competitions/${competitionId}`
   );
+
+  revalidatePath(
+    `/competitions/${competitionId}/round`
+  );
+
+  revalidatePath("/");
+  revalidatePath("/play");
 
   let summary: MatchSettlementSummary | null = null;
 
@@ -1077,19 +1089,19 @@ export async function distributeCompetitionRewardsV2(
 }
 
 // =========================================================
-// QUICK START ("TONIGHT") - task 146
+// START THE SEASON COMPETITION (2.0)
 //
-// One-click competition creation for the 3-player league: no
-// manual form, no player picker. Auto-uses every league member as
-// a player, always meetings_per_pairing=3 (everyone plays everyone
-// 3 times), always single_duel, then immediately generates the
-// full round-robin schedule and redirects into the new linear
-// "tonight" flow. Reuses create_competition_v2 / add_competition_
-// player_v2 / generate_round_robin_matches_v2 exactly as the manual
-// V2 form does - no new backend, no duplicate scheduling logic.
+// docs/V2_PLAN.md: ONE long season competition. A "round" = everyone
+// plays everyone once (3 players -> 3 duels), ~3 rounds a week on
+// different days, ~39 rounds a season. One admin tap: every league
+// member is entered, single duels, round robin, the chosen number of
+// rounds is scheduled up front (meetings_per_pairing = rounds), and
+// the admin lands on the "This Round" screen. Reuses
+// create_competition_v2 / add_competition_player_v2 /
+// generate_round_robin_matches_v2 exactly like the manual form.
 // =========================================================
 
-export async function quickStartTonightCompetition(
+export async function startSeasonCompetition(
   formData: FormData
 ) {
   const {
@@ -1101,6 +1113,36 @@ export async function quickStartTonightCompetition(
       formData,
       "league_id"
     );
+
+  const name =
+    String(
+      formData.get(
+        "name"
+      ) ?? ""
+    ).trim() ||
+    "Season Competition";
+
+  const rounds =
+    Number.parseInt(
+      String(
+        formData.get(
+          "rounds"
+        ) ?? SEASON_DEFAULT_ROUNDS
+      ),
+      10
+    );
+
+  if (
+    !Number.isFinite(
+      rounds
+    ) ||
+    rounds < 1 ||
+    rounds > SEASON_MAX_ROUNDS
+  ) {
+    throw new Error(
+      `Rounds must be between 1 and ${SEASON_MAX_ROUNDS}.`
+    );
+  }
 
   const {
     data: memberRows,
@@ -1132,18 +1174,9 @@ export async function quickStartTonightCompetition(
 
   if (playerIds.length < 2) {
     throw new Error(
-      "Need at least 2 league members to start a competition."
+      "Need at least 2 league members to start the season."
     );
   }
-
-  const competitionName = `Tonight - ${new Date().toLocaleDateString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
-  )}`;
 
   const {
     data: competitionId,
@@ -1154,8 +1187,9 @@ export async function quickStartTonightCompetition(
       target_league_id:
         leagueId,
       target_name:
-        competitionName,
-      target_meetings_per_pairing: 3,
+        name,
+      target_meetings_per_pairing:
+        rounds,
       target_match_format:
         "single_duel",
     }
@@ -1169,7 +1203,7 @@ export async function quickStartTonightCompetition(
 
   if (!competitionId) {
     throw new Error(
-      "Competition kon niet worden aangemaakt."
+      "The competition could not be created."
     );
   }
 
@@ -1209,11 +1243,13 @@ export async function quickStartTonightCompetition(
     );
   }
 
+  revalidatePath("/");
+  revalidatePath("/play");
   revalidatePath(
     "/competitions"
   );
 
   redirect(
-    `/competitions/${competitionId}/tonight`
+    `/competitions/${competitionId}/round?success=${encodeURIComponent("The season has started — good luck!")}`
   );
 }

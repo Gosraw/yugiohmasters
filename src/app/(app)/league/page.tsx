@@ -361,7 +361,7 @@ export default async function LeaguePage() {
     return (
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="panel p-6">
-          Geen league gevonden.
+          You are not in a league yet.
         </div>
       </main>
     );

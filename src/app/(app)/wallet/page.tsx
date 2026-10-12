@@ -2,12 +2,14 @@ import Link from "next/link";
 
 import {
   Coins,
+  Crown,
   Gift,
   Package,
   Repeat2,
   Sparkles,
   Swords,
   Trophy,
+  Undo2,
 } from "lucide-react";
 
 import type {
@@ -43,50 +45,43 @@ export const dynamic =
 // what the database already recorded at the time of the credit/debit.
 // =========================================================
 
-type TransactionReason =
-  | "match_reward"
-  | "round_participation"
-  | "round_winner_bonus"
-  | "round_runner_up_bonus"
-  | "competition_reward"
-  | "shop_purchase"
-  | "trade"
-  | "practice_wager_stake"
-  | "practice_wager_win"
-  | "practice_wager_refund"
-  | string;
-
 type TransactionRow = {
   id: string;
   amount: number;
   balance_after: number;
-  reason: TransactionReason;
+  reason: string;
+  description: string | null;
   note: string | null;
-  metadata: Record<string, unknown> | null;
   created_at: string;
 };
 
+// Icon + short category per ledger reason. The WHY of every row is
+// its `description` (written by the database for every credit and
+// debit, see 202610120100_dp_ledger_descriptions_and_helpers.sql);
+// the label below is only the small category line under it.
 const REASON_META: Record<
   string,
   { icon: LucideIcon; label: string }
 > = {
-  match_reward: { icon: Swords, label: "Duel result" },
-  round_participation: { icon: Sparkles, label: "Round participation" },
-  round_winner_bonus: { icon: Sparkles, label: "Round winner bonus" },
-  round_runner_up_bonus: { icon: Sparkles, label: "Round 2nd place bonus" },
+  match_reward: { icon: Swords, label: "Competition duel" },
+  round_participation: { icon: Sparkles, label: "Round reward" },
+  round_winner_bonus: { icon: Sparkles, label: "Round reward" },
+  round_runner_up_bonus: { icon: Sparkles, label: "Round reward" },
+  round_third_bonus: { icon: Sparkles, label: "Round reward" },
+  round_reward_reversal: { icon: Undo2, label: "Round correction" },
   competition_reward: { icon: Trophy, label: "Competition reward" },
-  shop_purchase: { icon: Package, label: "Shop purchase" },
+  competition_reward_reversal: { icon: Undo2, label: "Competition correction" },
+  boss_route_stage_evolve: { icon: Crown, label: "Boss Path" },
+  boss_route_unlock_slot: { icon: Crown, label: "Boss Path" },
+  shop_purchase: { icon: Package, label: "Shop" },
   trade: { icon: Repeat2, label: "Trade" },
-  // Practice/BO3 Challenge DP wagers - kept visually and textually
-  // distinct from ordinary league "Duel result" rewards above, since
-  // these move DP between players rather than granting it from the
-  // league. A losing stake never gets its own separate transaction
-  // (the debit below at stake time already reflects it - there is
-  // nothing further to credit back), so "loss" is represented by the
-  // negative stake amount itself rather than a second row.
-  practice_wager_stake: { icon: Coins, label: "Challenge stake" },
-  practice_wager_win: { icon: Coins, label: "Challenge winnings" },
-  practice_wager_refund: { icon: Coins, label: "Challenge stake refunded" },
+  achievement: { icon: Gift, label: "Perk" },
+  // Practice duel DP wagers move DP between players rather than
+  // granting it from the league. A lost stake has no second row:
+  // the negative stake row itself is the loss.
+  practice_wager_stake: { icon: Coins, label: "Wager stake" },
+  practice_wager_win: { icon: Coins, label: "Wager won" },
+  practice_wager_refund: { icon: Coins, label: "Wager refunded" },
 };
 
 function reasonMeta(reason: string) {
@@ -95,43 +90,19 @@ function reasonMeta(reason: string) {
   }
 
   if (reason.startsWith("match_reward_correction")) {
-    return { icon: Swords, label: "Duel result correction" };
+    return { icon: Undo2, label: "Duel correction" };
   }
 
   if (reason.startsWith("competition_reward_correction")) {
-    return { icon: Trophy, label: "Competition reward correction" };
+    return { icon: Trophy, label: "Competition correction" };
   }
 
-  return { icon: Gift, label: reason.replace(/_/g, " ") };
-}
-
-function detailFor(row: TransactionRow) {
-  const meta = row.metadata ?? {};
-
-  if (row.reason === "match_reward" && typeof meta.result === "string") {
-    return `Official Duel · ${meta.result}`;
-  }
-
-  if (
-    (row.reason === "round_participation" ||
-      row.reason === "round_winner_bonus" ||
-      row.reason === "round_runner_up_bonus") &&
-    typeof meta.round_number === "number"
-  ) {
-    return `Round ${meta.round_number}`;
-  }
-
-  if (
-    row.reason === "competition_reward" &&
-    typeof meta.placement === "number"
-  ) {
-    const suffixes = ["th", "st", "nd", "rd"];
-    const v = meta.placement % 100;
-    const suffix = suffixes[(v - 20) % 10] ?? suffixes[v] ?? suffixes[0];
-    return `${meta.placement}${suffix} place`;
-  }
-
-  return row.note ?? null;
+  return {
+    icon: Gift,
+    label: reason
+      .replace(/_/g, " ")
+      .replace(/^./, (first) => first.toUpperCase()),
+  };
 }
 
 function formatRelativeDate(iso: string) {
@@ -175,7 +146,7 @@ export default async function WalletPage() {
       .single(),
     supabase
       .from("duel_point_transactions")
-      .select("id,amount,balance_after,reason,note,metadata,created_at")
+      .select("id,amount,balance_after,reason,description,note,created_at")
       .eq("profile_id", userId)
       .order("created_at", { ascending: false })
       .limit(100),
@@ -216,13 +187,13 @@ export default async function WalletPage() {
           <EmptyState
             icon={<Coins size={22} />}
             title="No transactions yet"
-            description="Play a League Duel or complete a round to start earning DP."
+            description="Play your season round duels to start earning DP."
             action={
               <Link
-                href="/matches/new"
+                href="/play"
                 className="primary-button inline-flex items-center gap-2 text-sm"
               >
-                Enter a result
+                Go to Play
               </Link>
             }
           />
@@ -231,13 +202,16 @@ export default async function WalletPage() {
             {transactions.map((row) => {
               const meta = reasonMeta(row.reason);
               const Icon = meta.icon;
-              const detail = detailFor(row);
+              const description =
+                row.description?.trim() ||
+                row.note?.trim() ||
+                meta.label;
               const positive = row.amount > 0;
 
               return (
                 <li
                   key={row.id}
-                  className="flex items-center gap-3 px-3.5 py-2.5"
+                  className="flex items-start gap-3 px-3.5 py-3"
                 >
                   <div
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
@@ -250,16 +224,11 @@ export default async function WalletPage() {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-bold text-zinc-200">
-                      {meta.label}
-                      {detail && (
-                        <span className="ml-1.5 font-normal text-zinc-500">
-                          {detail}
-                        </span>
-                      )}
+                    <p className="text-xs font-bold leading-5 text-zinc-200">
+                      {description}
                     </p>
                     <p className="text-[10px] text-zinc-600">
-                      {formatRelativeDate(row.created_at)}
+                      {meta.label} · {formatRelativeDate(row.created_at)}
                     </p>
                   </div>
 

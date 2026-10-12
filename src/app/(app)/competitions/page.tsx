@@ -25,8 +25,14 @@ import {
 } from "@/components/competition-create-form-v2";
 
 import {
-  quickStartTonightCompetition,
+  startSeasonCompetition,
 } from "@/app/actions/competitions";
+
+import {
+  getActiveSeasonCompetition,
+  SEASON_DEFAULT_ROUNDS,
+  SEASON_MAX_ROUNDS,
+} from "@/lib/competitions/season";
 
 import {
   SubmitButton,
@@ -165,7 +171,7 @@ export default async function CompetitionsPage() {
       <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="panel p-6">
           <p className="font-black text-red-300">
-            League niet gevonden.
+            League not found.
           </p>
         </div>
       </main>
@@ -252,7 +258,7 @@ export default async function CompetitionsPage() {
       <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="panel p-6">
           <p className="font-black text-red-300">
-            Competitions konden niet worden geladen.
+            Competitions could not be loaded.
           </p>
 
           <p className="mt-2 text-sm text-zinc-500">
@@ -358,6 +364,12 @@ export default async function CompetitionsPage() {
         "completed"
     );
 
+  const activeSeason =
+    await getActiveSeasonCompetition(
+      supabase,
+      membership.league_id
+    );
+
   const tournaments =
     competitions.filter(
       (competition) =>
@@ -369,6 +381,64 @@ export default async function CompetitionsPage() {
   // ======================================================
   // UI
   // ======================================================
+
+  const seasonStartForm = (
+    <>
+      <form
+        action={startSeasonCompetition}
+        className="mt-5 grid gap-3 sm:grid-cols-[1fr_8rem_auto] sm:items-end"
+      >
+        <input
+          type="hidden"
+          name="league_id"
+          value={membership.league_id}
+        />
+
+        <label className="block">
+          <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+            Name
+          </span>
+
+          <input
+            name="name"
+            defaultValue="Season 2"
+            maxLength={80}
+            required
+            className="field mt-1.5 w-full"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+            Rounds
+          </span>
+
+          <input
+            name="rounds"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={SEASON_MAX_ROUNDS}
+            defaultValue={SEASON_DEFAULT_ROUNDS}
+            required
+            className="field mt-1.5 w-full"
+          />
+        </label>
+
+        <SubmitButton
+          pendingLabel="Starting..."
+          className="primary-button inline-flex items-center justify-center gap-2"
+        >
+          <Play size={16} />
+          Start Season
+        </SubmitButton>
+      </form>
+
+      <p className="mt-3 text-xs text-zinc-500">
+        {SEASON_DEFAULT_ROUNDS} rounds is about three months at three rounds a week.
+      </p>
+    </>
+  );
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -485,45 +555,89 @@ export default async function CompetitionsPage() {
         </div>
       </section>
 
-      {/* QUICK START TONIGHT */}
+      {/* SEASON COMPETITION (2.0: one long season) */}
 
-      {isAdmin && (
-        <section className="panel relative mt-6 overflow-hidden border-cyan-300/20 bg-cyan-300/[0.03] p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Play size={17} className="text-cyan-300" />
-
-                <p className="text-xs font-black uppercase tracking-[.2em] text-cyan-300">
-                  Game Night
-                </p>
-              </div>
-
-              <h2 className="mt-3 text-2xl font-black">
-                Start Tonight&apos;s Competition
-              </h2>
-
-              <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-500">
-                One tap: every league member is entered, everyone plays everyone 3 times, and the schedule is generated automatically. Opens straight into the linear game-night flow.
-              </p>
-            </div>
-
-            <form action={quickStartTonightCompetition}>
-              <input
-                type="hidden"
-                name="league_id"
-                value={membership.league_id}
-              />
-
-              <SubmitButton
-                pendingLabel="Starting..."
-                className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-5 py-3 text-sm font-black text-cyan-200"
-              >
-                <Play size={16} />
-                Start Competition
-              </SubmitButton>
-            </form>
+      {activeSeason ? (
+        <Link
+          href={`/competitions/${activeSeason.id}/round`}
+          className="arena-frame panel group relative mt-6 flex items-center gap-4 overflow-hidden border-amber-300/30 p-5 transition-transform hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/40 bg-amber-300/10 text-amber-300">
+            <Swords size={22} />
           </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-black uppercase tracking-[.2em] text-amber-300">
+              Season in progress
+            </p>
+
+            <p className="font-display mt-1 truncate text-lg font-bold text-amber-100">
+              {activeSeason.name}
+            </p>
+
+            <p className="mt-0.5 text-sm text-zinc-400">
+              Tap the winners for this round&apos;s duels.
+            </p>
+          </div>
+
+          <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-black text-amber-300">
+            This Round
+            <ArrowRight
+              size={15}
+              className="transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+            />
+          </span>
+        </Link>
+      ) : null}
+
+      {activeSeason && isAdmin && (
+        <details className="panel mt-3 p-4">
+          <summary className="cursor-pointer text-sm font-black text-zinc-300">
+            Start another season competition
+          </summary>
+
+          <p className="mt-2 text-xs text-zinc-500">
+            Only when the current season is over (or was a test). The newest, longest active competition is the one Play opens.
+          </p>
+
+          {seasonStartForm}
+        </details>
+      )}
+
+      {activeSeason ? null : isAdmin ? (
+        <section className="panel relative mt-6 overflow-hidden border-amber-300/25 p-6">
+          <div className="flex items-center gap-2">
+            <Play size={17} className="text-amber-300" />
+
+            <p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">
+              New season
+            </p>
+          </div>
+
+          <h2 className="font-display mt-3 text-2xl font-bold">
+            Start the Season Competition
+          </h2>
+
+          <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-400">
+            Every league member is entered. One round = everyone plays everyone once (single duels), about three rounds a week. Every duel earns DP and every finished round pays out round rewards.
+          </p>
+
+          {seasonStartForm}
+        </section>
+      ) : (
+        <section className="panel mt-6 p-6 text-center">
+          <Trophy
+            size={28}
+            className="mx-auto text-zinc-600"
+          />
+
+          <p className="mt-3 font-black text-zinc-300">
+            No season is running yet
+          </p>
+
+          <p className="mt-1 text-sm text-zinc-500">
+            The league admin starts the season competition here.
+          </p>
         </section>
       )}
 
@@ -549,7 +663,7 @@ export default async function CompetitionsPage() {
             </div>
 
             <h2 className="mt-3 text-2xl font-black">
-              Create Competition
+              Custom Competition
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-zinc-500">
@@ -735,11 +849,11 @@ export default async function CompetitionsPage() {
 
                   {competition.status === "active" && (
                     <Link
-                      href={`/competitions/${competition.id}/tonight`}
+                      href={`/competitions/${competition.id}/round`}
                       className="mt-2 flex items-center justify-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-4 py-2.5 text-xs font-black text-cyan-200 transition hover:border-cyan-300/40"
                     >
                       <Play size={13} />
-                      Play Tonight
+                      This Round
                     </Link>
                   )}
                   </div>

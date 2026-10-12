@@ -12,16 +12,32 @@ import type {
   LucideIcon,
 } from "lucide-react";
 
+import {
+  requireUser,
+} from "@/lib/supabase/queries";
+
+import {
+  getLeagueIdForUser,
+} from "@/lib/league-stats";
+
+import {
+  getActiveSeasonCompetition,
+  logicalRoundFor,
+  totalLogicalRounds,
+} from "@/lib/competitions/season";
+
 // =========================================================
 // PLAY HUB (2.0)
 //
 // One of the five bottom-nav hubs (docs/V2_PLAN.md,
 // "Simplicity & navigation"). Everything you do at the table
 // starts here and routes to the real, already-working page:
-//   - Season competition: the competitions system (rounds,
-//     standings, championship rewards).
-//   - New duel: a practice match on the existing match
-//     creation flow (optional DP/card wager lives there).
+//   - Season competition: the featured card goes straight to
+//     the active season's "This Round" screen (tap the winners,
+//     standings below). Without a running season it opens the
+//     competitions page, where the admin starts one.
+//   - Record a duel: a practice duel, tap the winner (optional
+//     DP/card wager lives there too).
 //   - Duel history: the matches list.
 //   - Duel Companion: Life Points counter, dice, coin, timer.
 //   - League standings: the league table.
@@ -38,18 +54,11 @@ type PlayLink = {
   icon: LucideIcon;
 };
 
-const FEATURED: PlayLink = {
-  href: "/competitions",
-  label: "Season Competition",
-  description: "This round's duels, the standings and the championship race.",
-  icon: Trophy,
-};
-
 const LINKS: PlayLink[] = [
   {
     href: "/matches/new",
-    label: "New Duel",
-    description: "Challenge a friend to a practice duel. Add a DP or card wager if you dare.",
+    label: "Practice Duel",
+    description: "Played a friendly duel? Tap who won. Add a DP or card wager if you dare.",
     icon: Swords,
   },
   {
@@ -72,7 +81,86 @@ const LINKS: PlayLink[] = [
   },
 ];
 
-export default function PlayPage() {
+async function getFeatured(): Promise<PlayLink> {
+  const {
+    supabase,
+    userId,
+  } = await requireUser();
+
+  const leagueId =
+    await getLeagueIdForUser(
+      supabase,
+      userId
+    );
+
+  const season =
+    leagueId
+      ? await getActiveSeasonCompetition(
+          supabase,
+          leagueId
+        )
+      : null;
+
+  if (!season) {
+    return {
+      href: "/competitions",
+      label: "Season Competition",
+      description: "No season running yet. The admin starts it on the competitions page.",
+      icon: Trophy,
+    };
+  }
+
+  const {
+    count,
+  } = await supabase
+    .from("competition_players")
+    .select(
+      "profile_id",
+      {
+        count: "exact",
+        head: true,
+      }
+    )
+    .eq(
+      "competition_id",
+      season.id
+    );
+
+  const playerCount =
+    count ?? 0;
+
+  const seasonRounds =
+    totalLogicalRounds(
+      season.total_rounds,
+      playerCount
+    );
+
+  const round =
+    season.current_round !== null
+      ? logicalRoundFor(
+          season.current_round,
+          playerCount
+        )
+      : null;
+
+  return {
+    href: `/competitions/${season.id}/round`,
+    label:
+      round !== null
+        ? `Round ${round}${seasonRounds > 0 ? ` of ${seasonRounds}` : ""}`
+        : season.name,
+    description:
+      round !== null
+        ? `${season.name}: tap the winners, see the standings.`
+        : "Every duel has a result. See the final standings.",
+    icon: Swords,
+  };
+}
+
+export default async function PlayPage() {
+  const FEATURED =
+    await getFeatured();
+
   const FeaturedIcon =
     FEATURED.icon;
 

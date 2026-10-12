@@ -31,6 +31,10 @@ type AttentionMatch = {
   player_one_id: string;
   player_two_id: string;
   result_submitted_by: string | null;
+  // Optional so callers that don't select it keep compiling; when
+  // present, scheduled season duels are skipped (they're played from
+  // the round screen, not accepted one by one).
+  competition_id?: string | null;
 };
 
 type AttentionTrade = {
@@ -52,6 +56,10 @@ export function computeAttentionItems(
   const items: AttentionItem[] = [];
 
   for (const match of matches) {
+    if (match.competition_id) {
+      continue;
+    }
+
     if (match.status === "pending" && match.player_two_id === userId) {
       items.push({
         id: `match-accept-${match.id}`,
@@ -105,7 +113,7 @@ export async function getAttentionItems(
   const [{ data: matchData }, { data: tradeData }] = await Promise.all([
     supabase
       .from("matches")
-      .select("id,status,player_one_id,player_two_id,result_submitted_by")
+      .select("id,status,player_one_id,player_two_id,result_submitted_by,competition_id")
       .eq("league_id", leagueId)
       .or(`player_one_id.eq.${userId},player_two_id.eq.${userId}`),
     supabase

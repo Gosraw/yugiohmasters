@@ -1,0 +1,19 @@
+{
+  "_comment": "LOCAL devstack test accounts only (never production). Usernames mirror the real league so manual_deploy pre-flight checks pass; passwords are throwaway test values. The league is capped at 3 members, so the bots play as these three.",
+  "league_name": "Duelist Circle (devstack)",
+  "users": [
+    {
+      "username": "bossg",
+      "password": "devstack-bossg-pw",
+      "admin": true
+    },
+    {
+      "username": "samo",
+      "password": "devstack-samo-pw"
+    },
+    {
+      "username": "fardin",
+      "password": "devstack-fardin-pw"
+    }
+  ]
+}

@@ -7,3 +7,9 @@ coverage
 .DS_Store
 supabase/.temp
 reports
+
+# external downloads (card catalog snapshots etc.) - reproducible via scripts/cardpool/fetch-catalog.mjs
+data/external/
+
+# local dev/test stack (scripts/devstack)
+.devstack/

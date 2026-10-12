@@ -34,7 +34,8 @@ begin;
 -- Supabase SQL Editor once. Everything runs in ONE transaction: if
 -- any check fails, nothing changes. Safe to run twice.
 --
--- 1. Round rewards crash
+-- 1. Round rewards crash (only if present - production turned out
+--    to run a version without it, then this part is skipped)
 --    202609042210 renamed the variable reward_reason ->
 --    v_reward_reason inside settle_round_rewards_v2, but its text
 --    replace for the DP ledger insert looked for
@@ -73,7 +74,12 @@ begin
     raise exception 'HOTFIX ABORTED: settle_round_rewards_v2(uuid,integer) not found.';
   end if;
 
-  if ddl like '%' || fixed || '%' then
+  if ddl !~ 'reward_reason' then
+    -- Production (checked 2026-10-12) runs a version of this function
+    -- without any reward_reason variable, so the crash this part fixes
+    -- does not exist there: nothing to do.
+    raise notice 'Round rewards: this database has no reward_reason variable - nothing to fix.';
+  elsif ddl like '%' || fixed || '%' then
     raise notice 'Round rewards: already fixed, nothing to do.';
   elsif ddl like '%  v_reward_reason text;%' and ddl like '%' || stray || '%' then
     ddl := replace(ddl, stray, fixed);

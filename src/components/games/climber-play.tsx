@@ -7,10 +7,13 @@ import {
 } from "lucide-react";
 
 import {
+  Component,
   useCallback,
   useEffect,
   useRef,
   useState,
+  type ReactNode,
+  type RefObject,
 } from "react";
 
 import {
@@ -144,9 +147,60 @@ type Props = {
     result: {
       score: number;
       inputs: RunInputs;
+      crashed?: boolean;
     }
   ) => void;
+  /** The run ended before its first tick (nothing played): it is
+   *  still open and can be started again. */
+  onAbandon: () => void;
+  /** Filled in by the play view: ends the run safely after a crash
+   *  (submits what was climbed, or abandons a run never started). */
+  crashRef?: RefObject<(() => void) | null>;
 };
+
+/**
+ * Catches a render crash in the play view. The hub's onCrash ends the
+ * run with the inputs recorded so far, so a bug can't silently burn a
+ * Daily attempt (it would otherwise stay "started" forever).
+ */
+export class ClimberCrashGuard extends Component<
+  {
+    children: ReactNode;
+    onCrash: () => void;
+  },
+  {
+    crashed: boolean;
+  }
+> {
+  state = {
+    crashed: false,
+  };
+
+  static getDerivedStateFromError() {
+    return {
+      crashed: true,
+    };
+  }
+
+  componentDidCatch(
+    error: unknown
+  ) {
+    console.error("Pyramid Climb crashed", error);
+    this.props.onCrash();
+  }
+
+  render() {
+    if (this.state.crashed) {
+      return (
+        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-[rgb(3_5_15/.94)] px-6 text-center text-sm text-zinc-300">
+          Something went wrong. Saving your climb...
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export function ClimberPlay({
   runId,
@@ -157,8 +211,15 @@ export function ClimberPlay({
   markers,
   resume,
   onFinished,
+  onAbandon,
+  crashRef,
 }: Props) {
   const containerRef =
+    useRef<HTMLDivElement>(null);
+
+  // Full-screen wrapper: touches on the dark side areas (landscape,
+  // wide screens) steer too, split at the middle of the screen.
+  const wrapperRef =
     useRef<HTMLDivElement>(null);
 
   const canvasRef =
@@ -167,9 +228,12 @@ export function ClimberPlay({
   const insetRef =
     useRef<HTMLDivElement>(null);
 
+  // A saved run with progress resumes on the pause card; one saved
+  // before its first tick simply starts fresh (ready screen).
   const resuming =
     resume !== null &&
-    resume.runId === runId;
+    resume.runId === runId &&
+    resume.tick > 0;
 
   const pausedRef =
     useRef(resuming);
@@ -216,9 +280,13 @@ export function ClimberPlay({
   const onFinishedRef =
     useRef(onFinished);
 
+  const onAbandonRef =
+    useRef(onAbandon);
+
   useEffect(() => {
     onFinishedRef.current = onFinished;
-  }, [onFinished]);
+    onAbandonRef.current = onAbandon;
+  }, [onFinished, onAbandon]);
 
   const save = useCallback(() => {
     const sim = simRef.current;
@@ -243,7 +311,8 @@ export function ClimberPlay({
   }, [runId, mode]);
 
   const finish = useCallback((
-    end: RunEnd
+    end: RunEnd,
+    crashed = false
   ) => {
     const sim = simRef.current;
     const recorder = recorderRef.current;
@@ -258,6 +327,22 @@ export function ClimberPlay({
 
     finishedRef.current = true;
 
+    // Nothing played yet (ended from the pause card before the first
+    // tap, or a crash right away): the server would reject a 0-tick
+    // run and the Daily attempt would be lost. Keep it open instead.
+    if (sim.tick === 0) {
+      writeSavedRun({
+        runId,
+        mode,
+        tick: 0,
+        score: 0,
+        rec: recorder.snapshot(),
+        savedAt: Date.now(),
+      });
+      onAbandonRef.current();
+      return;
+    }
+
     clearSavedRun();
 
     onFinishedRef.current({
@@ -266,8 +351,9 @@ export function ClimberPlay({
         end,
         sim.tick
       ),
+      crashed,
     });
-  }, []);
+  }, [runId, mode]);
 
   const setPause = useCallback((
     value: boolean
@@ -292,8 +378,9 @@ export function ClimberPlay({
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
+    const wrapper = wrapperRef.current;
 
-    if (!canvas || !container) return;
+    if (!canvas || !container || !wrapper) return;
 
     const reducedMotion =
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -458,7 +545,7 @@ export function ClimberPlay({
     const sideOf = (
       event: PointerEvent
     ) => {
-      const rect = canvas.getBoundingClientRect();
+      const rect = wrapper.getBoundingClientRect();
       return event.clientX - rect.left < rect.width / 2 ? -1 : 1;
     };
 
@@ -466,6 +553,15 @@ export function ClimberPlay({
       event: PointerEvent
     ) => {
       if (pausedRef.current) return;
+
+      // Buttons (pause) and cards handle their own taps.
+      if (
+        event.target instanceof Element &&
+        event.target.closest("button, [data-climber-ui]")
+      ) {
+        return;
+      }
+
       event.preventDefault();
 
       // The tap that starts the run only starts it (tilt players
@@ -478,7 +574,12 @@ export function ClimberPlay({
       steer.pointers.set(event.pointerId, sideOf(event));
       steer.pointerOrder = steer.pointerOrder.filter((id) => id !== event.pointerId);
       steer.pointerOrder.push(event.pointerId);
-      canvas.setPointerCapture?.(event.pointerId);
+
+      try {
+        wrapper.setPointerCapture(event.pointerId);
+      } catch {
+        // Pointer already gone (released between event and capture).
+      }
     };
 
     const onPointerMove = (
@@ -546,10 +647,11 @@ export function ClimberPlay({
 
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
-    canvas.addEventListener("pointerdown", onPointerDown);
-    canvas.addEventListener("pointermove", onPointerMove);
-    canvas.addEventListener("pointerup", onPointerUp);
-    canvas.addEventListener("pointercancel", onPointerUp);
+    wrapper.addEventListener("pointerdown", onPointerDown);
+    wrapper.addEventListener("pointermove", onPointerMove);
+    wrapper.addEventListener("pointerup", onPointerUp);
+    wrapper.addEventListener("pointercancel", onPointerUp);
+    wrapper.addEventListener("lostpointercapture", onPointerUp);
 
     if (controls === "tilt") {
       window.addEventListener("deviceorientation", onOrientation);
@@ -612,11 +714,38 @@ export function ClimberPlay({
     // A resumed run that had already ended hands over right away.
     let deathAt = sim.dead ? performance.now() : 0;
 
+    // Any error in the loop ends the run safely: what was climbed is
+    // submitted (or a run never started stays open) instead of the
+    // Daily attempt hanging as "started" forever.
+    let crashed = false;
+
+    const bail = () => {
+      if (crashed) return;
+      crashed = true;
+      cancelAnimationFrame(raf);
+      finish("quit", true);
+    };
+
+    if (crashRef) {
+      crashRef.current = bail;
+    }
+
     const frame = (
       now: number
     ) => {
       raf = requestAnimationFrame(frame);
 
+      try {
+        tickFrame(now);
+      } catch (error) {
+        console.error("Pyramid Climb loop crashed", error);
+        bail();
+      }
+    };
+
+    const tickFrame = (
+      now: number
+    ) => {
       const elapsed = Math.min(250, now - last);
       last = now;
 
@@ -693,14 +822,16 @@ export function ClimberPlay({
 
     return () => {
       cancelAnimationFrame(raf);
+      if (crashRef?.current === bail) crashRef.current = null;
       resizeObserver.disconnect();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("deviceorientation", onOrientation);
-      canvas.removeEventListener("pointerdown", onPointerDown);
-      canvas.removeEventListener("pointermove", onPointerMove);
-      canvas.removeEventListener("pointerup", onPointerUp);
-      canvas.removeEventListener("pointercancel", onPointerUp);
+      wrapper.removeEventListener("pointerdown", onPointerDown);
+      wrapper.removeEventListener("pointermove", onPointerMove);
+      wrapper.removeEventListener("pointerup", onPointerUp);
+      wrapper.removeEventListener("pointercancel", onPointerUp);
+      wrapper.removeEventListener("lostpointercapture", onPointerUp);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onPageHide);
       wakeLock?.release().catch(() => {});
@@ -723,11 +854,14 @@ export function ClimberPlay({
     // (like Doodle Jump on desktop). Without it the world scaled to
     // the full window width and only a sliver of the tower showed.
     <div
+      ref={wrapperRef}
       className="fixed inset-0 z-[55] flex h-[100dvh] w-full touch-none select-none justify-center overflow-hidden overscroll-none bg-[radial-gradient(ellipse_at_center,#0b1230_0%,#03050f_70%)] [-webkit-touch-callout:none] [-webkit-user-select:none]"
     >
+    {/* Column aspect 400:820 = the renderer's VIEW_H: every screen sees
+        the same amount of tower ahead of the ball. */}
     <div
       ref={containerRef}
-      className="relative h-full w-full max-w-[calc(100dvh*0.6)] touch-none select-none overflow-hidden overscroll-none bg-[#03050f] shadow-[0_0_0_1px_rgba(242,196,90,.18),0_0_60px_rgba(0,0,0,.6)]"
+      className="@container relative h-full w-full max-w-[calc(100dvh*0.4878)] touch-none select-none overflow-hidden overscroll-none bg-[#03050f] shadow-[0_0_0_1px_rgba(242,196,90,.18),0_0_60px_rgba(0,0,0,.6)]"
       role="application"
       aria-label="Pyramid Climb. Press Space or tap to start. Steer with the left and right arrow keys, by holding the left or right half of the screen, or by tilting your phone."
     >
@@ -751,7 +885,7 @@ export function ClimberPlay({
             ? "Resume"
             : "Pause"
         }
-        className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+12px)] flex h-11 w-11 items-center justify-center rounded-full border border-[rgb(242_196_90/.35)] bg-[rgb(6_9_22/.6)] text-amber-200 backdrop-blur-sm transition-transform duration-100 active:scale-95"
+        className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+12px)] z-20 flex h-11 w-11 items-center justify-center rounded-full border border-[rgb(242_196_90/.35)] bg-[rgb(6_9_22/.6)] text-amber-200 backdrop-blur-sm transition-transform duration-100 active:scale-95"
       >
         {
           paused
@@ -760,7 +894,7 @@ export function ClimberPlay({
         }
       </button>
 
-      <p className="pointer-events-none absolute right-16 top-[calc(env(safe-area-inset-top,0px)+24px)] text-[10px] font-bold uppercase tracking-[.2em] text-amber-200/70">
+      <p className="pointer-events-none absolute right-16 top-[calc(env(safe-area-inset-top,0px)+24px)] hidden text-[10px] font-bold uppercase tracking-[.2em] text-amber-200/70 @[340px]:block">
         {
           mode === "daily"
             ? "Daily Climb"
@@ -814,7 +948,10 @@ export function ClimberPlay({
       {
         paused
           ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-[rgb(3_5_15/.72)] px-6 backdrop-blur-[2px]">
+              <div
+                data-climber-ui
+                className="absolute inset-0 z-10 flex items-center justify-center bg-[rgb(3_5_15/.72)] px-6 backdrop-blur-[2px]"
+              >
                 <div className="panel w-full max-w-xs p-5 text-center">
                   <p className="text-xs font-bold uppercase tracking-[.22em] text-amber-300">
                     Paused

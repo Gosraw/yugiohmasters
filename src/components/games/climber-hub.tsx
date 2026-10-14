@@ -53,6 +53,7 @@ import {
 } from "@/lib/sound";
 
 import {
+  ClimberCrashGuard,
   ClimberPlay,
   clearSavedRun,
   readSavedRun,
@@ -207,6 +208,13 @@ export function ClimberHub({
   const againRef =
     useRef<HTMLButtonElement>(null);
 
+  // Set by the play view: ends the run safely after a crash.
+  const crashRef =
+    useRef<(() => void) | null>(null);
+
+  const [notice, setNotice] =
+    useState<string | null>(null);
+
   const resultReady =
     phase.kind === "result";
 
@@ -291,6 +299,7 @@ export function ClimberHub({
     if (busy) return;
 
     setError(null);
+    setNotice(null);
     setBusy(mode);
 
     // iOS only allows the motion-permission prompt directly inside
@@ -344,6 +353,9 @@ export function ClimberHub({
 
   const resume = async () => {
     if (!pendingResume) return;
+
+    setError(null);
+    setNotice(null);
 
     if (controls === "tilt") {
       await requestTiltPermission();
@@ -411,11 +423,16 @@ export function ClimberHub({
       outcome: {
         score: number;
         inputs: RunInputs;
+        crashed?: boolean;
       }
     ) => {
       if (!activeRun) return;
 
       play("gameOver");
+
+      if (outcome.crashed) {
+        setError("The game hit a problem, so your climb ended at the height you reached.");
+      }
 
       setPhase({
         kind: "submitting",
@@ -451,6 +468,44 @@ export function ClimberHub({
     [activeRun, router]
   );
 
+  // Ended before the first tick (or crashed right away): nothing was
+  // played, so the run stays open and can be started again.
+  const onAbandon = useCallback(() => {
+    if (!activeRun) return;
+
+    setPendingResume({
+      runId: activeRun.runId,
+      mode: activeRun.mode,
+      tick: 0,
+      score: 0,
+      rec: {
+        e: [],
+        lastTick: 0,
+        lastSteer: 0,
+      },
+      savedAt: Date.now(),
+      seed: activeRun.seed,
+    });
+
+    setNotice(
+      activeRun.mode === "daily"
+        ? "Your Daily Climb hasn't started yet, so it is still yours. Resume it when you're ready."
+        : "Nothing was played, so this run is still open."
+    );
+
+    setPhase({
+      kind: "menu",
+    });
+  }, [activeRun]);
+
+  const onCrash = useCallback(() => {
+    if (crashRef.current) {
+      crashRef.current();
+    } else {
+      onAbandon();
+    }
+  }, [onAbandon]);
+
   const myWeek =
     data.weekBoard.find(
       (row) => row.profileId === userId
@@ -480,16 +535,22 @@ export function ClimberHub({
 
   if (phase.kind === "playing") {
     return (
-      <ClimberPlay
-        runId={phase.run.runId}
-        seed={phase.run.seed}
-        mode={phase.run.mode}
-        controls={controls}
-        spriteUrl={data.sprite?.imageUrl ?? null}
-        markers={markersFor(phase.run.mode)}
-        resume={phase.run.resume}
-        onFinished={onFinished}
-      />
+      <ClimberCrashGuard
+        onCrash={onCrash}
+      >
+        <ClimberPlay
+          runId={phase.run.runId}
+          seed={phase.run.seed}
+          mode={phase.run.mode}
+          controls={controls}
+          spriteUrl={data.sprite?.imageUrl ?? null}
+          markers={markersFor(phase.run.mode)}
+          resume={phase.run.resume}
+          onFinished={onFinished}
+          onAbandon={onAbandon}
+          crashRef={crashRef}
+        />
+      </ClimberCrashGuard>
     );
   }
 
@@ -713,6 +774,16 @@ export function ClimberHub({
       }
 
       {
+        notice
+          ? (
+              <p className="mt-4 rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+                {notice}
+              </p>
+            )
+          : null
+      }
+
+      {
         pendingResume
           ? (
               <div className="panel mt-5 flex items-center gap-3 border-amber-300/40 p-4">
@@ -775,6 +846,20 @@ export function ClimberHub({
                                       : "Not counted"
                                 }
                               </p>
+
+                              {
+                                data.daily.status === "started"
+                                  ? (
+                                      <p className="mt-1 text-xs leading-5 text-zinc-400">
+                                        {
+                                          pendingResume?.mode === "daily"
+                                            ? "Not started yet: resume it above."
+                                            : "This climb closed before it could be saved (app closed or storage cleared), so it can't be counted."
+                                        }
+                                      </p>
+                                    )
+                                  : null
+                              }
 
                               <p
                                 suppressHydrationWarning
@@ -1030,8 +1115,8 @@ export function ClimberHub({
           {[
             ["bg-gradient-to-b from-amber-300 to-amber-700", "Gold cards", "solid steps. Bounce as often as you like."],
             ["bg-gradient-to-b from-indigo-300 to-indigo-800", "Lapis cards", "slide along a dotted rail; the arrow shows where they are heading."],
-            ["bg-gradient-to-b from-pink-400 to-fuchsia-900", "Cracked Trap cards", "hold you once, then crumble."],
-            ["bg-gradient-to-b from-red-500 to-red-950 h-5 w-3.5", "Spiked Floating Traps", "touch one and you tumble down."],
+            ["bg-gradient-to-b from-violet-300 to-slate-700", "Cracked cards", "grey-violet stone, already split: they hold you once, then crumble."],
+            ["bg-gradient-to-b from-red-500 to-red-950 h-5 w-3.5", "Floating Traps", "red and spiky: touch one and you stumble and drop a little (a shield or Monster Reborn saves you)."],
             ["bg-gradient-to-b from-emerald-300 to-teal-800 h-5 w-3.5", "Monster Reborn", "an extra life: saves you from one fall."],
             ["bg-gradient-to-b from-emerald-300 to-teal-800 h-5 w-3.5", "Swords of Revealing Light", "slow motion and a shield for a few seconds."],
             ["bg-gradient-to-b from-emerald-300 to-teal-800 h-5 w-3.5", "Pot of Greed", "a huge jump."],
@@ -1060,9 +1145,10 @@ export function ClimberHub({
 
         <p className="mt-3 text-xs leading-5 text-zinc-500">
           The screen wraps: fly off one side and you come back on the other.
-          Keep climbing: stay at the same height for a few seconds and the
-          floor starts to rise. Every climb is replayed on the server before
-          it counts.
+          Keep climbing: after 30 seconds the sand starts rising from below,
+          a little faster as time goes on, and it rises right away if you
+          stay at the same height for a few seconds. Every climb is replayed
+          on the server before it counts.
         </p>
       </section>
     </main>

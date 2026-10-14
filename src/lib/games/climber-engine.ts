@@ -114,6 +114,17 @@ export const STALL_TICKS = 360;
 /** How fast the floor rises while stalled (units per tick). */
 const STALL_CREEP = 0.8;
 
+// Rising sand (v3). Like Icy Tower's speeding-up scroll: after
+// 30 s the floor starts to rise on its own, as a growing fraction of
+// how fast the level at your height can be climbed (100% at 5.5 min,
+// then more). Careful play is never rushed early on, but no run lasts
+// forever, and the Daily board can't be won by stalling.
+const TIDE_START_TICKS = 30 * TICKS_PER_SECOND;
+
+const TIDE_FULL_TICKS = 5 * 60 * TICKS_PER_SECOND;
+
+const TIDE_MAX_FRACTION = 1.25;
+
 const GENERATE_AHEAD = 1400;
 
 const PRUNE_BELOW = 220;
@@ -129,7 +140,11 @@ const SLOW_TICKS = 240;
 
 const SLOW_SCALE = 0.6;
 
-const STUN_TICKS = 45;
+/** A Trap card stuns for 0.33 s: you drop ~150 units and can land
+ *  again, so a hit costs height, not (usually) the run. v2 stunned
+ *  for 45 ticks (~530 units), deeper than the 390-unit death line:
+ *  a hit without a spare life was fatal 99% of the time. */
+const STUN_TICKS = 20;
 
 const REVIVE_INVULN_TICKS = 150;
 
@@ -330,6 +345,49 @@ export function difficultyAt(
     OVERDRIVE_MAX,
     ((height - DIFFICULTY_HEIGHT) / OVERDRIVE_HEIGHT) * OVERDRIVE_MAX
   );
+}
+
+/** Average path gap the generator uses at this height. */
+function typicalGap(
+  height: number
+) {
+  const d =
+    difficultyAt(height);
+
+  return Math.min(
+    MAX_GAP,
+    40 + 100 * d + (22 + 40 * d) / 2
+  );
+}
+
+/** Units per tick a player gains by taking every typical path gap. */
+export function climbRateAt(
+  height: number
+) {
+  const gap =
+    typicalGap(height);
+
+  const airTicks =
+    (JUMP_V + Math.sqrt(JUMP_V * JUMP_V - 2 * GRAVITY * gap)) / GRAVITY;
+
+  return gap / airTicks;
+}
+
+/** How fast the sand floor rises this tick (0 before it starts). */
+export function tideSpeed(
+  sim: ClimberSim
+) {
+  const fraction =
+    Math.min(
+      TIDE_MAX_FRACTION,
+      Math.max(0, sim.tick - TIDE_START_TICKS) / TIDE_FULL_TICKS
+    );
+
+  if (fraction <= 0) {
+    return 0;
+  }
+
+  return fraction * climbRateAt(sim.maxY);
 }
 
 export function platformX(
@@ -908,7 +966,7 @@ export function stepClimber(
         sim.stunTicks = STUN_TICKS;
         sim.vy = Math.min(
           sim.vy,
-          -4
+          -2
         );
         sim.vx = 0;
 
@@ -939,6 +997,16 @@ export function stepClimber(
     sim.camBottom,
     sim.y - CAMERA_OFFSET
   );
+
+  const tide =
+    tideSpeed(sim);
+
+  if (tide > 0) {
+    sim.camBottom = Math.max(
+      sim.camBottom,
+      sim.prevCamBottom + tide
+    );
+  }
 
   if (sim.tick - sim.lastClimbTick > STALL_TICKS) {
     sim.camBottom += STALL_CREEP;

@@ -8,6 +8,9 @@ import {
   TRAP_HALF_H,
   WORLD_W,
   difficultyAt,
+  tideSpeed,
+  CAMERA_OFFSET,
+  DEATH_DEPTH,
   climberScore,
   JUMP_HEIGHT,
   maxReachX,
@@ -187,6 +190,36 @@ describe("climber engine", () => {
     }
     expect(sim.dead).toBe(true);
     expect(ticks).toBeGreaterThan(STALL_TICKS);
+  });
+
+  it("a trap hit is a stumble, not a death sentence (v3)", () => {
+    const sim = createClimber("trap-stumble");
+    // Float high above everything with a trap right on the ball.
+    sim.camBottom = 5000 - CAMERA_OFFSET;
+    sim.y = 5000;
+    sim.maxY = 5000;
+    sim.vy = 0;
+    sim.platforms = [];
+    sim.traps = [{ id: 999, x: sim.x, y: sim.y + 13, hit: false }];
+    stepClimber(sim, 0);
+    expect(sim.stunTicks).toBeGreaterThan(0);
+    while (sim.stunTicks > 0) stepClimber(sim, 0);
+    // Control is back well before the death line.
+    expect(5000 - sim.y).toBeLessThan(200);
+    expect(sim.y).toBeGreaterThan(sim.camBottom - DEATH_DEPTH + 150);
+    expect(sim.dead).toBe(false);
+  });
+
+  it("the sand starts rising after 30 s and keeps speeding up", () => {
+    const sim = createClimber("tide");
+    sim.tick = 29 * 60;
+    expect(tideSpeed(sim)).toBe(0);
+    sim.tick = 2 * 60 * 60;
+    const early = tideSpeed(sim);
+    sim.tick = 5 * 60 * 60;
+    const late = tideSpeed(sim);
+    expect(early).toBeGreaterThan(0);
+    expect(late).toBeGreaterThan(early * 2);
   });
 
   it("standing still never scores", () => {

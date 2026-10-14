@@ -1,4 +1,5 @@
 import {
+  CAMERA_OFFSET,
   ITEM_RADIUS,
   JUMP_V,
   PLAYER_H,
@@ -9,6 +10,7 @@ import {
   WORLD_W,
   climberScore,
   platformX,
+  tideSpeed,
   type ClimberSim,
   type ItemKind,
   type Platform,
@@ -55,6 +57,16 @@ const PLATFORM_H = 15;
 /** World units visible below the camera bottom (death line just off-screen). */
 const BOTTOM_PAD = 45;
 
+/**
+ * World height every screen shows, from BOTTOM_PAD below the camera
+ * to the top edge: the ball (at most 330 above the camera bottom)
+ * always sees exactly 445 units ahead, on a phone, a laptop or a
+ * landscape phone, so the shared Daily board is fair. The play column
+ * has this aspect (400 / 820); a taller screen shows extra room BELOW
+ * (already climbed), never above.
+ */
+export const VIEW_H = 820;
+
 const MAX_PARTICLES = 160;
 
 /** Camera follow time constant (seconds). Short: a softer start to
@@ -66,7 +78,7 @@ const CAM_SMOOTH_S = 0.06;
 const CAM_MAX_LAG = 40;
 
 /** Screen px kept free under the safe area for the score HUD. */
-const HUD_CLEAR_PX = 96;
+const HUD_CLEAR_PX = 112;
 
 const TRAIL_LEN = 7;
 
@@ -79,8 +91,8 @@ const COLORS = {
   goldDeep: "#d79b2b",
   ink: "#ece6d6",
   lapis: "#2c4590",
-  trap: "#b0407f",
-  trapDeep: "#5a1745",
+  /** Breaking cards: worn grey-violet stone (pink/red = danger only). */
+  cracked: "#a99cc9",
   hazard: "#ff3b4e",
   hazardDeep: "#4a0710",
   spell: "#22a586",
@@ -280,6 +292,8 @@ export class ClimberRenderer {
 
   private stallWarned = false;
 
+  private tideWarned = false;
+
   /** Eased camera bottom (render only). */
   private viewCam: number | null = null;
 
@@ -446,7 +460,7 @@ export class ClimberRenderer {
 
     const palette =
       kind === "crumble"
-        ? { edge: COLORS.trap, body: "#3a0f30", glow: "rgba(255,120,200,.55)", glyph: "#ff9bd2" }
+        ? { edge: COLORS.cracked, body: "#1f1a33", glow: "rgba(170,150,220,.35)", glyph: "#d9d0f2" }
         : kind === "moving"
           ? { edge: "#7c9cf0", body: "#121c46", glow: "rgba(130,160,255,.5)", glyph: "#bcd0ff" }
           : { edge: COLORS.gold, body: "#2a1d08", glow: "rgba(255,207,94,.5)", glyph: COLORS.goldBright };
@@ -500,7 +514,7 @@ export class ClimberRenderer {
       ctx.restore();
 
       if (kind === "crumble") {
-        ctx.strokeStyle = "rgba(255,190,228,.9)";
+        ctx.strokeStyle = "rgba(225,215,250,.9)";
         ctx.lineWidth = 0.7;
         ctx.beginPath();
         ctx.moveTo(w * 0.14, PLATFORM_H);
@@ -892,14 +906,14 @@ export class ClimberRenderer {
             event.x,
             event.y,
             event.kind === "crumble"
-              ? "#ffb3dc"
+              ? "#cfc4ea"
               : event.kind === "moving"
                 ? "#bcd0ff"
                 : "#f1d9a0"
           );
           break;
         case "crumble":
-          this.emit(event.x, event.y, 14, "#e46aae", 110, -40);
+          this.emit(event.x, event.y, 14, "#b7a9dd", 110, -40);
           break;
         case "pickup": {
           this.emit(event.x, event.y, 22, "#7dffd8", 150, 20);
@@ -976,7 +990,7 @@ export class ClimberRenderer {
     cam = Math.max(
       cam,
       engineCam - CAM_MAX_LAG,
-      playerY + PLAYER_H + hudWorld + BOTTOM_PAD - viewH
+      playerY + PLAYER_H + hudWorld + BOTTOM_PAD - VIEW_H
     );
 
     if (this.viewCam !== null) {
@@ -986,8 +1000,10 @@ export class ClimberRenderer {
     cam = Math.min(cam, engineCam);
     this.viewCam = cam;
 
-    // world -> CSS px
-    const sy = (worldY: number) => this.cssH - (worldY - cam + BOTTOM_PAD) * scale;
+    // world -> CSS px. Anchored at the top (see VIEW_H).
+    const bottomWorld = cam - BOTTOM_PAD - (viewH - VIEW_H);
+    const topWorld = bottomWorld + viewH;
+    const sy = (worldY: number) => this.cssH - (worldY - bottomWorld) * scale;
 
     // Decay effects (squash ~140 ms: it fires on every bounce).
     this.squash = Math.max(0, this.squash - dt * 7);
@@ -1018,10 +1034,10 @@ export class ClimberRenderer {
     this.drawBackdrop(cam, sim.tick);
 
     // Height markers, your best and your friends' heights.
-    this.drawMarkers(sy, cam, viewH);
+    this.drawMarkers(sy, bottomWorld, topWorld);
 
-    const visibleBottom = cam - BOTTOM_PAD - 40;
-    const visibleTop = cam - BOTTOM_PAD + viewH + 40;
+    const visibleBottom = bottomWorld - 40;
+    const visibleTop = topWorld + 40;
     const worldTime = sim.worldTime;
 
     // Platforms.
@@ -1066,10 +1082,12 @@ export class ClimberRenderer {
     // Particles (world space).
     this.drawParticles(dt, sy);
 
-    // Floor rising (stall rule): warn with a hot glow from below.
+    // Rising sand (tide or stall rule): a hot glow from below, as
+    // strong as the push. Also warns just before a stall kicks in.
     const stalledFor = sim.tick - sim.lastClimbTick - (STALL_TICKS - 90);
-    if (stalledFor > 0 && !sim.dead) {
-      const k = Math.min(1, stalledFor / 90);
+    const push = this.sandPush(sim);
+    if ((stalledFor > 0 || push > 4) && !sim.dead) {
+      const k = Math.min(1, Math.max(stalledFor / 90, push / 120));
       const pulse = this.reducedMotion ? 1 : 0.75 + 0.25 * Math.sin(t * 8);
       const glowH = this.cssH * 0.22;
       const grad = ctx.createLinearGradient(0, this.cssH - glowH, 0, this.cssH);
@@ -1130,17 +1148,18 @@ export class ClimberRenderer {
     ctx.globalAlpha = 1;
 
     // The Millennium pyramid side: a huge gold face in parallax.
-    // Its width shrinks with height, so you feel the summit
-    // approaching as the climb gets harder.
+    // It narrows a little as you climb (you feel the height) but
+    // never below 80% of its base, so the cards never float off the
+    // tower into empty sky.
     const parallax = 0.3;
     const APEX = 9000;
     const baseY = h + cam * parallax * scale - BOTTOM_PAD * scale * 0.3;
     const faceAt = (screenY: number) => {
       const heightAbove = (baseY - screenY) / scale;
-      return Math.max(0, 1 - heightAbove / APEX);
+      return Math.max(0.8, 1 - heightAbove / APEX);
     };
 
-    const topY = Math.max(-20, baseY - APEX * scale);
+    const topY = -20;
     const bottomY = h + 20;
     const cx = w * 0.5;
     const base = w * 0.46;
@@ -1204,15 +1223,21 @@ export class ClimberRenderer {
       ctx.lineTo(cx - halfBottom, bottomY);
       ctx.stroke();
 
-      // The capstone glows once the summit comes into view.
-      if (topY > -20) {
-        const glow = ctx.createRadialGradient(cx, topY, 0, cx, topY, w * 0.5);
-        glow.addColorStop(0, "rgba(255,216,110,.45)");
-        glow.addColorStop(1, "rgba(255,216,110,0)");
-        ctx.fillStyle = glow;
-        ctx.fillRect(0, topY - w * 0.5, w, w);
-      }
     }
+  }
+
+  /** How far the rising sand has pushed the camera above where your
+   *  own climb would put it (0 when it isn't pushing). */
+  private sandPush(
+    sim: ClimberSim
+  ) {
+    const stalled = sim.tick - sim.lastClimbTick > STALL_TICKS;
+
+    if (!stalled && tideSpeed(sim) <= 0) {
+      return 0;
+    }
+
+    return Math.max(0, sim.camBottom - (sim.maxY - CAMERA_OFFSET));
   }
 
   /** Milestones, passing a friend's height, the stall warning. */
@@ -1252,6 +1277,15 @@ export class ClimberRenderer {
     const stalled = sim.tick - sim.lastClimbTick;
 
     if (
+      !this.tideWarned &&
+      !sim.dead &&
+      this.sandPush(sim) > 30
+    ) {
+      this.tideWarned = true;
+      this.showToast("The sand is rising", "Keep moving up", "#ff9a7a", 1.6);
+    }
+
+    if (
       stalled > STALL_TICKS - 60 &&
       !this.stallWarned &&
       !sim.dead
@@ -1265,8 +1299,8 @@ export class ClimberRenderer {
 
   private drawMarkers(
     sy: (y: number) => number,
-    cam: number,
-    viewH: number
+    bottomWorld: number,
+    topWorld: number
   ) {
     const ctx = this.ctx;
     const step = 1000; // world units = 100 m
@@ -1275,9 +1309,9 @@ export class ClimberRenderer {
     ctx.font = `600 10px ${this.fontBody}`;
     ctx.textBaseline = "bottom";
 
-    const first = Math.ceil((cam - BOTTOM_PAD) / step) * step;
+    const first = Math.ceil(bottomWorld / step) * step;
 
-    for (let y = first; y < cam + viewH; y += step) {
+    for (let y = first; y < topWorld; y += step) {
       if (y <= 0) continue;
       const screenY = sy(y);
 
@@ -1302,7 +1336,7 @@ export class ClimberRenderer {
     // Your best (gold, label right) and friends (blue, label left).
     for (const marker of this.markers) {
       const markerY = marker.score * 10;
-      if (markerY < cam - BOTTOM_PAD || markerY > cam + viewH) continue;
+      if (markerY < bottomWorld || markerY > topWorld) continue;
       const screenY = sy(markerY);
       const best = marker.kind === "best";
       const passed = this.passed.has(marker);
@@ -1608,15 +1642,19 @@ export class ClimberRenderer {
 
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
-    ctx.font = `800 30px ${this.fontDisplay}`;
+    // Scales down in a narrow column (landscape phone) and never runs
+    // into the pause button.
+    const scoreSize = Math.round(Math.max(20, Math.min(30, this.cssW * 0.08)));
+    const scoreMaxW = this.cssW - 16 - 64;
+    ctx.font = `800 ${scoreSize}px ${this.fontDisplay}`;
     ctx.fillStyle = "rgba(0,0,0,.45)";
-    ctx.fillText(`${score.toLocaleString("en-US")}`, 17, top + 2);
+    ctx.fillText(`${score.toLocaleString("en-US")}`, 17, top + 2, scoreMaxW);
     ctx.fillStyle = COLORS.goldBright;
-    ctx.fillText(`${score.toLocaleString("en-US")}`, 16, top);
+    ctx.fillText(`${score.toLocaleString("en-US")}`, 16, top, scoreMaxW);
 
     ctx.font = `600 11px ${this.fontBody}`;
     ctx.fillStyle = "rgba(236,230,214,.7)";
-    ctx.fillText("METRES", 17, top + 34);
+    ctx.fillText("METRES", 17, top + scoreSize + 4);
 
     // Lives (Monster Reborn ankhs).
     let x = 16;
@@ -1655,8 +1693,10 @@ export class ClimberRenderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  /** One short message at a time: fades in fast (120 ms, ease-out),
-   *  holds, fades out (300 ms). Reduced motion: fade only. */
+  /** One short message at a time, as a slim pill inside the HUD band
+   *  (the ball never goes there, and it covers almost none of the
+   *  platforms ahead). Fades in fast (120 ms, ease-out), holds, fades
+   *  out (300 ms). Reduced motion: fade only. */
   private drawToast(
     insetTop: number
   ) {
@@ -1672,21 +1712,29 @@ export class ClimberRenderer {
 
     if (alpha <= 0) return;
 
-    const rise = this.reducedMotion ? 0 : (1 - enter) * 8;
-    const cx = this.cssW / 2;
-    const y = Math.max(insetTop + 88, this.cssH * 0.17) + rise;
+    const rise = this.reducedMotion ? 0 : (1 - enter) * 6;
+    const h = 26;
+    const y = insetTop + 80 + rise;
+    const maxW = this.cssW - 24;
 
-    ctx.font = `800 17px ${this.fontDisplay}`;
+    const titleFont = `800 13px ${this.fontDisplay}`;
+    const detailFont = `600 11px ${this.fontBody}`;
+    const detail = toast.detail ? `  ·  ${toast.detail}` : "";
+
+    ctx.font = titleFont;
     const titleW = ctx.measureText(toast.title).width;
-    ctx.font = `600 11px ${this.fontBody}`;
-    const detailW = toast.detail ? ctx.measureText(toast.detail).width : 0;
+    ctx.font = detailFont;
+    let detailW = detail ? ctx.measureText(detail).width : 0;
 
-    const w = Math.min(this.cssW - 32, Math.max(titleW, detailW) + 32);
-    const h = toast.detail ? 46 : 32;
+    // Too narrow for both (landscape phone): title only.
+    if (titleW + detailW + 28 > maxW) detailW = 0;
+
+    const w = Math.min(maxW, titleW + detailW + 28);
+    const x = (this.cssW - w) / 2;
 
     ctx.globalAlpha = alpha;
-    roundRect(ctx, cx - w / 2, y, w, h, h / 2);
-    ctx.fillStyle = "rgba(6,9,22,.78)";
+    roundRect(ctx, x, y, w, h, h / 2);
+    ctx.fillStyle = "rgba(6,9,22,.8)";
     ctx.fill();
     ctx.lineWidth = 1;
     ctx.strokeStyle = toast.color;
@@ -1694,19 +1742,19 @@ export class ClimberRenderer {
     ctx.stroke();
     ctx.globalAlpha = alpha;
 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    ctx.font = `800 17px ${this.fontDisplay}`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.font = titleFont;
     ctx.fillStyle = toast.color;
-    ctx.fillText(toast.title, cx, y + 7, w - 20);
+    ctx.fillText(toast.title, x + 14, y + h / 2 + 0.5, w - 28);
 
-    if (toast.detail) {
-      ctx.font = `600 11px ${this.fontBody}`;
+    if (detailW > 0) {
+      ctx.font = detailFont;
       ctx.fillStyle = "rgba(236,230,214,.85)";
-      ctx.fillText(toast.detail, cx, y + 28, w - 20);
+      ctx.fillText(detail, x + 14 + titleW, y + h / 2 + 0.5);
     }
 
-    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
     ctx.globalAlpha = 1;
   }
 }

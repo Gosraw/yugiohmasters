@@ -1,0 +1,201 @@
+/* =========================================================
+   MERGE OF RA - board, tiles and effects.
+   Tiles are absolutely positioned and moved with a transform,
+   so a slide is one GPU transition (110 ms). Merges pop and
+   spawns scale in after the slide. Reduced motion: no slides,
+   no pops; floaters / banners only fade.
+   ========================================================= */
+
+.board {
+  container-type: inline-size;
+  position: relative;
+  aspect-ratio: 1 / 1;
+  --g: 2.6cqw;
+  --cell: calc((100cqw - 5 * var(--g)) / 4);
+  --slide: 110ms;
+  border-radius: 6cqw;
+  padding: 0;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgb(242 196 90 / .1), transparent 60%),
+    linear-gradient(170deg, #121633, #0a0c1f 70%);
+  box-shadow:
+    0 0 0 1px rgb(242 196 90 / .28),
+    inset 0 0 0 1px rgb(255 255 255 / .04),
+    inset 0 10px 30px rgb(0 0 0 / .45),
+    0 24px 60px rgb(0 0 0 / .55);
+}
+
+.slot {
+  position: absolute;
+  left: var(--g);
+  top: var(--g);
+  width: var(--cell);
+  height: var(--cell);
+  border-radius: 3.4cqw;
+  background: rgb(255 255 255 / .035);
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / .5), inset 0 0 0 1px rgb(242 196 90 / .07);
+  transform: translate(
+    calc(var(--c) * (100% + var(--g))),
+    calc(var(--r) * (100% + var(--g)))
+  );
+}
+
+.tile {
+  position: absolute;
+  left: var(--g);
+  top: var(--g);
+  width: var(--cell);
+  height: var(--cell);
+  z-index: 2;
+  transform: translate(
+    calc(var(--c) * (100% + var(--g))),
+    calc(var(--r) * (100% + var(--g)))
+  );
+  transition: transform var(--slide) cubic-bezier(.25, .8, .3, 1);
+  will-change: transform;
+}
+
+.gone {
+  z-index: 1;
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .4cqw;
+  border-radius: 3.4cqw;
+  border: 1px solid var(--rim);
+  background: linear-gradient(160deg, var(--from), var(--to));
+  color: var(--ink);
+  box-shadow:
+    inset 0 1.2cqw 1.6cqw rgb(255 255 255 / .12),
+    inset 0 -1cqw 1.6cqw rgb(0 0 0 / .25),
+    0 0 calc(var(--glow) * 5cqw) rgb(255 180 70 / calc(var(--glow) * .55));
+}
+
+.icon {
+  width: 52%;
+  height: 52%;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / .35));
+}
+
+.value {
+  font-weight: 900;
+  line-height: 1;
+  font-size: 4.2cqw;
+  letter-spacing: .02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.value4 {
+  font-size: 3.6cqw;
+}
+
+.value5 {
+  font-size: 3cqw;
+}
+
+.merged .face {
+  animation: merge-pop 190ms cubic-bezier(.2, .9, .3, 1.3) var(--slide) both;
+}
+
+.spawn .face {
+  animation: merge-spawn 170ms cubic-bezier(.2, .8, .3, 1) calc(var(--slide) + 20ms) both;
+}
+
+.rewind .face {
+  animation: merge-fade 220ms ease-out both;
+}
+
+.floater {
+  animation: merge-float 820ms cubic-bezier(.2, .8, .3, 1) both;
+}
+
+.combo {
+  animation: merge-combo 1100ms cubic-bezier(.2, .9, .3, 1.2) both;
+}
+
+.banner {
+  animation: merge-banner 1900ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.result {
+  animation: merge-result 320ms cubic-bezier(.2, .8, .2, 1) 120ms both;
+}
+
+.sun {
+  animation: merge-sun 9s ease-in-out infinite alternate;
+}
+
+@keyframes merge-pop {
+  0% { transform: scale(.55); opacity: 0; }
+  1% { opacity: 1; }
+  55% { transform: scale(1.16); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes merge-spawn {
+  0% { transform: scale(.2); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes merge-fade {
+  0% { opacity: .2; filter: brightness(1.8); }
+  100% { opacity: 1; filter: none; }
+}
+
+@keyframes merge-float {
+  0% { transform: translateY(6px) scale(.9); opacity: 0; }
+  15% { transform: translateY(0) scale(1.05); opacity: 1; }
+  100% { transform: translateY(-34px) scale(1); opacity: 0; }
+}
+
+@keyframes merge-combo {
+  0% { transform: scale(.6); opacity: 0; }
+  14% { transform: scale(1.08); opacity: 1; }
+  24% { transform: scale(1); }
+  80% { opacity: 1; }
+  100% { transform: translateY(-6px); opacity: 0; }
+}
+
+@keyframes merge-banner {
+  0% { transform: translateY(14px) scale(.92); opacity: 0; }
+  12% { transform: translateY(0) scale(1.02); opacity: 1; }
+  20% { transform: scale(1); }
+  82% { opacity: 1; transform: translateY(0); }
+  100% { transform: translateY(-10px); opacity: 0; }
+}
+
+@keyframes merge-result {
+  0% { transform: translateY(24px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes merge-sun {
+  0% { opacity: .55; transform: scale(1); }
+  100% { opacity: .8; transform: scale(1.06); }
+}
+
+@keyframes merge-fade-only {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board { --slide: 0ms; }
+  .tile { transition: none; }
+  .merged .face,
+  .spawn .face,
+  .rewind .face,
+  .sun,
+  .result { animation: none; }
+  .floater,
+  .combo,
+  .banner { animation-name: merge-fade-only; }
+}

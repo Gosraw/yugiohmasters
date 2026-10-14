@@ -1,0 +1,363 @@
+/* =========================================================
+   TOMB BLOCKS (src/components/games/tomb-play.tsx)
+
+   Kept in a CSS module (not globals.css) so this game's styles
+   never collide with the other mini games. Sizes come from the
+   --cell custom property the play view sets from its container.
+   ========================================================= */
+
+/* ---------- the tomb floor ---------- */
+
+.board {
+  position: relative;
+  width: calc(var(--cell) * 8);
+  height: calc(var(--cell) * 8);
+  border-radius: 14px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(242 196 90 / .07), transparent 60%),
+    #070a1a;
+  box-shadow:
+    0 0 0 1px rgb(242 196 90 / .45),
+    0 0 0 5px rgb(10 12 28),
+    0 0 0 6px rgb(242 196 90 / .22),
+    0 18px 50px rgb(0 0 0 / .65),
+    0 0 70px rgb(242 196 90 / .08);
+  touch-action: none;
+}
+
+.boardShake {
+  animation: tb-shake 360ms cubic-bezier(.36, .07, .19, .97) both;
+}
+
+.cornerGlyph {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid rgb(242 196 90 / .7);
+  transform: rotate(45deg);
+  background: #0a0d20;
+  pointer-events: none;
+}
+
+.tile {
+  position: absolute;
+  width: var(--cell);
+  height: var(--cell);
+  padding: 1.5px;
+}
+
+.floor {
+  width: 100%;
+  height: 100%;
+  border-radius: 16%;
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / .035), transparent 55%),
+    linear-gradient(160deg, #161c3a, #0c1027);
+  box-shadow:
+    inset 0 0 0 1px rgb(242 196 90 / .07),
+    inset 0 -2px 4px rgb(0 0 0 / .35);
+}
+
+/* An empty tile in a row / column that is one block from full. */
+.floorHint {
+  box-shadow:
+    inset 0 0 0 1px rgb(242 196 90 / .35),
+    inset 0 0 12px rgb(242 196 90 / .14);
+}
+
+/* ---------- sandstone blocks ---------- */
+
+.block {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 16%;
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in oklab, var(--tint) 45%, #f7e2b4) 0%,
+      color-mix(in oklab, var(--tint) 62%, #c99a52) 52%,
+      color-mix(in oklab, var(--tint) 55%, #3b220c) 100%
+    );
+  box-shadow:
+    inset 0 0 0 1px rgb(255 228 150 / .8),
+    inset 0 2px 0 rgb(255 255 255 / .35),
+    inset 0 -3px 0 rgb(0 0 0 / .28),
+    0 2px 5px rgb(0 0 0 / .45);
+}
+
+/* Gold glyph edge: an engraved inner frame ... */
+.block::before {
+  content: "";
+  position: absolute;
+  inset: 14%;
+  border-radius: 12%;
+  border: 1px solid rgb(255 232 165 / .42);
+  box-shadow: inset 0 1px 0 rgb(0 0 0 / .18);
+}
+
+/* ... and a small gold diamond glyph in the middle. */
+.block::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22%;
+  height: 22%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1.5px solid rgb(255 236 175 / .7);
+  border-radius: 2px;
+  background: rgb(255 236 175 / .12);
+}
+
+.ghost {
+  opacity: .5;
+  filter: saturate(.8);
+  box-shadow: inset 0 0 0 1.5px rgb(255 228 150 / .9);
+}
+
+.ghostBad {
+  opacity: .28;
+  filter: grayscale(1) brightness(.8);
+}
+
+/* Blocks that the hovered placement would clear. */
+.willClear {
+  filter: brightness(1.28) saturate(1.1);
+  box-shadow:
+    inset 0 0 0 1.5px #fff3c8,
+    0 0 12px rgb(255 214 120 / .75);
+}
+
+/* Blocks in a row / column that is one block from full. */
+.nearFull {
+  box-shadow:
+    inset 0 0 0 1px rgb(255 228 150 / .9),
+    inset 0 2px 0 rgb(255 255 255 / .35),
+    inset 0 -3px 0 rgb(0 0 0 / .28),
+    0 0 10px rgb(255 205 100 / .45);
+  animation: tb-near 1.6s ease-in-out infinite alternate;
+}
+
+.thud {
+  animation: tb-thud 260ms cubic-bezier(.2, .9, .3, 1.25) both;
+}
+
+.dealIn {
+  animation: tb-deal 300ms cubic-bezier(.2, .9, .3, 1.2) both;
+}
+
+/* Floating piece under / above the finger. */
+.dragging {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  pointer-events: none;
+  filter: drop-shadow(0 14px 18px rgb(0 0 0 / .55));
+  will-change: transform;
+}
+
+.dragInner {
+  animation: tb-lift 120ms ease-out both;
+}
+
+/* ---------- line clear: shimmer sweep + shard burst ---------- */
+
+.clearCell {
+  position: absolute;
+  width: var(--cell);
+  height: var(--cell);
+  padding: 1.5px;
+  pointer-events: none;
+  animation: tb-vanish 520ms cubic-bezier(.4, 0, .6, 1) both;
+}
+
+.clearCell .block {
+  filter: brightness(1.5) saturate(1.2);
+}
+
+.sweep {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 10px;
+}
+
+.sweep::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 236 170 / 0) 30%,
+    rgb(255 244 205 / .95) 50%,
+    rgb(255 236 170 / 0) 70%,
+    transparent 100%
+  );
+  animation: tb-sweep-x 460ms ease-out both;
+}
+
+.sweepCol::before {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgb(255 236 170 / 0) 30%,
+    rgb(255 244 205 / .95) 50%,
+    rgb(255 236 170 / 0) 70%,
+    transparent 100%
+  );
+  animation-name: tb-sweep-y;
+}
+
+.shard {
+  position: absolute;
+  width: calc(var(--cell) * .22);
+  height: calc(var(--cell) * .22);
+  border-radius: 2px;
+  pointer-events: none;
+  background: color-mix(in oklab, var(--tint) 50%, #ffe7a8);
+  box-shadow: 0 0 6px rgb(255 214 120 / .7);
+  animation: tb-shard 620ms cubic-bezier(.15, .7, .3, 1) both;
+}
+
+/* ---------- callouts ---------- */
+
+.floater {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: #fff3c8;
+  text-shadow: 0 2px 10px rgb(0 0 0 / .7), 0 0 14px rgb(242 196 90 / .55);
+  animation: tb-float 900ms cubic-bezier(.2, .8, .2, 1) both;
+  white-space: nowrap;
+}
+
+.banner {
+  animation: tb-banner 1100ms cubic-bezier(.2, .9, .3, 1.1) both;
+}
+
+.stuck {
+  animation: tb-stuck 420ms ease-in-out both;
+}
+
+/* ---------- keyframes ---------- */
+
+@keyframes tb-thud {
+  0% { transform: scale(1.18); filter: brightness(1.45); }
+  60% { transform: scale(.96); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes tb-deal {
+  0% { transform: translateY(14px) scale(.7); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes tb-lift {
+  from { transform: scale(.6); opacity: .6; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes tb-near {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.18); }
+}
+
+@keyframes tb-vanish {
+  0% { transform: scale(1); opacity: 1; }
+  35% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(.2) rotate(8deg); opacity: 0; }
+}
+
+@keyframes tb-sweep-x {
+  from { transform: translateX(-70%); }
+  to { transform: translateX(70%); }
+}
+
+@keyframes tb-sweep-y {
+  from { transform: translateY(-70%); }
+  to { transform: translateY(70%); }
+}
+
+@keyframes tb-shard {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  100% {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(.3);
+    opacity: 0;
+  }
+}
+
+@keyframes tb-float {
+  0% { transform: translate(-50%, -30%) scale(.7); opacity: 0; }
+  20% { transform: translate(-50%, -60%) scale(1.1); opacity: 1; }
+  100% { transform: translate(-50%, -190%) scale(1); opacity: 0; }
+}
+
+@keyframes tb-banner {
+  0% { transform: scale(.55); opacity: 0; }
+  18% { transform: scale(1.1); opacity: 1; }
+  30% { transform: scale(1); }
+  78% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.04) translateY(-10px); opacity: 0; }
+}
+
+@keyframes tb-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, 2px); }
+  40% { transform: translate(4px, -2px); }
+  60% { transform: translate(-3px, -1px); }
+  80% { transform: translate(2px, 1px); }
+}
+
+@keyframes tb-stuck {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boardShake,
+  .nearFull,
+  .thud,
+  .dealIn,
+  .dragInner,
+  .stuck {
+    animation: none;
+  }
+
+  .clearCell {
+    animation: tb-fade 300ms ease-out both;
+  }
+
+  .sweep::before,
+  .shard {
+    display: none;
+  }
+
+  .floater {
+    animation: tb-fade 900ms ease-out both;
+    transform: translate(-50%, -80%);
+  }
+
+  .banner {
+    animation: tb-fade-banner 1100ms ease-out both;
+  }
+}
+
+@keyframes tb-fade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes tb-fade-banner {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}

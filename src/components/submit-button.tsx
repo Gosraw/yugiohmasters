@@ -98,7 +98,7 @@ export function SubmitButton({
           />
 
           {pendingLabel ??
-            "Even geduld..."}
+            "Please wait..."}
         </span>
       ) : (
         children

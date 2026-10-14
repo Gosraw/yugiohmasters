@@ -29,6 +29,10 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  LEAGUE_TIME_ZONE,
+} from "@/lib/format-date";
+
+import {
   requestAchievementClaim,
   approveAchievementClaim,
   rejectAchievementClaim,
@@ -119,6 +123,7 @@ function formatDate(value: string) {
   ).toLocaleDateString(
     "en-US",
     {
+      timeZone: LEAGUE_TIME_ZONE,
       month: "short",
       day: "numeric",
     }

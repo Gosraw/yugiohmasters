@@ -410,7 +410,7 @@ export function RoundPlayFlow({
     if (
       kind === "dispute" &&
       !window.confirm(
-        "Dispute this result? A league admin will decide who won."
+        "Dispute this result? Then agree on the winner together, or a league admin who isn't in this duel decides."
       )
     ) {
       return;
@@ -662,7 +662,7 @@ export function RoundPlayFlow({
               : saved.kind === "awaiting"
                 ? `Sent! Waiting for ${saved.opponentName} to confirm.`
                 : saved.kind === "disputed"
-                  ? "Result disputed. A league admin will decide who won."
+                  ? "Result disputed. Agree on the winner together, or a league admin who isn't in this duel decides."
                   : saved.kind === "withdrawn"
                     ? "Result withdrawn. Tap the winner again when you're ready."
                     : saved.kind === "confirmed"
@@ -834,7 +834,12 @@ export function RoundPlayFlow({
                 {focused.submittedById === currentUserId
                   ? "You said "
                   : `${nameOf(focused, focused.submittedById)} says `}
-                {nameOf(focused, focused.winnerId)} won
+                {focused.winnerId === currentUserId
+                  ? "you"
+                  : focused.winnerId === focused.submittedById
+                    ? "they"
+                    : nameOf(focused, focused.winnerId)}{" "}
+                won
                 {matchFormat === "best_of_3"
                   ? ` 2–${focused.loserScore}`
                   : ""}
@@ -925,7 +930,7 @@ export function RoundPlayFlow({
                 <p className="mt-4 rounded-xl border border-red-400/25 bg-red-400/[0.06] px-3 py-2.5 text-center text-xs font-bold text-red-200">
                   {focused.isReferee
                     ? "Disputed — tap the right winner. As admin, your decision is final."
-                    : "Disputed — a league admin will decide. Or send a new result for your opponent to confirm."}
+                    : "Disputed — agree on the winner: tap it and your opponent confirms. A league admin who isn't in this duel can also decide."}
                 </p>
               )}
 

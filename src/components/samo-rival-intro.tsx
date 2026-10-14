@@ -42,14 +42,14 @@ export function SamoRivalIntro({
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-black/95 px-4 py-8 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
+    <div className="fixed inset-0 z-[9999] flex overflow-y-auto bg-black/95 px-4 py-8 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-1/2 top-[-180px] h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-red-600/10 blur-[120px]" />
 
         <div className="absolute bottom-[-200px] left-1/2 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-amber-400/[0.07] blur-[120px]" />
       </div>
 
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-[30px] border border-red-400/20 bg-gradient-to-b from-red-950/40 via-zinc-950 to-black shadow-[0_0_120px_rgba(239,68,68,0.12)]">
+      <div className="relative m-auto w-full max-w-2xl overflow-hidden rounded-[30px] border border-red-400/20 bg-gradient-to-b from-red-950/40 via-zinc-950 to-black shadow-[0_0_120px_rgba(239,68,68,0.12)]">
         <div className="h-1 w-full bg-gradient-to-r from-transparent via-red-400/70 to-transparent" />
 
         <button

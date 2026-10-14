@@ -14,6 +14,13 @@ import {
 // season competition is running.
 // =========================================================
 
+/** What the viewer's next season duel needs from them. */
+export type HomeRoundAction =
+  | "tap"
+  | "confirm"
+  | "sent"
+  | "disputed";
+
 export type HomeRoundState =
   | {
       state: "none";
@@ -30,9 +37,24 @@ export type HomeRoundState =
       totalRounds: number;
       myName: string;
       opponentName: string | null;
+      action?: HomeRoundAction;
       duelsPlayed: number;
       duelsInRound: number;
     };
+
+const ACTION_LABEL: Record<HomeRoundAction, string> = {
+  tap: "Tap the winner →",
+  confirm: "Confirm the result →",
+  sent: "Waiting for confirm",
+  disputed: "Disputed — settle it →",
+};
+
+const ACTION_ARIA: Record<HomeRoundAction, string> = {
+  tap: "Open the round to tap the winner.",
+  confirm: "Your opponent sent a result. Open the round to confirm it.",
+  sent: "You sent the result. Waiting for your opponent to confirm.",
+  disputed: "This duel is disputed. Open the round to settle it.",
+};
 
 function Duelist({
   name,
@@ -99,7 +121,7 @@ export function HomeThisRound({
       {round.state === "play" && round.opponentName ? (
         <Link
           href={href}
-          aria-label={`${roundLabel}: you vs ${round.opponentName}. Open the round to tap the winner.`}
+          aria-label={`${roundLabel}: you vs ${round.opponentName}. ${ACTION_ARIA[round.action ?? "tap"]}`}
           className="group block rounded-xl transition-transform active:scale-[0.99]"
         >
           <span className="mt-1 flex items-center justify-between gap-2">
@@ -123,7 +145,7 @@ export function HomeThisRound({
             </span>
 
             <span className="font-semibold text-gold transition-colors group-hover:text-gold-bright">
-              Tap the winner →
+              {ACTION_LABEL[round.action ?? "tap"]}
             </span>
           </span>
         </Link>

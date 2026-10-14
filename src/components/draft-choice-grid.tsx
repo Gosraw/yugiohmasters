@@ -238,6 +238,7 @@ export function DraftChoiceGrid({
                 onClick={() =>
                   setDetailCard(null)
                 }
+                aria-label="Close"
                 className="rounded-xl border border-white/10 p-2 text-zinc-400 transition hover:bg-white/5 hover:text-white"
               >
                 <X size={20} />

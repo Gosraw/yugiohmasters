@@ -26,6 +26,10 @@ import {
 } from "@/lib/league-stats";
 
 import {
+  fetchAllPages,
+} from "@/lib/supabase/paginate";
+
+import {
   batchGetCardAvailability,
   splitCandidatesByAvailability,
   type CardAvailability,
@@ -642,17 +646,24 @@ export async function getCardSynergyInsight(
   // tradeTargets membership. Also doubles as the bounded OWNED
   // candidate source for the live edge supplement below - this
   // player's own collection, never the full catalog.
-  const { data: ownedRows, error: ownedRowsError } = await supabase
-    .from("card_instances")
-    .select("card_catalog_id")
-    .eq("current_owner_id", userId);
-
-  if (ownedRowsError) {
+  // Paged: a big collection is more than PostgREST's 1000-row cap.
+  let ownedRows: { card_catalog_id: string }[] = [];
+  try {
+    ownedRows = await fetchAllPages<{ card_catalog_id: string }>(
+      (from, to) =>
+        supabase
+          .from("card_instances")
+          .select("card_catalog_id")
+          .eq("current_owner_id", userId)
+          .order("id")
+          .range(from, to)
+    );
+  } catch (ownedRowsError) {
     console.error("[card-synergy] owned card_instances fetch failed", ownedRowsError);
   }
 
   const ownedCounts = new Map<string, number>();
-  for (const row of (ownedRows ?? []) as { card_catalog_id: string }[]) {
+  for (const row of ownedRows) {
     ownedCounts.set(
       row.card_catalog_id,
       (ownedCounts.get(row.card_catalog_id) ?? 0) + 1

@@ -72,6 +72,21 @@ export function computeAttentionItems(
         });
       }
 
+      // A disputed season duel blocks its round. The players can
+      // settle it themselves (one sends the right winner, the other
+      // confirms); a league admin who is NOT in the duel can also
+      // decide. An admin can never referee their own duel, so this
+      // is the only nudge they get for it.
+      if (match.status === "disputed") {
+        items.push({
+          id: `match-disputed-${match.id}`,
+          href: `/competitions/${match.competition_id}/round`,
+          label: "Season duel disputed",
+          hint: "Agree on the winner: tap it again and let your opponent confirm.",
+          kind: "dispute",
+        });
+      }
+
       continue;
     }
 
@@ -130,7 +145,7 @@ export async function getAttentionItems(
       .from("matches")
       .select("id,status,player_one_id,player_two_id,result_submitted_by,competition_id")
       .eq("league_id", leagueId)
-      .in("status", ["pending", "result_submitted"])
+      .in("status", ["pending", "result_submitted", "disputed"])
       .or(`player_one_id.eq.${userId},player_two_id.eq.${userId}`),
     supabase
       .from("trades")
@@ -194,12 +209,21 @@ export async function getDisputedDuelAttentionItems(
 
   if (error || !data || data.length === 0) return [];
 
-  const rows = data as {
+  // An admin who plays in a disputed SEASON duel is not its referee
+  // (202610121800_season_result_confirmation): their own "Season
+  // duel disputed" item comes from computeAttentionItems instead.
+  const rows = (data as {
     id: string;
     player_one_id: string;
     player_two_id: string;
     competition_id: string | null;
-  }[];
+  }[]).filter(
+    (row) =>
+      !row.competition_id ||
+      (row.player_one_id !== userId && row.player_two_id !== userId)
+  );
+
+  if (rows.length === 0) return [];
 
   const ids = [
     ...new Set(rows.flatMap((row) => [row.player_one_id, row.player_two_id])),

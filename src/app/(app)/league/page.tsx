@@ -1171,7 +1171,7 @@ export default async function LeaguePage() {
                         </p>
 
                         <p className="text-[8px] font-black uppercase tracking-wider text-zinc-600">
-                          LP
+                          PTS
                         </p>
                       </div>
                     </div>
@@ -1674,7 +1674,7 @@ export default async function LeaguePage() {
               </p>
 
               <p className="mt-3 text-xs font-bold text-zinc-600">
-                Win = 3 LP · Draw = 1 LP · Loss = 0 LP · Practice Duels do not affect League standings.
+                Win = 3 PTS · Draw = 1 PTS · Loss = 0 PTS · Practice duels do not affect the standings.
               </p>
             </div>
           </div>

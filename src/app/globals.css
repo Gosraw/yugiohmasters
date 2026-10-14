@@ -189,7 +189,6 @@ body::after {
   border-radius: var(--dc-radius-md);
   border: 1px solid rgb(242 196 90 / .18);
   background: rgb(8 12 32 / .7);
-  padding: 0.85rem 1rem;
   color: var(--dc-ink);
   outline: none;
   transition: border-color .15s ease, box-shadow .15s ease;
@@ -202,6 +201,16 @@ body::after {
      one rule fixes every .field input app-wide instead of
      patching each one by hand. */
   font-size: 1rem;
+}
+
+/* The padding lives in a layer (unlike the rest of .field) so a
+   padding utility on the same element still wins - e.g. pl-10
+   on a search box with a magnifier icon, which the unlayered
+   padding used to override (the icon sat on top of the text). */
+@layer components {
+  .field {
+    padding: 0.85rem 1rem;
+  }
 }
 
 .field::placeholder {

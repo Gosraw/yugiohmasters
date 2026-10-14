@@ -23,6 +23,10 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  formatLeagueDate,
+} from "@/lib/format-date";
+
 export const dynamic =
   "force-dynamic";
 
@@ -152,11 +156,7 @@ function playerName(profile: Profile | undefined) {
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return formatLeagueDate(value);
 }
 
 // =========================================================

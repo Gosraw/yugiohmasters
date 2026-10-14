@@ -55,11 +55,13 @@ function createMockSupabase(initialTables: Record<string, Row[]>) {
   function builder(table: string) {
     const filters: Record<string, unknown> = {};
     let limitN: number | null = null;
+    let rangeN: [number, number] | null = null;
 
     const resolve = (): Row[] => {
       calls.push({ table, filters: { ...filters } });
       let result = applyFilters(tables[table] ?? [], filters);
       if (limitN != null) result = result.slice(0, limitN);
+      if (rangeN != null) result = result.slice(rangeN[0], rangeN[1] + 1);
       return result;
     };
 
@@ -84,6 +86,10 @@ function createMockSupabase(initialTables: Record<string, Row[]>) {
       },
       limit(n: number) {
         limitN = n;
+        return api;
+      },
+      range(from: number, to: number) {
+        rangeN = [from, to];
         return api;
       },
       single() {

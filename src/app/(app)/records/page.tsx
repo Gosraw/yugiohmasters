@@ -18,6 +18,10 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  fetchAllPages,
+} from "@/lib/supabase/paginate";
+
+import {
   computeBiggestCollectionRecord,
   computeBiggestRivalryRecord,
   computeCurrentStreakRecord,
@@ -109,17 +113,19 @@ export default async function RecordBookPage() {
   // COLLECTION SIZES (one query, grouped client-side)
   // =======================================================
 
-  const { data: instanceData, error: instanceError } = await supabase
-    .from("card_instances")
-    .select("current_owner_id")
-    .eq("league_id", leagueId);
-
-  if (instanceError) {
-    throw new Error(instanceError.message);
-  }
+  // Paged: a league holds far more than PostgREST's 1000-row cap.
+  const instanceData = await fetchAllPages<{ current_owner_id: string }>(
+    (from, to) =>
+      supabase
+        .from("card_instances")
+        .select("current_owner_id")
+        .eq("league_id", leagueId)
+        .order("id")
+        .range(from, to)
+  );
 
   const collectionCounts = new Map<string, number>();
-  for (const row of (instanceData ?? []) as { current_owner_id: string }[]) {
+  for (const row of instanceData) {
     collectionCounts.set(
       row.current_owner_id,
       (collectionCounts.get(row.current_owner_id) ?? 0) + 1

@@ -61,7 +61,7 @@ export default async function DuelCompanionPage() {
           Back Home
         </Link>
 
-        <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.18em] text-amber-200">
+        <div className="mt-4 flex w-fit items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.18em] text-amber-200">
           <Swords size={12} />
           Duel Companion
         </div>

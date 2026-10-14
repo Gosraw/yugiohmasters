@@ -668,6 +668,7 @@ export default async function TradeBinderDetailPage({
 
                 <SubmitButton
                   pendingLabel="..."
+                  title={isWished ? "Remove from wishlist" : "Add to wishlist"}
                   className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border backdrop-blur-sm transition-all ${
                     isWished
                       ? "border-rose-400/50 bg-rose-400/25 text-rose-200"

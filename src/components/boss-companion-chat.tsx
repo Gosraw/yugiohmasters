@@ -248,6 +248,7 @@ export function BossCompanionChat({
             pending ||
             !input.trim()
           }
+          aria-label="Send"
           className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-violet-300/25 bg-violet-300/10 text-violet-200 transition hover:bg-violet-300/20 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Send size={14} />

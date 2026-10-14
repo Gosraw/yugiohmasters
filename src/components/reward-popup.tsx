@@ -534,7 +534,15 @@ function RewardPopupInner({
     );
   }, []);
 
-  if (!current) {
+  // Hold the queue during a pack opening: the pop-ups sit on top of
+  // the reveal (and a Legendary cinematic) and steal its taps. They
+  // show as soon as the player leaves the opening page.
+  if (
+    !current ||
+    pathname.startsWith(
+      "/shop/opening/"
+    )
+  ) {
     return null;
   }
 

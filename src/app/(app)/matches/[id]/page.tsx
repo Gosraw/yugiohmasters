@@ -1790,9 +1790,11 @@ export default async function MatchDetailPage({
                           </p>
 
                           <p className="mt-1 text-lg font-black">
-                            {currentProfile
-                              ?.duel_points ??
-                              0}{" "}
+                            {(
+                              currentProfile
+                                ?.duel_points ??
+                              0
+                            ).toLocaleString("en-US")}{" "}
                             DP
                           </p>
                         </div>

@@ -2,6 +2,10 @@ import type {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  fetchAllPages,
+} from "@/lib/supabase/paginate";
+
 // =========================================================
 // SHARED LEAGUE STATS
 //
@@ -138,18 +142,19 @@ export async function getCompletedLeagueMatches(
   supabase: SupabaseClient,
   leagueId: string
 ): Promise<StatsMatch[]> {
-  const { data, error } = await supabase
-    .from("matches")
-    .select(MATCH_COLUMNS)
-    .eq("league_id", leagueId)
-    .eq("status", "completed")
-    .order("completed_at", { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data ?? []) as StatsMatch[];
+  // Paged: a league's whole duel history passes PostgREST's
+  // 1000-row cap within a season or two (records/rivalries would
+  // silently miss the oldest duels).
+  return fetchAllPages<StatsMatch>((from, to) =>
+    supabase
+      .from("matches")
+      .select(MATCH_COLUMNS)
+      .eq("league_id", leagueId)
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, to)
+  );
 }
 
 export function resultFor(

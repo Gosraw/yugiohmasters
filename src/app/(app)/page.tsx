@@ -18,6 +18,7 @@ import {
 
 import {
   HomeThisRound,
+  type HomeRoundAction,
   type HomeRoundState,
 } from "@/components/home-this-round";
 
@@ -103,6 +104,7 @@ type RoundMatchRow = {
   player_two_id: string;
   status: string;
   round_number: number | null;
+  result_submitted_by: string | null;
 };
 
 function nameOf(
@@ -199,7 +201,7 @@ async function loadThisRound(
   } = await supabase
     .from("matches")
     .select(
-      "id,player_one_id,player_two_id,status,round_number"
+      "id,player_one_id,player_two_id,status,round_number,result_submitted_by"
     )
     .eq(
       "competition_id",
@@ -246,13 +248,40 @@ async function loadThisRound(
         "completed"
     ).length;
 
-  const myOpen =
-    roundMatches.find(
+  const myUnfinished =
+    roundMatches.filter(
       (match) =>
         match.status !== "completed" &&
         (match.player_one_id === userId ||
           match.player_two_id === userId)
-    ) ?? null;
+    );
+
+  // What needs ME first: a result to confirm, then a duel to tap
+  // (or a disputed one to settle), and only then my own result that
+  // waits for the opponent.
+  const myOpen =
+    myUnfinished.find(
+      (match) =>
+        match.status === "result_submitted" &&
+        match.result_submitted_by !== userId
+    ) ??
+    myUnfinished.find(
+      (match) =>
+        match.status !== "result_submitted"
+    ) ??
+    myUnfinished[0] ??
+    null;
+
+  const myAction: HomeRoundAction =
+    !myOpen
+      ? "tap"
+      : myOpen.status === "disputed"
+        ? "disputed"
+        : myOpen.status === "result_submitted"
+          ? myOpen.result_submitted_by === userId
+            ? "sent"
+            : "confirm"
+          : "tap";
 
   let opponentName: string | null =
     null;
@@ -295,6 +324,7 @@ async function loadThisRound(
       ),
     myName,
     opponentName,
+    action: myAction,
     duelsPlayed,
     duelsInRound:
       roundMatches.length ||
@@ -373,7 +403,7 @@ export default async function HomePage() {
           )
           .in(
             "status",
-            ["pending", "result_submitted"]
+            ["pending", "result_submitted", "disputed"]
           )
           .or(
             `player_one_id.eq.${userId},player_two_id.eq.${userId}`

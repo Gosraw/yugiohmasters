@@ -40,8 +40,8 @@ import {
 } from "@/lib/competitions/season";
 
 import {
-  SubmitButton,
-} from "@/components/submit-button";
+  ConfirmSubmitButton,
+} from "@/components/confirm-submit-button";
 
 export const dynamic =
   "force-dynamic";
@@ -426,13 +426,14 @@ export default async function CompetitionsPage() {
           />
         </label>
 
-        <SubmitButton
+        <ConfirmSubmitButton
+          confirmMessage="Start the season? Every league member is entered and the full schedule is created."
           pendingLabel="Starting..."
           className="primary-button inline-flex items-center justify-center gap-2"
         >
           <Play size={16} />
           Start Season
-        </SubmitButton>
+        </ConfirmSubmitButton>
       </form>
 
       <p className="mt-3 text-xs text-zinc-500">
@@ -734,7 +735,7 @@ export default async function CompetitionsPage() {
                   >
                   <Link
                     href={`/competitions/${competition.id}`}
-                    className="panel group relative overflow-hidden p-5 transition-all hover:-translate-y-1 hover:border-amber-300/20"
+                    className="panel group relative block overflow-hidden p-5 transition-all hover:-translate-y-1 hover:border-amber-300/20"
                   >
                     <div className="pointer-events-none absolute -right-14 -top-14 h-40 w-40 rounded-full bg-amber-400/[0.035] blur-3xl" />
 

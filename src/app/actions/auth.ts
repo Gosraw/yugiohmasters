@@ -82,6 +82,9 @@ export async function signup(
 
 export async function logout() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  // "Log out on this device" (Profile): the default scope is
+  // "global", which would also end the player's sessions on their
+  // other phone/laptop.
+  await supabase.auth.signOut({ scope: "local" });
   redirect("/login");
 }

@@ -824,6 +824,42 @@ export function PackOpeningReveal({
     markImageReady,
   ]);
 
+  // The Legendary [Continue] button renders below the stage - on a
+  // phone that is under the bottom nav, while the card itself no
+  // longer advances. Bring it into view the moment it appears.
+  const showLegendaryContinue =
+    flipped &&
+    currentRank ===
+      6 &&
+    !busy &&
+    legendaryStep >=
+      LEGENDARY_FINAL_STEP;
+
+  const continueButtonRef =
+    useRef<HTMLButtonElement>(
+      null
+    );
+
+  useEffect(() => {
+    if (
+      showLegendaryContinue
+    ) {
+      continueButtonRef.current?.scrollIntoView(
+        {
+          behavior:
+            reducedMotion
+              ? "auto"
+              : "smooth",
+          block:
+            "nearest",
+        }
+      );
+    }
+  }, [
+    showLegendaryContinue,
+    reducedMotion,
+  ]);
+
   // Schedules the Legendary cinematic's step transitions per
   // the chosen timeline, and - since markImageReady bails out
   // for Legendary cards (see above) - is also what eventually
@@ -1606,19 +1642,17 @@ export function PackOpeningReveal({
             </div>
           </div>
 
-          {flipped &&
-            currentRank ===
-              6 &&
-            !busy &&
-            legendaryStep >=
-              LEGENDARY_FINAL_STEP && (
+          {showLegendaryContinue && (
               <div className="mt-4 flex justify-center">
                 <button
+                  ref={
+                    continueButtonRef
+                  }
                   type="button"
                   onClick={
                     advanceToNextPull
                   }
-                  className="primary-button inline-flex cursor-pointer items-center gap-2 px-6 py-2.5 transition-all hover:-translate-y-0.5 active:scale-[0.97]"
+                  className="primary-button inline-flex scroll-mb-28 cursor-pointer items-center gap-2 px-6 py-2.5 transition-all hover:-translate-y-0.5 active:scale-[0.97]"
                 >
                   Continue
 

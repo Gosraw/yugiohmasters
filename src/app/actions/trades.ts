@@ -540,6 +540,20 @@ export async function setTradeDp(
     );
   }
 
+  // The DB columns are plain integers - anything bigger used to
+  // surface as a raw Postgres "out of range for type integer" error.
+  if (
+    dpOffered >
+      2147483647 ||
+    dpRequested >
+      2147483647
+  ) {
+    fail(
+      backPath,
+      "That Duel Point amount is too large."
+    );
+  }
+
   // The offer can't be more than you have right now (submit and
   // accept check this again live - this just says so up front).
   if (

@@ -629,6 +629,7 @@ export default async function CardsPage({
 
                     <SubmitButton
                       pendingLabel="..."
+                      title={isWished ? "Remove from wishlist" : "Add to wishlist"}
                       className={`flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border backdrop-blur-sm transition-all ${
                         isWished
                           ? "border-rose-400/50 bg-rose-400/25 text-rose-200"

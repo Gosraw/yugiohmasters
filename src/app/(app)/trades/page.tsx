@@ -22,6 +22,10 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  formatLeagueDateTime,
+} from "@/lib/format-date";
+
+import {
   fetchInBatches,
 } from "@/lib/supabase/paginate";
 
@@ -155,17 +159,8 @@ function formatDate(
     return "—";
   }
 
-  return new Date(
+  return formatLeagueDateTime(
     value
-  ).toLocaleString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }
   );
 }
 

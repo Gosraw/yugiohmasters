@@ -76,6 +76,7 @@ function LifePointsCounter({
         <button
           type="button"
           onClick={() => adjust(-100)}
+          aria-label="Minus 100 LP"
           className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/[0.03] transition-all active:scale-90 ${accentClasses.button}`}
         >
           <Minus size={20} />
@@ -93,6 +94,7 @@ function LifePointsCounter({
         <button
           type="button"
           onClick={() => adjust(100)}
+          aria-label="Plus 100 LP"
           className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/[0.03] transition-all active:scale-90 ${accentClasses.button}`}
         >
           <Plus size={20} />
@@ -230,6 +232,7 @@ function DuelTimer() {
         <button
           type="button"
           onClick={() => setRunning((current) => !current)}
+          aria-label={running ? "Pause timer" : "Start timer"}
           className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-zinc-300 transition-all hover:border-amber-300/30 hover:text-amber-200 active:scale-90"
         >
           {running ? <Pause size={16} /> : <Play size={16} />}
@@ -241,6 +244,7 @@ function DuelTimer() {
             setRunning(false);
             setSeconds(0);
           }}
+          aria-label="Reset timer"
           className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-zinc-500 transition-all hover:text-zinc-200 active:scale-90"
         >
           <RotateCcw size={15} />

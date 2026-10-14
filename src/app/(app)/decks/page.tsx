@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { requireUser } from "@/lib/supabase/queries";
+import { fetchInBatches } from "@/lib/supabase/paginate";
 import { CardsHubTabs } from "@/components/cards-hub-tabs";
 
 export const dynamic = "force-dynamic";
@@ -309,18 +310,41 @@ export default async function DecksPage() {
     deckIds.length >
     0
   ) {
-    const {
-      data: deckCardData,
-      error: deckCardError,
-    } = await supabase
-      .from("deck_cards")
-      .select(
-        "deck_id,section"
-      )
-      .in(
-        "deck_id",
-        deckIds
-      );
+    // Paged + batched: every deck ever built (archived too) easily
+    // passes PostgREST's 1000-row cap.
+    let deckCardError =
+      false;
+
+    try {
+      deckCards =
+        await fetchInBatches<string, DeckCard>(
+          deckIds,
+          (
+            batch,
+            from,
+            to
+          ) =>
+            supabase
+              .from("deck_cards")
+              .select(
+                "deck_id,section"
+              )
+              .in(
+                "deck_id",
+                batch
+              )
+              .order(
+                "id"
+              )
+              .range(
+                from,
+                to
+              )
+        );
+    } catch {
+      deckCardError =
+        true;
+    }
 
     if (
       deckCardError
@@ -333,10 +357,6 @@ export default async function DecksPage() {
         </main>
       );
     }
-
-    deckCards =
-      (deckCardData ??
-        []) as DeckCard[];
   }
 
   const countsByDeck =

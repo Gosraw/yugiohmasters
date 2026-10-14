@@ -61,6 +61,14 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  safeReturnTo,
+} from "@/lib/safe-return-to";
+
+import {
+  formatLeagueDate,
+} from "@/lib/format-date";
+
+import {
   getLeagueIdForUser,
 } from "@/lib/league-stats";
 
@@ -673,20 +681,8 @@ export default async function CardDetailPage({
 
   const createdDate =
     card.created_at
-      ? new Date(
+      ? formatLeagueDate(
           card.created_at
-        ).toLocaleDateString(
-          "en-GB",
-          {
-            day:
-              "2-digit",
-
-            month:
-              "short",
-
-            year:
-              "numeric",
-          }
         )
       : null;
 
@@ -814,16 +810,20 @@ export default async function CardDetailPage({
         )
       : null;
 
+  // returnTo comes from the URL: only a same-site path is used
+  // ("/\evil.example" would otherwise be followed as an external
+  // link by the browser). "" = no usable returnTo.
+  const safeBackTo =
+    returnTo
+      ? safeReturnTo(
+          returnTo,
+          ""
+        )
+      : "";
+
   const backHref =
-    returnTo &&
-    returnTo.startsWith(
-      "/"
-    ) &&
-    !returnTo.startsWith(
-      "//"
-    )
-      ? returnTo
-      : "/cards/collection";
+    safeBackTo ||
+    "/cards/collection";
 
   // ======================================================
   // UI
@@ -859,7 +859,8 @@ export default async function CardDetailPage({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardBackLink
             returnTo={
-              returnTo
+              safeBackTo ||
+              undefined
             }
           />
 
@@ -1654,20 +1655,8 @@ export default async function CardDetailPage({
                   {ownedCopies.map(
                     (copy) => {
                       const acquiredDate =
-                        new Date(
+                        formatLeagueDate(
                           copy.acquired_at
-                        ).toLocaleDateString(
-                          "en-GB",
-                          {
-                            day:
-                              "2-digit",
-
-                            month:
-                              "short",
-
-                            year:
-                              "numeric",
-                          }
                         );
 
                       return (

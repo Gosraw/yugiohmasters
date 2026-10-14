@@ -22,12 +22,26 @@ import {
 // setState synchronously inside an effect body.
 // =========================================================
 
+// getSnapshot must return the SAME value until the store really
+// changes - a fresh Date.now() on every call makes React warn
+// "The result of getSnapshot should be cached" and re-render in a
+// loop. So the clock is read once per tick and cached here.
+let cachedNow = 0;
+
 function subscribeToClock(
   onTick: () => void
 ) {
+  cachedNow =
+    Date.now();
+
   const interval =
     setInterval(
-      onTick,
+      () => {
+        cachedNow =
+          Date.now();
+
+        onTick();
+      },
       60_000
     );
 
@@ -36,7 +50,12 @@ function subscribeToClock(
 }
 
 function getClientNow() {
-  return Date.now();
+  if (cachedNow === 0) {
+    cachedNow =
+      Date.now();
+  }
+
+  return cachedNow;
 }
 
 function getServerNow() {

@@ -156,6 +156,14 @@ export function BossEvolutionCinematic({
       "evolved"
     );
 
+    // The cinematic IS the success message. Left in the URL,
+    // ?success= makes <ActionFeedbackBanner /> router.replace() the
+    // page after 5s, which re-renders it without ?evolved and cuts
+    // the cinematic off while the player is still looking at it.
+    url.searchParams.delete(
+      "success"
+    );
+
     window.history.replaceState(
       null,
       "",

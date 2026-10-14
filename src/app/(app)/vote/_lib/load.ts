@@ -2,8 +2,10 @@ import type {
   requireUser,
 } from "@/lib/supabase/queries";
 
-import type {
-  VoteValue,
+import {
+  type MyVote,
+  type VoteValue,
+  isRarity,
 } from "@/components/vote-labels";
 
 // =========================================================
@@ -34,6 +36,14 @@ export type VoteItemRow = {
     image_url: string | null;
     image_url_small: string | null;
     card_type: string | null;
+    race: string | null;
+    attribute: string | null;
+    level: number | null;
+    rank: number | null;
+    link_rating: number | null;
+    atk: number | null;
+    def: number | null;
+    description: string | null;
   } | null;
 };
 
@@ -50,7 +60,7 @@ export async function loadVoteItems(
     } = await supabase
       .from("card_vote_items")
       .select(
-        "id,list_key,list_title,list_order,sort_order,proposed_verdict,context,card:card_catalog(name,image_url,image_url_small,card_type)"
+        "id,list_key,list_title,list_order,sort_order,proposed_verdict,context,card:card_catalog(name,image_url,image_url_small,card_type,race,attribute,level,rank,link_rating,atk,def,description)"
       )
       .eq("league_id", leagueId)
       .order("list_order")
@@ -74,8 +84,8 @@ export async function loadVoteItems(
 export async function loadMyVotes(
   supabase: SupabaseClient,
   userId: string
-): Promise<Record<string, VoteValue>> {
-  const votes: Record<string, VoteValue> = {};
+): Promise<Record<string, MyVote>> {
+  const votes: Record<string, MyVote> = {};
 
   for (let from = 0; ; from += PAGE) {
     const {
@@ -83,7 +93,7 @@ export async function loadMyVotes(
       error,
     } = await supabase
       .from("card_votes")
-      .select("item_id,vote")
+      .select("item_id,vote,allow_rarity")
       .eq("profile_id", userId)
       .order("item_id")
       .range(from, from + PAGE - 1);
@@ -93,8 +103,12 @@ export async function loadMyVotes(
     }
 
     for (const row of data ?? []) {
-      votes[row.item_id as string] =
-        row.vote as VoteValue;
+      votes[row.item_id as string] = {
+        vote: row.vote as VoteValue,
+        allowRarity: isRarity(row.allow_rarity)
+          ? row.allow_rarity
+          : null,
+      };
     }
 
     if (!data || data.length < PAGE) {
@@ -126,6 +140,16 @@ export type VoteResultRow = {
     | "owner_vote"
     | "tied";
   resolved_verdict: string | null;
+  my_allow_rarity: string | null;
+  tiebreak_allow_rarity: string | null;
+  allow_rarity_counts: Record<string, number>;
+  rarity_outcome: string | null;
+  rarity_decided_by:
+    | "majority"
+    | "owner_tiebreak"
+    | "owner_vote"
+    | "tied"
+    | null;
 };
 
 export async function loadVoteResults(

@@ -25,7 +25,10 @@ import {
 } from "@/app/actions/vote";
 
 import {
+  type MyVote,
+  type Rarity,
   type VoteValue,
+  RARITY_LADDER,
   verdictBadgeClass,
   verdictLabel,
   voteButtonLabel,
@@ -34,13 +37,16 @@ import {
 } from "@/components/vote-labels";
 
 // =========================================================
-// VOTE DECK (2.0 card pool vote, /vote)
+// VOTE DECK (card pool vote, /vote)
 //
-// One card at a time, phone-first: card image, proposed
-// verdict, the reason, three big buttons. A tap saves the vote
-// in the background (castCardVote, no redirect) and moves on to
-// the next card you haven't voted on yet. Votes can be changed
-// any time by jumping back to a card.
+// One card at a time, phone-first: card image, full card text,
+// proposed verdict, the reason, big vote buttons. A tap saves
+// the vote in the background (castCardVote, no redirect) and
+// moves on to the next card you haven't voted on yet. Votes can
+// be changed any time by jumping back to a card.
+//
+// On a forbidden card, "Allow it" first opens a rarity picker;
+// the vote is saved once a rarity is tapped.
 // =========================================================
 
 export type VoteDeckItem = {
@@ -50,14 +56,20 @@ export type VoteDeckItem = {
   cardName: string;
   imageUrl: string | null;
   cardType: string | null;
+  stats: string | null;
+  description: string | null;
   verdict: string;
   context: string;
 };
 
 type VoteDeckProps = {
   items: VoteDeckItem[];
-  initialVotes: Record<string, VoteValue>;
+  initialVotes: Record<string, MyVote>;
 };
+
+// Highest first: the picker reads top-down like the ladder.
+const RARITIES_DESC: Rarity[] =
+  [...RARITY_LADDER].reverse();
 
 const ALL = "all";
 
@@ -87,9 +99,13 @@ export function VoteDeck({
   initialVotes,
 }: VoteDeckProps) {
   const [votes, setVotes] =
-    useState<Record<string, VoteValue>>(
+    useState<Record<string, MyVote>>(
       initialVotes
     );
+
+  // Card whose "Allow it" rarity picker is open.
+  const [pickingId, setPickingId] =
+    useState<string | null>(null);
 
   const [listKey, setListKey] =
     useState<string>(ALL);
@@ -167,13 +183,26 @@ export function VoteDeck({
       ? queue.indexOf(current)
       : -1;
 
+  const currentVote =
+    current
+      ? votes[current.id]
+      : undefined;
+
+  // Open while choosing, and stays open to show the picked
+  // rarity of an "Allow it" vote.
+  const pickerOpen =
+    current?.verdict === "forbidden" &&
+    (pickingId === current.id ||
+      (currentVote?.vote === "too_weak" &&
+        Boolean(currentVote.allowRarity)));
+
   const allDoneInQueue =
     queue.length > 0 &&
     doneInQueue === queue.length;
 
   function nextUnvotedAfter(
     position: number,
-    currentVotes: Record<string, VoteValue>
+    currentVotes: Record<string, MyVote>
   ): string | null {
     for (let step = 1; step <= queue.length; step++) {
       const candidate =
@@ -187,8 +216,32 @@ export function VoteDeck({
     return null;
   }
 
-  function vote(
+  function choose(
     value: VoteValue
+  ) {
+    if (!current) return;
+
+    // "Allow it" on a forbidden card: pick the rarity first.
+    if (
+      current.verdict === "forbidden" &&
+      value === "too_weak"
+    ) {
+      setPickingId(
+        current.id
+      );
+
+      return;
+    }
+
+    vote(
+      value,
+      null
+    );
+  }
+
+  function vote(
+    value: VoteValue,
+    allowRarity: Rarity | null
   ) {
     if (!current) return;
 
@@ -200,10 +253,14 @@ export function VoteDeck({
 
     const nextVotes = {
       ...votes,
-      [itemId]: value,
+      [itemId]: {
+        vote: value,
+        allowRarity,
+      },
     };
 
     setVotes(nextVotes);
+    setPickingId(null);
     setError(null);
     setSavingId(itemId);
 
@@ -222,7 +279,8 @@ export function VoteDeck({
       const result =
         await castCardVote(
           itemId,
-          value
+          value,
+          allowRarity
         );
 
       setSavingId(
@@ -264,6 +322,8 @@ export function VoteDeck({
     const position =
       (Math.max(index, 0) + delta + queue.length) %
       queue.length;
+
+    setPickingId(null);
 
     setCurrentId(
       queue[position].id
@@ -424,7 +484,7 @@ export function VoteDeck({
 
             <div className="min-w-0 flex-1 text-center sm:text-left">
               <h2
-                className="font-display text-xl font-bold leading-tight text-amber-50"
+                className="text-xl font-black leading-tight text-amber-50"
                 data-testid="vote-card-name"
               >
                 {
@@ -436,6 +496,17 @@ export function VoteDeck({
                 <p className="mt-1 text-xs text-zinc-500">
                   {
                     current.cardType
+                  }
+                </p>
+              )}
+
+              {current.stats && (
+                <p
+                  className="mt-1 text-xs font-bold text-zinc-300"
+                  data-testid="vote-card-stats"
+                >
+                  {
+                    current.stats
                   }
                 </p>
               )}
@@ -462,9 +533,14 @@ export function VoteDeck({
 
               <p className="mt-2 text-xs text-zinc-500">
                 Your vote:{" "}
-                <span className="font-bold text-zinc-200">
+                <span
+                  className="font-bold text-zinc-200"
+                  data-testid="vote-my-vote"
+                >
                   {voteShortLabel(
-                    votes[current.id]
+                    currentVote?.vote,
+                    current.verdict,
+                    currentVote?.allowRarity
                   )}
                 </span>
 
@@ -478,6 +554,25 @@ export function VoteDeck({
               </p>
             </div>
           </div>
+
+          {/* FULL CARD TEXT */}
+
+          {current.description && (
+            <div className="mt-4 rounded-xl border border-white/5 bg-black/25 p-3.5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                Card text
+              </p>
+
+              <p
+                className="mt-1.5 whitespace-pre-line text-sm leading-6 text-zinc-200"
+                data-testid="vote-card-text"
+              >
+                {
+                  current.description
+                }
+              </p>
+            </div>
+          )}
 
           <div className="mt-5 grid gap-2.5">
             {voteOptions(
@@ -493,8 +588,13 @@ export function VoteDeck({
                 const Icon =
                   BUTTON_ICON[option];
 
+                const isAllow =
+                  current.verdict === "forbidden" &&
+                  option === "too_weak";
+
                 const selected =
-                  votes[current.id] === option;
+                  currentVote?.vote === option ||
+                  (isAllow && pickerOpen);
 
                 return (
                   <button
@@ -503,10 +603,15 @@ export function VoteDeck({
                     }
                     type="button"
                     onClick={() =>
-                      vote(option)
+                      choose(option)
                     }
                     aria-pressed={
                       selected
+                    }
+                    aria-expanded={
+                      isAllow
+                        ? pickerOpen
+                        : undefined
                     }
                     className={`flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-left transition active:scale-[0.98] motion-reduce:transition-none ${BUTTON_STYLE[option]} ${selected ? BUTTON_SELECTED[option] : ""}`}
                   >
@@ -523,14 +628,62 @@ export function VoteDeck({
                       </span>
 
                       <span className="block text-xs opacity-75">
-                        {
-                          label.hint
-                        }
+                        {isAllow &&
+                        currentVote?.vote === "too_weak" &&
+                        currentVote.allowRarity
+                          ? `Rarity: ${currentVote.allowRarity}`
+                          : label.hint}
                       </span>
                     </span>
                   </button>
                 );
               }
+            )}
+
+            {/* "ALLOW IT" RARITY PICKER */}
+
+            {pickerOpen && (
+              <div
+                className="rounded-2xl border border-sky-300/35 bg-sky-400/[0.06] p-3.5"
+                data-testid="vote-rarity-picker"
+              >
+                <p className="text-sm font-bold text-sky-50">
+                  If it&apos;s allowed, which rarity should it get?
+                </p>
+
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {RARITIES_DESC.map(
+                    (rarity) => {
+                      const picked =
+                        currentVote?.vote === "too_weak" &&
+                        currentVote.allowRarity === rarity;
+
+                      return (
+                        <button
+                          key={
+                            rarity
+                          }
+                          type="button"
+                          onClick={() =>
+                            vote(
+                              "too_weak",
+                              rarity
+                            )
+                          }
+                          aria-pressed={
+                            picked
+                          }
+                          className={`min-h-11 cursor-pointer rounded-xl border px-3 text-sm font-bold transition active:scale-[0.98] motion-reduce:transition-none ${verdictBadgeClass(rarity)} ${picked ? "ring-2 ring-sky-300/80" : "opacity-85 hover:opacity-100"}`}
+                        >
+                          {
+                            rarity
+                          }
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
             )}
           </div>
 
@@ -595,9 +748,10 @@ export function VoteDeck({
                 >
                   <button
                     type="button"
-                    onClick={() =>
-                      setCurrentId(item.id)
-                    }
+                    onClick={() => {
+                      setPickingId(null);
+                      setCurrentId(item.id);
+                    }}
                     className={`flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm transition ${
                       current?.id === item.id
                         ? "border-amber-300/50 bg-amber-300/10"
@@ -621,14 +775,16 @@ export function VoteDeck({
                     </span>
 
                     <span
-                      className={`w-20 shrink-0 text-right text-[11px] font-bold ${
+                      className={`w-28 shrink-0 truncate text-right text-[11px] font-bold ${
                         votes[item.id]
                           ? "text-emerald-200"
                           : "text-zinc-600"
                       }`}
                     >
                       {voteShortLabel(
-                        votes[item.id]
+                        votes[item.id]?.vote,
+                        item.verdict,
+                        votes[item.id]?.allowRarity
                       )}
                     </span>
                   </button>

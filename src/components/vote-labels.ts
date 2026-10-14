@@ -1,9 +1,11 @@
 // =========================================================
-// CARD VOTE - shared labels (2.0 card pool vote)
+// CARD VOTE - shared labels
 //
-// Mirrors public.card_vote_resolve() in
-// supabase/migrations/202610120500_card_votes.sql: "too strong"
-// is always one step stricter, "too weak" one step looser.
+// Mirrors public.card_vote_resolve() / get_vote_results() in
+// supabase/migrations/202610121900_card_votes_live.sql: "too
+// strong" is always one step stricter, "too weak" one step
+// looser. On a forbidden card "too weak" is "Allow it", and that
+// vote also picks the rarity the card gets if it is allowed.
 // =========================================================
 
 export type VoteValue =
@@ -20,6 +22,24 @@ export const RARITY_LADDER = [
   "Legendary",
 ] as const;
 
+export type Rarity =
+  (typeof RARITY_LADDER)[number];
+
+// One player's vote on one card.
+export type MyVote = {
+  vote: VoteValue;
+  allowRarity: Rarity | null;
+};
+
+export function isRarity(
+  value: unknown
+): value is Rarity {
+  return (
+    typeof value === "string" &&
+    (RARITY_LADDER as readonly string[]).includes(value)
+  );
+}
+
 export function verdictLabel(
   verdict: string
 ): string {
@@ -33,13 +53,14 @@ export function verdictLabel(
 
 export function resolveVerdict(
   verdict: string,
-  vote: VoteValue
+  vote: VoteValue,
+  allowRarity: string | null = null
 ): string {
   if (vote === "agree") return verdict;
 
   if (verdict === "forbidden") {
     return vote === "too_weak"
-      ? "allowed"
+      ? allowRarity ?? "allowed"
       : "forbidden";
   }
 
@@ -56,7 +77,7 @@ export function resolveVerdict(
   }
 
   const index = RARITY_LADDER.indexOf(
-    verdict as (typeof RARITY_LADDER)[number]
+    verdict as Rarity
   );
 
   if (index < 0) return verdict;
@@ -92,7 +113,7 @@ export function voteButtonLabel(
         }
       : {
           title: "Allow it",
-          hint: "Too weak to ban: let it into the pool",
+          hint: "Let it into the pool, then pick its rarity",
         };
   }
 
@@ -122,9 +143,22 @@ export function voteButtonLabel(
   };
 }
 
+// Short label for a vote, worded for the card's proposal
+// ("Allow it" instead of "Too weak" on a forbidden card).
 export function voteShortLabel(
-  vote: VoteValue | null | undefined
+  vote: VoteValue | null | undefined,
+  verdict?: string,
+  allowRarity?: string | null
 ): string {
+  if (verdict === "forbidden") {
+    if (vote === "agree") return "Keep it out";
+    if (vote === "too_weak") {
+      return allowRarity
+        ? `Allow: ${allowRarity}`
+        : "Allow it";
+    }
+  }
+
   if (vote === "agree") return "Agree";
   if (vote === "too_strong") return "Too strong";
   if (vote === "too_weak") return "Too weak";
@@ -132,7 +166,7 @@ export function voteShortLabel(
   return "Not voted";
 }
 
-// Tailwind classes for the proposed-verdict badge.
+// Tailwind classes for a verdict / rarity badge.
 export function verdictBadgeClass(
   verdict: string
 ): string {

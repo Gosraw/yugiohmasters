@@ -30,6 +30,7 @@ import {
 
 import {
   type VoteValue,
+  RARITY_LADDER,
   verdictBadgeClass,
   verdictLabel,
   voteOptions,
@@ -46,10 +47,12 @@ import {
 // CARD VOTE RESULTS
 //
 // Counts and outcome per card, from get_vote_results() (see
-// supabase/migrations/202610120500_card_votes.sql): majority
+// supabase/migrations/202610121900_card_votes_live.sql): majority
 // wins; on a tie the league admin's tie-break counts, else the
-// admin's own vote, else it stays "tied". The admin gets
-// tie-break buttons on every tied card.
+// admin's own vote, else it stays "tied". If "Allow it" wins on a
+// forbidden card, its rarity is the one most "Allow it" voters
+// picked, with the same tie rules. The admin gets tie-break
+// buttons on every tied card.
 // =========================================================
 
 export const dynamic =
@@ -61,6 +64,16 @@ const DECIDED_LABEL: Record<VoteResultRow["decided_by"], string> = {
   owner_tiebreak: "Owner tie-break",
   owner_vote: "Tie: owner's vote",
   tied: "Tied: owner decides",
+};
+
+const RARITY_DECIDED_LABEL: Record<
+  NonNullable<VoteResultRow["rarity_decided_by"]>,
+  string
+> = {
+  majority: "most picked",
+  owner_tiebreak: "owner tie-break",
+  owner_vote: "tie: owner's pick",
+  tied: "tied: owner decides",
 };
 
 type ResultWithCard = VoteResultRow & {
@@ -161,7 +174,9 @@ export default async function VoteResultsPage() {
 
   const ties =
     rows.filter(
-      (row) => row.decided_by === "tied"
+      (row) =>
+        row.decided_by === "tied" ||
+        row.rarity_decided_by === "tied"
     );
 
   const memberCount =
@@ -286,7 +301,7 @@ export default async function VoteResultsPage() {
               className="panel group p-4"
             >
               <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3">
-                <span className="font-display text-base font-bold text-amber-50">
+                <span className="text-base font-black text-amber-50">
                   {
                     list.title
                   }
@@ -374,6 +389,23 @@ function Stat({
   );
 }
 
+// Rarities tied at the top among the "Allow it" voters.
+function tiedRarities(
+  counts: Record<string, number>
+): string[] {
+  const top =
+    Math.max(
+      0,
+      ...Object.values(counts)
+    );
+
+  return top > 0
+    ? RARITY_LADDER.filter(
+        (rarity) => counts[rarity] === top
+      )
+    : [];
+}
+
 function ResultRow({
   row,
   isAdmin,
@@ -381,17 +413,56 @@ function ResultRow({
   row: ResultWithCard;
   isAdmin: boolean;
 }) {
+  const forbidden =
+    row.proposed_verdict === "forbidden";
+
+  const ownerDecides = [
+    "tied",
+    "owner_vote",
+    "owner_tiebreak",
+  ];
+
   const showTiebreak =
     isAdmin &&
-    (row.decided_by === "tied" ||
-      row.decided_by === "owner_vote" ||
-      row.decided_by === "owner_tiebreak");
+    (ownerDecides.includes(row.decided_by) ||
+      ownerDecides.includes(row.rarity_decided_by ?? ""));
 
-  const counts: [VoteValue, number][] = [
-    ["agree", row.agree_count],
-    ["too_strong", row.too_strong_count],
-    ["too_weak", row.too_weak_count],
-  ];
+  const counts: [VoteValue, number][] = (
+    [
+      ["agree", row.agree_count],
+      ["too_strong", row.too_strong_count],
+      ["too_weak", row.too_weak_count],
+    ] as [VoteValue, number][]
+  ).filter(
+    ([vote]) =>
+      !forbidden || vote !== "too_strong"
+  );
+
+  const rarityCounts =
+    Object.entries(
+      row.allow_rarity_counts ?? {}
+    ).sort(
+      (a, b) =>
+        b[1] - a[1] ||
+        RARITY_LADDER.indexOf(b[0] as (typeof RARITY_LADDER)[number]) -
+          RARITY_LADDER.indexOf(a[0] as (typeof RARITY_LADDER)[number])
+    );
+
+  // "Allow it" already won without the owner, only the rarity
+  // is tied: offer just the tied rarities. Otherwise all of them.
+  const rarityChoices: string[] =
+    row.decided_by === "majority" &&
+    row.outcome === "too_weak" &&
+    row.rarity_decided_by !== "majority"
+      ? tiedRarities(
+          row.allow_rarity_counts ?? {}
+        )
+      : [];
+
+  const allowChoices: string[] =
+    rarityChoices.length > 0
+      ? rarityChoices
+      : [...RARITY_LADDER];
 
   return (
     <li
@@ -431,6 +502,7 @@ function ResultRow({
 
               <span
                 className={`rounded-full border px-2 py-0.5 font-bold ${verdictBadgeClass(row.resolved_verdict)}`}
+                data-testid="vote-result-verdict"
               >
                 {verdictLabel(
                   row.resolved_verdict
@@ -457,7 +529,8 @@ function ResultRow({
               }
             >
               {voteShortLabel(
-                vote
+                vote,
+                row.proposed_verdict
               )}: {count}
             </span>
           )
@@ -466,11 +539,43 @@ function ResultRow({
         <span className="text-zinc-600">
           ({row.total_votes}/{row.member_count} voted
           {row.my_vote
-            ? `, you: ${voteShortLabel(row.my_vote)}`
+            ? `, you: ${voteShortLabel(row.my_vote, row.proposed_verdict, row.my_allow_rarity)}`
             : ""}
           )
         </span>
       </p>
+
+      {forbidden && rarityCounts.length > 0 && (
+        <p
+          className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-sky-200/80"
+          data-testid="vote-result-rarities"
+        >
+          <span className="font-bold text-zinc-500">
+            Rarity
+            {row.rarity_decided_by
+              ? ` (${RARITY_DECIDED_LABEL[row.rarity_decided_by]})`
+              : ""}
+            :
+          </span>
+
+          {rarityCounts.map(
+            ([rarity, count]) => (
+              <span
+                key={
+                  rarity
+                }
+                className={
+                  row.rarity_outcome === rarity
+                    ? "font-bold text-amber-100"
+                    : undefined
+                }
+              >
+                {rarity}: {count}
+              </span>
+            )
+          )}
+        </p>
+      )}
 
       {showTiebreak && (
         <div className="mt-3 border-t border-white/5 pt-3">
@@ -480,51 +585,86 @@ function ResultRow({
             />
             Owner tie-break
             {row.tiebreak_vote
-              ? `: ${voteShortLabel(row.tiebreak_vote)}`
+              ? `: ${voteShortLabel(row.tiebreak_vote, row.proposed_verdict, row.tiebreak_allow_rarity)}`
               : ""}
           </p>
 
           <div className="mt-2 flex flex-wrap gap-2">
-            {voteOptions(
-              row.proposed_verdict
+            {(forbidden
+              ? [
+                  {
+                    vote: "agree" as VoteValue,
+                    rarity: "",
+                  },
+                  ...allowChoices.map(
+                    (rarity) => ({
+                      vote: "too_weak" as VoteValue,
+                      rarity,
+                    })
+                  ),
+                ]
+              : voteOptions(
+                  row.proposed_verdict
+                ).map(
+                  (vote) => ({
+                    vote,
+                    rarity: "",
+                  })
+                )
             ).map(
-              (vote) => (
-                <form
-                  key={
-                    vote
-                  }
-                  action={
-                    setVoteTiebreak
-                  }
-                >
-                  <input
-                    type="hidden"
-                    name="item_id"
-                    value={
-                      row.item_id
+              (choice) => {
+                const active =
+                  row.tiebreak_vote === choice.vote &&
+                  (row.tiebreak_allow_rarity ?? "") === choice.rarity;
+
+                return (
+                  <form
+                    key={`${choice.vote}-${choice.rarity}`}
+                    action={
+                      setVoteTiebreak
                     }
-                  />
-
-                  <input
-                    type="hidden"
-                    name="vote"
-                    value={vote}
-                  />
-
-                  <SubmitButton
-                    pendingLabel="Saving..."
-                    className={`min-h-10 rounded-xl border px-3 text-xs font-bold transition ${
-                      row.tiebreak_vote === vote
-                        ? "border-amber-300/70 bg-amber-300/15 text-amber-100"
-                        : "border-white/10 text-zinc-300 hover:border-amber-300/40"
-                    }`}
                   >
-                    {voteShortLabel(
-                      vote
-                    )}
-                  </SubmitButton>
-                </form>
-              )
+                    <input
+                      type="hidden"
+                      name="item_id"
+                      value={
+                        row.item_id
+                      }
+                    />
+
+                    <input
+                      type="hidden"
+                      name="vote"
+                      value={
+                        choice.vote
+                      }
+                    />
+
+                    <input
+                      type="hidden"
+                      name="allow_rarity"
+                      value={
+                        choice.rarity
+                      }
+                    />
+
+                    <SubmitButton
+                      pendingLabel="Saving..."
+                      className={`min-h-10 rounded-xl border px-3 text-xs font-bold transition ${
+                        active
+                          ? "border-amber-300/70 bg-amber-300/15 text-amber-100"
+                          : "border-white/10 text-zinc-300 hover:border-amber-300/40"
+                      }`}
+                    >
+                      {voteShortLabel(
+                        choice.vote,
+                        row.proposed_verdict,
+                        choice.rarity || null
+                      )}
+                    </SubmitButton>
+                  </form>
+                );
+              }
             )}
 
             {row.tiebreak_vote && (

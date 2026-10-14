@@ -18,6 +18,10 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 
+import { redirect } from "next/navigation";
+
+import { withFeedback } from "@/lib/safe-return-to";
+
 import { requireUser } from "@/lib/supabase/queries";
 
 export const dynamic = "force-dynamic";
@@ -157,6 +161,41 @@ export default async function DraftPage() {
     )
     .limit(1)
     .maybeSingle();
+
+  // Onboarding order: Boss Route first, then the Initial Draft
+  // (start_personal_initial_draft refuses without one, 202610152040).
+  // /draft is reachable during onboarding, so send a player without
+  // a route to the Boss Route picker with a friendly note.
+  if (
+    !activeDraftPlayer &&
+    !activeDraftPlayerError
+  ) {
+    const {
+      data: bossPath,
+    } = await supabase
+      .from("player_boss_paths")
+      .select("id")
+      .eq(
+        "profile_id",
+        userId
+      )
+      .eq(
+        "route_slot",
+        1
+      )
+      .limit(1)
+      .maybeSingle();
+
+    if (!bossPath) {
+      redirect(
+        withFeedback(
+          "/boss/select?slot=1",
+          "error",
+          "Choose your Boss Route first - your Initial Draft starts right after."
+        )
+      );
+    }
+  }
 
   let activeDraft = null;
   let draftError =

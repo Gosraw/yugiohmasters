@@ -21,6 +21,7 @@ export function AuthForm({
       <label className="block">
         <span className="mb-2 block text-sm text-zinc-300">Username</span>
         <input name="username" autoComplete="username" required minLength={3} maxLength={24}
+          defaultValue={state.username ?? ""} key={state.username ?? ""}
           className="field" placeholder="duelist_name" />
       </label>
       <label className="block">

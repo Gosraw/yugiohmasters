@@ -122,3 +122,35 @@ export async function fetchInBatches<V, T>(
 
   return results.flat();
 }
+
+/**
+ * fetchAllPages in the familiar `{ data, error }` shape, for pages
+ * that already handle a Supabase error themselves. Never throws.
+ */
+export async function fetchAllPagesResult<T>(
+  buildPage: (
+    from: number,
+    to: number
+  ) => PromiseLike<QueryResult>,
+  pageSize = SUPABASE_PAGE_SIZE
+): Promise<
+  | { data: T[]; error: null }
+  | { data: null; error: { message: string } }
+> {
+  try {
+    return {
+      data: await fetchAllPages<T>(buildPage, pageSize),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: {
+        message:
+          error instanceof Error
+            ? error.message
+            : "Could not load the data.",
+      },
+    };
+  }
+}

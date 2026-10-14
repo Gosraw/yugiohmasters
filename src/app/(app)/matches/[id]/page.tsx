@@ -53,6 +53,14 @@ import {
 } from "@/components/confirm-submit-button";
 
 import {
+  MatchProposalPanel,
+} from "@/components/match-proposal-panel";
+
+import {
+  loadOpenProposals,
+} from "@/lib/match-proposals";
+
+import {
   getPrimaryBossIdentities,
 } from "@/lib/boss-identity";
 
@@ -1169,6 +1177,29 @@ export default async function MatchDetailPage({
     }
   }
 
+  // Result change an admin proposed for this duel while playing in
+  // it (202610152010): only counts once the opponent accepts.
+  const openProposals =
+    await loadOpenProposals(
+      supabase,
+      {
+        matchId:
+          match.id,
+      }
+    );
+
+  const adminPlaysInDuel =
+    isLeagueAdmin &&
+    (isPlayerOne ||
+      isPlayerTwo);
+
+  const otherPlayerName =
+    playerName(
+      isPlayerOne
+        ? playerTwo
+        : playerOne
+    );
+
   // ======================================================
   // UI
   // ======================================================
@@ -1222,6 +1253,24 @@ export default async function MatchDetailPage({
             </Link>
           )}
         </nav>
+
+        <MatchProposalPanel
+          proposals={
+            openProposals
+          }
+          currentUserId={
+            userId
+          }
+          nameOf={(profileId) =>
+            playerName(
+              profileMap.get(
+                profileId
+              )
+            )
+          }
+          returnTo={`/matches/${match.id}`}
+          className="mt-4"
+        />
 
         {/* ==================================================
             ONE-TAP CONFIRM (2.0): the first thing the opponent
@@ -2301,11 +2350,15 @@ export default async function MatchDetailPage({
 
                 <div>
                   <p className="text-xs font-black uppercase tracking-[.16em] text-orange-300">
-                    Admin Resolution
+                    {adminPlaysInDuel
+                      ? "Propose a decision"
+                      : "Admin Resolution"}
                   </p>
 
                   <p className="mt-1 text-sm text-zinc-600">
-                    Choose the final official result.
+                    {adminPlaysInDuel
+                      ? `You play in this duel, so ${otherPlayerName} has to accept your decision before it counts.`
+                      : "Choose the final official result."}
                   </p>
                 </div>
 
@@ -2347,15 +2400,25 @@ export default async function MatchDetailPage({
                 />
 
                 <ConfirmSubmitButton
-                  confirmMessage="Lock in this final result?"
-                  pendingLabel="Resolving..."
+                  confirmMessage={
+                    adminPlaysInDuel
+                      ? `Send this decision to ${otherPlayerName}?`
+                      : "Lock in this final result?"
+                  }
+                  pendingLabel={
+                    adminPlaysInDuel
+                      ? "Sending..."
+                      : "Resolving..."
+                  }
                   className="primary-button inline-flex items-center gap-2"
                 >
                   <ShieldCheck
                     size={16}
                   />
 
-                  Resolve Duel
+                  {adminPlaysInDuel
+                    ? `Send to ${otherPlayerName}`
+                    : "Resolve Duel"}
                 </ConfirmSubmitButton>
               </form>
             )}

@@ -29,6 +29,10 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  fetchAllPagesResult,
+} from "@/lib/supabase/paginate";
+
 // Action failures go back to the page with a friendly ?error=
 // banner instead of crashing into the generic error page.
 function failTo(
@@ -372,31 +376,45 @@ async function getUnlockedAchievementIds(
   // MATCHES
   // ======================================================
 
+  // Paged: every duel ever played stays in this list.
   const {
     data: matchData,
     error: matchError,
-  } = await supabase
-    .from("matches")
-    .select(
-      `
-        player_one_id,
-        player_two_id,
-        winner_id,
-        result,
-        status,
-        match_type,
-        wager_type,
-        completed_at,
-        created_at
-      `
-    )
-    .eq(
-      "league_id",
-      leagueId
-    )
-    .or(
-      `player_one_id.eq.${userId},player_two_id.eq.${userId}`
-    );
+  } = await fetchAllPagesResult<AchievementMatch>(
+    (
+      from,
+      to
+    ) =>
+      supabase
+        .from("matches")
+        .select(
+          `
+            player_one_id,
+            player_two_id,
+            winner_id,
+            result,
+            status,
+            match_type,
+            wager_type,
+            completed_at,
+            created_at
+          `
+        )
+        .eq(
+          "league_id",
+          leagueId
+        )
+        .or(
+          `player_one_id.eq.${userId},player_two_id.eq.${userId}`
+        )
+        .order(
+          "id"
+        )
+        .range(
+          from,
+          to
+        )
+  );
 
   if (matchError) {
     throw new Error(
@@ -1046,6 +1064,94 @@ export async function equipAchievementTitle(
 }
 
 // =========================================================
+// EQUIP EARNED TITLE
+//
+// Permanent titles from public.profile_titles (Season Path final
+// tier, mini game wins, "Season N Champion" - 202610152020). The
+// server checks the row belongs to THIS player before equipping it
+// through the service-role-only RPC (custom_title is not
+// client-writable, 202610121620).
+// =========================================================
+
+export async function equipEarnedTitle(
+  formData: FormData
+) {
+  const titleId =
+    String(
+      formData.get(
+        "title_id"
+      ) ?? ""
+    ).trim();
+
+  if (!titleId) {
+    failTo(
+      "/profile",
+      "Title is missing."
+    );
+  }
+
+  const {
+    supabase,
+    userId,
+  } = await requireUser();
+
+  const {
+    data: earned,
+    error: earnedError,
+  } = await supabase
+    .from("profile_titles")
+    .select("title")
+    .eq(
+      "id",
+      titleId
+    )
+    .eq(
+      "profile_id",
+      userId
+    )
+    .maybeSingle();
+
+  if (
+    earnedError ||
+    !earned
+  ) {
+    failTo(
+      "/profile",
+      "You haven't earned this title."
+    );
+  }
+
+  const {
+    error,
+  } = await createAdminClient().rpc(
+    "set_profile_custom_title",
+    {
+      p_profile_id:
+        userId,
+      p_title:
+        earned.title as string,
+    }
+  );
+
+  if (error) {
+    failTo(
+      "/profile",
+      `Could not equip the title: ${error.message}`
+    );
+  }
+
+  revalidateIdentity();
+
+  redirect(
+    withFeedback(
+      "/profile",
+      "success",
+      "Title equipped."
+    )
+  );
+}
+
+// =========================================================
 // UNEQUIP ACHIEVEMENT TITLE
 // =========================================================
 
@@ -1221,7 +1327,14 @@ export async function chooseBossMonster(
       }
     );
 
-    if (draftError) {
+    // No Boss Route yet (202610152040): /draft sends the player to
+    // the Boss Route picker with a friendly note, so just go there.
+    if (
+      draftError &&
+      !/Boss Route/i.test(
+        draftError.message
+      )
+    ) {
       failTo(
         "/profile",
         `Could not start the Initial Draft: ${draftError.message}`

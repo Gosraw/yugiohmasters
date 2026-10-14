@@ -161,13 +161,16 @@ end;
 $$;
 
 -- Admin correction: the match between winner and loser now goes to
--- `winner` 1-0.
+-- `winner` 1-0. When bossg plays in the duel the correction is only a
+-- proposal (202610152010_admin_own_duel_needs_opponent_ok), so the
+-- opponent accepts it.
 create function pg_temp.correct_winner(target_competition_id uuid, winner text, loser text, reason text, target_meeting integer default 1)
 returns uuid
 language plpgsql
 as $$
 declare
   m public.matches%rowtype;
+  proposal public.match_result_proposals%rowtype;
 begin
   select * into m from public.matches where id = pg_temp.match_between(target_competition_id, winner, loser, target_meeting);
 
@@ -178,6 +181,21 @@ begin
     case when m.player_two_id = pg_temp.uid_of(winner) then 1 else 0 end,
     reason
   );
+
+  select * into proposal
+  from public.match_result_proposals
+  where match_id = m.id
+    and status = 'pending';
+
+  if found then
+    perform set_config(
+      'request.jwt.claims',
+      json_build_object('sub', proposal.respond_by, 'role', 'authenticated')::text,
+      true
+    );
+    perform public.accept_match_result_proposal(proposal.id);
+    perform pg_temp.act_as('bossg');
+  end if;
 
   return m.id;
 end;

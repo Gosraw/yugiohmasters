@@ -241,6 +241,8 @@ type SpecialPackRotation = {
 type SpecialPackDefinition = {
   id: string;
 
+  code?: string;
+
   name: string;
 
   theme_description: string;
@@ -529,6 +531,33 @@ const SPECIAL_CATEGORY_META = {
       `Every card in this pack is a ${themeValue}-Type monster.`,
   },
 } as const;
+
+// What a curated Special Pack really is. The rotation's
+// theme_category is only the shop SLOT it rotates through (slot 1-5 /
+// 6-10 / 11-15, manual_deploy section 3) - Zombie Uprising sits in the
+// "attribute" slot but is a Monster Type pack. The slot still decides
+// the pack code sent to purchase_shop_pack; this only decides the
+// label, color and icon on the card.
+const SPECIAL_PACK_KIND_BY_CODE: Record<
+  string,
+  keyof typeof SPECIAL_CATEGORY_META
+> = {
+  chaos_shadows: "attribute",
+  arcane_circle: "monster_type",
+  iron_legion: "monster_type",
+  dragons_roar: "monster_type",
+  elemental_vanguard: "archetype",
+  zombie_uprising: "monster_type",
+  stone_age: "monster_type",
+  winged_sovereigns: "monster_type",
+  aqua_depths: "monster_type",
+  beast_kingdom: "monster_type",
+  six_samurai_warlords: "archetype",
+  sanctuary_fairies: "monster_type",
+  verdant_swarm: "monster_type",
+  fiends_domain: "monster_type",
+  energy_frontier: "monster_type",
+};
 
 function packAccent(
   code: string
@@ -902,7 +931,7 @@ export default async function ShopPage({
         "shop_special_pack_definitions"
       )
       .select(
-        "id,name,theme_description"
+        "id,code,name,theme_description"
       ),
 
     supabase
@@ -1874,9 +1903,6 @@ export default async function ShopPage({
                 const packCode =
                   categoryMeta.packCode;
 
-                const accent =
-                  categoryMeta.accent;
-
                 // 2026-09-02 curated-pool rebuild: prefer the pack's own
                 // curated description; fall back to the old theme_value-
                 // derived copy only for a historical rotation row with no
@@ -1887,6 +1913,22 @@ export default async function ShopPage({
                         special.pack_definition_id
                       )
                     : undefined;
+
+                // Label / color / icon from what the pack really is,
+                // not from the slot it rotates through.
+                const realKind =
+                  packDefinition?.code
+                    ? SPECIAL_PACK_KIND_BY_CODE[
+                        packDefinition.code
+                      ]
+                    : undefined;
+
+                const accent =
+                  realKind
+                    ? SPECIAL_CATEGORY_META[
+                        realKind
+                      ].accent
+                    : categoryMeta.accent;
 
                 const packDescription =
                   packDefinition?.theme_description ??

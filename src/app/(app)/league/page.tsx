@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 
 import {
+  fetchAllPages,
+} from "@/lib/supabase/paginate";
+
+import {
   requireUser,
 } from "@/lib/supabase/queries";
 
@@ -534,58 +538,76 @@ export default async function LeaguePage() {
       leagueId
     );
 
-  let matchQuery =
-    supabase
-      .from("matches")
-      .select(
-        `
-          id,
-          player_one_id,
-          player_two_id,
-          winner_id,
-          result,
-          completed_at,
-          created_at
-        `
-      )
-      .eq(
-        "league_id",
-        leagueId
-      )
-      .eq(
-        "status",
-        "completed"
-      )
-      .eq(
-        "match_type",
-        "league"
-      );
-
-  if (season) {
-    matchQuery =
-      matchQuery
-        .eq(
-          "competition_id",
-          season.id
+  // A fresh builder per page (fetchAllPages): a whole season is
+  // ~120 duels, but every past season stays in the table too.
+  const buildMatchQuery = () => {
+    let matchQuery =
+      supabase
+        .from("matches")
+        .select(
+          `
+            id,
+            player_one_id,
+            player_two_id,
+            winner_id,
+            result,
+            completed_at,
+            created_at
+          `
         )
-        .is(
-          "tiebreak_id",
-          null
+        .eq(
+          "league_id",
+          leagueId
+        )
+        .eq(
+          "status",
+          "completed"
+        )
+        .eq(
+          "match_type",
+          "league"
         );
-  }
+
+    if (season) {
+      matchQuery =
+        matchQuery
+          .eq(
+            "competition_id",
+            season.id
+          )
+          .is(
+            "tiebreak_id",
+            null
+          );
+    }
+
+    return matchQuery;
+  };
 
   const [
-    {
-      data: matchData,
-      error: matchError,
-    },
+    matchData,
     seasonOrderResult,
+    championResult,
   ] = await Promise.all([
-    matchQuery.order(
-      "completed_at",
-      {
-        ascending: false,
-      }
+    fetchAllPages<Match>(
+      (from, to) =>
+        buildMatchQuery()
+          .order(
+            "completed_at",
+            {
+              ascending: false,
+            }
+          )
+          .order(
+            "id",
+            {
+              ascending: true,
+            }
+          )
+          .range(
+            from,
+            to
+          )
     ),
     !season
       ? Promise.resolve({
@@ -615,7 +637,50 @@ export default async function LeaguePage() {
                 season.id,
             }
           ),
+    // Season champions (202610152020) get a trophy next to their name.
+    profileIds.length > 0
+      ? supabase
+          .from(
+            "profile_titles"
+          )
+          .select(
+            "profile_id,title"
+          )
+          .eq(
+            "source",
+            "season_champion"
+          )
+          .in(
+            "profile_id",
+            profileIds
+          )
+      : Promise.resolve({
+          data: [] as {
+            profile_id: string;
+            title: string;
+          }[],
+          error: null,
+        }),
   ]);
+
+  const championTitlesByProfile =
+    new Map<string, string[]>();
+
+  for (const row of (championResult.data ??
+    []) as {
+    profile_id: string;
+    title: string;
+  }[]) {
+    championTitlesByProfile.set(
+      row.profile_id,
+      [
+        ...(championTitlesByProfile.get(
+          row.profile_id
+        ) ?? []),
+        row.title,
+      ]
+    );
+  }
 
   // profile -> place in the season standings (same order as the
   // competition page, including its tie-breaks).
@@ -644,15 +709,8 @@ export default async function LeaguePage() {
         ? "Season Champion"
         : "Season Leader";
 
-  if (matchError) {
-    throw new Error(
-      matchError.message
-    );
-  }
-
   const matches =
-    (matchData ??
-      []) as Match[];
+    matchData;
 
   // ======================================================
   // STANDINGS
@@ -1155,9 +1213,36 @@ export default async function LeaguePage() {
                             }
                           </p>
 
-                          <h3 className="mt-1 truncate text-xl font-black">
-                            {playerName(
-                              standing.profile
+                          <h3 className="mt-1 flex min-w-0 items-center gap-1.5 text-xl font-black">
+                            <span className="truncate">
+                              {playerName(
+                                standing.profile
+                              )}
+                            </span>
+
+                            {championTitlesByProfile.has(
+                              standing.profile.id
+                            ) && (
+                              <span
+                                data-testid="champion-badge"
+                                title={(
+                                  championTitlesByProfile.get(
+                                    standing.profile.id
+                                  ) ?? []
+                                ).join(", ")}
+                                aria-label={(
+                                  championTitlesByProfile.get(
+                                    standing.profile.id
+                                  ) ?? []
+                                ).join(", ")}
+                                className="inline-flex shrink-0"
+                              >
+                                <Trophy
+                                  size={16}
+                                  className="text-amber-300"
+                                  aria-hidden="true"
+                                />
+                              </span>
                             )}
                           </h3>
                         </div>

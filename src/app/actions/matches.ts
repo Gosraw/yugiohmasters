@@ -9,6 +9,11 @@ import {
 } from "next/navigation";
 
 import {
+  safeReturnTo,
+  withFeedback,
+} from "@/lib/safe-return-to";
+
+import {
   requireUser,
 } from "@/lib/supabase/queries";
 
@@ -70,7 +75,33 @@ type MatchAcceptInfo = {
 
 // =========================================================
 // HELPERS
+//
+// Every failure redirects back with ?error=... (shown by
+// ActionFeedbackBanner) instead of throwing: a thrown Error becomes
+// a generic error screen in production builds. redirect() itself
+// throws NEXT_REDIRECT, so none of this runs inside a try/catch.
 // =========================================================
+
+function fail(
+  path: string,
+  message: string
+): never {
+  redirect(
+    withFeedback(
+      path,
+      "error",
+      message
+    )
+  );
+}
+
+function matchPath(
+  matchId: string
+) {
+  return matchId
+    ? `/matches/${matchId}`
+    : "/matches";
+}
 
 async function getMatchSettlementInfo(
   supabase: Awaited<
@@ -80,6 +111,11 @@ async function getMatchSettlementInfo(
   >["supabase"],
   matchId: string
 ) {
+  const back =
+    matchPath(
+      matchId
+    );
+
   const {
     data,
     error,
@@ -102,7 +138,8 @@ async function getMatchSettlementInfo(
     error ||
     !data
   ) {
-    throw new Error(
+    fail(
+      back,
       "Could not load this duel."
     );
   }
@@ -118,6 +155,11 @@ async function getMatchAcceptInfo(
   >["supabase"],
   matchId: string
 ) {
+  const back =
+    matchPath(
+      matchId
+    );
+
   const {
     data,
     error,
@@ -142,7 +184,8 @@ async function getMatchAcceptInfo(
     error ||
     !data
   ) {
-    throw new Error(
+    fail(
+      back,
       "Could not load this duel."
     );
   }
@@ -186,6 +229,11 @@ async function finalizeCompletedMatch(
   >["supabase"],
   matchId: string
 ) {
+  const back =
+    matchPath(
+      matchId
+    );
+
   const match =
     await getMatchSettlementInfo(
       supabase,
@@ -215,7 +263,8 @@ async function finalizeCompletedMatch(
     );
 
     if (rewardError) {
-      throw new Error(
+      fail(
+        back,
         `DP reward failed: ${rewardError.message}`
       );
     }
@@ -242,7 +291,8 @@ async function finalizeCompletedMatch(
     );
 
     if (wagerError) {
-      throw new Error(
+      fail(
+        back,
         `Wager settlement failed: ${wagerError.message}`
       );
     }
@@ -273,6 +323,11 @@ async function releaseMatchWagerIfNeeded(
   >["supabase"],
   matchId: string
 ) {
+  const back =
+    matchPath(
+      matchId
+    );
+
   const match =
     await getMatchSettlementInfo(
       supabase,
@@ -312,7 +367,8 @@ async function releaseMatchWagerIfNeeded(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       `Releasing the wager failed: ${error.message}`
     );
   }
@@ -329,6 +385,9 @@ export async function createMatchChallenge(
     supabase,
     userId,
   } = await requireUser();
+
+  const back =
+    "/matches/new";
 
   const opponentId =
     String(
@@ -366,7 +425,8 @@ export async function createMatchChallenge(
     );
 
   if (!opponentId) {
-    throw new Error(
+    fail(
+      back,
       "Pick an opponent."
     );
   }
@@ -375,7 +435,8 @@ export async function createMatchChallenge(
     opponentId ===
     userId
   ) {
-    throw new Error(
+    fail(
+      back,
       "You cannot challenge yourself."
     );
   }
@@ -386,7 +447,8 @@ export async function createMatchChallenge(
     requestedMatchType !==
       "practice"
   ) {
-    throw new Error(
+    fail(
+      back,
       "Invalid duel type."
     );
   }
@@ -399,7 +461,8 @@ export async function createMatchChallenge(
     requestedWagerType !==
       "card"
   ) {
-    throw new Error(
+    fail(
+      back,
       "Invalid wager type."
     );
   }
@@ -410,7 +473,8 @@ export async function createMatchChallenge(
     requestedWagerType !==
       "none"
   ) {
-    throw new Error(
+    fail(
+      back,
       "League Duels can't have a wager."
     );
   }
@@ -426,7 +490,8 @@ export async function createMatchChallenge(
         null ||
       wagerDpAmount <= 0
     ) {
-      throw new Error(
+      fail(
+        back,
         "Enter a valid DP wager."
       );
     }
@@ -439,7 +504,8 @@ export async function createMatchChallenge(
       "card" &&
     !cardInstanceId
   ) {
-    throw new Error(
+    fail(
+      back,
       "Pick a card to wager."
     );
   }
@@ -458,7 +524,8 @@ export async function createMatchChallenge(
     membershipError ||
     !membership
   ) {
-    throw new Error(
+    fail(
+      back,
       "League not found."
     );
   }
@@ -485,7 +552,8 @@ export async function createMatchChallenge(
     opponentMembershipError ||
     !opponentMembership
   ) {
-    throw new Error(
+    fail(
+      back,
       "That player is not in your league."
     );
   }
@@ -516,13 +584,15 @@ export async function createMatchChallenge(
     .maybeSingle();
 
   if (activeDeckError) {
-    throw new Error(
+    fail(
+      back,
       activeDeckError.message
     );
   }
 
   if (!activeDeck) {
-    throw new Error(
+    fail(
+      back,
       "You need an active Ready deck first."
     );
   }
@@ -542,13 +612,15 @@ export async function createMatchChallenge(
   );
 
   if (createError) {
-    throw new Error(
+    fail(
+      back,
       createError.message
     );
   }
 
   if (!matchId) {
-    throw new Error(
+    fail(
+      back,
       "The challenge could not be created."
     );
   }
@@ -577,7 +649,8 @@ export async function createMatchChallenge(
     );
 
     if (configError) {
-      throw new Error(
+      fail(
+        back,
         `Setting up the practice duel failed: ${configError.message}`
       );
     }
@@ -605,7 +678,8 @@ export async function createMatchChallenge(
           }
         );
 
-        throw new Error(
+        fail(
+          back,
           `DP wager failed: ${fundError.message}`
         );
       }
@@ -638,7 +712,8 @@ export async function createMatchChallenge(
           }
         );
 
-        throw new Error(
+        fail(
+          back,
           `Card wager failed: ${cardError.message}`
         );
       }
@@ -674,6 +749,9 @@ export async function recordPracticeDuel(
     userId,
   } = await requireUser();
 
+  const back =
+    "/matches/new";
+
   const opponentId =
     String(
       formData.get(
@@ -689,7 +767,8 @@ export async function recordPracticeDuel(
     ).trim();
 
   if (!opponentId) {
-    throw new Error(
+    fail(
+      back,
       "Pick an opponent."
     );
   }
@@ -698,7 +777,8 @@ export async function recordPracticeDuel(
     winnerId !== userId &&
     winnerId !== opponentId
   ) {
-    throw new Error(
+    fail(
+      back,
       "Tap who won the duel."
     );
   }
@@ -717,13 +797,15 @@ export async function recordPracticeDuel(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
 
   if (!matchId) {
-    throw new Error(
+    fail(
+      back,
       "The duel could not be recorded."
     );
   }
@@ -768,6 +850,11 @@ export async function acceptMatchChallenge(
       ) ?? ""
     ).trim();
 
+  const back =
+    matchPath(
+      matchId
+    );
+
   const cardInstanceId =
     String(
       formData.get(
@@ -776,7 +863,8 @@ export async function acceptMatchChallenge(
     ).trim();
 
   if (!matchId) {
-    throw new Error(
+    fail(
+      back,
       "Duel is missing."
     );
   }
@@ -791,7 +879,8 @@ export async function acceptMatchChallenge(
     match.player_two_id !==
     userId
   ) {
-    throw new Error(
+    fail(
+      back,
       "Only the challenged player can accept this duel."
     );
   }
@@ -800,104 +889,58 @@ export async function acceptMatchChallenge(
     match.status !==
     "pending"
   ) {
-    throw new Error(
+    fail(
+      back,
       "This challenge can no longer be accepted."
     );
   }
 
+  if (
+    match.match_type ===
+      "practice" &&
+    match.wager_type ===
+      "card" &&
+    !cardInstanceId
+  ) {
+    fail(
+      back,
+      "Pick a card to wager first."
+    );
+  }
+
   // -------------------------------------------------------
-  // ACCEPT EXISTING CHALLENGE FIRST
+  // ACCEPT + STAKE IN ONE TRANSACTION (202610152030)
   //
-  // Deliberately runs BEFORE any wager funding/locking below. This
-  // is the only step that can fail for a reason that has nothing to
-  // do with the wager itself (no Active Ready deck, challenge no
-  // longer pending, wrong player) - previously it ran LAST, so a
-  // player who lacked a ready deck could already have had DP
-  // deducted (fund_match_dp_wager) or a card locked
-  // (add_match_wager_card) with no rollback, leaving them worse off
-  // with the challenge still stuck pending. Running the
-  // fail-without-side-effects check first means a deck-check failure
-  // now leaves no DP debited and no card locked, so no rollback is
-  // needed at all.
+  // accept_practice_challenge accepts the challenge and pays this
+  // player's stake (DP into escrow, or locks the chosen card) in one
+  // database transaction. If the stake fails (not enough DP, card
+  // locked, no Ready deck) nothing happens at all - before, the
+  // duel could end up accepted with only the challenger's stake in
+  // the pot.
   // -------------------------------------------------------
 
   const {
     error,
   } = await supabase.rpc(
-    "accept_match_challenge",
+    "accept_practice_challenge",
     {
       target_match_id:
         matchId,
+
+      target_card_instance_id:
+        cardInstanceId ||
+        null,
     }
   );
 
   if (error) {
-    throw new Error(
-      error.message
+    fail(
+      back,
+      match.wager_type !==
+        "none"
+        ? `Wager failed: ${error.message}`
+        : error.message
     );
-  }
-
-  // -------------------------------------------------------
-  // PRACTICE DP WAGER
-  // -------------------------------------------------------
-
-  if (
-    match.match_type ===
-      "practice" &&
-    match.wager_type ===
-      "dp"
-  ) {
-    const {
-      error: fundError,
-    } = await supabase.rpc(
-      "fund_match_dp_wager",
-      {
-        target_match_id:
-          matchId,
-      }
-    );
-
-    if (fundError) {
-      throw new Error(
-        `DP wager failed: ${fundError.message}`
-      );
-    }
-  }
-
-  // -------------------------------------------------------
-  // PRACTICE CARD WAGER
-  // -------------------------------------------------------
-
-  if (
-    match.match_type ===
-      "practice" &&
-    match.wager_type ===
-      "card"
-  ) {
-    if (!cardInstanceId) {
-      throw new Error(
-        "Pick a card to wager first."
-      );
-    }
-
-    const {
-      error: cardError,
-    } = await supabase.rpc(
-      "add_match_wager_card",
-      {
-        target_match_id:
-          matchId,
-
-        target_card_instance_id:
-          cardInstanceId,
-      }
-    );
-
-    if (cardError) {
-      throw new Error(
-        `Card wager failed: ${cardError.message}`
-      );
-    }
   }
 
   revalidatePath("/");
@@ -930,8 +973,14 @@ export async function declineMatchChallenge(
       ) ?? ""
     ).trim();
 
+  const back =
+    matchPath(
+      matchId
+    );
+
   if (!matchId) {
-    throw new Error(
+    fail(
+      back,
       "Duel is missing."
     );
   }
@@ -947,7 +996,8 @@ export async function declineMatchChallenge(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -987,8 +1037,14 @@ export async function cancelMatchChallenge(
       ) ?? ""
     ).trim();
 
+  const back =
+    matchPath(
+      matchId
+    );
+
   if (!matchId) {
-    throw new Error(
+    fail(
+      back,
       "Duel is missing."
     );
   }
@@ -1004,7 +1060,8 @@ export async function cancelMatchChallenge(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -1045,6 +1102,11 @@ export async function completeMatch(
       ) ?? ""
     ).trim();
 
+  const back =
+    matchPath(
+      matchId
+    );
+
   const result =
     String(
       formData.get(
@@ -1060,7 +1122,8 @@ export async function completeMatch(
     ).trim();
 
   if (!matchId) {
-    throw new Error(
+    fail(
+      back,
       "Duel is missing."
     );
   }
@@ -1073,7 +1136,8 @@ export async function completeMatch(
     result !==
       "draw"
   ) {
-    throw new Error(
+    fail(
+      back,
       "Invalid duel result."
     );
   }
@@ -1098,7 +1162,8 @@ export async function completeMatch(
     matchError ||
     !match
   ) {
-    throw new Error(
+    fail(
+      back,
       "Duel not found."
     );
   }
@@ -1109,7 +1174,8 @@ export async function completeMatch(
     match.player_two_id !==
       userId
   ) {
-    throw new Error(
+    fail(
+      back,
       "You are not a player in this duel."
     );
   }
@@ -1118,7 +1184,8 @@ export async function completeMatch(
     match.status !==
     "accepted"
   ) {
-    throw new Error(
+    fail(
+      back,
       "Only an accepted duel can get a result."
     );
   }
@@ -1140,7 +1207,8 @@ export async function completeMatch(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -1173,8 +1241,14 @@ export async function confirmMatchResult(
       ) ?? ""
     ).trim();
 
+  const back =
+    matchPath(
+      matchId
+    );
+
   if (!matchId) {
-    throw new Error(
+    fail(
+      back,
       "Duel is missing."
     );
   }
@@ -1190,7 +1264,8 @@ export async function confirmMatchResult(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -1235,6 +1310,11 @@ export async function disputeMatchResult(
       ) ?? ""
     ).trim();
 
+  const back =
+    matchPath(
+      matchId
+    );
+
   const reason =
     String(
       formData.get(
@@ -1243,7 +1323,8 @@ export async function disputeMatchResult(
     ).trim();
 
   if (!matchId) {
-    throw new Error(
+    fail(
+      back,
       "Duel is missing."
     );
   }
@@ -1252,7 +1333,8 @@ export async function disputeMatchResult(
     reason.length >
     1000
   ) {
-    throw new Error(
+    fail(
+      back,
       "The reason can be at most 1000 characters."
     );
   }
@@ -1271,7 +1353,8 @@ export async function disputeMatchResult(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -1305,6 +1388,11 @@ export async function resolveDisputedMatch(
       ) ?? ""
     ).trim();
 
+  const back =
+    matchPath(
+      matchId
+    );
+
   const result =
     String(
       formData.get(
@@ -1320,7 +1408,8 @@ export async function resolveDisputedMatch(
     ).trim();
 
   if (!matchId) {
-    throw new Error(
+    fail(
+      back,
       "Duel is missing."
     );
   }
@@ -1333,7 +1422,8 @@ export async function resolveDisputedMatch(
     result !==
       "draw"
   ) {
-    throw new Error(
+    fail(
+      back,
       "Invalid result."
     );
   }
@@ -1342,7 +1432,8 @@ export async function resolveDisputedMatch(
     adminNotes.length >
     1000
   ) {
-    throw new Error(
+    fail(
+      back,
       "The admin note can be at most 1000 characters."
     );
   }
@@ -1362,7 +1453,8 @@ export async function resolveDisputedMatch(
     matchError ||
     !match
   ) {
-    throw new Error(
+    fail(
+      back,
       "Duel not found."
     );
   }
@@ -1371,7 +1463,8 @@ export async function resolveDisputedMatch(
     match.status !==
     "disputed"
   ) {
-    throw new Error(
+    fail(
+      back,
       "Only a disputed duel can be resolved."
     );
   }
@@ -1398,7 +1491,8 @@ export async function resolveDisputedMatch(
     membershipError ||
     !membership
   ) {
-    throw new Error(
+    fail(
+      back,
       "League membership not found."
     );
   }
@@ -1407,7 +1501,8 @@ export async function resolveDisputedMatch(
     membership.role !==
     "admin"
   ) {
-    throw new Error(
+    fail(
+      back,
       "Only a league admin can resolve a disputed duel."
     );
   }
@@ -1429,8 +1524,48 @@ export async function resolveDisputedMatch(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
+    );
+  }
+
+  // 202610152010: an admin who plays in this duel only PROPOSES the
+  // result - the opponent has to accept it before anything (result,
+  // wager) changes.
+  const {
+    data: openProposal,
+  } = await supabase
+    .from("match_result_proposals")
+    .select("id")
+    .eq(
+      "match_id",
+      matchId
+    )
+    .eq(
+      "proposed_by",
+      userId
+    )
+    .eq(
+      "status",
+      "pending"
+    )
+    .maybeSingle();
+
+  revalidatePath("/");
+  revalidatePath("/matches");
+  revalidatePath(
+    `/matches/${matchId}`
+  );
+  revalidatePath("/attention");
+
+  if (openProposal) {
+    redirect(
+      withFeedback(
+        `/matches/${matchId}`,
+        "success",
+        "Result proposed — your opponent has to accept it before it counts."
+      )
     );
   }
 
@@ -1439,15 +1574,204 @@ export async function resolveDisputedMatch(
     matchId
   );
 
-  revalidatePath("/");
-  revalidatePath("/matches");
-  revalidatePath(
-    `/matches/${matchId}`
-  );
   revalidatePath("/league");
   revalidatePath("/profile");
 
   redirect(
-    `/matches/${matchId}?success=${encodeURIComponent("Dispute resolved.")}`
+    withFeedback(
+      `/matches/${matchId}`,
+      "success",
+      "Dispute resolved."
+    )
   );
-    }
+}
+
+// =========================================================
+// RESULT PROPOSALS (202610152010)
+//
+// A league admin who PLAYS in a duel cannot overrule it: their
+// correction (season duel), tiebreak result or dispute resolution
+// (practice duel) is stored as a proposal. Only the opponent can
+// accept or reject it; the admin can withdraw it. All checks live in
+// the database functions. return_to brings the player back to the
+// screen the buttons were on (round screen, competition page, duel).
+// =========================================================
+
+type ProposalAction =
+  | "accept_match_result_proposal"
+  | "reject_match_result_proposal"
+  | "withdraw_match_result_proposal";
+
+const PROPOSAL_SUCCESS: Record<
+  ProposalAction,
+  string
+> = {
+  accept_match_result_proposal:
+    "Accepted — the result is updated.",
+  reject_match_result_proposal:
+    "Rejected — the result stays as it was.",
+  withdraw_match_result_proposal:
+    "Proposal withdrawn.",
+};
+
+async function runProposalAction(
+  formData: FormData,
+  rpc: ProposalAction
+) {
+  const {
+    supabase,
+  } = await requireUser();
+
+  const proposalId =
+    String(
+      formData.get(
+        "proposal_id"
+      ) ?? ""
+    ).trim();
+
+  const back =
+    safeReturnTo(
+      String(
+        formData.get(
+          "return_to"
+        ) ?? ""
+      ),
+      "/attention"
+    );
+
+  if (!proposalId) {
+    fail(
+      back,
+      "Proposal is missing."
+    );
+  }
+
+  const note =
+    String(
+      formData.get(
+        "note"
+      ) ?? ""
+    ).trim();
+
+  const {
+    data: matchId,
+    error,
+  } = await supabase.rpc(
+    rpc,
+    rpc ===
+      "reject_match_result_proposal"
+      ? {
+          target_proposal_id:
+            proposalId,
+          target_note:
+            note ||
+            null,
+        }
+      : {
+          target_proposal_id:
+            proposalId,
+        }
+  );
+
+  if (error) {
+    fail(
+      back,
+      error.message
+    );
+  }
+
+  const settledMatchId =
+    typeof matchId ===
+    "string"
+      ? matchId
+      : "";
+
+  if (
+    rpc ===
+      "accept_match_result_proposal" &&
+    settledMatchId
+  ) {
+    // Practice duel: settle its wager now that it is completed (a
+    // no-op for season duels and duels without a wager).
+    await finalizeCompletedMatch(
+      supabase,
+      settledMatchId
+    );
+  }
+
+  const {
+    data: matchRow,
+  } = settledMatchId
+    ? await supabase
+        .from("matches")
+        .select("competition_id")
+        .eq(
+          "id",
+          settledMatchId
+        )
+        .maybeSingle()
+    : {
+        data: null,
+      };
+
+  const competitionId =
+    (matchRow as {
+      competition_id: string | null;
+    } | null)?.competition_id ?? null;
+
+  revalidatePath("/");
+  revalidatePath("/attention");
+  revalidatePath("/matches");
+  revalidatePath("/league");
+  revalidatePath("/profile");
+
+  if (settledMatchId) {
+    revalidatePath(
+      `/matches/${settledMatchId}`
+    );
+  }
+
+  if (competitionId) {
+    revalidatePath(
+      `/competitions/${competitionId}`
+    );
+    revalidatePath(
+      `/competitions/${competitionId}/round`
+    );
+  }
+
+  redirect(
+    withFeedback(
+      back,
+      "success",
+      PROPOSAL_SUCCESS[rpc]
+    )
+  );
+}
+
+export async function acceptMatchResultProposal(
+  formData: FormData
+) {
+  await runProposalAction(
+    formData,
+    "accept_match_result_proposal"
+  );
+}
+
+export async function rejectMatchResultProposal(
+  formData: FormData
+) {
+  await runProposalAction(
+    formData,
+    "reject_match_result_proposal"
+  );
+}
+
+export async function withdrawMatchResultProposal(
+  formData: FormData
+) {
+  await runProposalAction(
+    formData,
+    "withdraw_match_result_proposal"
+  );
+}

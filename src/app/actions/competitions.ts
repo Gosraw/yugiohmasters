@@ -9,6 +9,10 @@ import {
 } from "next/navigation";
 
 import {
+  withFeedback,
+} from "@/lib/safe-return-to";
+
+import {
   requireUser,
 } from "@/lib/supabase/queries";
 
@@ -45,6 +49,50 @@ function requiredString(
   return value;
 }
 
+// Form actions (not useActionState): a missing field or a database
+// error goes back to the page with an ?error= banner instead of a
+// thrown Error (which production builds turn into a generic error
+// screen). redirect() throws NEXT_REDIRECT - never inside try/catch.
+function fail(
+  path: string,
+  message: string
+): never {
+  redirect(
+    withFeedback(
+      path,
+      "error",
+      message
+    )
+  );
+}
+
+function requiredField(
+  formData: FormData,
+  key: string,
+  back: string
+) {
+  const value =
+    String(
+      formData.get(key) ??
+        ""
+    ).trim();
+
+  if (!value) {
+    fail(
+      back,
+      `${key} is missing.`
+    );
+  }
+
+  return value;
+}
+
+function competitionPath(
+  competitionId: string
+) {
+  return `/competitions/${competitionId}`;
+}
+
 // =========================================================
 // MATCH RESULT ACTION STATE
 //
@@ -61,10 +109,14 @@ function requiredString(
 // outcome (2.0, 202610121800_season_result_confirmation): a
 // player's tap is only a claim until the opponent confirms it -
 // "awaiting_confirmation" / "disputed" mean nothing was paid yet.
+// "proposed" (202610152010): an admin who plays in the duel sent a
+// correction / tiebreak result - it only counts once the opponent
+// accepts it.
 export type MatchResultOutcome =
   | "completed"
   | "awaiting_confirmation"
-  | "disputed";
+  | "disputed"
+  | "proposed";
 
 export type MatchResultActionState =
   | { status: "idle" }
@@ -106,6 +158,35 @@ async function readMatchOutcome(
   return "completed";
 }
 
+async function hasOpenProposal(
+  supabase: ActionSupabase,
+  matchId: string,
+  userId: string
+) {
+  const {
+    data,
+  } = await supabase
+    .from("match_result_proposals")
+    .select("id")
+    .eq(
+      "match_id",
+      matchId
+    )
+    .eq(
+      "proposed_by",
+      userId
+    )
+    .eq(
+      "status",
+      "pending"
+    )
+    .maybeSingle();
+
+  return Boolean(
+    data
+  );
+}
+
 function revalidateRoundPaths(
   competitionId: string
 ) {
@@ -124,103 +205,6 @@ function revalidateRoundPaths(
 
 
 // =========================================================
-// CREATE COMPETITION
-// =========================================================
-
-export async function createCompetition(
-  formData: FormData
-) {
-  const {
-    supabase,
-  } = await requireUser();
-
-  const leagueId =
-    requiredString(
-      formData,
-      "league_id"
-    );
-
-  const name =
-    requiredString(
-      formData,
-      "name"
-    );
-
-  const competitionType =
-    requiredString(
-      formData,
-      "competition_type"
-    );
-
-  if (
-    competitionType !==
-      "round_robin" &&
-    competitionType !==
-      "tournament"
-  ) {
-    throw new Error(
-      "Invalid competition type."
-    );
-  }
-
-  const {
-    data: competitionId,
-    error,
-  } = await supabase.rpc(
-    "create_competition",
-    {
-      target_league_id:
-        leagueId,
-
-      target_name:
-        name,
-
-      target_type:
-        competitionType,
-
-      target_season_id:
-        null,
-    }
-  );
-
-  if (error) {
-    throw new Error(
-      error.message
-    );
-  }
-
-  if (!competitionId) {
-    throw new Error(
-      "The competition could not be created."
-    );
-  }
-
-  const {
-    error: rewardError,
-  } = await supabase.rpc(
-    "install_default_competition_rewards",
-    {
-      target_competition_id:
-        competitionId,
-    }
-  );
-
-  if (rewardError) {
-    throw new Error(
-      rewardError.message
-    );
-  }
-
-  revalidatePath(
-    "/competitions"
-  );
-
-  redirect(
-    `/competitions/${competitionId}`
-  );
-}
-
-// =========================================================
 // ADD PLAYER
 // =========================================================
 
@@ -232,15 +216,22 @@ export async function addCompetitionPlayer(
   } = await requireUser();
 
   const competitionId =
-    requiredString(
+    requiredField(
       formData,
-      "competition_id"
+      "competition_id",
+      "/competitions"
+    );
+
+  const back =
+    competitionPath(
+      competitionId
     );
 
   const profileId =
-    requiredString(
+    requiredField(
       formData,
-      "profile_id"
+      "profile_id",
+      back
     );
 
   const {
@@ -257,7 +248,8 @@ export async function addCompetitionPlayer(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -283,15 +275,22 @@ export async function removeCompetitionPlayer(
   } = await requireUser();
 
   const competitionId =
-    requiredString(
+    requiredField(
       formData,
-      "competition_id"
+      "competition_id",
+      "/competitions"
+    );
+
+  const back =
+    competitionPath(
+      competitionId
     );
 
   const profileId =
-    requiredString(
+    requiredField(
       formData,
-      "profile_id"
+      "profile_id",
+      back
     );
 
   const {
@@ -308,7 +307,8 @@ export async function removeCompetitionPlayer(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -334,9 +334,15 @@ export async function startCompetition(
   } = await requireUser();
 
   const competitionId =
-    requiredString(
+    requiredField(
       formData,
-      "competition_id"
+      "competition_id",
+      "/competitions"
+    );
+
+  const back =
+    competitionPath(
+      competitionId
     );
 
   const {
@@ -350,7 +356,8 @@ export async function startCompetition(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -380,9 +387,15 @@ export async function finalizeRoundRobinCompetition(
   } = await requireUser();
 
   const competitionId =
-    requiredString(
+    requiredField(
       formData,
-      "competition_id"
+      "competition_id",
+      "/competitions"
+    );
+
+  const back =
+    competitionPath(
+      competitionId
     );
 
   const {
@@ -396,7 +409,8 @@ export async function finalizeRoundRobinCompetition(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -426,9 +440,15 @@ export async function distributeCompetitionRewards(
   } = await requireUser();
 
   const competitionId =
-    requiredString(
+    requiredField(
       formData,
-      "competition_id"
+      "competition_id",
+      "/competitions"
+    );
+
+  const back =
+    competitionPath(
+      competitionId
     );
 
   const {
@@ -442,7 +462,8 @@ export async function distributeCompetitionRewards(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -476,22 +497,28 @@ export async function createCompetitionV2(
     supabase,
   } = await requireUser();
 
+  const back =
+    "/competitions";
+
   const leagueId =
-    requiredString(
+    requiredField(
       formData,
-      "league_id"
+      "league_id",
+      back
     );
 
   const name =
-    requiredString(
+    requiredField(
       formData,
-      "name"
+      "name",
+      back
     );
 
   const meetingsRaw =
-    requiredString(
+    requiredField(
       formData,
-      "meetings_per_pairing"
+      "meetings_per_pairing",
+      back
     );
 
   const meetings =
@@ -506,15 +533,17 @@ export async function createCompetitionV2(
     ) ||
     meetings < 1
   ) {
-    throw new Error(
+    fail(
+      back,
       "Meetings per pairing must be at least 1."
     );
   }
 
   const matchFormat =
-    requiredString(
+    requiredField(
       formData,
-      "match_format"
+      "match_format",
+      back
     );
 
   if (
@@ -523,7 +552,8 @@ export async function createCompetitionV2(
     matchFormat !==
       "best_of_3"
   ) {
-    throw new Error(
+    fail(
+      back,
       "Invalid match format."
     );
   }
@@ -545,13 +575,15 @@ export async function createCompetitionV2(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
 
   if (!competitionId) {
-    throw new Error(
+    fail(
+      back,
       "The competition could not be created."
     );
   }
@@ -576,7 +608,8 @@ export async function createCompetitionV2(
     );
 
     if (addPlayerError) {
-      throw new Error(
+      fail(
+        back,
         addPlayerError.message
       );
     }
@@ -603,15 +636,22 @@ export async function addCompetitionPlayerV2(
   } = await requireUser();
 
   const competitionId =
-    requiredString(
+    requiredField(
       formData,
-      "competition_id"
+      "competition_id",
+      "/competitions"
+    );
+
+  const back =
+    competitionPath(
+      competitionId
     );
 
   const profileId =
-    requiredString(
+    requiredField(
       formData,
-      "profile_id"
+      "profile_id",
+      back
     );
 
   const {
@@ -627,7 +667,8 @@ export async function addCompetitionPlayerV2(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -645,15 +686,22 @@ export async function removeCompetitionPlayerV2(
   } = await requireUser();
 
   const competitionId =
-    requiredString(
+    requiredField(
       formData,
-      "competition_id"
+      "competition_id",
+      "/competitions"
+    );
+
+  const back =
+    competitionPath(
+      competitionId
     );
 
   const profileId =
-    requiredString(
+    requiredField(
       formData,
-      "profile_id"
+      "profile_id",
+      back
     );
 
   const {
@@ -669,7 +717,8 @@ export async function removeCompetitionPlayerV2(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -691,9 +740,15 @@ export async function startCompetitionV2(
   } = await requireUser();
 
   const competitionId =
-    requiredString(
+    requiredField(
       formData,
-      "competition_id"
+      "competition_id",
+      "/competitions"
+    );
+
+  const back =
+    competitionPath(
+      competitionId
     );
 
   const {
@@ -707,7 +762,8 @@ export async function startCompetitionV2(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -942,6 +998,7 @@ export async function correctCompetitionMatchResultV2(
 ): Promise<MatchResultActionState> {
   const {
     supabase,
+    userId,
   } = await requireUser();
 
   let matchId: string;
@@ -991,9 +1048,23 @@ export async function correctCompetitionMatchResultV2(
     };
   }
 
-  revalidatePath(
-    `/competitions/${competitionId}`
+  revalidateRoundPaths(
+    competitionId
   );
+
+  if (
+    await hasOpenProposal(
+      supabase,
+      matchId,
+      userId
+    )
+  ) {
+    return {
+      status: "success",
+      summary: null,
+      outcome: "proposed",
+    };
+  }
 
   return {
     status: "success",
@@ -1013,9 +1084,15 @@ export async function finalizeCompetitionV2(
   } = await requireUser();
 
   const competitionId =
-    requiredString(
+    requiredField(
       formData,
-      "competition_id"
+      "competition_id",
+      "/competitions"
+    );
+
+  const back =
+    competitionPath(
+      competitionId
     );
 
   const {
@@ -1029,7 +1106,8 @@ export async function finalizeCompetitionV2(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -1063,9 +1141,15 @@ export async function detectCompetitionTiebreaksV2(
   } = await requireUser();
 
   const competitionId =
-    requiredString(
+    requiredField(
       formData,
-      "competition_id"
+      "competition_id",
+      "/competitions"
+    );
+
+  const back =
+    competitionPath(
+      competitionId
     );
 
   const {
@@ -1079,7 +1163,8 @@ export async function detectCompetitionTiebreaksV2(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -1097,15 +1182,22 @@ export async function startCompetitionTiebreak(
   } = await requireUser();
 
   const tiebreakId =
-    requiredString(
+    requiredField(
       formData,
-      "tiebreak_id"
+      "tiebreak_id",
+      "/competitions"
     );
 
   const competitionId =
-    requiredString(
+    requiredField(
       formData,
-      "competition_id"
+      "competition_id",
+      "/competitions"
+    );
+
+  const back =
+    competitionPath(
+      competitionId
     );
 
   const {
@@ -1119,7 +1211,8 @@ export async function startCompetitionTiebreak(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -1135,6 +1228,7 @@ export async function submitCompetitionTiebreakMatchResult(
 ): Promise<MatchResultActionState> {
   const {
     supabase,
+    userId,
   } = await requireUser();
 
   let matchId: string;
@@ -1183,9 +1277,23 @@ export async function submitCompetitionTiebreakMatchResult(
     };
   }
 
-  revalidatePath(
-    `/competitions/${competitionId}`
+  revalidateRoundPaths(
+    competitionId
   );
+
+  if (
+    await hasOpenProposal(
+      supabase,
+      matchId,
+      userId
+    )
+  ) {
+    return {
+      status: "success",
+      summary: null,
+      outcome: "proposed",
+    };
+  }
 
   // A tiebreak match is never itself part of a "round" (its
   // matches.round_number is null - see start_competition_tiebreak),
@@ -1222,9 +1330,15 @@ export async function distributeCompetitionRewardsV2(
   } = await requireUser();
 
   const competitionId =
-    requiredString(
+    requiredField(
       formData,
-      "competition_id"
+      "competition_id",
+      "/competitions"
+    );
+
+  const back =
+    competitionPath(
+      competitionId
     );
 
   // FIXED (2026-08-27): distribute_competition_rewards_v2 now
@@ -1248,7 +1362,8 @@ export async function distributeCompetitionRewardsV2(
   );
 
   if (error) {
-    throw new Error(
+    fail(
+      back,
       error.message
     );
   }
@@ -1290,10 +1405,14 @@ export async function startSeasonCompetition(
     supabase,
   } = await requireUser();
 
+  const back =
+    "/competitions";
+
   const leagueId =
-    requiredString(
+    requiredField(
       formData,
-      "league_id"
+      "league_id",
+      back
     );
 
   const name =

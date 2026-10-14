@@ -35,6 +35,14 @@ import {
   type RoundPairing,
 } from "@/components/round-play-flow";
 
+import {
+  MatchProposalPanel,
+} from "@/components/match-proposal-panel";
+
+import {
+  loadOpenProposals,
+} from "@/lib/match-proposals";
+
 export const dynamic =
   "force-dynamic";
 
@@ -473,6 +481,16 @@ export default async function CompetitionRoundPage({
         a.placement - b.placement
     );
 
+  // Result changes an admin proposed for a duel they play in
+  // (202610152010) - the opponent answers them here.
+  const openProposals =
+    await loadOpenProposals(
+      supabase,
+      {
+        competitionId,
+      }
+    );
+
   const seasonFinished =
     competition.status === "completed" ||
     (competition.status === "active" &&
@@ -518,6 +536,24 @@ export default async function CompetitionRoundPage({
           </p>
         )}
       </header>
+
+      <MatchProposalPanel
+        proposals={
+          openProposals
+        }
+        currentUserId={
+          userId
+        }
+        nameOf={(profileId) =>
+          displayName(
+            profileMap.get(
+              profileId
+            )
+          )
+        }
+        returnTo={`/competitions/${competition.id}/round`}
+        className="mt-5"
+      />
 
       {competition.status === "draft" ? (
         <section className="panel mt-5 p-5 text-center">

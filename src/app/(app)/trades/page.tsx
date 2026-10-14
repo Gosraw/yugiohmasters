@@ -895,6 +895,8 @@ export default async function TradesPage() {
           userId
     );
 
+  // A discarded draft (cancelled before it was ever sent) never was
+  // a trade between two players - it stays out of the history.
   const history =
     trades.filter(
       (trade) =>
@@ -902,8 +904,10 @@ export default async function TradesPage() {
           "accepted" ||
         trade.status ===
           "declined" ||
-        trade.status ===
-          "cancelled"
+        (trade.status ===
+          "cancelled" &&
+          trade.submitted_at !==
+            null)
     );
 
   const completed =

@@ -31,6 +31,7 @@ import {
 import {
   chooseBossMonster,
   equipAchievementTitle,
+  equipEarnedTitle,
   unequipAchievementTitle,
 } from "@/app/actions/profile";
 
@@ -58,6 +59,10 @@ import {
 import {
   requireUser,
 } from "@/lib/supabase/queries";
+
+import {
+  fetchAllPagesResult,
+} from "@/lib/supabase/paginate";
 
 import {
   getPrimaryBossIdentity,
@@ -419,7 +424,7 @@ export default async function ProfilePage() {
         "profile_titles"
       )
       .select(
-        "id,title,season_number"
+        "id,title,season_number,source"
       )
       .eq(
         "profile_id",
@@ -520,7 +525,16 @@ export default async function ProfilePage() {
       id: string;
       title: string;
       season_number: number | null;
+      source: string | null;
     }[];
+
+  // "Season N Champion" (202610152020): won a whole season.
+  const championTitles =
+    earnedTitles.filter(
+      (earned) =>
+        earned.source ===
+        "season_champion"
+    );
 
   // ======================================================
   // LEAGUE
@@ -559,29 +573,45 @@ export default async function ProfilePage() {
       userId,
       leagueId
     ),
-    supabase
-      .from("matches")
-      .select(
-        `
-          id,
-          player_one_id,
-          player_two_id,
-          winner_id,
-          result,
-          status,
-          match_type,
-          wager_type,
-          completed_at,
-          created_at
-        `
-      )
-      .eq(
-        "league_id",
-        leagueId
-      )
-      .or(
-        `player_one_id.eq.${userId},player_two_id.eq.${userId}`
-      ),
+    // Paged: every duel ever played stays in this list.
+    fetchAllPagesResult<{
+      id: string;
+    }>(
+      (
+        from,
+        to
+      ) =>
+        supabase
+          .from("matches")
+          .select(
+            `
+              id,
+              player_one_id,
+              player_two_id,
+              winner_id,
+              result,
+              status,
+              match_type,
+              wager_type,
+              completed_at,
+              created_at
+            `
+          )
+          .eq(
+            "league_id",
+            leagueId
+          )
+          .or(
+            `player_one_id.eq.${userId},player_two_id.eq.${userId}`
+          )
+          .order(
+            "id"
+          )
+          .range(
+            from,
+            to
+          )
+    ),
     getLeagueProfiles(
       supabase,
       leagueId
@@ -1115,6 +1145,29 @@ export default async function ProfilePage() {
                 {
                   profile.duelist_name
                 }
+
+                {championTitles.length > 0 && (
+                  <span
+                    data-testid="champion-badge"
+                    title={championTitles
+                      .map(
+                        (earned) =>
+                          earned.title
+                      )
+                      .join(", ")}
+                    className="ml-3 inline-flex translate-y-[-0.2em] items-center gap-1 rounded-full border border-amber-300/40 bg-amber-300/15 px-2.5 py-1 align-middle text-[11px] font-black uppercase tracking-wider text-amber-200"
+                  >
+                    <Trophy
+                      size={13}
+                      className="text-amber-300"
+                      aria-hidden="true"
+                    />
+                    Champion
+                    {championTitles.length > 1
+                      ? ` ×${championTitles.length}`
+                      : ""}
+                  </span>
+                )}
               </h1>
 
               <p className="mt-2 text-sm font-black uppercase tracking-[.18em] text-violet-300">
@@ -1132,12 +1185,25 @@ export default async function ProfilePage() {
                       <li
                         key={earned.id}
                         data-testid="earned-title"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-[11px] font-black tracking-wide text-amber-100"
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-black tracking-wide ${
+                          earned.source ===
+                          "season_champion"
+                            ? "border-amber-300/60 bg-gradient-to-r from-amber-300/25 to-amber-500/10 text-amber-50"
+                            : "border-amber-300/30 bg-amber-300/10 text-amber-100"
+                        }`}
                       >
-                        <Medal
-                          size={12}
-                          className="text-amber-300"
-                        />
+                        {earned.source ===
+                        "season_champion" ? (
+                          <Trophy
+                            size={12}
+                            className="text-amber-300"
+                          />
+                        ) : (
+                          <Medal
+                            size={12}
+                            className="text-amber-300"
+                          />
+                        )}
 
                         {earned.title}
 
@@ -1557,7 +1623,7 @@ export default async function ProfilePage() {
                 </h2>
 
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
-                  Titles are earned through achievements. Equip one to display it across the League, Duels and Trades.
+                  Titles are earned through achievements, the Season Path and winning a season. Equip one to display it across the League, Duels and Trades.
                 </p>
               </div>
 
@@ -1572,6 +1638,121 @@ export default async function ProfilePage() {
                 </p>
               </div>
             </div>
+
+            {earnedTitles.length > 0 && (
+              <div className="mt-6 grid gap-3 md:grid-cols-2">
+                {earnedTitles.map(
+                  (earned) => {
+                    const equipped =
+                      profile.custom_title ===
+                      earned.title;
+
+                    const champion =
+                      earned.source ===
+                      "season_champion";
+
+                    return (
+                      <div
+                        key={
+                          earned.id
+                        }
+                        data-testid="earned-title-card"
+                        className={`rounded-2xl border p-4 ${
+                          equipped
+                            ? "border-amber-300/30 bg-amber-300/[0.055]"
+                            : "border-white/[0.07] bg-white/[0.02]"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex min-w-0 items-start gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-300/[0.06]">
+                              {champion ? (
+                                <Trophy
+                                  size={18}
+                                  className="text-amber-300"
+                                />
+                              ) : (
+                                <Medal
+                                  size={18}
+                                  className="text-amber-300"
+                                />
+                              )}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="text-[9px] font-black uppercase tracking-[.16em] text-zinc-600">
+                                {champion
+                                  ? "Season champion"
+                                  : "Earned"}
+                              </p>
+
+                              <p className="mt-1 truncate text-lg font-black text-zinc-200">
+                                {
+                                  earned.title
+                                }
+                              </p>
+                            </div>
+                          </div>
+
+                          {equipped && (
+                            <CheckCircle2
+                              size={17}
+                              className="shrink-0 text-emerald-300"
+                            />
+                          )}
+                        </div>
+
+                        <div className="mt-4 border-t border-white/[0.05] pt-4">
+                          {equipped ? (
+                            <form
+                              action={
+                                unequipAchievementTitle
+                              }
+                            >
+                              <SubmitButton
+                                pendingLabel="Unequipping..."
+                                className="inline-flex items-center gap-2 rounded-xl border border-zinc-500/20 bg-white/[0.02] px-3 py-2 text-xs font-black text-zinc-400 transition hover:text-zinc-200"
+                              >
+                                <LockKeyhole
+                                  size={13}
+                                />
+
+                                Unequip Title
+                              </SubmitButton>
+                            </form>
+                          ) : (
+                            <form
+                              action={
+                                equipEarnedTitle
+                              }
+                            >
+                              <input
+                                type="hidden"
+                                name="title_id"
+                                value={
+                                  earned.id
+                                }
+                              />
+
+                              <SubmitButton
+                                pendingLabel="Equipping..."
+                                className="inline-flex items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] px-3 py-2 text-xs font-black text-amber-200 transition hover:border-amber-300/35 hover:bg-amber-300/[0.1]"
+                              >
+                                <Crown
+                                  size={13}
+                                />
+
+                                Equip Title
+                              </SubmitButton>
+                            </form>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            )}
 
             {unlockedTitleRewards.length >
             0 ? (
@@ -1699,7 +1880,7 @@ export default async function ProfilePage() {
                   }
                 )}
               </div>
-            ) : (
+            ) : earnedTitles.length > 0 ? null : (
               <div className="mt-6 rounded-2xl border border-dashed border-white/10 p-6 text-center">
                 <LockKeyhole
                   size={24}

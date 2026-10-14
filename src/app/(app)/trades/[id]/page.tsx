@@ -143,7 +143,18 @@ type CollectionGroup = {
   availableInstances: CardInstance[];
   selectedCount: number;
   forTradeCount: number;
+  inDeckCount: number;
+  inPlayDeckCount: number;
 };
+
+// Where a copy sits in its owner's decks: "play" = an Active or
+// Ready deck (trading it away sends that deck back to Draft),
+// "locked" = a deck locked for a competition (cannot be traded at
+// all - accept_trade refuses it, 202610121400).
+type DeckUse =
+  | "draft"
+  | "play"
+  | "locked";
 
 type SelectedTradeCard = {
   tradeItem: TradeItem;
@@ -571,6 +582,172 @@ export default async function TradeDetailPage({
     tradeLoadFailed();
   }
 
+  // Deck use per copy (both players' decks are readable by league
+  // members). A failed read just means no deck badges.
+  const deckUse =
+    new Map<string, DeckUse>();
+
+  try {
+    const [
+      deckRows,
+      lockRows,
+    ] = await Promise.all([
+      fetchAllPages<{
+        id: string;
+        status: string;
+        is_active: boolean;
+      }>(
+        (
+          from,
+          to
+        ) => supabase
+          .from("decks")
+          .select(
+            "id,status,is_active"
+          )
+          .eq(
+            "league_id",
+            trade.league_id
+          )
+          .in(
+            "owner_id",
+            [
+              trade.sender_id,
+              trade.receiver_id,
+            ]
+          )
+          .neq(
+            "status",
+            "archived"
+          )
+          .order(
+            "id"
+          )
+          .range(
+            from,
+            to
+          )
+      ),
+      fetchAllPages<{
+        deck_id: string;
+      }>(
+        (
+          from,
+          to
+        ) => supabase
+          .from("competition_deck_locks")
+          .select(
+            "deck_id"
+          )
+          .in(
+            "profile_id",
+            [
+              trade.sender_id,
+              trade.receiver_id,
+            ]
+          )
+          .order(
+            "deck_id"
+          )
+          .range(
+            from,
+            to
+          )
+      ),
+    ]);
+
+    const lockedDeckIds =
+      new Set(
+        lockRows.map(
+          (row) =>
+            row.deck_id
+        )
+      );
+
+    const deckKind =
+      new Map<string, DeckUse>(
+        deckRows.map(
+          (deck) => [
+            deck.id,
+            lockedDeckIds.has(
+              deck.id
+            )
+              ? "locked"
+              : deck.is_active ||
+                  deck.status ===
+                    "ready"
+                ? "play"
+                : "draft",
+          ]
+        )
+      );
+
+    const deckCards =
+      await fetchInBatches<string, {
+        deck_id: string;
+        card_instance_id: string;
+      }>(
+        [
+          ...deckKind.keys(),
+        ],
+        (
+          idsChunk,
+          from,
+          to
+        ) => supabase
+          .from("deck_cards")
+          .select(
+            "deck_id,card_instance_id"
+          )
+          .in(
+            "deck_id",
+            idsChunk
+          )
+          .order(
+            "id"
+          )
+          .range(
+            from,
+            to
+          )
+      );
+
+    const rank: Record<DeckUse, number> = {
+      draft: 1,
+      play: 2,
+      locked: 3,
+    };
+
+    for (const row of deckCards) {
+      const kind =
+        deckKind.get(
+          row.deck_id
+        );
+
+      if (!kind) {
+        continue;
+      }
+
+      const current =
+        deckUse.get(
+          row.card_instance_id
+        );
+
+      if (
+        !current ||
+        rank[kind] >
+          rank[current]
+      ) {
+        deckUse.set(
+          row.card_instance_id,
+          kind
+        );
+      }
+    }
+  } catch {
+    // Badges only - the trade itself still works.
+  }
+
   const catalogIds = [
     ...new Set(
       instances.map(
@@ -717,8 +894,15 @@ export default async function TradeDetailPage({
           instance.id
         );
 
+      const use =
+        deckUse.get(
+          instance.id
+        );
+
+      // A copy in a competition-locked deck can't be traded at all.
       const available =
         !instance.locked &&
+        use !== "locked" &&
         !selected;
 
       const current =
@@ -739,6 +923,17 @@ export default async function TradeDetailPage({
 
         if (selected) {
           current.selectedCount += 1;
+        }
+
+        if (use) {
+          current.inDeckCount += 1;
+        }
+
+        if (
+          use === "play" ||
+          use === "locked"
+        ) {
+          current.inPlayDeckCount += 1;
         }
 
         if (
@@ -771,7 +966,33 @@ export default async function TradeDetailPage({
             available
               ? 1
               : 0,
+          inDeckCount:
+            use
+              ? 1
+              : 0,
+          inPlayDeckCount:
+            use === "play" ||
+            use === "locked"
+              ? 1
+              : 0,
         }
+      );
+    }
+
+    // Offer the copy that hurts least first: not in a deck, then a
+    // Draft deck, then an Active/Ready one (that deck goes back to
+    // Draft when the trade completes).
+    const order: Record<string, number> = {
+      none: 0,
+      draft: 1,
+      play: 2,
+    };
+
+    for (const group of grouped.values()) {
+      group.availableInstances.sort(
+        (a, b) =>
+          order[deckUse.get(a.id) ?? "none"] -
+          order[deckUse.get(b.id) ?? "none"]
       );
     }
 
@@ -817,6 +1038,18 @@ export default async function TradeDetailPage({
         nextInstanceId:
           group.availableInstances[0]?.id ??
           null,
+
+        inDeckCount:
+          group.inDeckCount,
+
+        inPlayDeckCount:
+          group.inPlayDeckCount,
+
+        nextInstanceInPlayDeck:
+          deckUse.get(
+            group.availableInstances[0]?.id ??
+              ""
+          ) === "play",
       })
     );
 
@@ -842,6 +1075,18 @@ export default async function TradeDetailPage({
         nextInstanceId:
           group.availableInstances[0]?.id ??
           null,
+
+        inDeckCount:
+          group.inDeckCount,
+
+        inPlayDeckCount:
+          group.inPlayDeckCount,
+
+        nextInstanceInPlayDeck:
+          deckUse.get(
+            group.availableInstances[0]?.id ??
+              ""
+          ) === "play",
       })
     );
 
@@ -868,6 +1113,30 @@ export default async function TradeDetailPage({
       : "nothing";
   }
 
+  // Cards I (the receiver) give away that sit in one of my Active /
+  // Ready decks: accepting sends that deck back to Draft.
+  const requestedFromPlayDecks =
+    requestedCards.filter(
+      (selected) =>
+        deckUse.get(
+          selected.instance.id
+        ) === "play"
+    );
+
+  const deckWarning =
+    requestedFromPlayDecks.length > 0
+      ? ` Heads up: ${requestedFromPlayDecks
+          .map(
+            (selected) =>
+              selected.card.name
+          )
+          .join(", ")} ${
+          requestedFromPlayDecks.length === 1
+            ? "is"
+            : "are"
+        } in your Active/Ready deck - that deck goes back to Draft until you fill the gap.`
+      : "";
+
   const acceptConfirmMessage =
     `Accept this trade? You give ${describeSide(
       requestedCards.length,
@@ -875,7 +1144,7 @@ export default async function TradeDetailPage({
     )} and get ${describeSide(
       offeredCards.length,
       trade.dp_offered
-    )}. This can't be undone.`;
+    )}. This can't be undone.${deckWarning}`;
 
   return (
     <main className="mx-auto max-w-[1700px] px-4 py-6 sm:px-6 lg:px-8">

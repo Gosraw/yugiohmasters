@@ -27,6 +27,14 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
+  fetchAllPages,
+} from "@/lib/supabase/paginate";
+
+import {
+  getLatestSeasonCompetition,
+} from "@/lib/competitions/season";
+
+import {
   formatLeagueDateTime,
   formatNumber,
 } from "@/lib/format-date";
@@ -701,6 +709,15 @@ export default async function MatchesPage({
     (historyPage - 1) *
     HISTORY_PAGE_SIZE;
 
+  // "Season Played" counts only duels of the season competition
+  // (the running one, or the last finished one between seasons) -
+  // not ad-hoc league duels, older seasons or tiebreak deciders.
+  const season =
+    await getLatestSeasonCompetition(
+      supabase,
+      membership.league_id
+    );
+
   const [
     openResult,
     historyResult,
@@ -708,34 +725,69 @@ export default async function MatchesPage({
     practiceCountResult,
     openWagerResult,
   ] = await Promise.all([
-    supabase
-      .from("matches")
-      .select(
-        MATCH_COLUMNS
-      )
-      .eq(
-        "league_id",
-        membership.league_id
-      )
-      .in(
-        "status",
-        [
-          "pending",
-          "accepted",
-          "result_submitted",
-          "disputed",
-        ]
-      )
-      .or(
-        `player_one_id.eq.${userId},player_two_id.eq.${userId}`
-      )
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        }
-      )
-      .limit(200),
+    // Every open duel, paged (a whole season of unplayed duels can
+    // be well over a single page).
+    fetchAllPages<Match>(
+      (
+        from,
+        to
+      ) =>
+        supabase
+          .from("matches")
+          .select(
+            MATCH_COLUMNS
+          )
+          .eq(
+            "league_id",
+            membership.league_id
+          )
+          .in(
+            "status",
+            [
+              "pending",
+              "accepted",
+              "result_submitted",
+              "disputed",
+            ]
+          )
+          .or(
+            `player_one_id.eq.${userId},player_two_id.eq.${userId}`
+          )
+          .order(
+            "created_at",
+            {
+              ascending: false,
+            }
+          )
+          .order(
+            "id",
+            {
+              ascending: true,
+            }
+          )
+          .range(
+            from,
+            to
+          )
+    ).then(
+      (data) => ({
+        data,
+        error:
+          null as {
+            message: string;
+          } | null,
+      }),
+      (error: unknown) => ({
+        data:
+          null as Match[] | null,
+        error: {
+          message:
+            error instanceof Error
+              ? error.message
+              : "Open duels could not be loaded.",
+        },
+      })
+    ),
     supabase
       .from("matches")
       .select(
@@ -779,30 +831,34 @@ export default async function MatchesPage({
           HISTORY_PAGE_SIZE -
           1
       ),
-    supabase
-      .from("matches")
-      .select(
-        "id",
-        {
-          count: "exact",
-          head: true,
-        }
-      )
-      .eq(
-        "league_id",
-        membership.league_id
-      )
-      .eq(
-        "match_type",
-        "league"
-      )
-      .eq(
-        "status",
-        "completed"
-      )
-      .or(
-        `player_one_id.eq.${userId},player_two_id.eq.${userId}`
-      ),
+    (season
+      ? supabase
+          .from("matches")
+          .select(
+            "id",
+            {
+              count: "exact",
+              head: true,
+            }
+          )
+          .eq(
+            "competition_id",
+            season.id
+          )
+          .is(
+            "tiebreak_id",
+            null
+          )
+          .eq(
+            "status",
+            "completed"
+          )
+          .or(
+            `player_one_id.eq.${userId},player_two_id.eq.${userId}`
+          )
+      : Promise.resolve({
+          count: 0,
+        })),
     supabase
       .from("matches")
       .select(

@@ -77,8 +77,10 @@ DB="postgresql://...het adres uit Supabase..."
 Daarna voer je de migraties uit, **in deze volgorde**, één voor één:
 
 ```
-for f in supabase/migrations/20261012*.sql; do echo "== $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f" || break; done
+for f in supabase/migrations/2026101[245]*.sql; do case "$f" in *202610120500_card_votes.sql) echo "-- skip $f"; continue;; esac; echo "== $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f" || break; done
 ```
+
+Deze regel doet alle bestanden van 12, 14 en 15 oktober, in de goede volgorde. Eén bestand wordt bewust **overgeslagen** (`202610120500_card_votes.sql`): de echte database heeft de stemming al sinds 12 oktober, en dat oude testbestand zou daar een fout geven. Je ziet dan `-- skip ...`; dat is goed.
 
 Heb je in stap A een nieuw bestand gemaakt (`..._classic_v2_format_after_vote.sql`)? Voer dat daarna ook uit:
 
@@ -175,7 +177,12 @@ Dat zet alles terug naar het moment van de back-up.
 
 ## Technical appendix (English)
 
-### Every 2026-10-12 migration, in apply order
+### Every 2.0 migration (2026-10-12 / 14 / 15), in apply order
+
+Apply with the loop in step 2 (`2026101[245]*.sql`). Two special cases:
+
+- **`202610120500_card_votes.sql` must be SKIPPED on production.** Production already has the live vote (applied 2026-10-12 via `manual_deploy/20261012_live_vote_and_hotfix.sql`, i.e. the `202610121900` version). Re-running `202610120500` there fails with `cannot change return type of existing function` on `get_vote_results` (verified on the local DB, 2026-10-15) and would stop the loop. The loop in step 2 skips it.
+- **`202610121900_card_votes_live.sql` is already applied on production (2026-10-12) and is safe to run again.** Everything in it is `create table if not exists` / `add column if not exists` / guarded constraint blocks / `create or replace` / `drop ... if exists` + re-create (trigger, policies, the three RPCs, all inside one `begin`/`commit`), and grants are re-applied. Re-running it is a no-op for data (verified on the local DB, 2026-10-15). Skipping it is fine too.
 
 | File | What it does | Owner |
 |---|---|---|
@@ -212,6 +219,14 @@ Dat zet alles terug naar het moment van de back-up.
 | `202610121700_trade_privacy_season_start_bounty_wording.sql` | Draft trades visible only to their creator (+ `save_trade_draft_message`), one-transaction `start_season_competition`, clearer reversed-bounty wording. On old main, the sender's link to a counter still in draft shows a 404. | trades, competitions |
 | `202610121710_boss_stage1_achievements_english.sql` | Translates the 9 Dutch stage-1 Boss achievement labels. | boss achievements |
 | `202610121800_season_result_confirmation.sql` | A player-entered season result only counts after the opponent confirms (new confirm/dispute/withdraw RPCs; admin who isn't playing = referee). **Changes live behaviour immediately — launch night only.** | competitions, matches |
+| `202610121900_card_votes_live.sql` | The live card vote (with "Allow it" rarity). **Already applied on production 2026-10-12**; idempotent, re-running is harmless (see above). | card pool |
+| `202610142000_mini_game_catalog.sql` … `202610142060_giza_peaks.sql` | Mini game catalog (`mini_game_catalog`, `register_mini_game`) + the six round-3 games (Pyramid Stack, Millennium Strike, Obelisk Rush, Merge of Ra, Tomb Blocks, Giza Peaks). | mini games |
+| `202610152000_shop_rarity_ladder_fallback.sql` | `pick_shop_pack_card`: a rolled / guaranteed rarity with no free copy left falls DOWN the ladder (Legendary → Secret → Ultra → Super → Rare → Normal) before the old "any rarity" fallback. Legendary luck unchanged (only reset by a real Legendary). Same signature. | shop |
+| `202610152010_admin_own_duel_needs_opponent_ok.sql` | New table `match_result_proposals`. An admin who PLAYS in the duel: correction (`correct_competition_match_result_v2`), tiebreak result and practice dispute resolution (`resolve_disputed_match`) become proposals; the opponent accepts / rejects (`accept_` / `reject_` / `withdraw_match_result_proposal`). Referee (admin not in the duel) unchanged. Also clears dispute fields when a season duel completes. Same signatures. **On old main an admin's own correction silently becomes a proposal (main cannot show it) — launch night only.** | competitions, matches |
+| `202610152020_season_champion_title.sql` | Triggers: a finalized season competition gives its #1 the profile title "Season N Champion" (`source = 'season_champion'`); a later correction that changes #1 moves it. Idempotent, nothing back-filled. | profiles, competitions |
+| `202610152030_practice_challenge_guards.sql` | Season duels no longer block practice challenges; decline / cancel / wager RPCs refuse season duels; `accept_practice_challenge` (accept + stake in one transaction); no result / no payout on a one-sided wager (refunded instead); either player can cancel a stuck accepted wager duel; an admin may settle a wager. | matches, wagers |
+| `202610152040_initial_draft_guards.sql` | Initial Draft strictly one-time (any seat in a non-cancelled draft counts, advisory lock), Boss Route required first; the admin `start_initial_draft` refuses players who had one. | draft |
+| `202610152050_small_security_and_goal_fixes.sql` | `consume_reward_voucher` and `_phase*_verify_introspect` no longer callable by anon / players; tiebreak duels don't count for weekly goals. | security, weekly goals |
 
 **Backwards compatibility.** These migrations share the production database with the live `main` app.
 `202610121000` takes effect immediately: Master Duel-forbidden cards that are already `format_eligible` become offerable in the live draft and shop.
@@ -228,17 +243,19 @@ So apply the whole set on launch night only, directly followed by the reset scri
   - exactly one current season, which is season 2;
   - `launch_date` must be within −7 to +60 days;
   - every league that has members must have an admin.
-- **Wipe (47 tables):**
+- **Wipe (50 tables):**
   - weekly goals (progress, grants, sets), Season Path XP and tier grants, bounty / catch-up grants;
   - mini game runs, settlements and grants;
   - Boss paths, unlocks and events; pack luck; coach insights; welcome claims;
   - drafts, shop history, pity and vouchers;
-  - competitions (and everything that hangs off them), matches, wagers and the DP ledger;
+  - competitions (and everything that hangs off them), matches, result proposals, wagers and the DP ledger;
+  - Shadow Arena ghost boards (`arena_board_snapshots`, `arena_run_ghosts`);
   - trades, decks, P2W claims, ownership history and card instances (`prevent_card_instance_delete_trigger` is disabled and re-enabled around that one delete, inside the transaction);
   - `profiles.duel_points` and `wallets` are set to 0.
 - **Kept:**
   - profiles, wallets rows, leagues, `league_members` **with roles** (the admin stays admin, so no `claim_league_admin_if_none` is needed), `profile_titles`;
-  - catalog, all config, card votes, audit log, wishlists.
+  - catalog, all config (incl. `mini_game_catalog`), card votes, audit log, wishlists.
+  - (2026-10-15: `arena_board_snapshots`, `arena_run_ghosts`, `mini_game_catalog` and the new `match_result_proposals` were missing from the plan, so the pre-flight ABORTED on the local DB. They are classified now; re-run the dry run in the rehearsal.)
 - **Then:**
   - sets `seasons.starts_on`;
   - activates `duelist_circle_classic_v2` and deactivates any other format;
@@ -337,7 +354,9 @@ node scripts/cardpool/build-v2-format-migration.mjs \
   - Junk Synchron and Synchro Barrier are out;
   - the unknown-status OCG card is in.
 
-The full suite (`node scripts/sql-tests/run.mjs`) passes: 12 files.
+The full suite (`node scripts/sql-tests/run.mjs`) passes: 31 files / 573 checks (2026-10-15, on a fresh `node scripts/devstack/db.mjs reset` followed by `node scripts/devstack/seed-demo.mjs bossg samo` - the shop tests need the local test rarities seed-demo gives the catalog; on QA-dirty data `22_season_bounty_catch_up` can fail).
+
+2026-10-15 additions: `52_shop_rarity_ladder` (A), `53_admin_own_duel_proposals` (B), `54_season_champion_title` (C), `55_practice_challenge_guards` (H1-H3), `56_initial_draft_guards` (M4 + Boss Route), `57_small_security_and_goal_fixes`. E2E: `tests/e2e/05-admin-own-duel.spec.ts` (B proposal -> opponent accepts on the round screen; C champion title + badge).
 
 ### Known follow-ups (not done here)
 

@@ -103,6 +103,17 @@ export type TradeBrowserCard = {
   nextInstanceId:
     | string
     | null;
+
+  // Copies of this card in one of the owner's decks / in an Active,
+  // Ready or competition-locked deck. Copies in a competition-locked
+  // deck are never offered (they can't be traded).
+  inDeckCount?: number;
+
+  inPlayDeckCount?: number;
+
+  // The copy the Offer/Request button would add sits in an Active /
+  // Ready deck (that deck goes back to Draft after the trade).
+  nextInstanceInPlayDeck?: boolean;
 };
 
 // Tiles rendered at once; "Show more" reveals the next batch.
@@ -1190,6 +1201,21 @@ export function TradeCollectionBrowser({
                         }
                       </span>
 
+                      {(group.inPlayDeckCount ??
+                        0) > 0 ? (
+                        <span
+                          title="In an Active or Ready deck"
+                          className="inline-flex items-center gap-1 rounded-full border border-orange-300/40 bg-orange-300/10 px-2 py-0.5 text-[8px] font-black uppercase text-orange-200"
+                        >
+                          Active deck
+                        </span>
+                      ) : (group.inDeckCount ??
+                          0) > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[8px] font-black uppercase text-zinc-400">
+                          In deck
+                        </span>
+                      ) : null}
+
                       {group.forTradeCount >
                         0 && (
                         <span className="inline-flex items-center gap-1 rounded-full border border-violet-300/40 bg-violet-400/15 px-2 py-0.5 text-[8px] font-black uppercase text-violet-200">
@@ -1292,6 +1318,12 @@ export function TradeCollectionBrowser({
                           }
                           )
                         </SubmitButton>
+
+                        {group.nextInstanceInPlayDeck && (
+                          <p className="mt-1.5 text-[10px] font-bold leading-4 text-orange-200/80">
+                            This copy is in an Active/Ready deck - that deck goes back to Draft after the trade.
+                          </p>
+                        )}
                       </form>
                     ) : (
                       <button

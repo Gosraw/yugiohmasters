@@ -2,6 +2,13 @@ import type {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  describeProposal,
+  loadProposalsWaitingOn,
+  proposalHref,
+  proposalKindLabel,
+} from "@/lib/match-proposals";
+
 // =========================================================
 // ATTENTION CENTER
 //
@@ -22,7 +29,14 @@ export type AttentionItem = {
   href: string;
   label: string;
   hint: string;
-  kind: "challenge" | "confirm" | "trade" | "vote" | "dispute";
+  kind:
+    | "challenge"
+    | "confirm"
+    | "trade"
+    | "vote"
+    | "dispute"
+    | "proposal"
+    | "finalize";
 };
 
 type AttentionMatch = {
@@ -53,9 +67,21 @@ type AttentionTrade = {
 export function computeAttentionItems(
   matches: AttentionMatch[],
   trades: AttentionTrade[],
-  userId: string
+  userId: string,
+  // Optional profile id -> display name, so a hint can name the
+  // opponent ("Samo sent a result") instead of "Your opponent".
+  names?: Map<string, string>
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
+
+  const opponentName = (
+    match: AttentionMatch
+  ) =>
+    names?.get(
+      match.player_one_id === userId
+        ? match.player_two_id
+        : match.player_one_id
+    ) ?? "Your opponent";
 
   for (const match of matches) {
     if (match.competition_id) {
@@ -67,7 +93,7 @@ export function computeAttentionItems(
           id: `match-confirm-${match.id}`,
           href: `/competitions/${match.competition_id}/round`,
           label: "Confirm your season duel result",
-          hint: "Your opponent sent a result - confirm or dispute it.",
+          hint: `${opponentName(match)} sent a result - confirm or dispute it.`,
           kind: "confirm",
         });
       }
@@ -95,7 +121,7 @@ export function computeAttentionItems(
         id: `match-accept-${match.id}`,
         href: `/matches/${match.id}`,
         label: "Duel challenge waiting",
-        hint: "Accept or decline it.",
+        hint: `${opponentName(match)} challenged you - accept or decline it.`,
         kind: "challenge",
       });
     }
@@ -108,7 +134,7 @@ export function computeAttentionItems(
         id: `match-confirm-${match.id}`,
         href: `/matches/${match.id}`,
         label: "Duel result to confirm",
-        hint: "Check it and confirm or dispute.",
+        hint: `${opponentName(match)} sent a result - check it and confirm or dispute.`,
         kind: "confirm",
       });
     }
@@ -155,24 +181,198 @@ export async function getAttentionItems(
       .eq("receiver_id", userId),
   ]);
 
+  const [pendingVotes, leagueItems, names] = await Promise.all([
+    getPendingCardVoteCount(supabase, userId, leagueId),
+    getLeagueAttentionItems(supabase, userId, leagueId),
+    getLeagueNames(supabase, leagueId),
+  ]);
+
   const items = computeAttentionItems(
     (matchData ?? []) as AttentionMatch[],
     (tradeData ?? []) as AttentionTrade[],
-    userId
+    userId,
+    names
   );
-
-  const [pendingVotes, disputeItems] = await Promise.all([
-    getPendingCardVoteCount(supabase, userId, leagueId),
-    getDisputedDuelAttentionItems(supabase, userId, leagueId),
-  ]);
 
   const voteItem = cardVoteAttentionItem(pendingVotes);
 
   return [
-    ...disputeItems,
+    ...leagueItems,
     ...items,
     ...(voteItem ? [voteItem] : []),
   ];
+}
+
+// =========================================================
+// LEAGUE NAMES
+//
+// Display names of every league member (a private league has a
+// handful), for hints that name the other player. Never throws.
+// =========================================================
+
+export async function getLeagueNames(
+  supabase: SupabaseClient,
+  leagueId: string | null
+): Promise<Map<string, string>> {
+  if (!leagueId) return new Map();
+
+  const { data: memberData, error: memberError } = await supabase
+    .from("league_members")
+    .select("profile_id")
+    .eq("league_id", leagueId);
+
+  if (memberError || !memberData || memberData.length === 0) {
+    return new Map();
+  }
+
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("id,duelist_name,username")
+    .in(
+      "id",
+      (memberData as { profile_id: string }[]).map((row) => row.profile_id)
+    );
+
+  return new Map(
+    ((profileData ?? []) as {
+      id: string;
+      duelist_name: string | null;
+      username: string | null;
+    }[]).map((profile) => [
+      profile.id,
+      profile.duelist_name ?? profile.username ?? "Duelist",
+    ])
+  );
+}
+
+// =========================================================
+// LEAGUE-WIDE ITEMS
+//
+// Everything that is not "my own open duel / trade": disputed duels
+// an admin has to decide, a season that is ready to finalize (admin),
+// and result changes an admin proposed for a duel they play in that
+// wait for MY answer (202610152010). Shared by Home, /attention and
+// the nav badge.
+// =========================================================
+
+export async function getLeagueAttentionItems(
+  supabase: SupabaseClient,
+  userId: string,
+  leagueId: string | null
+): Promise<AttentionItem[]> {
+  if (!leagueId) return [];
+
+  const [disputeItems, finalizeItems, proposalItems] = await Promise.all([
+    getDisputedDuelAttentionItems(supabase, userId, leagueId),
+    getSeasonFinalizeAttentionItems(supabase, userId, leagueId),
+    getProposalAttentionItems(supabase, userId, leagueId),
+  ]);
+
+  return [
+    ...proposalItems,
+    ...disputeItems,
+    ...finalizeItems,
+  ];
+}
+
+// =========================================================
+// RESULT PROPOSALS WAITING FOR MY ANSWER (202610152010)
+// =========================================================
+
+export async function getProposalAttentionItems(
+  supabase: SupabaseClient,
+  userId: string,
+  leagueId: string | null
+): Promise<AttentionItem[]> {
+  if (!leagueId) return [];
+
+  const proposals = await loadProposalsWaitingOn(supabase, userId, leagueId);
+
+  if (proposals.length === 0) return [];
+
+  const names = await getLeagueNames(supabase, leagueId);
+  const nameOf = (id: string) => names.get(id) ?? "Duelist";
+
+  return proposals.map((proposal) => ({
+    id: `match-proposal-${proposal.id}`,
+    href: proposalHref(proposal),
+    label: `${proposalKindLabel(proposal.kind)} to accept`,
+    hint: `${nameOf(proposal.proposed_by)} wants to change your duel: ${describeProposal(
+      proposal,
+      nameOf
+    )}. Accept or reject it.`,
+    kind: "proposal",
+  }));
+}
+
+// =========================================================
+// SEASON READY TO FINALIZE (league admins only)
+//
+// finalize_competition_v2 needs a league admin. When a non-admin
+// confirms the last duel, the automatic finalize quietly waits - so
+// the admin gets a nudge with a link to the Finalize button. Never
+// throws.
+// =========================================================
+
+export async function getSeasonFinalizeAttentionItems(
+  supabase: SupabaseClient,
+  userId: string,
+  leagueId: string | null
+): Promise<AttentionItem[]> {
+  if (!leagueId) return [];
+
+  const { data: membership, error: membershipError } = await supabase
+    .from("league_members")
+    .select("role")
+    .eq("league_id", leagueId)
+    .eq("profile_id", userId)
+    .maybeSingle();
+
+  if (membershipError || membership?.role !== "admin") return [];
+
+  const { data: competitions, error } = await supabase
+    .from("competitions")
+    .select("id,name,is_season")
+    .eq("league_id", leagueId)
+    .eq("status", "active")
+    .not("meetings_per_pairing", "is", null)
+    .limit(5);
+
+  if (error || !competitions || competitions.length === 0) return [];
+
+  const items: AttentionItem[] = [];
+
+  for (const competition of competitions as {
+    id: string;
+    name: string;
+    is_season: boolean | null;
+  }[]) {
+    const [{ count: openCount }, { count: totalCount }] = await Promise.all([
+      supabase
+        .from("matches")
+        .select("id", { count: "exact", head: true })
+        .eq("competition_id", competition.id)
+        .neq("status", "completed"),
+      supabase
+        .from("matches")
+        .select("id", { count: "exact", head: true })
+        .eq("competition_id", competition.id),
+    ]);
+
+    if ((totalCount ?? 0) > 0 && (openCount ?? 1) === 0) {
+      items.push({
+        id: `season-finalize-${competition.id}`,
+        href: `/competitions/${competition.id}#finalize`,
+        label: competition.is_season
+          ? "Season ready to finalize"
+          : "Competition ready to finalize",
+        hint: `Every duel of ${competition.name} has a result. Finalize it to hand out the final rewards.`,
+        kind: "finalize",
+      });
+    }
+  }
+
+  return items;
 }
 
 // =========================================================
@@ -247,10 +447,10 @@ export async function getDisputedDuelAttentionItems(
 
   return rows.map((row) => ({
     id: `match-dispute-${row.id}`,
-    // A season duel is decided on its competition page (admin result
-    // form); a practice duel on its own match page.
+    // A season duel is decided on its round screen (the referee's
+    // winner buttons); a practice duel on its own match page.
     href: row.competition_id
-      ? `/competitions/${row.competition_id}`
+      ? `/competitions/${row.competition_id}/round`
       : `/matches/${row.id}`,
     label: "Duel disputed — needs a decision",
     hint: `${names.get(row.player_one_id) ?? "Duelist"} vs ${

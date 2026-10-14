@@ -25,6 +25,10 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  fetchAllPagesResult,
+} from "@/lib/supabase/paginate";
+
 export const dynamic =
   "force-dynamic";
 
@@ -398,32 +402,46 @@ export default async function AchievementsPage() {
   // MATCHES
   // ======================================================
 
+  // Paged: every duel ever played stays in this list.
   const {
     data: matchData,
     error: matchError,
-  } = await supabase
-    .from("matches")
-    .select(
-      `
-        id,
-        player_one_id,
-        player_two_id,
-        winner_id,
-        result,
-        status,
-        match_type,
-        wager_type,
-        completed_at,
-        created_at
-      `
-    )
-    .eq(
-      "league_id",
-      leagueId
-    )
-    .or(
-      `player_one_id.eq.${userId},player_two_id.eq.${userId}`
-    );
+  } = await fetchAllPagesResult<Match>(
+    (
+      from,
+      to
+    ) =>
+      supabase
+        .from("matches")
+        .select(
+          `
+            id,
+            player_one_id,
+            player_two_id,
+            winner_id,
+            result,
+            status,
+            match_type,
+            wager_type,
+            completed_at,
+            created_at
+          `
+        )
+        .eq(
+          "league_id",
+          leagueId
+        )
+        .or(
+          `player_one_id.eq.${userId},player_two_id.eq.${userId}`
+        )
+        .order(
+          "id"
+        )
+        .range(
+          from,
+          to
+        )
+  );
 
   if (matchError) {
     throw new Error(

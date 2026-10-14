@@ -233,7 +233,7 @@ test("samo taps the winner on the round screen, fardin confirms with one tap", a
 
   await login(fardin, "fardin");
   await fardin.goto(`/competitions/${competitionId}/round`);
-  await expect(fardin.getByText("samo says samo won")).toBeVisible();
+  await expect(fardin.getByText("samo says they won")).toBeVisible();
   await fardin.getByRole("button", { name: "Confirm", exact: true }).click();
 
   await expect.poll(

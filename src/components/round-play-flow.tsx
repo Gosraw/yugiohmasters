@@ -374,8 +374,11 @@ export function RoundPlayFlow({
           : "completed";
 
       setSaved({
+        // "proposed" never comes back from a normal result tap (only
+        // from corrections / tiebreaks); treat it like a claim.
         kind:
-          outcome === "awaiting_confirmation"
+          outcome === "awaiting_confirmation" ||
+          outcome === "proposed"
             ? "awaiting"
             : outcome,
         round: roundNumber,

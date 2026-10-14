@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -108,6 +109,23 @@ export function TestHandButton({
     [mainDeckCards]
   );
 
+  // Escape closes the dialog, like every other modal.
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKey);
+
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
     <>
       <button
@@ -127,7 +145,12 @@ export function TestHandButton({
 
       {open && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4">
-          <div className="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-b-none p-5 sm:rounded-2xl sm:p-6">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Sample opening hand"
+            className="panel max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-b-none p-5 sm:rounded-2xl sm:p-6"
+          >
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[.2em] text-cyan-300">

@@ -17,6 +17,7 @@ declare
   grants_before integer;
   reversed_row public.competition_round_reward_grants%rowtype;
   reversal_tx public.duel_point_transactions%rowtype;
+  raised text;
 begin
   comp_id := pg_temp.new_competition(2);
 
@@ -77,7 +78,21 @@ begin
   select count(*) into ledger_before from public.duel_point_transactions;
   select count(*) into grants_before from public.competition_round_reward_grants;
 
-  perform pg_temp.correct_winner(comp_id, 'bossg', 'fardin', 'Wrong winner tapped');
+  -- (bossg plays in this duel, so since 202610152010 the same
+  -- correction again is refused instead of silently re-applied.)
+  raised := null;
+  begin
+    perform pg_temp.correct_winner(comp_id, 'bossg', 'fardin', 'Wrong winner tapped');
+  exception when others then raised := sqlerrm;
+  end;
+  perform pg_temp.assert_eq(raised, 'That is already the result of this duel.', 'the same correction again is refused');
+
+  perform public._apply_competition_match_correction(
+    pg_temp.match_between(comp_id, 'bossg', 'fardin'),
+    (select case when player_one_id = pg_temp.uid_of('bossg') then 1 else 0 end from public.matches where id = pg_temp.match_between(comp_id, 'bossg', 'fardin')),
+    (select case when player_two_id = pg_temp.uid_of('bossg') then 1 else 0 end from public.matches where id = pg_temp.match_between(comp_id, 'bossg', 'fardin')),
+    'Wrong winner tapped'
+  );
   perform public._settle_round_cycle(comp_id, 2, 'again');
 
   perform pg_temp.assert_eq((select count(*) from public.duel_point_transactions)::integer, ledger_before, 'repeat correction writes no ledger rows');

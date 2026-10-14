@@ -5,7 +5,9 @@ import {
   Bell,
   CheckCircle2,
   Repeat2,
+  Scale,
   Swords,
+  Trophy,
   Vote,
 } from "lucide-react";
 
@@ -33,6 +35,8 @@ const KIND_ICON = {
   trade: Repeat2,
   vote: Vote,
   dispute: AlertTriangle,
+  proposal: Scale,
+  finalize: Trophy,
 };
 
 export default async function AttentionPage() {

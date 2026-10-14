@@ -101,6 +101,7 @@ type LedgerRow = {
   reason: string;
   description: string | null;
   created_at: string;
+  match_id: string | null;
 };
 
 type VoucherRow = {
@@ -180,7 +181,7 @@ export async function getRecentRewards(
   ] = await Promise.all([
     supabase
       .from("duel_point_transactions")
-      .select("id,seq,amount,reason,description,created_at")
+      .select("id,seq,amount,reason,description,created_at,match_id")
       .eq("profile_id", userId)
       .gt("created_at", sinceIso)
       .order("created_at", { ascending: true })
@@ -213,6 +214,43 @@ export async function getRecentRewards(
   const vouchers =
     (voucherResult.data ?? []) as VoucherRow[];
 
+  // A won wager pays out the whole pot (both stakes). The pop-up
+  // shows the NET gain - the player's own stake just came back - and
+  // says so (stake rows may be older than this look-back window, so
+  // they are looked up per duel).
+  const wagerWinMatchIds = [
+    ...new Set(
+      ledger
+        .filter(
+          (row) =>
+            row.reason === "practice_wager_win" &&
+            row.match_id
+        )
+        .map((row) => row.match_id as string)
+    ),
+  ];
+
+  const ownStakeByMatch = new Map<string, number>();
+
+  if (wagerWinMatchIds.length > 0) {
+    const { data: stakeRows } = await supabase
+      .from("duel_point_transactions")
+      .select("match_id,amount")
+      .eq("profile_id", userId)
+      .eq("reason", "practice_wager_stake")
+      .in("match_id", wagerWinMatchIds);
+
+    for (const row of (stakeRows ?? []) as {
+      match_id: string;
+      amount: number;
+    }[]) {
+      ownStakeByMatch.set(
+        row.match_id,
+        (ownStakeByMatch.get(row.match_id) ?? 0) + Math.abs(row.amount)
+      );
+    }
+  }
+
   const items: RewardItem[] = [];
 
   let latestAt: string | null = null;
@@ -226,16 +264,26 @@ export async function getRecentRewards(
       continue;
     }
 
+    const ownStake =
+      row.reason === "practice_wager_win" && row.match_id
+        ? ownStakeByMatch.get(row.match_id) ?? 0
+        : 0;
+
+    const dp = row.amount - ownStake;
+
     items.push({
       id: row.id,
       at: row.created_at,
       time: Date.parse(row.created_at),
       order: row.seq ?? 0,
-      dp: row.amount,
+      dp,
       corrected:
         CORRECTION_PATTERN.test(row.reason),
       pack: null,
-      line: row.description,
+      line:
+        ownStake > 0
+          ? `Wager won: +${dp.toLocaleString("en-US")} DP (your ${ownStake.toLocaleString("en-US")} DP stake came back too, ${row.amount.toLocaleString("en-US")} DP in total)`
+          : row.description,
     });
   }
 

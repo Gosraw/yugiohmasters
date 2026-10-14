@@ -23,6 +23,8 @@ const ACTION_LABEL: Record<AttentionItem["kind"], string> = {
   trade: "Review",
   vote: "Vote",
   dispute: "Decide",
+  proposal: "Answer",
+  finalize: "Finalize",
 };
 
 const MAX_ROWS = 4;

@@ -1140,12 +1140,15 @@ export function PackOpeningReveal({
           {/* Width follows the screen HEIGHT too: on a short phone
               (iPhone 13: 390x664) the whole pack + "Tap to unseal"
               must sit above the bottom nav and the home-indicator
-              safe area. 19.5rem = page nav + header + bottom nav. */}
+              safe area. 19.5rem = page nav + header + bottom nav.
+              From sm up the header is taller (big title, padding)
+              and the "Reveal all" row must stay above the bottom nav
+              too (desktop 1440x900 had it underneath): 29.5rem. */}
           <div
-            className="mx-auto max-w-sm"
+            className="mx-auto max-w-sm [--reveal-reserve:19.5rem] sm:[--reveal-reserve:29.5rem]"
             style={{
               width:
-                "min(100%, 24rem, max(13rem, calc((100svh - 19.5rem - env(safe-area-inset-bottom)) * 421 / 614)))",
+                "min(100%, 24rem, max(13rem, calc((100svh - var(--reveal-reserve) - env(safe-area-inset-bottom)) * 421 / 614)))",
             }}
           >
             <div

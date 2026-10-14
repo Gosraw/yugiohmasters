@@ -60,6 +60,10 @@ type CompetitionMatchResultFormV2Props = {
   playerOneLabel: string;
   playerTwoLabel: string;
   mode: "submit" | "correct" | "tiebreak";
+  // Set when the admin filling this in PLAYS in the duel
+  // (202610152010): a correction / tiebreak result is then only a
+  // proposal that this opponent has to accept.
+  needsOkFrom?: string | null;
   // Optional hook for callers (e.g. the linear "tonight" game-night
   // flow) that need to react to a successful result submission -
   // never required, and never changes this component's own
@@ -87,8 +91,13 @@ export function CompetitionMatchResultFormV2({
   playerOneLabel,
   playerTwoLabel,
   mode,
+  needsOkFrom,
   onSettled,
 }: CompetitionMatchResultFormV2Props) {
+  const proposes =
+    Boolean(needsOkFrom) &&
+    mode !== "submit";
+
   const [
     selected,
     setSelected,
@@ -132,7 +141,9 @@ export function CompetitionMatchResultFormV2({
         className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-black text-zinc-400 transition hover:border-amber-300/30 hover:text-amber-200"
       >
         <Pencil size={11} />
-        Correct result
+        {proposes
+          ? "Propose a correction"
+          : "Correct result"}
       </button>
     );
   }
@@ -145,7 +156,9 @@ export function CompetitionMatchResultFormV2({
     return (
       <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-300/[0.04] p-3 text-xs font-black text-emerald-200">
         <CheckCircle2 size={14} />
-        {mode === "correct"
+        {state.outcome === "proposed"
+          ? `Proposal sent - ${needsOkFrom ?? "your opponent"} has to accept it before it counts.`
+          : mode === "correct"
           ? "Correction saved."
           : state.outcome === "awaiting_confirmation"
             ? "Result sent - the opponent confirms it before it counts."
@@ -251,6 +264,13 @@ export function CompetitionMatchResultFormV2({
         </label>
       )}
 
+      {proposes && (
+        <p className="text-[11px] font-bold leading-snug text-amber-200/80">
+          You play in this duel, so {needsOkFrom} has to accept the
+          change before it counts.
+        </p>
+      )}
+
       {state.status === "error" && (
         <p className="rounded-lg border border-red-400/25 bg-red-400/10 px-2.5 py-2 text-xs font-bold text-red-200">
           {state.error}
@@ -263,7 +283,9 @@ export function CompetitionMatchResultFormV2({
         className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-300/25 bg-emerald-300/10 px-3 py-2 text-xs font-black text-emerald-200 disabled:opacity-40"
       >
         <CheckCircle2 size={14} />
-        {mode === "correct"
+        {proposes
+          ? `Send to ${needsOkFrom}`
+          : mode === "correct"
           ? "Save Correction"
           : mode === "tiebreak"
             ? "Save Tiebreak Result"

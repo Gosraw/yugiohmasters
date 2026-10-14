@@ -91,6 +91,7 @@ create temp table season2_table_plan (
 insert into season2_table_plan (table_name, plan)
 select unnest(array[
   'achievement_claims',
+  'arena_board_snapshots', 'arena_run_ghosts',
   'card_instances', 'ownership_history',
   'competition_deck_locks', 'competition_players', 'competition_results',
   'competition_reward_grants', 'competition_reward_rules',
@@ -101,7 +102,7 @@ select unnest(array[
   'draft_offer_cards', 'draft_offers', 'draft_picks', 'draft_players', 'drafts',
   'duel_point_transactions',
   'game_runs', 'mini_game_period_settlements', 'mini_game_reward_grants',
-  'match_dp_escrows', 'match_wager_cards', 'matches',
+  'match_dp_escrows', 'match_result_proposals', 'match_wager_cards', 'matches',
   'player_boss_achievement_events', 'player_boss_paths', 'player_boss_stage_unlocks',
   'player_pack_luck',
   'reward_vouchers',
@@ -124,7 +125,7 @@ select unnest(array[
   'duelist_circle_card_limits', 'duelist_circle_formats', 'duelist_circle_proposed_rarities',
   'format_card_overrides',
   'goal_templates', 'league_economy_defaults', 'league_members', 'leagues',
-  'mini_game_daily_seeds', 'mini_game_reward_config',
+  'mini_game_catalog', 'mini_game_daily_seeds', 'mini_game_reward_config',
   'perk_config', 'profile_titles', 'profiles',
   'season_bonus_config', 'season_path_tiers', 'season_path_xp_sources', 'seasons',
   'settings',
@@ -289,6 +290,8 @@ delete from public.season_bonus_grants where true;
 delete from public.season_match_bounty_checks where true;
 delete from public.mini_game_reward_grants where true;
 delete from public.mini_game_period_settlements where true;
+delete from public.arena_run_ghosts where true;
+delete from public.arena_board_snapshots where true;
 delete from public.game_runs where true;
 
 -- Boss progress, luck, coach, welcome-pack claims.
@@ -324,7 +327,8 @@ delete from public.competition_results where true;
 delete from public.competition_players where true;
 delete from public.competitions where true;
 
--- Matches, wagers, DP ledger.
+-- Matches, wagers, result proposals, DP ledger.
+delete from public.match_result_proposals where true;
 delete from public.match_wager_cards where true;
 delete from public.match_dp_escrows where true;
 delete from public.duel_point_transactions where true;

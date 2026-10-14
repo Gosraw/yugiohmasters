@@ -37,7 +37,8 @@ import {
 import {
   cardVoteAttentionItem,
   computeAttentionItems,
-  getDisputedDuelAttentionItems,
+  getLeagueAttentionItems,
+  getLeagueNames,
   getPendingCardVoteCount,
 } from "@/lib/attention-items";
 
@@ -389,7 +390,8 @@ export default async function HomePage() {
     tradeResult,
     pendingVotes,
     thisRound,
-    disputeItems,
+    leagueItems,
+    leagueNames,
   ] = await Promise.all([
     leagueId
       ? supabase
@@ -449,19 +451,24 @@ export default async function HomePage() {
       : Promise.resolve<HomeRoundState>({
           state: "none",
         }),
-    getDisputedDuelAttentionItems(
+    getLeagueAttentionItems(
       supabase,
       userId,
+      leagueId
+    ),
+    getLeagueNames(
+      supabase,
       leagueId
     ),
   ]);
 
   const attentionItems = [
-    ...disputeItems,
+    ...leagueItems,
     ...computeAttentionItems(
       (matchResult.data ?? []) as AttentionMatchRow[],
       (tradeResult.data ?? []) as AttentionTradeRow[],
-      userId
+      userId,
+      leagueNames
     ),
   ];
 

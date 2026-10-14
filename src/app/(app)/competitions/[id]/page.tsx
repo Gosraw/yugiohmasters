@@ -61,6 +61,14 @@ import {
 } from "@/components/competition-match-result-form-v2";
 
 import {
+  MatchProposalPanel,
+} from "@/components/match-proposal-panel";
+
+import {
+  loadOpenProposals,
+} from "@/lib/match-proposals";
+
+import {
   logicalRoundFor,
   totalLogicalRounds,
 } from "@/lib/competitions/season";
@@ -1029,6 +1037,45 @@ export default async function CompetitionDetailPage({
         "resolved"
     );
 
+  // Result changes an admin proposed for a duel they play in
+  // (202610152010): shown at the top for everyone, with Accept /
+  // Reject for the opponent.
+  const openProposals =
+    await loadOpenProposals(
+      supabase,
+      {
+        competitionId:
+          competition.id,
+      }
+    );
+
+  // The opponent's name when the admin viewing this plays in the
+  // duel: their correction / tiebreak result is only a proposal.
+  function needsOkFrom(
+    match: {
+      player_one_id: string;
+      player_two_id: string;
+    }
+  ) {
+    if (match.player_one_id === userId) {
+      return playerName(
+        profileMap.get(
+          match.player_two_id
+        )
+      );
+    }
+
+    if (match.player_two_id === userId) {
+      return playerName(
+        profileMap.get(
+          match.player_one_id
+        )
+      );
+    }
+
+    return null;
+  }
+
   function tiebreakOpenMatch(
     tiebreak: CompetitionTiebreak
   ) {
@@ -1072,6 +1119,24 @@ export default async function CompetitionDetailPage({
           Home
         </Link>
       </nav>
+
+      <MatchProposalPanel
+        proposals={
+          openProposals
+        }
+        currentUserId={
+          userId
+        }
+        nameOf={(profileId) =>
+          playerName(
+            profileMap.get(
+              profileId
+            )
+          )
+        }
+        returnTo={`/competitions/${competition.id}`}
+        className="mt-6"
+      />
 
       {/* HERO */}
 
@@ -1702,6 +1767,9 @@ export default async function CompetitionDetailPage({
                                 )
                               )}
                               mode="tiebreak"
+                              needsOkFrom={needsOkFrom(
+                                openMatch
+                              )}
                             />
                           </div>
                         )}
@@ -1949,6 +2017,7 @@ export default async function CompetitionDetailPage({
             return (
               <div
                 key={match.id}
+                data-testid={`match-card-${match.id}`}
                 className="panel p-4"
               >
                 <div className="flex items-center justify-between gap-3">
@@ -2030,6 +2099,9 @@ export default async function CompetitionDetailPage({
                           profileMap.get(match.player_two_id)
                         )}
                         mode="correct"
+                        needsOkFrom={needsOkFrom(
+                          match
+                        )}
                       />
                     </div>
                   )}
@@ -2305,7 +2377,10 @@ export default async function CompetitionDetailPage({
           isV2) &&
         competition.status ===
           "active" && (
-          <section className="panel mt-6 p-6">
+          <section
+            id="finalize"
+            className="panel mt-6 scroll-mt-6 p-6"
+          >
             <h2 className="font-black">
               Finish Competition
             </h2>

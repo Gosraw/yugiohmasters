@@ -146,6 +146,12 @@ const SLOW_SCALE = 0.6;
  *  a hit without a spare life was fatal 99% of the time. */
 const STUN_TICKS = 20;
 
+/** Stun + the fall onto the safety card under the trap + most of the
+ *  bounce back up (1 s). */
+const TRAP_RECOVER_TICKS = 60;
+
+const TRAP_SAND_PAUSE_TICKS = 90;
+
 const REVIVE_INVULN_TICKS = 150;
 
 const BOOST_SHIELD_TICKS = 70;
@@ -259,6 +265,12 @@ export type ClimberSim = {
   shieldTicks: number;
   stunTicks: number;
   invulnTicks: number;
+  /** After a Trap hit: the floor can't take you (and the sand pauses)
+   *  while you drop onto the safety card and bounce back. */
+  recoverTicks: number;
+  /** After a Trap hit the sand also waits a little longer (2.5 s),
+   *  so you can get from the safety card back to the path. */
+  sandPauseTicks: number;
   lastBounceTick: number;
   /** Last tick the player reached a new height (stall rule). */
   lastClimbTick: number;
@@ -503,6 +515,88 @@ export function maxReachX(
   );
 }
 
+/** Where the safety card under a trap goes: just below the zone that
+ *  must stay clear (so bouncing off it never hits the trap blind). */
+function catchY(
+  trapY: number
+) {
+  return trapY - TRAP_HALF_H - TRAP_CLEAR_ABOVE - 6;
+}
+
+/** Safety ledge size and its shift from under the trap toward the
+ *  path (it still covers every spot a hit can drop you from). */
+const CATCH_W = 104;
+
+const CATCH_SHIFT = 28;
+
+/** Sideways spread of where a hit can leave the ball (it then drops
+ *  straight down: the stun zeroes sideways speed). */
+const TRAP_HIT_SPREAD = TRAP_HALF_W + PLAYER_HALF_W - 4;
+
+/** True when a static card below the trap already catches any hit. */
+function hasCatch(
+  sim: ClimberSim,
+  x: number,
+  y: number
+) {
+  const top =
+    catchY(y);
+
+  for (const p of sim.platforms) {
+    if (
+      p.broken ||
+      p.kind === "moving" ||
+      p.kind === "ground" ||
+      p.kind === "crumble" ||
+      p.y > top ||
+      p.y < top - 90
+    ) {
+      continue;
+    }
+
+    if (wrapDist(x, p.baseX) + TRAP_HIT_SPREAD <= p.w / 2 + FOOT_HALF_W - 2) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/** True when a safety card fits under the trap: it must not overlap
+ *  another card, nor sit right under another trap. */
+function catchFits(
+  sim: ClimberSim,
+  x: number,
+  y: number
+) {
+  const top =
+    catchY(y);
+
+  for (const p of sim.platforms) {
+    if (
+      Math.abs(p.y - top) < 22 &&
+      wrapDist(x, p.baseX) < p.w / 2 + p.range + CATCH_W / 2 + 10
+    ) {
+      return false;
+    }
+  }
+
+  for (const trap of sim.traps) {
+    const above =
+      trap.y - TRAP_HALF_H - top;
+
+    if (
+      above >= -2 * TRAP_HALF_H &&
+      above <= TRAP_CLEAR_ABOVE &&
+      wrapDist(x, trap.x) < CATCH_W / 2 + TRAP_HALF_W + PLAYER_HALF_W + 12
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 /** True when no platform sits just below this trap spot. */
 function trapIsFair(
   sim: ClimberSim,
@@ -660,16 +754,54 @@ function generateRow(
       const trapX =
         wrapX(firstX + attempt * (WORLD_W / 4));
 
-      if (trapIsFair(sim, trapX, trapY)) {
-        sim.traps.push({
-          id: gen.nextId++,
-          x: trapX,
-          y: trapY,
-          hit: false,
-        });
-
-        break;
+      if (!trapIsFair(sim, trapX, trapY)) {
+        continue;
       }
+
+      const catchNeeded =
+        !hasCatch(sim, trapX, trapY);
+
+      // The safety card is a wide ledge reaching toward the path, so
+      // getting back after a hit is one normal jump.
+      let toPath =
+        wrapX(x - trapX);
+
+      if (toPath > WORLD_W / 2) toPath -= WORLD_W;
+
+      const catchX =
+        wrapX(trapX + (toPath < 0 ? -CATCH_SHIFT : CATCH_SHIFT));
+
+      if (
+        catchNeeded &&
+        !catchFits(sim, catchX, trapY)
+      ) {
+        continue;
+      }
+
+      sim.traps.push({
+        id: gen.nextId++,
+        x: trapX,
+        y: trapY,
+        hit: false,
+      });
+
+      // A hit knocks you straight down: there is always a solid card
+      // to land on just below the stun drop, at every height.
+      if (catchNeeded) {
+        const ledge =
+          newPlatform(
+            gen,
+            "normal",
+            catchX,
+            catchY(trapY),
+            d
+          );
+
+        ledge.w = CATCH_W;
+        sim.platforms.push(ledge);
+      }
+
+      break;
     }
   }
 
@@ -742,6 +874,8 @@ export function createClimber(
     shieldTicks: 0,
     stunTicks: 0,
     invulnTicks: 0,
+    recoverTicks: 0,
+    sandPauseTicks: 0,
     lastBounceTick: 0,
     lastClimbTick: 0,
     dead: false,
@@ -826,13 +960,12 @@ export function stepClimber(
   sim.vy -= GRAVITY * scale;
   sim.y += sim.vy * scale;
 
-  // Landing: only while falling, only when not stunned, and only
-  // on a platform whose top the feet crossed this tick. The
-  // highest crossed platform wins.
-  if (
-    sim.vy < 0 &&
-    sim.stunTicks === 0
-  ) {
+  // Landing: only while falling, and only on a platform whose top
+  // the feet crossed this tick. The highest crossed platform wins.
+  // A stunned ball still lands (v3): a stun only takes away the
+  // steering, so a Trap hit from above can't carry you straight
+  // through the safety card below it.
+  if (sim.vy < 0) {
     let best: Platform | null =
       null;
 
@@ -867,6 +1000,7 @@ export function stepClimber(
       sim.y = best.y;
       sim.vy = JUMP_V;
       sim.lastBounceTick = sim.tick;
+      sim.stunTicks = 0;
 
       sim.events.push({
         type: "bounce",
@@ -964,6 +1098,8 @@ export function stepClimber(
       ) {
         trap.hit = true;
         sim.stunTicks = STUN_TICKS;
+        sim.recoverTicks = TRAP_RECOVER_TICKS;
+        sim.sandPauseTicks = TRAP_SAND_PAUSE_TICKS;
         sim.vy = Math.min(
           sim.vy,
           -2
@@ -986,6 +1122,8 @@ export function stepClimber(
   if (sim.shieldTicks > 0) sim.shieldTicks -= 1;
   if (sim.stunTicks > 0) sim.stunTicks -= 1;
   if (sim.invulnTicks > 0) sim.invulnTicks -= 1;
+  if (sim.recoverTicks > 0) sim.recoverTicks -= 1;
+  if (sim.sandPauseTicks > 0) sim.sandPauseTicks -= 1;
 
   // Camera only ever moves up.
   if (sim.y > sim.maxY) {
@@ -999,7 +1137,9 @@ export function stepClimber(
   );
 
   const tide =
-    tideSpeed(sim);
+    sim.sandPauseTicks > 0
+      ? 0
+      : tideSpeed(sim);
 
   if (tide > 0) {
     sim.camBottom = Math.max(
@@ -1008,12 +1148,19 @@ export function stepClimber(
     );
   }
 
-  if (sim.tick - sim.lastClimbTick > STALL_TICKS) {
+  if (
+    sim.tick - sim.lastClimbTick > STALL_TICKS &&
+    sim.recoverTicks === 0
+  ) {
     sim.camBottom += STALL_CREEP;
   }
 
-  // Fell out of the pyramid.
-  if (sim.y < sim.camBottom - DEATH_DEPTH) {
+  // Fell out of the pyramid (not while recovering from a Trap hit:
+  // the drop to the safety card may dip below the line for a moment).
+  if (
+    sim.recoverTicks === 0 &&
+    sim.y < sim.camBottom - DEATH_DEPTH
+  ) {
     if (sim.lives > 0) {
       sim.lives -= 1;
       sim.y = sim.camBottom + 20;

@@ -58,14 +58,18 @@ const PLATFORM_H = 15;
 const BOTTOM_PAD = 45;
 
 /**
- * World height every screen shows, from BOTTOM_PAD below the camera
- * to the top edge: the ball (at most 330 above the camera bottom)
- * always sees exactly 445 units ahead, on a phone, a laptop or a
- * landscape phone, so the shared Daily board is fair. The play column
- * has this aspect (400 / 820); a taller screen shows extra room BELOW
- * (already climbed), never above.
+ * The view is anchored at the TOP: the top edge is always this far
+ * above (camera bottom - BOTTOM_PAD), so the ball (at most 330 above
+ * the camera bottom) sees exactly 445 units ahead on a phone, a laptop
+ * or a landscape phone - the shared Daily board stays fair. Screens
+ * differ only in how much they show BELOW the ball: the play column
+ * is at most 400:625 (>= 625 units tall, ~180 below the ball), so it
+ * fills a phone's width; a short screen just shows less below.
  */
 export const VIEW_H = 820;
+
+/** The engine's camera bottom at tick 0 is -80 (createClimber). */
+const CAMERA_START_OFFSET = 80;
 
 const MAX_PARTICLES = 160;
 
@@ -111,6 +115,12 @@ type Particle = {
   /** Downward pull (world units / s^2). */
   gravity: number;
 };
+
+function wrapForScreen(
+  x: number
+) {
+  return ((x % WORLD_W) + WORLD_W) % WORLD_W;
+}
 
 export type HeightMarker = {
   /** Height in metres (= score). */
@@ -1001,8 +1011,15 @@ export class ClimberRenderer {
     this.viewCam = cam;
 
     // world -> CSS px. Anchored at the top (see VIEW_H).
-    const bottomWorld = cam - BOTTOM_PAD - (viewH - VIEW_H);
-    const topWorld = bottomWorld + viewH;
+    // At the very start a short screen would cut off the starting
+    // floor: lift the view down to show it, easing back to the fair
+    // anchor within the first ~100 units of climbing.
+    const startLift = Math.max(
+      0,
+      VIEW_H - CAMERA_START_OFFSET - viewH - (cam + CAMERA_START_OFFSET)
+    );
+    const topWorld = cam - BOTTOM_PAD + VIEW_H - startLift;
+    const bottomWorld = topWorld - viewH;
     const sy = (worldY: number) => this.cssH - (worldY - bottomWorld) * scale;
 
     // Decay effects (squash ~140 ms: it fires on every bounce).
@@ -1099,6 +1116,24 @@ export class ClimberRenderer {
 
     // Player.
     this.drawPlayer(sim, playerX, playerY, sy, t);
+
+    // Below the bottom edge (short screens) but not out yet: a gold
+    // marker on the edge shows where the ball is.
+    if (
+      !sim.dead &&
+      sy(playerY + PLAYER_H) > this.cssH
+    ) {
+      const mx = wrapForScreen(playerX) * scale;
+      ctx.fillStyle = COLORS.goldBright;
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(mx, this.cssH - 3);
+      ctx.lineTo(mx - 9, this.cssH - 14);
+      ctx.lineTo(mx + 9, this.cssH - 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
 
     // Slow-motion vignette.
     if (sim.slowTicks > 0) {

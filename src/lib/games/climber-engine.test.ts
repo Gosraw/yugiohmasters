@@ -159,6 +159,33 @@ describe("climber engine", () => {
     expect(traps).toBeGreaterThan(20);
   });
 
+  it("every trap has a solid card below it to catch a hit (v3)", () => {
+    let traps = 0;
+    for (let i = 0; i < 8; i++) {
+      const sim = createClimber(`catch-${i}`);
+      for (let cam = 2000; cam < 60000; cam += 800) {
+        sim.dead = false;
+        sim.camBottom = cam;
+        sim.y = cam + 100;
+        sim.maxY = cam + 100;
+        sim.vy = 0;
+        stepClimber(sim, 0);
+        for (const trap of sim.traps) {
+          if (trap.y < cam + 400 || trap.y >= cam + 1200) continue;
+          traps += 1;
+          const top = trap.y - TRAP_HALF_H - 160;
+          const caught = sim.platforms.some((p) => {
+            if (p.kind === "moving" || p.kind === "crumble" || p.y > top || p.y < top - 120) return false;
+            const dx = Math.abs(((trap.x - p.baseX + WORLD_W * 1.5) % WORLD_W) - WORLD_W / 2);
+            return dx + 24 <= p.w / 2 + 13;
+          });
+          expect(caught, `trap at ${Math.round(trap.y)}`).toBe(true);
+        }
+      }
+    }
+    expect(traps).toBeGreaterThan(200);
+  });
+
   it("moving cards are never faster than the ball can follow (v3)", () => {
     const sim = createClimber("speed-cap");
     sim.camBottom = 60000;

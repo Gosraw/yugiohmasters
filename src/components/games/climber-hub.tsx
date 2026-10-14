@@ -834,7 +834,16 @@ export function ClimberHub({
                     </p>
 
                     {
-                      dailyDone
+                      pendingResume?.mode === "daily"
+                        ? (
+                            // Today's attempt is open but not played yet:
+                            // the Resume card above is the only way in
+                            // ("Start" would fail: the attempt is used).
+                            <p className="mt-4 text-sm font-semibold text-amber-100">
+                              Waiting for you: resume it above.
+                            </p>
+                          )
+                        : dailyDone
                         ? (
                             <div className="mt-4">
                               <p className="font-display text-2xl font-bold text-amber-100 tabular-nums">
@@ -851,11 +860,7 @@ export function ClimberHub({
                                 data.daily.status === "started"
                                   ? (
                                       <p className="mt-1 text-xs leading-5 text-zinc-400">
-                                        {
-                                          pendingResume?.mode === "daily"
-                                            ? "Not started yet: resume it above."
-                                            : "This climb closed before it could be saved (app closed or storage cleared), so it can't be counted."
-                                        }
+                                        This climb closed before it could be saved (app closed or storage cleared), so it can&apos;t be counted.
                                       </p>
                                     )
                                   : null

@@ -857,11 +857,12 @@ export function ClimberPlay({
       ref={wrapperRef}
       className="fixed inset-0 z-[55] flex h-[100dvh] w-full touch-none select-none justify-center overflow-hidden overscroll-none bg-[radial-gradient(ellipse_at_center,#0b1230_0%,#03050f_70%)] [-webkit-touch-callout:none] [-webkit-user-select:none]"
     >
-    {/* Column aspect 400:820 = the renderer's VIEW_H: every screen sees
-        the same amount of tower ahead of the ball. */}
+    {/* At most 400:625 wide (see VIEW_H in the renderer): fills a
+        phone's width; every screen sees the same 445 units of tower
+        ahead of the ball, only the room below it differs. */}
     <div
       ref={containerRef}
-      className="@container relative h-full w-full max-w-[calc(100dvh*0.4878)] touch-none select-none overflow-hidden overscroll-none bg-[#03050f] shadow-[0_0_0_1px_rgba(242,196,90,.18),0_0_60px_rgba(0,0,0,.6)]"
+      className="@container relative h-full w-full max-w-[calc(100dvh*0.64)] touch-none select-none overflow-hidden overscroll-none bg-[#03050f] shadow-[0_0_0_1px_rgba(242,196,90,.18),0_0_60px_rgba(0,0,0,.6)]"
       role="application"
       aria-label="Pyramid Climb. Press Space or tap to start. Steer with the left and right arrow keys, by holding the left or right half of the screen, or by tilting your phone."
     >

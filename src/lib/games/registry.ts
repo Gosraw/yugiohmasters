@@ -1,7 +1,9 @@
 import {
+  Axe,
   Layers,
   Mountain,
   Swords,
+  Target,
   type LucideIcon,
 } from "lucide-react";
 
@@ -55,6 +57,26 @@ export const MINI_GAMES: MiniGameEntry[] = [
     dailyName: "Daily Stack",
     showDailyStatus: true,
     formatScore: (score) => `${count(score)} ${score === 1 ? "block" : "blocks"}`,
+  },
+  {
+    id: "millennium_strike",
+    title: "Millennium Strike",
+    tagline: "Throw cards into the turning Millennium wheel. Hit a card and it's over.",
+    href: "/games/strike",
+    icon: Target,
+    dailyName: "Daily Strike",
+    showDailyStatus: true,
+    formatScore: (score) => `${count(score)} pts`,
+  },
+  {
+    id: "obelisk_rush",
+    title: "Obelisk Rush",
+    tagline: "Strike left, strike right. Dodge the blades before the sand runs out.",
+    href: "/games/obelisk",
+    icon: Axe,
+    dailyName: "Daily Rush",
+    showDailyStatus: true,
+    formatScore: (score) => `${count(score)} pts`,
   },
   {
     id: "auto_battler",

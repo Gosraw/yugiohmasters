@@ -16,6 +16,8 @@ type Props = {
   currentUserId: string;
   emptyText: string;
   showRuns?: boolean;
+  /** Unit after each score ("m" for Pyramid Climb; "" for none). */
+  unit?: string;
 };
 
 const MEDAL = [
@@ -29,6 +31,7 @@ export function GameLeaderboard({
   currentUserId,
   emptyText,
   showRuns = false,
+  unit = "m",
 }: Props) {
   if (rows.length === 0) {
     return (
@@ -98,9 +101,15 @@ export function GameLeaderboard({
 
               <span className="font-display text-base font-bold tabular-nums text-amber-100">
                 {row.score.toLocaleString("en-US")}
-                <span className="ml-0.5 text-xs font-semibold text-zinc-400">
-                  m
-                </span>
+                {
+                  unit
+                    ? (
+                        <span className="ml-0.5 text-xs font-semibold text-zinc-400">
+                          {unit}
+                        </span>
+                      )
+                    : null
+                }
               </span>
             </li>
           );

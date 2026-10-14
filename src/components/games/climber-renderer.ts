@@ -60,13 +60,14 @@ const BOTTOM_PAD = 45;
 /**
  * The view is anchored at the TOP: the top edge is always this far
  * above (camera bottom - BOTTOM_PAD), so the ball (at most 330 above
- * the camera bottom) sees exactly 445 units ahead on a phone, a laptop
- * or a landscape phone - the shared Daily board stays fair. Screens
- * differ only in how much they show BELOW the ball: the play column
- * is at most 400:625 (>= 625 units tall, ~180 below the ball), so it
- * fills a phone's width; a short screen just shows less below.
+ * the camera bottom) sees exactly 340 units ahead (~1.5 bounces) on a
+ * phone, a laptop or a landscape phone - the shared Daily board stays
+ * fair. Screens differ only in how much they show BELOW the ball: the
+ * play column is at most 400:520 (>= 520 units tall, ~180 below the
+ * ball). v1 of this showed 445 ahead in a 400:625 column, which on a
+ * laptop read as far too zoomed out.
  */
-export const VIEW_H = 820;
+export const VIEW_H = 715;
 
 /** The engine's camera bottom at tick 0 is -80 (createClimber). */
 const CAMERA_START_OFFSET = 80;

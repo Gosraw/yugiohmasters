@@ -60,7 +60,7 @@ export const MAX_TICKS =
 export const JUMP_HEIGHT = 220;
 
 /** Ticks from a bounce to the top of the arc (36 = 0.6 s). */
-const JUMP_APEX_TICKS = 36;
+const JUMP_APEX_TICKS = 44;
 
 const GRAVITY =
   (2 * JUMP_HEIGHT) / (JUMP_APEX_TICKS * JUMP_APEX_TICKS);
@@ -82,7 +82,7 @@ const BOOST_V = launchSpeedFor(JUMP_HEIGHT * 3);
 const REVIVE_V = launchSpeedFor(JUMP_HEIGHT * 2);
 
 /** Top sideways speed: crossing the whole tower takes ~1.4 s. */
-const MAX_VX = 4.8;
+const MAX_VX = 3.9;
 
 /** How quickly sideways speed follows the input (per tick): full
  *  speed in ~0.3 s, so a short tap nudges and a hold travels. */
@@ -171,7 +171,7 @@ const TRAP_CLEAR_ABOVE = 160;
 
 /** Moving cards never slide faster than this (units per tick), so
  *  the ball (MAX_VX) can always catch up with one. */
-const MAX_PLATFORM_SPEED = 3;
+const MAX_PLATFORM_SPEED = 2.4;
 
 export type PlatformKind =
   | "ground"

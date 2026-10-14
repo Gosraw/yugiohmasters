@@ -82,3 +82,76 @@ More thinking, less reflex:
 Order: build all three in parallel (each only adds its own files,
 migration via register_mini_game, one registry entry), then one QA +
 polish pass, then commit + report.
+
+## Round 3 QA pass (2026-10-14, local devstack)
+
+Played all three in headless Chromium at iPhone 13 (real touch events:
+swipes for Merge, lifted drags for Tomb, taps for Peaks), 1440x900
+(keyboard / mouse drag / click-to-place) and 844x390 landscape. Each
+browser run was driven by a scripted player running the SAME engine
+on the server seed, and the on-screen score was compared to the
+engine after every few moves: 0 mismatches. Checked: several full
+runs per view, pause / resume (P and the button), reload + Resume
+(same score), game over, instant restart (Space / tap, < 100 ms),
+Daily (confirm dialog, one attempt, hub shows "#2 today", button
+gone), leaderboards (Today / This week), tampered score (+500 on the
+submit request) -> "Run not counted: Score does not match the
+replay". Merge Rewind tested end to end with a seeded resume harness
+(bot log up to the move before 512, written to the saved run,
+reload, Resume): Millennium Rod banner, "Rewind last move", the
+"No moves left" prompt with Rewind / End run, run verified with the
+Z in its log. No console errors; every run p95 frame 16.7 ms, no
+dropped frames.
+
+Scripted players (engine only, many seeds):
+
+| Game | random | simple | planning | strong |
+|---|---|---|---|---|
+| Merge (pts / max tile / moves) | 1,044 / 128 / 110 | corner-mash 2,221 / 128 / 192 | 1-ply expectimax 15,765 / 1024 / 873 (512 reached 90%) | - |
+| Tomb (pts / moves) | 48 / 12 | greedy-lines 106 / 17 | 1-step board eval 359 / 34 | whole-hand search: 65k / 3000+ (never stuck) |
+| Peaks (pts / round 1 cleared) | 650 / 8% | first playable 870 / 30% | longest visible chain 1,310 / 47% | - |
+
+Skill clearly matters in all three (10-15x between random and
+planning), a first run is a few minutes (not instantly over), and
+only Tomb can go "endless" - for a whole-hand-search bot; the
+30-minute seal (MAX_TICKS) ends those runs with the score kept.
+
+Fixed:
+- **Landscape phones were unplayable** (portrait column: Merge board
+  ~95 px, Tomb cell 22 px, Peaks cards 20 px; result cards cut off at
+  the top; Peaks labels overlapping). Merge + Tomb now switch to a
+  two-pane grid under `(orientation: landscape) and (max-height:
+  540px)`: board fills the height on the left, HUD + tray / rewind on
+  the right, result card over the right pane so the final board stays
+  visible (Tomb cell 22 -> 43 px). Peaks gets a side layout (stock
+  above waste beside the peaks; cards 20 -> 58 px) and a wide table
+  on desktop (column up to 1.3 x height; cards 50 -> 92 px).
+- **Tomb drag on a sideways phone**: lifting the piece ABOVE the
+  finger made the bottom rows unreachable (finger would have to be
+  below the screen); in that mode the piece floats up-left of the
+  thumb (tray is on the right), so every cell is reachable.
+- **Peaks empty space on tall phones**: spare height now opens the
+  tableau rows (less overlap, faces more visible) and enlarges the
+  stock / waste (up to 1.85x) instead of a ~230 px gap; cards a bit
+  wider (narrower gutter). Peaks layout also respects the left/right
+  safe area (notch) in landscape, as do the Merge/Tomb grids.
+- **Merge tiles**: 128 / 256 / 512 / 1024 were four near-identical
+  golds. Pyramid 128 is now bronze, Puzzle 256 stays gold, Rod 512
+  rose-gold, Ring 1024 pale white-gold.
+- **/games**: two sections, "Quick reflexes" (Climb, Stack, Strike,
+  Rush) and "Strategy" (Merge, Tomb, Peaks, Shadow Arena), via a new
+  `kind` on each registry entry; intro text mentions both. Play page
+  card lists all eight games.
+
+Not changed (decided):
+- No engine changes, so no ENGINE_VERSION bumps (layout/colour only).
+- Peaks: most runs are one deal (a planning player clears round 1
+  ~47% of the time). That is classic TriPeaks difficulty and keeps a
+  run to ~2 minutes; left as is.
+- Tomb has no difficulty ramp (like Block Blast); experts are capped
+  by the 30-minute seal. Left as is.
+- Peaks has no keyboard way to play a tableau card (Space draws, mouse
+  plays); fine on PC with a mouse, noted for a later a11y pass.
+- The result card still covers the lower board on portrait phones
+  (no room under the board on a 664 px viewport); the top half of
+  the final board stays visible, same as the round 2 games.

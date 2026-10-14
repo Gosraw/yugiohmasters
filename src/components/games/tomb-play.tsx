@@ -93,6 +93,9 @@ const GAME_OVER_BEAT_MS = 1400;
 /** A press that moves less than this is a tap (select), not a drag. */
 const TAP_SLOP_PX = 8;
 
+/** Phone held sideways: floor left, HUD + tray right (CSS twin in tomb-blocks.module.css). */
+const SIDE_QUERY = "(orientation: landscape) and (max-height: 540px)";
+
 const BANNERS = [
   "",
   "",
@@ -438,6 +441,9 @@ export function TombPlay({
 
   const [cell, setCell] =
     useState(40);
+
+  const sideRef =
+    useRef(false);
 
   const [trayCell, setTrayCell] =
     useState(20);
@@ -886,6 +892,43 @@ export function TombPlay({
     const measure = () => {
       const rect = container.getBoundingClientRect();
 
+      const side =
+        window.matchMedia(SIDE_QUERY).matches;
+
+      sideRef.current = side;
+
+      if (side) {
+        // Phone on its side: the floor fills the height on the left,
+        // HUD + tray share the column on the right (see the CSS).
+        const size = Math.floor(
+          clamp(
+            Math.min(
+              (rect.height - 44) / GRID,
+              (rect.width * 0.58 - 28) / GRID
+            ),
+            22,
+            72
+          )
+        );
+
+        const pane =
+          rect.width - (size * GRID + 28);
+
+        setCell(size);
+
+        setTrayCell(
+          Math.floor(
+            Math.min(
+              size * 0.56,
+              ((pane - 28) / HAND_SIZE - 14) / 5,
+              (rect.height - 150) / 5
+            )
+          )
+        );
+
+        return;
+      }
+
       // Board + tray (~3 board cells) + HUD must fit the column.
       const size = Math.floor(
         clamp(
@@ -980,12 +1023,21 @@ export function TombPlay({
 
     // Phone: the piece floats well above the finger so it stays
     // visible. Mouse: the cursor holds the middle of the piece.
+    // Phone on its side: the floor fills the whole height, so a
+    // piece lifted ABOVE the finger could never reach the bottom
+    // rows; it floats up-left of the thumb instead (the tray is on
+    // the right, so every column stays reachable).
     const lift = Math.max(56, cell * 1.45);
+    const sideways = touch && sideRef.current;
 
-    const left = x - width / 2;
-    const top = touch
-      ? y - lift - height
-      : y - height / 2;
+    const left = sideways
+      ? x - width - cell * 0.7
+      : x - width / 2;
+    const top = sideways
+      ? y - height / 2 - cell * 0.6
+      : touch
+        ? y - lift - height
+        : y - height / 2;
 
     const element = floatRef.current;
 
@@ -1503,7 +1555,7 @@ export function TombPlay({
           strip on a wide window (same idea as the other games). */}
       <div
         ref={containerRef}
-        className="@container relative flex h-full w-full max-w-[calc(100dvh*0.62)] touch-none select-none flex-col items-center overflow-hidden overscroll-none bg-[radial-gradient(ellipse_at_50%_35%,#121a3d_0%,#060918_62%,#03050f_100%)] shadow-[0_0_0_1px_rgba(242,196,90,.18),0_0_60px_rgba(0,0,0,.6)]"
+        className={`${styles.column} @container relative flex h-full w-full max-w-[calc(100dvh*0.62)] touch-none select-none flex-col items-center overflow-hidden overscroll-none bg-[radial-gradient(ellipse_at_50%_35%,#121a3d_0%,#060918_62%,#03050f_100%)] shadow-[0_0_0_1px_rgba(242,196,90,.18),0_0_60px_rgba(0,0,0,.6)]`}
         role="application"
         aria-label="Tomb Blocks. Drag a piece onto the 8 by 8 floor, or press 1, 2 or 3, move it with the arrow keys and press Enter. Full rows and columns clear."
         style={{
@@ -1514,7 +1566,7 @@ export function TombPlay({
         <div className="pointer-events-none absolute left-1/2 top-[18%] h-64 w-64 -translate-x-1/2 rounded-full bg-[rgb(242_196_90/.07)] blur-3xl" />
 
         {/* HUD */}
-        <div className="relative z-10 grid w-full grid-cols-[1fr_auto_1fr] items-start px-3 pt-[calc(env(safe-area-inset-top,0px)+12px)]">
+        <div className={`${styles.hud} relative z-10 grid w-full grid-cols-[1fr_auto_1fr] items-start px-3 pt-[calc(env(safe-area-inset-top,0px)+12px)]`}>
           <div className="pt-2.5">
             <p className="text-[10px] font-bold uppercase tracking-[.2em] text-amber-200/70">
               {
@@ -1619,7 +1671,7 @@ export function TombPlay({
         </div>
 
         {/* BOARD */}
-        <div className="relative z-0 flex min-h-0 w-full flex-1 items-center justify-center px-3.5">
+        <div className={`${styles.boardArea} relative z-0 flex min-h-0 w-full flex-1 items-center justify-center px-3.5`}>
           <div
             key={shake}
             className={shake ? styles.boardShake : ""}
@@ -1848,7 +1900,7 @@ export function TombPlay({
 
         {/* TRAY */}
         <div
-          className={`relative z-10 grid w-full grid-cols-3 gap-2 px-3.5 pb-[calc(env(safe-area-inset-bottom,0px)+14px)] pt-2 transition-opacity duration-200 pointer-fine:pb-6 ${result ? "opacity-0" : "opacity-100"}`}
+          className={`${styles.tray} relative z-10 grid w-full grid-cols-3 gap-2 px-3.5 pb-[calc(env(safe-area-inset-bottom,0px)+14px)] pt-2 transition-opacity duration-200 pointer-fine:pb-6 ${result ? "opacity-0" : "opacity-100"}`}
           style={{
             height: trayCell * 5 + 34,
           }}
@@ -1918,7 +1970,7 @@ export function TombPlay({
           )}
         </div>
 
-        <p className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom,0px)+2px)] left-0 right-0 hidden text-center text-[10px] text-zinc-600 pointer-fine:block">
+        <p className={`${styles.help} pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom,0px)+2px)] left-0 right-0 hidden text-center text-[10px] text-zinc-600 pointer-fine:block`}>
           Drag a piece · or 1 2 3, arrows, Enter · P pauses
         </p>
 
@@ -2006,7 +2058,7 @@ export function TombPlay({
         {
           result
             ? (
-                <div className="stack-result-in absolute inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)]">
+                <div className={`${styles.resultWrap} stack-result-in absolute inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)]`}>
                   <div
                     data-tomb-ui
                     className="panel arena-frame w-full max-w-sm p-5 text-center"

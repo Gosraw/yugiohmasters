@@ -199,3 +199,46 @@
   .combo,
   .banner { animation-name: merge-fade-only; }
 }
+
+/* Phone held sideways: the board fills the height on the left, the
+   HUD on top and the rewind bar at the bottom of the column on the
+   right; the result card sits over that column so the final board
+   stays visible. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .column {
+    display: grid;
+    max-width: min(100vw, calc(100dvh * 2.4));
+    grid-template-columns: min(100dvh, 56vw) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .hud {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .boardArea {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    height: 100%;
+  }
+
+  .bottomBar {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+  }
+
+  .result {
+    top: 0;
+    left: auto;
+    width: calc(100% - min(100dvh, 56vw));
+    align-items: center;
+    overflow-y: auto;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    background: rgb(3 5 15 / .88);
+  }
+}

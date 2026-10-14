@@ -112,6 +112,13 @@ const TRAY_SCALE = 1.45;
 
 // Own keyframes (kept here so the shared globals.css stays untouched).
 const PEAKS_CSS = `
+.peaks-column { max-width: calc(100dvh * 0.62); }
+@media (orientation: landscape) {
+  .peaks-column { max-width: max(calc(100dvh * 0.62), min(100vw, calc(100dvh * 1.3))); }
+}
+@media (orientation: landscape) and (max-height: 540px) {
+  .peaks-column { max-width: none; }
+}
 @keyframes peaks-banner {
   0% { opacity: 0; transform: scale(.72); }
   14% { opacity: 1; transform: scale(1.06); }
@@ -356,6 +363,8 @@ function snapOf(
 type Layout = {
   w: number;
   h: number;
+  /** Stock / waste cards are this much bigger than tableau cards. */
+  tray: number;
   slots: {
     x: number;
     y: number;
@@ -368,17 +377,23 @@ type Layout = {
     x: number;
     y: number;
   };
-  /** Vertical centre between the tableau and the tray (chain counter). */
+  /** Centre of the chain counter (between the tableau and the tray). */
+  chainX: number;
   chainY: number;
 };
 
-function computeLayout(
+/**
+ * Portrait: tableau on top, stock + waste side by side under it
+ * (near the thumb). Spare height on tall phones opens the rows up
+ * and enlarges the stock / waste instead of leaving a gap.
+ */
+function stackedLayout(
   width: number,
   height: number,
   insetTop: number,
   insetBottom: number
 ): Layout {
-  const gutter = 8;
+  const gutter = 5;
   const gap = Math.max(2, Math.round(width * 0.008));
   const hudBottom = insetTop + 112;
   const helpHeight = insetBottom + 34;
@@ -395,14 +410,22 @@ function computeLayout(
   w = Math.max(16, Math.floor(w));
 
   const h = Math.round(w * 1.45);
-  const rowStep = Math.round(h * 0.6);
+
+  const spare = Math.max(
+    0,
+    height - helpHeight - 24 - Math.round(h * TRAY_SCALE) -
+      56 - hudBottom - (h + 3 * Math.round(h * 0.6))
+  );
+
+  const rowStep = Math.round(h * 0.6 + Math.min(h * 0.15, (spare * 0.25) / 3));
+  const tray = Math.min(1.85, TRAY_SCALE + (spare * 0.25) / h);
   const tableauWidth = 10 * w + 9 * gap;
   const tableauHeight = h + 3 * rowStep;
   const left = Math.round((width - tableauWidth) / 2);
-  const trayHeight = Math.round(h * TRAY_SCALE);
+  const trayHeight = Math.round(h * tray);
   const trayTop = height - helpHeight - 24 - trayHeight;
   const room = Math.max(0, trayTop - 56 - hudBottom - tableauHeight);
-  const tableauTop = Math.round(hudBottom + room * 0.42);
+  const tableauTop = Math.round(hudBottom + room * 0.5);
 
   const slots = HALF_X_OF.map(
     (half, i) => ({
@@ -411,13 +434,14 @@ function computeLayout(
     })
   );
 
-  const trayWidth = w * TRAY_SCALE;
+  const trayWidth = w * tray;
   const pairWidth = trayWidth * 2.5;
   const stockX = Math.round(width / 2 - pairWidth / 2);
 
   return {
     w,
     h,
+    tray,
     slots,
     stock: {
       x: stockX,
@@ -427,7 +451,161 @@ function computeLayout(
       x: Math.round(stockX + trayWidth * 1.5),
       y: trayTop,
     },
+    chainX: Math.round(width / 2),
     chainY: Math.round((tableauTop + tableauHeight + trayTop) / 2),
+  };
+}
+
+/**
+ * Landscape (phone on its side, wide windows): stock above waste
+ * in a column right of the tableau, so the cards can use the full
+ * height instead of shrinking to fit a portrait stack.
+ */
+function sideLayout(
+  width: number,
+  height: number,
+  insetTop: number,
+  insetBottom: number
+): Layout {
+  const gutter = 10;
+  const gap = Math.max(2, Math.round(width * 0.004));
+  const hudBottom = insetTop + 80;
+  const helpHeight = insetBottom + 30;
+  const tray = 1.2;
+  const sideGap = 28;
+  const pauseBottom = insetTop + 64;
+
+  let w = Math.min(
+    (width - 2 * gutter - 9 * gap - sideGap) / (10 + tray),
+    // Tableau + the chain counter under it.
+    (height - hudBottom - helpHeight - 44) / (1.45 * 2.8),
+    // Stock + label + waste + label, under the pause button.
+    (height - pauseBottom - helpHeight - 64) / (2 * 1.45 * tray),
+    92
+  );
+
+  w = Math.max(16, Math.floor(w));
+
+  const h = Math.round(w * 1.45);
+  const rowStep = Math.round(h * 0.6);
+  const tableauWidth = 10 * w + 9 * gap;
+  const tableauHeight = h + 3 * rowStep;
+  const trayWidth = Math.round(w * tray);
+  const trayHeight = Math.round(h * tray);
+  const left = Math.round((width - (tableauWidth + sideGap + trayWidth)) / 2);
+  const room = Math.max(0, height - helpHeight - 44 - hudBottom - tableauHeight);
+  const tableauTop = Math.round(hudBottom + room * 0.4);
+
+  const slots = HALF_X_OF.map(
+    (half, i) => ({
+      x: left + (half * (w + gap)) / 2,
+      y: tableauTop + ROW_OF[i] * rowStep,
+    })
+  );
+
+  const trayX = left + tableauWidth + sideGap;
+  const columnHeight = 2 * trayHeight + 34;
+  const stockY = Math.max(
+    pauseBottom,
+    Math.round((height - helpHeight - columnHeight) / 2 + 8)
+  );
+
+  return {
+    w,
+    h,
+    tray,
+    slots,
+    stock: {
+      x: trayX,
+      y: stockY,
+    },
+    waste: {
+      x: trayX,
+      y: stockY + trayHeight + 34,
+    },
+    chainX: Math.round(left + tableauWidth / 2),
+    chainY: Math.round(tableauTop + tableauHeight + 24),
+  };
+}
+
+function pickLayout(
+  width: number,
+  height: number,
+  insetTop: number,
+  insetBottom: number
+): Layout {
+  const stacked =
+    stackedLayout(width, height, insetTop, insetBottom);
+
+  if (width < height * 1.15) return stacked;
+
+  const side =
+    sideLayout(width, height, insetTop, insetBottom);
+
+  return side.w > stacked.w
+    ? side
+    : stacked;
+}
+
+/** Safe-area insets (notch / home bar), read from a probe element. */
+function readInsets(
+  probe: HTMLElement | null
+) {
+  const style = probe
+    ? getComputedStyle(probe)
+    : null;
+
+  const px = (
+    value: string | undefined
+  ) => parseFloat(value ?? "") || 0;
+
+  return {
+    top: px(style?.paddingTop),
+    bottom: px(style?.paddingBottom),
+    left: px(style?.paddingLeft),
+    right: px(style?.paddingRight),
+  };
+}
+
+function computeLayout(
+  width: number,
+  height: number,
+  probe: HTMLElement | null
+): Layout {
+  const insets =
+    readInsets(probe);
+
+  // A phone on its side has the notch on the left or right: lay
+  // out inside the safe width, then shift everything past it.
+  const layout =
+    pickLayout(
+      width - insets.left - insets.right,
+      height,
+      insets.top,
+      insets.bottom
+    );
+
+  const dx = insets.left;
+
+  if (dx === 0) return layout;
+
+  return {
+    ...layout,
+    slots: layout.slots.map(
+      (slot) => ({
+        x: slot.x + dx,
+        y: slot.y,
+      })
+    ),
+    stock: {
+      x: layout.stock.x + dx,
+      y: layout.stock.y,
+    },
+    waste: {
+      x: layout.waste.x + dx,
+      y: layout.waste.y,
+    },
+    chainX: layout.chainX + dx,
   };
 }
 
@@ -790,16 +968,12 @@ export function PeaksPlay({
     // ---- layout ----
     const measure = () => {
       const rect = container.getBoundingClientRect();
-      const insets = insetRef.current
-        ? getComputedStyle(insetRef.current)
-        : null;
 
       setLayout(
         computeLayout(
           rect.width,
           rect.height,
-          insets ? parseFloat(insets.paddingTop) || 0 : 0,
-          insets ? parseFloat(insets.paddingBottom) || 0 : 0
+          insetRef.current
         )
       );
     };
@@ -922,8 +1096,7 @@ export function PeaksPlay({
       computeLayout(
         container.getBoundingClientRect().width,
         container.getBoundingClientRect().height,
-        insetRef.current ? parseFloat(getComputedStyle(insetRef.current).paddingTop) || 0 : 0,
-        insetRef.current ? parseFloat(getComputedStyle(insetRef.current).paddingBottom) || 0 : 0
+        insetRef.current
       );
 
     const shake = (
@@ -987,7 +1160,7 @@ export function PeaksPlay({
             fxKey += 1;
             const fx: Fx = {
               key: fxKey,
-              x: geo.waste.x + (geo.w * TRAY_SCALE) / 2,
+              x: geo.waste.x + (geo.w * geo.tray) / 2,
               y: geo.waste.y - 8,
               text: `+${event.points}`,
             };
@@ -1394,7 +1567,7 @@ export function PeaksPlay({
     const atStock = {
       x: layout.stock.x,
       y: layout.stock.y,
-      scale: TRAY_SCALE,
+      scale: layout.tray,
     };
 
     snap.tableau.forEach(
@@ -1433,7 +1606,7 @@ export function PeaksPlay({
           : {
               x: layout.waste.x,
               y: layout.waste.y,
-              scale: TRAY_SCALE,
+              scale: layout.tray,
             };
 
         items.push({
@@ -1496,18 +1669,19 @@ export function PeaksPlay({
         {PEAKS_CSS}
       </style>
 
-      {/* Portrait column: the whole screen on a phone, a centred
-          strip on a wide window (same idea as the other games). */}
+      {/* Portrait column on a phone, a centred table on a wide
+          window, the full width on a phone held sideways (the
+          layout then moves the stock / waste beside the peaks). */}
       <div
         ref={containerRef}
-        className="@container relative h-full w-full max-w-[calc(100dvh*0.62)] touch-none select-none overflow-hidden overscroll-none bg-[#03050f] bg-[url('/v2/temple-night.jpg')] bg-cover bg-center shadow-[0_0_0_1px_rgba(242,196,90,.18),0_0_60px_rgba(0,0,0,.6)] motion-reduce:[&_*]:!transition-none"
+        className="peaks-column @container relative h-full w-full touch-none select-none overflow-hidden overscroll-none bg-[#03050f] bg-[url('/v2/temple-night.jpg')] bg-cover bg-center shadow-[0_0_0_1px_rgba(242,196,90,.18),0_0_60px_rgba(0,0,0,.6)] motion-reduce:[&_*]:!transition-none"
         role="application"
         aria-label="Giza Peaks. Play a face-up card one rank higher or lower than the waste card, or draw from the stock."
       >
         <div
           ref={insetRef}
           aria-hidden
-          className="pointer-events-none invisible absolute h-0 w-0 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]"
+          className="pointer-events-none invisible absolute h-0 w-0 pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]"
         />
 
         {/* Darken the temple so the cards pop; a warm glow behind the peaks. */}
@@ -1518,8 +1692,9 @@ export function PeaksPlay({
             ? (
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(242,196,90,.16)_0%,rgba(242,196,90,0)_70%)]"
+                  className="pointer-events-none absolute -translate-x-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(242,196,90,.16)_0%,rgba(242,196,90,0)_70%)]"
                   style={{
+                    left: layout.chainX,
                     top: layout.slots[0].y - layout.h * 0.6,
                     width: layout.w * 12,
                     height: layout.h * 4,
@@ -1573,7 +1748,7 @@ export function PeaksPlay({
           }
         </div>
 
-        <p className="pointer-events-none absolute left-4 top-[calc(env(safe-area-inset-top,0px)+22px)] @max-[299px]:hidden text-[10px] font-bold uppercase tracking-[.2em] text-amber-200/70">
+        <p className="pointer-events-none absolute left-[calc(env(safe-area-inset-left,0px)+16px)] top-[calc(env(safe-area-inset-top,0px)+22px)] @max-[299px]:hidden text-[10px] font-bold uppercase tracking-[.2em] text-amber-200/70">
           {
             run.mode === "daily"
               ? "Daily Peaks"
@@ -1592,7 +1767,7 @@ export function PeaksPlay({
                       ? "Resume"
                       : "Pause"
                   }
-                  className="absolute right-3 top-[calc(env(safe-area-inset-top,0px)+12px)] z-[400] flex h-11 w-11 items-center justify-center rounded-full border border-[rgb(242_196_90/.35)] bg-[rgb(6_9_22/.6)] text-amber-200 backdrop-blur-sm transition-transform duration-100 active:scale-95"
+                  className="absolute right-[calc(env(safe-area-inset-right,0px)+12px)] top-[calc(env(safe-area-inset-top,0px)+12px)] z-[400] flex h-11 w-11 items-center justify-center rounded-full border border-[rgb(242_196_90/.35)] bg-[rgb(6_9_22/.6)] text-amber-200 backdrop-blur-sm transition-transform duration-100 active:scale-95"
                 >
                   {
                     paused
@@ -1637,8 +1812,8 @@ export function PeaksPlay({
                     style={{
                       left: layout.stock.x - 6,
                       top: layout.stock.y - 6,
-                      width: layout.w * TRAY_SCALE + 12,
-                      height: layout.h * TRAY_SCALE + 12,
+                      width: layout.w * layout.tray + 12,
+                      height: layout.h * layout.tray + 12,
                       zIndex: 300,
                     }}
                   />
@@ -1649,8 +1824,8 @@ export function PeaksPlay({
                     style={{
                       left: layout.stock.x,
                       top: layout.stock.y,
-                      width: layout.w * TRAY_SCALE,
-                      height: layout.h * TRAY_SCALE,
+                      width: layout.w * layout.tray,
+                      height: layout.h * layout.tray,
                     }}
                   />
 
@@ -1667,10 +1842,10 @@ export function PeaksPlay({
                           style={{
                             left: layout.stock.x + (i + 1) * 1.5,
                             top: layout.stock.y + (i + 1) * 1.5,
-                            width: layout.w * TRAY_SCALE,
-                            height: layout.h * TRAY_SCALE,
+                            width: layout.w * layout.tray,
+                            height: layout.h * layout.tray,
                             zIndex: 140 - i,
-                            "--w": `${layout.w * TRAY_SCALE}px`,
+                            "--w": `${layout.w * layout.tray}px`,
                           } as CSSProperties}
                         >
                           <CardBack />
@@ -1688,8 +1863,8 @@ export function PeaksPlay({
                             style={{
                               left: layout.stock.x - 3,
                               top: layout.stock.y - 3,
-                              width: layout.w * TRAY_SCALE + 6,
-                              height: layout.h * TRAY_SCALE + 6,
+                              width: layout.w * layout.tray + 6,
+                              height: layout.h * layout.tray + 6,
                               zIndex: 299,
                             }}
                           />
@@ -1701,8 +1876,8 @@ export function PeaksPlay({
                     className="pointer-events-none absolute text-center text-[10px] font-bold uppercase tracking-[.18em] text-amber-200/70 tabular-nums"
                     style={{
                       left: layout.stock.x - 10,
-                      width: layout.w * TRAY_SCALE + 20,
-                      top: layout.stock.y + layout.h * TRAY_SCALE + 8,
+                      width: layout.w * layout.tray + 20,
+                      top: layout.stock.y + layout.h * layout.tray + 8,
                     }}
                   >
                     {
@@ -1716,8 +1891,8 @@ export function PeaksPlay({
                     className="pointer-events-none absolute text-center text-[10px] font-bold uppercase tracking-[.18em] text-amber-200/70"
                     style={{
                       left: layout.waste.x - 10,
-                      width: layout.w * TRAY_SCALE + 20,
-                      top: layout.waste.y + layout.h * TRAY_SCALE + 8,
+                      width: layout.w * layout.tray + 20,
+                      top: layout.waste.y + layout.h * layout.tray + 8,
                     }}
                   >
                     Waste
@@ -1800,8 +1975,9 @@ export function PeaksPlay({
 
                   {/* Chain counter */}
                   <div
-                    className="pointer-events-none absolute inset-x-0 flex justify-center"
+                    className="pointer-events-none absolute flex w-72 -translate-x-1/2 justify-center"
                     style={{
+                      left: layout.chainX,
                       top: layout.chainY - 16,
                       zIndex: 320,
                     }}

@@ -19,11 +19,35 @@ import {
 // supabase/migrations/202610142000_mini_game_catalog.sql).
 //
 // `id` is the database game key (game_runs.game /
-// mini_game_catalog.game). Order here is the order on the hub.
+// mini_game_catalog.game). Order here is the order on the hub,
+// within its `kind` section (reflex games first, then strategy).
 // =========================================================
+
+/** /games groups the hub into these two sections (in this order). */
+export type MiniGameKind =
+  | "reflex"
+  | "strategy";
+
+export const MINI_GAME_KINDS: {
+  kind: MiniGameKind;
+  title: string;
+  blurb: string;
+}[] = [
+  {
+    kind: "reflex",
+    title: "Quick reflexes",
+    blurb: "Short runs, instant retry.",
+  },
+  {
+    kind: "strategy",
+    title: "Strategy",
+    blurb: "No timer. Think, then move.",
+  },
+];
 
 export type MiniGameEntry = {
   id: string;
+  kind: MiniGameKind;
   title: string;
   /** One short line for the /games menu (fits one line on a phone). */
   tagline: string;
@@ -44,6 +68,7 @@ const count = (
 export const MINI_GAMES: MiniGameEntry[] = [
   {
     id: "pyramid_climb",
+    kind: "reflex",
     title: "Pyramid Climb",
     tagline: "Bounce your Boss to the top.",
     href: "/games/climber",
@@ -54,6 +79,7 @@ export const MINI_GAMES: MiniGameEntry[] = [
   },
   {
     id: "pyramid_stack",
+    kind: "reflex",
     title: "Pyramid Stack",
     tagline: "Tap, drop, stack it high.",
     href: "/games/stack",
@@ -64,6 +90,7 @@ export const MINI_GAMES: MiniGameEntry[] = [
   },
   {
     id: "millennium_strike",
+    kind: "reflex",
     title: "Millennium Strike",
     tagline: "Throw cards. Don't clash.",
     href: "/games/strike",
@@ -74,6 +101,7 @@ export const MINI_GAMES: MiniGameEntry[] = [
   },
   {
     id: "obelisk_rush",
+    kind: "reflex",
     title: "Obelisk Rush",
     tagline: "Chop fast. Dodge blades.",
     href: "/games/obelisk",
@@ -84,6 +112,7 @@ export const MINI_GAMES: MiniGameEntry[] = [
   },
   {
     id: "merge_ra",
+    kind: "strategy",
     title: "Merge of Ra",
     tagline: "Slide, merge, summon Ra.",
     href: "/games/merge",
@@ -94,6 +123,7 @@ export const MINI_GAMES: MiniGameEntry[] = [
   },
   {
     id: "tomb_blocks",
+    kind: "strategy",
     title: "Tomb Blocks",
     tagline: "Fit the blocks. Clear the lines.",
     href: "/games/tomb",
@@ -104,6 +134,7 @@ export const MINI_GAMES: MiniGameEntry[] = [
   },
   {
     id: "giza_peaks",
+    kind: "strategy",
     title: "Giza Peaks",
     tagline: "Chain cards. Clear the peaks.",
     href: "/games/peaks",
@@ -114,6 +145,7 @@ export const MINI_GAMES: MiniGameEntry[] = [
   },
   {
     id: "auto_battler",
+    kind: "strategy",
     title: "Shadow Arena",
     tagline: "Beat 20 Boss waves.",
     href: "/games/autobattler",

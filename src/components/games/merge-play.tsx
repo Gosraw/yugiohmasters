@@ -1249,7 +1249,7 @@ export function MergePlay({
       {/* Portrait column: the whole screen on a phone, a centred
           strip on a wide window. */}
       <div
-        className="@container relative flex h-full w-full max-w-[calc(100dvh*0.62)] touch-none select-none flex-col overflow-hidden overscroll-none bg-[linear-gradient(180deg,#070a1c_0%,#0d1030_45%,#1a1026_100%)] shadow-[0_0_0_1px_rgba(242,196,90,.18),0_0_60px_rgba(0,0,0,.6)]"
+        className={`${styles.column} @container relative flex h-full w-full max-w-[calc(100dvh*0.62)] touch-none select-none flex-col overflow-hidden overscroll-none bg-[linear-gradient(180deg,#070a1c_0%,#0d1030_45%,#1a1026_100%)] shadow-[0_0_0_1px_rgba(242,196,90,.18),0_0_60px_rgba(0,0,0,.6)]`}
         role="application"
         aria-label="Merge of Ra. Swipe or use the arrow keys or WASD to slide the tiles; equal tiles merge."
       >
@@ -1293,7 +1293,7 @@ export function MergePlay({
         </div>
 
         {/* HUD */}
-        <div className="relative z-10 shrink-0 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)]">
+        <div className={`${styles.hud} relative z-10 shrink-0 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)]`}>
           <div className="flex items-center justify-between gap-3">
             <p className="text-[10px] font-bold uppercase tracking-[.22em] text-amber-200/75">
               {modeLabel}
@@ -1402,7 +1402,7 @@ export function MergePlay({
         </div>
 
         {/* BOARD: as large as fits, always square. */}
-        <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-4 py-3 [container-type:size]">
+        <div className={`${styles.boardArea} relative z-10 flex min-h-0 flex-1 items-center justify-center px-4 py-3 [container-type:size]`}>
           <div
             className="w-[min(100cqw,100cqh,520px)]"
           >
@@ -1479,7 +1479,7 @@ export function MergePlay({
         </div>
 
         {/* Bottom bar: rewind + controls hint */}
-        <div className="relative z-10 shrink-0 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+14px)]">
+        <div className={`${styles.bottomBar} relative z-10 shrink-0 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+14px)]`}>
           <button
             type="button"
             onClick={rewind}

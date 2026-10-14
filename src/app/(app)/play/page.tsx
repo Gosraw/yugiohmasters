@@ -64,7 +64,7 @@ const LINKS: PlayLink[] = [
   {
     href: "/games",
     label: "Mini Games",
-    description: "Climb, Stack, Strike, Rush and Arena. Daily and weekly boards, DP for the winners.",
+    description: "Reflex: Climb, Stack, Strike, Rush. Strategy: Merge, Tomb, Peaks, Arena. Daily + weekly boards, DP for the winners.",
     icon: Gamepad2,
   },
   {

@@ -30,7 +30,7 @@ import {
 // Score = highest height reached / 10 ("metres").
 // =========================================================
 
-export const ENGINE_VERSION = 1;
+export const ENGINE_VERSION = 2;
 
 export const TICKS_PER_SECOND = 60;
 
@@ -42,27 +42,57 @@ export const STEER_MAX = 4;
 export const MAX_TICKS =
   30 * 60 * TICKS_PER_SECOND;
 
-const GRAVITY = 0.42;
+// Jump tuning (v2, 2026-10-14). Designed from the jump itself, not
+// from a gravity constant: pick the bounce HEIGHT and the TIME to
+// reach the top, then derive gravity and launch speed
+// (g = 2h / t^2, v = 2h / t - Kyle Pittman, "Building a Better
+// Jump", GDC 2016). v1 bounced 286 units in 0.62 s with a fast,
+// twitchy sideways speed and felt hectic on a phone.
+//
+// One bounce = ~1/4 of the visible screen, top reached in 0.6 s,
+// like Doodle Jump: calm enough to read the next platform, quick
+// enough to keep a rhythm.
 
-/** Normal bounce: apex ~286 units above the platform. */
-export const JUMP_V = 15.5;
+/** Normal bounce height (world units). */
+export const JUMP_HEIGHT = 220;
 
-/** "Pot of Greed" boost: apex ~870 units. */
-const BOOST_V = 27;
+/** Ticks from a bounce to the top of the arc (36 = 0.6 s). */
+const JUMP_APEX_TICKS = 36;
 
-/** Monster Reborn revive launch. */
-const REVIVE_V = 22;
+const GRAVITY =
+  (2 * JUMP_HEIGHT) / (JUMP_APEX_TICKS * JUMP_APEX_TICKS);
 
-const MAX_VX = 6.5;
+export const JUMP_V =
+  (2 * JUMP_HEIGHT) / JUMP_APEX_TICKS;
 
-const STEER_ACCEL = 0.2;
+/** Launch speed that reaches `height` under GRAVITY. */
+function launchSpeedFor(
+  height: number
+) {
+  return Math.sqrt(2 * GRAVITY * height);
+}
 
-export const PLAYER_HALF_W = 18;
+/** "Pot of Greed" boost: three normal bounces high. */
+const BOOST_V = launchSpeedFor(JUMP_HEIGHT * 3);
 
-export const PLAYER_H = 36;
+/** Monster Reborn revive launch: two bounces high. */
+const REVIVE_V = launchSpeedFor(JUMP_HEIGHT * 2);
 
-/** Half-width of the player's "feet" for landing checks. */
-const FOOT_HALF_W = 12;
+/** Top sideways speed: crossing the whole tower takes ~1.4 s. */
+const MAX_VX = 4.8;
+
+/** How quickly sideways speed follows the input (per tick): full
+ *  speed in ~0.3 s, so a short tap nudges and a hold travels. */
+const STEER_ACCEL = 0.14;
+
+/** The ball: ~6.5% of the tower width (v1 was 9%). */
+export const PLAYER_HALF_W = 13;
+
+export const PLAYER_H = 26;
+
+/** Half-width of the player's "feet" for landing checks: a little
+ *  wider than the ball looks, so near-misses still land. */
+const FOOT_HALF_W = 11;
 
 /** Camera bottom trails the player's height by this much. */
 export const CAMERA_OFFSET = 330;
@@ -74,11 +104,12 @@ const GENERATE_AHEAD = 1400;
 
 const PRUNE_BELOW = 220;
 
-/** Height (world units) at which difficulty reaches 1. */
-const DIFFICULTY_HEIGHT = 20000;
+/** Height (world units) at which difficulty reaches 1 (2,500 m). */
+const DIFFICULTY_HEIGHT = 25000;
 
-/** Largest gap between consecutive path platforms (< apex 286). */
-const MAX_GAP = 238;
+/** Largest gap between consecutive path platforms: 78% of a
+ *  bounce, so the next path platform is always reachable. */
+const MAX_GAP = Math.round(JUMP_HEIGHT * 0.78);
 
 const SLOW_TICKS = 240;
 
@@ -308,7 +339,7 @@ function newPlatform(
   const w =
     kind === "ground"
       ? WORLD_W
-      : 70 - 20 * d + rng.range(-4, 4);
+      : 76 - 18 * d + rng.range(-4, 4);
 
   const moving =
     kind === "moving";
@@ -323,7 +354,7 @@ function newPlatform(
       ? rng.range(30, 60 + 90 * d)
       : 0,
     speed: moving
-      ? rng.range(0.004, 0.007) * (1 + 1.3 * d)
+      ? rng.range(0.0035, 0.006) * (1 + d)
       : 0,
     phase: moving
       ? rng.next()
@@ -338,6 +369,31 @@ function newPlatform(
     brokenAt: -1,
     glyph: rng.int(0, 7),
   };
+}
+
+/** How far sideways (world units) a bounce can carry the ball before
+ *  it comes back down to `rise` units above where it bounced, with a
+ *  20% safety margin and the time it takes to reach full speed. */
+export function maxReachX(
+  rise: number
+) {
+  const under =
+    JUMP_V * JUMP_V - 2 * GRAVITY * rise;
+
+  if (under <= 0) {
+    return 0;
+  }
+
+  const airTicks =
+    (JUMP_V + Math.sqrt(under)) / GRAVITY;
+
+  const spinUpTicks =
+    1 / STEER_ACCEL;
+
+  return Math.max(
+    0,
+    MAX_VX * (airTicks - spinUpTicks) * 0.8
+  );
 }
 
 function generateRow(
@@ -358,27 +414,37 @@ function generateRow(
   const gap =
     Math.min(
       MAX_GAP,
-      52 + 150 * d + rng.range(0, 30 + 45 * d)
+      40 + 100 * d + rng.range(0, 22 + 40 * d)
     );
 
   const y =
     h + gap;
 
+  // Never place the next path platform further sideways than the
+  // ball can travel during a bounce that lands on it (with margin):
+  // every level stays climbable, the skill is in getting there.
+  const offset =
+    clamp(
+      rng.range(-1, 1) * (60 + 95 * d),
+      -maxReachX(gap),
+      maxReachX(gap)
+    );
+
   const x =
     wrapX(
-      gen.lastX + rng.range(-1, 1) * (70 + 110 * d)
+      gen.lastX + offset
     );
 
   let kind: PlatformKind =
     "normal";
 
   if (
-    h > 600 &&
+    h > 1000 &&
     rng.chance(0.08 + 0.32 * d)
   ) {
     kind = "moving";
   } else if (
-    h > 1200 &&
+    h > 1500 &&
     rng.chance(0.05 + 0.28 * d)
   ) {
     kind = "crumble";
@@ -441,7 +507,7 @@ function generateRow(
 
   // Trap card obstacles float off the path.
   if (
-    h > 1800 &&
+    h > 2500 &&
     rng.chance(0.06 + 0.32 * d)
   ) {
     sim.traps.push({

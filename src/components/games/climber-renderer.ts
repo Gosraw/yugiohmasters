@@ -967,6 +967,8 @@ export class ClimberRenderer {
     for (let y = first; y < cam + viewH; y += step) {
       if (y <= 0) continue;
       const screenY = sy(y);
+      // Keep the marker out from under the score in the top-left HUD.
+      if (screenY < 110) continue;
       ctx.fillStyle = "rgba(242,196,90,.28)";
       ctx.fillRect(0, screenY, 14, 1);
       ctx.fillRect(this.cssW - 14, screenY, 14, 1);

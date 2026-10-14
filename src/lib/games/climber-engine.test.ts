@@ -4,7 +4,10 @@ import {
   ENGINE_VERSION,
   InputRecorder,
   STEER_MAX,
+  STALL_TICKS,
+  TRAP_HALF_H,
   WORLD_W,
+  difficultyAt,
   climberScore,
   JUMP_HEIGHT,
   maxReachX,
@@ -131,6 +134,59 @@ describe("climber engine", () => {
     // the time cap; most runs still end by falling.
     expect(deaths).toBeGreaterThanOrEqual(4);
     expect(Math.max(...scores)).toBeGreaterThan(100);
+  });
+
+  it("never hangs a trap right above a card you bounce on (v3)", () => {
+    let traps = 0;
+    for (let i = 0; i < 6; i++) {
+      const sim = createClimber(`traps-${i}`);
+      // Generate a long way up without playing.
+      sim.camBottom = 60000;
+      stepClimber(sim, 0);
+      for (const trap of sim.traps) {
+        traps += 1;
+        for (const p of sim.platforms) {
+          const above = trap.y - TRAP_HALF_H - p.y;
+          if (above < 0 || above > 150) continue;
+          const dx = Math.abs(((trap.x - p.baseX + WORLD_W * 1.5) % WORLD_W) - WORLD_W / 2);
+          expect(dx).toBeGreaterThan(p.w / 2 + p.range + 20);
+        }
+      }
+    }
+    expect(traps).toBeGreaterThan(20);
+  });
+
+  it("moving cards are never faster than the ball can follow (v3)", () => {
+    const sim = createClimber("speed-cap");
+    sim.camBottom = 60000;
+    stepClimber(sim, 0);
+    const moving = sim.platforms.filter((p) => p.kind === "moving");
+    expect(moving.length).toBeGreaterThan(20);
+    for (const p of moving) {
+      expect(4 * p.range * p.speed).toBeLessThanOrEqual(3.0001);
+    }
+  });
+
+  it("difficulty keeps rising past 2,500 m, then caps", () => {
+    expect(difficultyAt(0)).toBe(0);
+    expect(difficultyAt(25000)).toBe(1);
+    expect(difficultyAt(40000)).toBeGreaterThan(1);
+    expect(difficultyAt(40000)).toBeLessThan(difficultyAt(55000));
+    expect(difficultyAt(1e7)).toBeCloseTo(1.35);
+  });
+
+  it("a stuck player (no new height) is eventually pushed out", () => {
+    // Bounce on the ground (it holds 4 bounces) by keeping lots of
+    // lives: only the stall rule can end this run.
+    const sim = createClimber("stall");
+    sim.platforms[0].hp = -1;
+    let ticks = 0;
+    while (!sim.dead && ticks < STALL_TICKS + 60 * 20) {
+      stepClimber(sim, 0);
+      ticks += 1;
+    }
+    expect(sim.dead).toBe(true);
+    expect(ticks).toBeGreaterThan(STALL_TICKS);
   });
 
   it("standing still never scores", () => {

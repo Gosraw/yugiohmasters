@@ -203,7 +203,9 @@ export function preloadSounds(
 
 export function play(
   name: SoundName,
-  delayMs = 0
+  delayMs = 0,
+  /** 0..1; quieter for frequent in-game sounds. */
+  volume = VOLUME
 ) {
   if (!isBrowser()) return;
 
@@ -224,7 +226,7 @@ export function play(
         ? base
         : (base.cloneNode() as HTMLAudioElement);
 
-    audio.volume = VOLUME;
+    audio.volume = volume;
     audio.currentTime = 0;
 
     audio

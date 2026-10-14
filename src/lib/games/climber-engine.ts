@@ -13,10 +13,11 @@ import {
 //
 //   1. Fixed timestep: one step = one tick = 1/60 s. Real frame
 //      time never enters the simulation.
-//   2. Only + - * / Math.floor / Math.abs / Math.min / Math.max.
-//      These are exactly specified by IEEE-754 and identical in
-//      V8 (Node, Chrome) and JavaScriptCore (iOS Safari).
-//      NO Math.sin / cos / pow / exp / sqrt / random here: moving
+//   2. Only + - * / Math.floor / Math.abs / Math.min / Math.max
+//      and Math.sqrt. These are exactly specified by IEEE-754
+//      (sqrt is correctly rounded) and identical in V8 (Node,
+//      Chrome) and JavaScriptCore (iOS Safari).
+//      NO Math.sin / cos / pow / exp / random here: moving
 //      platforms use a triangle wave, distances are compared
 //      squared.
 //   3. Randomness comes only from the seeded PRNG, and only the
@@ -30,13 +31,15 @@ import {
 // Score = highest height reached / 10 ("metres").
 // =========================================================
 
-export const ENGINE_VERSION = 2;
+export const ENGINE_VERSION = 3;
 
 export const TICKS_PER_SECOND = 60;
 
 export const WORLD_W = 400;
 
-export const STEER_MAX = 4;
+/** Steering resolution: integer -STEER_MAX..STEER_MAX. v3 doubled it
+ *  (4 -> 8) so tilt can be proportional and touch can ramp in. */
+export const STEER_MAX = 8;
 
 /** Hard cap on run length (30 minutes): bounds server replay cost. */
 export const MAX_TICKS =
@@ -91,14 +94,25 @@ export const PLAYER_HALF_W = 13;
 export const PLAYER_H = 26;
 
 /** Half-width of the player's "feet" for landing checks: a little
- *  wider than the ball looks, so near-misses still land. */
-const FOOT_HALF_W = 11;
+ *  wider than the ball looks (13), so a ball that visibly grazes the
+ *  card edge still lands. v2 used 11, narrower than the ball, which
+ *  made edge landings feel like the game cheated. */
+const FOOT_HALF_W = 15;
 
 /** Camera bottom trails the player's height by this much. */
 export const CAMERA_OFFSET = 330;
 
 /** Falling this far below the camera bottom = out. */
 export const DEATH_DEPTH = 60;
+
+/** No new height for this long (6 s) and the floor starts rising:
+ *  a player stuck under a broken Trap card (no way up left) falls out
+ *  instead of bouncing forever. Waiting out a moving card takes at
+ *  most ~5 s, so fair waiting is never punished. */
+export const STALL_TICKS = 360;
+
+/** How fast the floor rises while stalled (units per tick). */
+const STALL_CREEP = 0.8;
 
 const GENERATE_AHEAD = 1400;
 
@@ -128,6 +142,15 @@ export const ITEM_RADIUS = 16;
 export const TRAP_HALF_W = 15;
 
 export const TRAP_HALF_H = 21;
+
+/** No trap may hang lower than this above a platform it overlaps:
+ *  a bounce from that platform would hit it before you can react
+ *  (0.2 s of rising is ~120 units). */
+const TRAP_CLEAR_ABOVE = 160;
+
+/** Moving cards never slide faster than this (units per tick), so
+ *  the ball (MAX_VX) can always catch up with one. */
+const MAX_PLATFORM_SPEED = 3;
 
 export type PlatformKind =
   | "ground"
@@ -222,6 +245,8 @@ export type ClimberSim = {
   stunTicks: number;
   invulnTicks: number;
   lastBounceTick: number;
+  /** Last tick the player reached a new height (stall rule). */
+  lastClimbTick: number;
 
   dead: boolean;
   timedOut: boolean;
@@ -283,13 +308,27 @@ function clamp(
   );
 }
 
+/** Past 2,500 m it keeps creeping up (to 1.35 at 6,000 m): fewer
+ *  spare cards, narrower and faster ones, so a long run never
+ *  settles into a plateau. */
+const OVERDRIVE_MAX = 0.35;
+
+const OVERDRIVE_HEIGHT = 35000;
+
 export function difficultyAt(
   height: number
 ) {
-  return clamp(
-    height / DIFFICULTY_HEIGHT,
-    0,
-    1
+  if (height <= DIFFICULTY_HEIGHT) {
+    return clamp(
+      height / DIFFICULTY_HEIGHT,
+      0,
+      1
+    );
+  }
+
+  return 1 + Math.min(
+    OVERDRIVE_MAX,
+    ((height - DIFFICULTY_HEIGHT) / OVERDRIVE_HEIGHT) * OVERDRIVE_MAX
   );
 }
 
@@ -344,18 +383,28 @@ function newPlatform(
   const moving =
     kind === "moving";
 
+  const range =
+    moving
+      ? rng.range(30, 60 + 90 * d)
+      : 0;
+
+  // A triangle wave covers 4 * range per cycle.
+  const speed =
+    moving
+      ? Math.min(
+          rng.range(0.0035, 0.006) * (1 + d),
+          MAX_PLATFORM_SPEED / (4 * range)
+        )
+      : 0;
+
   return {
     id: gen.nextId++,
     kind,
     baseX: wrapX(baseX),
     y,
     w,
-    range: moving
-      ? rng.range(30, 60 + 90 * d)
-      : 0,
-    speed: moving
-      ? rng.range(0.0035, 0.006) * (1 + d)
-      : 0,
+    range,
+    speed,
     phase: moving
       ? rng.next()
       : 0,
@@ -394,6 +443,37 @@ export function maxReachX(
     0,
     MAX_VX * (airTicks - spinUpTicks) * 0.8
   );
+}
+
+/** True when no platform sits just below this trap spot. */
+function trapIsFair(
+  sim: ClimberSim,
+  x: number,
+  y: number
+) {
+  const bottom =
+    y - TRAP_HALF_H;
+
+  for (const p of sim.platforms) {
+    const above =
+      bottom - p.y;
+
+    if (
+      above < -2 * TRAP_HALF_H ||
+      above > TRAP_CLEAR_ABOVE
+    ) {
+      continue;
+    }
+
+    const reach =
+      p.w / 2 + p.range + TRAP_HALF_W + PLAYER_HALF_W + 12;
+
+    if (wrapDist(x, p.baseX) < reach) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function generateRow(
@@ -505,17 +585,34 @@ function generateRow(
     });
   }
 
-  // Trap card obstacles float off the path.
+  // Trap card obstacles float off the path, never right above a
+  // card you could be bouncing on (that hit could not be dodged).
   if (
     h > 2500 &&
     rng.chance(0.06 + 0.32 * d)
   ) {
-    sim.traps.push({
-      id: gen.nextId++,
-      x: wrapX(x + WORLD_W / 2 + rng.range(-70, 70)),
-      y: h + gap * rng.range(0.3, 0.7),
-      hit: false,
-    });
+    const trapY =
+      h + gap * rng.range(0.3, 0.7);
+
+    const firstX =
+      x + WORLD_W / 2 + rng.range(-70, 70);
+
+    // Up to four spots, a quarter turn apart; skip if none is fair.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const trapX =
+        wrapX(firstX + attempt * (WORLD_W / 4));
+
+      if (trapIsFair(sim, trapX, trapY)) {
+        sim.traps.push({
+          id: gen.nextId++,
+          x: trapX,
+          y: trapY,
+          hit: false,
+        });
+
+        break;
+      }
+    }
   }
 
   gen.lastY = y;
@@ -588,6 +685,7 @@ export function createClimber(
     stunTicks: 0,
     invulnTicks: 0,
     lastBounceTick: 0,
+    lastClimbTick: 0,
     dead: false,
     timedOut: false,
     platforms: [],
@@ -834,12 +932,17 @@ export function stepClimber(
   // Camera only ever moves up.
   if (sim.y > sim.maxY) {
     sim.maxY = sim.y;
+    sim.lastClimbTick = sim.tick;
   }
 
   sim.camBottom = Math.max(
     sim.camBottom,
     sim.y - CAMERA_OFFSET
   );
+
+  if (sim.tick - sim.lastClimbTick > STALL_TICKS) {
+    sim.camBottom += STALL_CREEP;
+  }
 
   // Fell out of the pyramid.
   if (sim.y < sim.camBottom - DEATH_DEPTH) {

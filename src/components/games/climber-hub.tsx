@@ -20,6 +20,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
@@ -42,6 +43,10 @@ import {
 import type {
   RunInputs,
 } from "@/lib/games/climber-engine";
+
+import type {
+  HeightMarker,
+} from "./climber-renderer";
 
 import {
   play,
@@ -76,6 +81,8 @@ type ActiveRun = {
   seed: string;
   mode: "daily" | "practice";
   resume: SavedRun | null;
+  /** Your weekly best when the run started. */
+  previousBest: number | null;
 };
 
 type Phase =
@@ -95,6 +102,8 @@ type Phase =
       kind: "result";
       mode: "daily" | "practice";
       score: number;
+      /** Your weekly best before this run (for "New best!"). */
+      previousBest: number | null;
       result: SubmitRunResult;
     };
 
@@ -195,6 +204,19 @@ export function ClimberHub({
   const [controlsChoice, setControlsChoice] =
     useState<ControlMode | null>(null);
 
+  const againRef =
+    useRef<HTMLButtonElement>(null);
+
+  const resultReady =
+    phase.kind === "result";
+
+  // The result is in: focus "Climb again" so Enter / Space replays.
+  useEffect(() => {
+    if (resultReady) {
+      againRef.current?.focus();
+    }
+  }, [resultReady]);
+
   const [pendingResume, setPendingResume] =
     useState<(SavedRun & { seed: string }) | null>(null);
 
@@ -258,6 +280,11 @@ export function ClimberHub({
     };
   }, []);
 
+  const weekBest =
+    data.weekBoard.find(
+      (row) => row.profileId === userId
+    )?.score ?? null;
+
   const start = async (
     mode: "daily" | "practice"
   ) => {
@@ -310,6 +337,7 @@ export function ClimberHub({
         seed: result.seed,
         mode: result.mode,
         resume: null,
+        previousBest: weekBest,
       },
     });
   };
@@ -328,6 +356,7 @@ export function ClimberHub({
         seed: pendingResume.seed,
         mode: pendingResume.mode,
         resume: pendingResume,
+        previousBest: weekBest,
       },
     });
 
@@ -338,6 +367,44 @@ export function ClimberHub({
     phase.kind === "playing"
       ? phase.run
       : null;
+
+  // Lines drawn while climbing: your best this week, and the top
+  // three friends on today's (Daily) or this week's (Practice) board.
+  const markersFor = (
+    mode: "daily" | "practice"
+  ): HeightMarker[] => {
+    const list: HeightMarker[] = [];
+
+    if (weekBest) {
+      list.push({
+        score: weekBest,
+        label: "YOUR BEST",
+        kind: "best",
+      });
+    }
+
+    const rows =
+      mode === "daily"
+        ? data.dayBoard
+        : data.weekBoard;
+
+    rows
+      .filter(
+        (row) => row.profileId !== userId && row.score > 0
+      )
+      .slice(0, 3)
+      .forEach((row) => {
+        list.push({
+          score: row.score,
+          label: row.name.length > 16
+            ? `${row.name.slice(0, 15)}…`
+            : row.name,
+          kind: "rival",
+        });
+      });
+
+    return list;
+  };
 
   const onFinished = useCallback(
     async (
@@ -375,6 +442,7 @@ export function ClimberHub({
         kind: "result",
         mode: activeRun.mode,
         score: outcome.score,
+        previousBest: activeRun.previousBest,
         result,
       });
 
@@ -418,11 +486,7 @@ export function ClimberHub({
         mode={phase.run.mode}
         controls={controls}
         spriteUrl={data.sprite?.imageUrl ?? null}
-        bestScore={
-          phase.run.mode === "daily"
-            ? null
-            : myWeek?.score ?? null
-        }
+        markers={markersFor(phase.run.mode)}
         resume={phase.run.resume}
         onFinished={onFinished}
       />
@@ -462,6 +526,22 @@ export function ClimberHub({
           <p className="text-sm font-semibold uppercase tracking-[.2em] text-amber-200/80">
             metres
           </p>
+
+          {
+            phase.kind === "result" &&
+            phase.result.ok &&
+            phase.score > 0 &&
+            (phase.previousBest === null || phase.score > phase.previousBest)
+              ? (
+                  <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-300/50 bg-amber-300/15 px-3 py-1 text-xs font-bold uppercase tracking-[.18em] text-amber-200">
+                    <Sparkles
+                      size={13}
+                    />
+                    New best this week
+                  </p>
+                )
+              : null
+          }
 
           <div className="mt-5 min-h-16 rounded-xl border border-white/10 bg-black/20 px-4 py-3">
             {
@@ -508,10 +588,13 @@ export function ClimberHub({
 
           <div className="mt-5 grid gap-2">
             {
-              phase.mode === "practice"
+              data.hasLeague
                 ? (
                     <button
                       type="button"
+                      // Focused the moment the result is in: one tap (or
+                      // Enter / Space) and you are climbing again.
+                      ref={againRef}
                       disabled={!result || busy !== null}
                       onClick={() => start("practice")}
                       className="primary-button flex w-full items-center justify-center gap-2 disabled:opacity-60"
@@ -530,7 +613,11 @@ export function ClimberHub({
                               />
                             )
                       }
-                      Climb again
+                      {
+                        phase.mode === "practice"
+                          ? "Climb again"
+                          : "Practice run"
+                      }
                     </button>
                   )
                 : null
@@ -828,7 +915,7 @@ export function ClimberHub({
       </div>
 
       <p className="mt-2 text-xs text-zinc-500">
-        Keyboard: arrow keys or A / D. P pauses.
+        Keyboard: Space starts, arrow keys or A / D steer, P pauses.
       </p>
 
       {/* LEADERBOARDS */}
@@ -942,9 +1029,9 @@ export function ClimberHub({
         <ul className="mt-3 grid gap-2.5 text-sm text-zinc-300">
           {[
             ["bg-gradient-to-b from-amber-300 to-amber-700", "Gold cards", "solid steps. Bounce as often as you like."],
-            ["bg-gradient-to-b from-indigo-300 to-indigo-800", "Lapis cards", "slide left and right, faster the higher you go."],
-            ["bg-gradient-to-b from-pink-400 to-fuchsia-900", "Trap cards", "hold you once, then crumble."],
-            ["bg-gradient-to-b from-pink-500 to-rose-950 h-5 w-3.5", "Floating Traps", "touch one and you tumble down."],
+            ["bg-gradient-to-b from-indigo-300 to-indigo-800", "Lapis cards", "slide along a dotted rail; the arrow shows where they are heading."],
+            ["bg-gradient-to-b from-pink-400 to-fuchsia-900", "Cracked Trap cards", "hold you once, then crumble."],
+            ["bg-gradient-to-b from-red-500 to-red-950 h-5 w-3.5", "Spiked Floating Traps", "touch one and you tumble down."],
             ["bg-gradient-to-b from-emerald-300 to-teal-800 h-5 w-3.5", "Monster Reborn", "an extra life: saves you from one fall."],
             ["bg-gradient-to-b from-emerald-300 to-teal-800 h-5 w-3.5", "Swords of Revealing Light", "slow motion and a shield for a few seconds."],
             ["bg-gradient-to-b from-emerald-300 to-teal-800 h-5 w-3.5", "Pot of Greed", "a huge jump."],
@@ -973,7 +1060,9 @@ export function ClimberHub({
 
         <p className="mt-3 text-xs leading-5 text-zinc-500">
           The screen wraps: fly off one side and you come back on the other.
-          Every climb is replayed on the server before it counts.
+          Keep climbing: stay at the same height for a few seconds and the
+          floor starts to rise. Every climb is replayed on the server before
+          it counts.
         </p>
       </section>
     </main>

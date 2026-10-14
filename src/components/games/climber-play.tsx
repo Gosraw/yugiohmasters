@@ -28,7 +28,12 @@ import {
 } from "@/lib/games/climber-engine";
 
 import {
+  play,
+} from "@/lib/sound";
+
+import {
   ClimberRenderer,
+  type HeightMarker,
 } from "./climber-renderer";
 
 // =========================================================
@@ -42,7 +47,17 @@ import {
 //
 // Every tick the current steering value is recorded (only
 // changes are stored). That recording + the seed is the whole
-// run: the server replays it to compute the real score.
+// run: the server replays it to compute the real score. All input
+// shaping below (touch/key ramp, tilt curve) happens BEFORE that
+// point and produces plain integers, so the replay is identical.
+//
+// Steering (v3, STEER_MAX = 8):
+//   - keys / holding a screen half: starts at 40% and ramps to full
+//     over 0.15 s, so a tap nudges and a hold travels;
+//   - tilt: smoothed roll angle, 3 degree dead zone, full speed at
+//     24 degrees, a gentle curve so small tilts make small moves.
+//
+// The run waits for a first tap / key before the first bounce.
 //
 // Pauses on visibilitychange and saves the run to localStorage
 // (seed + inputs), so if the phone kills the tab the run can be
@@ -123,7 +138,7 @@ type Props = {
   mode: "daily" | "practice";
   controls: ControlMode;
   spriteUrl: string | null;
-  bestScore: number | null;
+  markers: HeightMarker[];
   resume: SavedRun | null;
   onFinished: (
     result: {
@@ -139,7 +154,7 @@ export function ClimberPlay({
   mode,
   controls,
   spriteUrl,
-  bestScore,
+  markers,
   resume,
   onFinished,
 }: Props) {
@@ -175,8 +190,13 @@ export function ClimberPlay({
   const [confirmEnd, setConfirmEnd] =
     useState(false);
 
-  const [hint, setHint] =
-    useState(true);
+  // Fresh runs wait for a first tap / key ("ready"); resumed runs
+  // start on the pause card instead.
+  const [ready, setReady] =
+    useState(!resuming);
+
+  const readyRef =
+    useRef(!resuming);
 
   // Engine + recorder live in refs: the loop never re-renders React.
   const simRef =
@@ -190,6 +210,7 @@ export function ClimberPlay({
     pointers: new Map<number, number>(),
     pointerOrder: [] as number[],
     tilt: 0,
+    tiltRoll: null as number | null,
   });
 
   const onFinishedRef =
@@ -311,9 +332,13 @@ export function ClimberPlay({
         canvas,
         {
           reducedMotion,
-          bestScore,
+          markers,
         }
       );
+
+    if (sim.tick > 0) {
+      renderer.primeProgress(sim);
+    }
 
     if (spriteUrl) {
       const image = new Image();
@@ -330,6 +355,7 @@ export function ClimberPlay({
       insetTop = insetRef.current
         ? parseFloat(getComputedStyle(insetRef.current).paddingTop) || 0
         : 0;
+      renderer.setInsetTop(insetTop);
     };
 
     measure();
@@ -342,7 +368,14 @@ export function ClimberPlay({
     // ---- steering ----
     const steer = steerRef.current;
 
-    const currentSteer = () => {
+    const begin = () => {
+      if (!readyRef.current) return;
+      readyRef.current = false;
+      setReady(false);
+    };
+
+    /** Direction held on keys / screen halves: -1, 0 or 1. */
+    const heldDir = () => {
       if (steer.keys.length > 0) {
         return steer.keys[steer.keys.length - 1];
       }
@@ -350,6 +383,27 @@ export function ClimberPlay({
       if (steer.pointerOrder.length > 0) {
         const id = steer.pointerOrder[steer.pointerOrder.length - 1];
         return steer.pointers.get(id) ?? 0;
+      }
+
+      return 0;
+    };
+
+    // Ramp: 40% on the first tick, full after 9 ticks (0.15 s).
+    let rampDir = 0;
+    let rampTicks = 0;
+
+    const currentSteer = () => {
+      const dir = heldDir();
+
+      if (dir !== rampDir) {
+        rampDir = dir;
+        rampTicks = 0;
+      }
+
+      if (dir !== 0) {
+        const k = Math.min(1, 0.4 + (0.6 * (rampTicks + 1)) / 9);
+        rampTicks += 1;
+        return dir * Math.round(STEER_MAX * k);
       }
 
       return controls === "tilt"
@@ -360,8 +414,8 @@ export function ClimberPlay({
     const keyDir = (
       key: string
     ) => {
-      if (key === "ArrowLeft" || key === "a" || key === "A") return -STEER_MAX;
-      if (key === "ArrowRight" || key === "d" || key === "D") return STEER_MAX;
+      if (key === "ArrowLeft" || key === "a" || key === "A") return -1;
+      if (key === "ArrowRight" || key === "d" || key === "D") return 1;
       return 0;
     };
 
@@ -369,7 +423,18 @@ export function ClimberPlay({
       event: KeyboardEvent
     ) => {
       if (event.key === "Escape" || event.key === "p" || event.key === "P") {
+        if (readyRef.current) return;
         setPause(!pausedRef.current);
+        return;
+      }
+
+      if (
+        readyRef.current &&
+        !pausedRef.current &&
+        (event.key === " " || event.key === "Enter" || event.key === "ArrowUp")
+      ) {
+        event.preventDefault();
+        begin();
         return;
       }
 
@@ -377,6 +442,7 @@ export function ClimberPlay({
       if (!dir) return;
       event.preventDefault();
       if (event.repeat) return;
+      if (!pausedRef.current) begin();
       steer.keys = steer.keys.filter((d) => d !== dir);
       steer.keys.push(dir);
     };
@@ -389,28 +455,37 @@ export function ClimberPlay({
       steer.keys = steer.keys.filter((d) => d !== dir);
     };
 
+    const sideOf = (
+      event: PointerEvent
+    ) => {
+      const rect = canvas.getBoundingClientRect();
+      return event.clientX - rect.left < rect.width / 2 ? -1 : 1;
+    };
+
     const onPointerDown = (
       event: PointerEvent
     ) => {
       if (pausedRef.current) return;
-      const rect = canvas.getBoundingClientRect();
-      const dir = event.clientX - rect.left < rect.width / 2 ? -STEER_MAX : STEER_MAX;
-      steer.pointers.set(event.pointerId, dir);
+      event.preventDefault();
+
+      // The tap that starts the run only starts it (tilt players
+      // should not get a surprise sideways push).
+      if (readyRef.current) {
+        begin();
+        if (controls === "tilt") return;
+      }
+
+      steer.pointers.set(event.pointerId, sideOf(event));
       steer.pointerOrder = steer.pointerOrder.filter((id) => id !== event.pointerId);
       steer.pointerOrder.push(event.pointerId);
       canvas.setPointerCapture?.(event.pointerId);
-      event.preventDefault();
     };
 
     const onPointerMove = (
       event: PointerEvent
     ) => {
       if (!steer.pointers.has(event.pointerId)) return;
-      const rect = canvas.getBoundingClientRect();
-      steer.pointers.set(
-        event.pointerId,
-        event.clientX - rect.left < rect.width / 2 ? -STEER_MAX : STEER_MAX
-      );
+      steer.pointers.set(event.pointerId, sideOf(event));
     };
 
     const onPointerUp = (
@@ -420,9 +495,13 @@ export function ClimberPlay({
       steer.pointerOrder = steer.pointerOrder.filter((id) => id !== event.pointerId);
     };
 
-    // Tilt: left/right roll of the phone (gamma), quantised to the
-    // engine's integer steering levels with a little hysteresis so
-    // a steady hand does not flood the recording with changes.
+    // Tilt: left/right roll of the phone (gamma; beta in landscape),
+    // low-pass filtered against sensor jitter, then a dead zone and a
+    // response curve, quantised to the engine's integer levels with
+    // hysteresis so a steady hand does not flood the recording.
+    const TILT_DEAD = 3;
+    const TILT_FULL = 24;
+
     const onOrientation = (
       event: DeviceOrientationEvent
     ) => {
@@ -431,21 +510,37 @@ export function ClimberPlay({
           ? screen.orientation.angle
           : 0;
 
-      let roll =
+      const raw =
         angle === 90
           ? event.beta ?? 0
           : angle === 270 || angle === -90
             ? -(event.beta ?? 0)
             : event.gamma ?? 0;
 
-      roll = Math.max(-40, Math.min(40, roll));
+      const roll =
+        steer.tiltRoll === null
+          ? raw
+          : steer.tiltRoll + (raw - steer.tiltRoll) * 0.45;
 
-      const raw = roll / 5;
-      const current = steer.tilt;
+      steer.tiltRoll = roll;
 
-      if (Math.abs(raw - current) > 0.65) {
-        const next = Math.abs(roll) < 3 ? 0 : Math.round(raw);
-        steer.tilt = Math.max(-STEER_MAX, Math.min(STEER_MAX, next));
+      const n = Math.min(
+        1,
+        Math.max(0, (Math.abs(roll) - TILT_DEAD) / (TILT_FULL - TILT_DEAD))
+      );
+
+      // n * (0.35 + 0.65 n): half tilt = ~34% speed, full = 100%.
+      const target =
+        Math.sign(roll) * n * (0.35 + 0.65 * n) * STEER_MAX;
+
+      if (
+        Math.abs(target - steer.tilt) > 0.6 ||
+        (target === 0 && steer.tilt !== 0)
+      ) {
+        steer.tilt = Math.max(
+          -STEER_MAX,
+          Math.min(STEER_MAX, Math.round(target))
+        );
       }
     };
 
@@ -488,6 +583,27 @@ export function ClimberPlay({
       () => {}
     );
 
+    // ---- haptics + sound (tiny; sound obeys the global mute) ----
+    const canVibrate =
+      typeof navigator.vibrate === "function";
+
+    const feedback = (
+      current: ClimberSim
+    ) => {
+      for (const event of current.events) {
+        if (event.type === "bounce") {
+          if (canVibrate) navigator.vibrate(6);
+        } else if (event.type === "trap") {
+          if (canVibrate) navigator.vibrate(20);
+        } else if (event.type === "pickup") {
+          if (canVibrate) navigator.vibrate(12);
+          play(event.kind === "pot" ? "whoosh" : "chime", 0, 0.35);
+        } else if (event.type === "revive") {
+          play("chime", 0, 0.35);
+        }
+      }
+    };
+
     // ---- loop ----
     let raf = 0;
     let last = performance.now();
@@ -506,6 +622,7 @@ export function ClimberPlay({
 
       if (
         !pausedRef.current &&
+        !readyRef.current &&
         !finishedRef.current &&
         !sim.dead
       ) {
@@ -522,10 +639,7 @@ export function ClimberPlay({
           recorder.record(sim.tick, value);
           stepClimber(sim, value);
           renderer.onEvents(sim.events);
-
-          if (sim.events.some((e) => e.type === "trap")) {
-            navigator.vibrate?.(18);
-          }
+          feedback(sim);
 
           acc -= STEP_MS;
           steps += 1;
@@ -570,12 +684,6 @@ export function ClimberPlay({
 
     raf = requestAnimationFrame(frame);
 
-    const hintTimer =
-      window.setTimeout(
-        () => setHint(false),
-        2600
-      );
-
     // Lock page scrolling / rubber-banding during play.
     const html = document.documentElement;
     const previousOverscroll = html.style.overscrollBehavior;
@@ -585,7 +693,6 @@ export function ClimberPlay({
 
     return () => {
       cancelAnimationFrame(raf);
-      window.clearTimeout(hintTimer);
       resizeObserver.disconnect();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
@@ -622,7 +729,7 @@ export function ClimberPlay({
       ref={containerRef}
       className="relative h-full w-full max-w-[calc(100dvh*0.6)] touch-none select-none overflow-hidden overscroll-none bg-[#03050f] shadow-[0_0_0_1px_rgba(242,196,90,.18),0_0_60px_rgba(0,0,0,.6)]"
       role="application"
-      aria-label="Pyramid Climb. Steer with the left and right arrow keys, by holding the left or right half of the screen, or by tilting your phone."
+      aria-label="Pyramid Climb. Press Space or tap to start. Steer with the left and right arrow keys, by holding the left or right half of the screen, or by tilting your phone."
     >
       <canvas
         ref={canvasRef}
@@ -661,23 +768,48 @@ export function ClimberPlay({
         }
       </p>
 
-      {
-        !paused
-          ? (
-              <div
-                className={`pointer-events-none absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+28px)] flex justify-center px-4 transition-opacity duration-500 ease-out ${hint ? "opacity-100" : "opacity-0"}`}
-              >
-                <p className="rounded-full border border-[rgb(242_196_90/.3)] bg-[rgb(6_9_22/.7)] px-4 py-2 text-xs font-semibold text-amber-100 backdrop-blur-sm">
-                  {
-                    controls === "tilt"
-                      ? "Tilt your phone to steer"
-                      : "Hold the left or right side to steer"
-                  }
-                </p>
-              </div>
-            )
-          : null
-      }
+      {/* Ready: nothing moves until the first tap / key. The canvas
+          underneath still receives the tap (pointer-events-none). */}
+      <div
+        aria-hidden={!ready}
+        className={`pointer-events-none absolute inset-0 transition-opacity duration-200 ease-out motion-reduce:transition-none ${ready && !paused ? "opacity-100" : "opacity-0"}`}
+      >
+        <div className="absolute inset-x-0 top-[24%] flex justify-center px-6">
+          <div className="rounded-2xl border border-[rgb(242_196_90/.35)] bg-[rgb(6_9_22/.78)] px-6 py-4 text-center backdrop-blur-sm">
+            <p className="gold-text font-display text-2xl font-black">
+              Tap to start
+            </p>
+
+            <p className="mt-1.5 text-sm font-semibold text-amber-100">
+              {
+                controls === "tilt"
+                  ? "Tilt your phone to steer"
+                  : "Hold the left or right side to steer"
+              }
+            </p>
+
+            <p className="mt-1 hidden text-xs text-zinc-400 pointer-fine:block">
+              or press Space · steer with ← → or A / D
+            </p>
+          </div>
+        </div>
+
+        {
+          controls === "touch"
+            ? (
+                <div className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+20px)] grid grid-cols-2 pointer-fine:hidden gap-px px-3 text-[11px] font-bold uppercase tracking-[.18em] text-amber-200/80">
+                  <p className="rounded-l-full border border-r-0 border-[rgb(242_196_90/.25)] bg-[rgb(6_9_22/.55)] py-2.5 text-center">
+                    ‹ Left
+                  </p>
+
+                  <p className="rounded-r-full border border-l-0 border-[rgb(242_196_90/.25)] bg-[rgb(6_9_22/.55)] py-2.5 text-center">
+                    Right ›
+                  </p>
+                </div>
+              )
+            : null
+        }
+      </div>
 
       {
         paused

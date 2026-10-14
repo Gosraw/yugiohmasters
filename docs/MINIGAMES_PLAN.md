@@ -59,3 +59,26 @@ Decisions:
   taglines, a Daily status chip and today's leader.
 - Landscape phones: side labels hide when the column is < 300 px and
   the "Tap to start" card is compact on short screens.
+
+# Round 3 — three STRATEGY mini games (2026-10-14, pre-approved)
+
+Same rules as round 2 (iPhone + PC, addictive, simple to learn / skill
+to master, premium Night Temple look, deterministic engine + server
+replay, Daily + Practice boards, catalog + registry, instant restart).
+More thinking, less reflex:
+
+4. **Merge of Ra** (`merge_ra`) — 2048-like: swipe/arrow keys slide a
+   4x4 board of Millennium tiles that merge up a ladder (Ankh → Scarab
+   → Eye → … → Ra); seeded spawns; score = merge values.
+5. **Tomb Blocks** (`tomb_blocks`) — Block Blast / 1010!-like: place 3
+   offered sandstone shapes on an 8x8 grid (drag on phone, drag/click
+   on PC), full rows/columns clear with combos; game over when no
+   piece fits.
+6. **Giza Peaks** (`giza_peaks`) — TriPeaks solitaire with Duel
+   Monster-style cards: play cards one higher/lower than the waste
+   card, chains multiply, clearing the peaks deals the next round;
+   run ends when a deal can't be finished (stock + moves exhausted).
+
+Order: build all three in parallel (each only adds its own files,
+migration via register_mini_game, one registry entry), then one QA +
+polish pass, then commit + report.

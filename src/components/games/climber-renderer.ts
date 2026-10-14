@@ -1304,7 +1304,7 @@ export class ClimberRenderer {
       this.passed.add(marker);
 
       if (marker.kind === "best") {
-        this.showToast("New best!", `Past your ${marker.score.toLocaleString("en-US")} m`, COLORS.goldBright, 1.3);
+        this.showToast("Past your best!", `Your week best: ${marker.score.toLocaleString("en-US")} m`, COLORS.goldBright, 1.3);
       } else {
         this.showToast(`Passed ${marker.label}`, `${marker.score.toLocaleString("en-US")} m`, "#9fd0ff", 1.3);
       }

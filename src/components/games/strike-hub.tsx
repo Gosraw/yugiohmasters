@@ -372,11 +372,12 @@ export function StrikeHub({
       play("gameOver", 0, 0.6);
 
       if (outcome.crashed) {
-        setError("The game hit a problem, so your run ended at the height you reached.");
+        setError("The game hit a problem, so your run ended at the score you had.");
       }
 
       const base: StrikeResult = {
         mode: activeRun.mode,
+        end: outcome.inputs.end,
         score: outcome.score,
         stages: outcome.stages,
         orbs: outcome.orbs,
@@ -767,6 +768,7 @@ export function StrikeHub({
             rows={boardRows}
             currentUserId={userId}
             showRuns={board === "week"}
+            unit="pts"
             emptyText={
               board === "day"
                 ? "Nobody has thrown today yet. Be the first."

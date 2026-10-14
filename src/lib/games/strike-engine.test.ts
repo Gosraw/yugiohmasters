@@ -18,6 +18,7 @@ import {
   SCORE_FLAT_BOUND,
   SCORE_PER_TICK_BOUND,
   STAGE_POINTS,
+  STEADY_SPEED_MAX,
   THROW_INTERVAL,
   ThrowRecorder,
   angleDistance,
@@ -296,6 +297,38 @@ describe("strike engine basics", () => {
     expect(run.score).toBe(
       run.sim.stagesCleared * STAGE_POINTS + run.sim.cardsStuck + run.sim.orbsHit * ORB_POINTS + run.sim.bossesBeaten * BOSS_BONUS
     );
+  });
+});
+
+describe("strike difficulty floor (engine v2)", () => {
+  it("mashing never clears a steady wheel (cards land closer than CARD_GAP)", () => {
+    expect(STEADY_SPEED_MAX * THROW_INTERVAL).toBeLessThan(CARD_GAP);
+    let steadySeen = 0;
+    for (let s = 0; s < 60; s++) {
+      const rng = createPrng(`steady-${s}`);
+      for (let i = 1; i <= 40; i++) {
+        const stage = makeStage(rng, i);
+        if (stage.pattern.kind !== "steady") continue;
+        steadySeen += 1;
+        expect(stage.pattern.speed).toBeLessThanOrEqual(STEADY_SPEED_MAX);
+      }
+    }
+    expect(steadySeen).toBeGreaterThan(50);
+    for (let s = 0; s < 50; s++) {
+      const sim = createStrike(`mash-${s}`);
+      while (!sim.dead && sim.tick < 60 * 60) stepStrike(sim, true);
+      expect(sim.stagesCleared, `seed ${s}`).toBe(0);
+    }
+  });
+
+  it("every normal stage after the first has at least one shadow card", () => {
+    for (let s = 0; s < 40; s++) {
+      const rng = createPrng(`shadow-${s}`);
+      expect(makeStage(rng, 1).preStuck).toHaveLength(0);
+      for (let i = 2; i <= 30; i++) {
+        expect(makeStage(rng, i).preStuck.length, `stage ${i}`).toBeGreaterThanOrEqual(1);
+      }
+    }
   });
 });
 

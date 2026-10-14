@@ -598,7 +598,11 @@ export function ClimberHub({
                     <Sparkles
                       size={13}
                     />
-                    New best this week
+                    {
+                      phase.mode === "daily"
+                        ? "Beats your practice best"
+                        : "New best this week"
+                    }
                   </p>
                 )
               : null

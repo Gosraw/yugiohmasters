@@ -414,6 +414,7 @@ export function StackHub({
 
       const base: StackResult = {
         mode: activeRun.mode,
+        end: outcome.inputs.end,
         score: outcome.score,
         perfects: outcome.perfects,
         bestCombo: outcome.bestCombo,
@@ -804,6 +805,8 @@ export function StackHub({
             rows={boardRows}
             currentUserId={userId}
             showRuns={board === "week"}
+            unit="blocks"
+            unitSingular="block"
             emptyText={
               board === "day"
                 ? "Nobody has stacked today yet. Be the first."

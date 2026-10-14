@@ -22,6 +22,7 @@ import {
 export type MiniGameEntry = {
   id: string;
   title: string;
+  /** One short line for the /games menu (fits one line on a phone). */
   tagline: string;
   href: string;
   icon: LucideIcon;
@@ -41,7 +42,7 @@ export const MINI_GAMES: MiniGameEntry[] = [
   {
     id: "pyramid_climb",
     title: "Pyramid Climb",
-    tagline: "Bounce your Boss up the Millennium pyramid.",
+    tagline: "Bounce your Boss to the top.",
     href: "/games/climber",
     icon: Mountain,
     dailyName: "Daily Climb",
@@ -51,7 +52,7 @@ export const MINI_GAMES: MiniGameEntry[] = [
   {
     id: "pyramid_stack",
     title: "Pyramid Stack",
-    tagline: "Drop sandstone blocks, one tap each. Perfect drops keep the tower wide.",
+    tagline: "Tap, drop, stack it high.",
     href: "/games/stack",
     icon: Layers,
     dailyName: "Daily Stack",
@@ -61,7 +62,7 @@ export const MINI_GAMES: MiniGameEntry[] = [
   {
     id: "millennium_strike",
     title: "Millennium Strike",
-    tagline: "Throw cards into the turning Millennium wheel. Hit a card and it's over.",
+    tagline: "Throw cards. Don't clash.",
     href: "/games/strike",
     icon: Target,
     dailyName: "Daily Strike",
@@ -71,7 +72,7 @@ export const MINI_GAMES: MiniGameEntry[] = [
   {
     id: "obelisk_rush",
     title: "Obelisk Rush",
-    tagline: "Strike left, strike right. Dodge the blades before the sand runs out.",
+    tagline: "Chop fast. Dodge blades.",
     href: "/games/obelisk",
     icon: Axe,
     dailyName: "Daily Rush",
@@ -81,7 +82,7 @@ export const MINI_GAMES: MiniGameEntry[] = [
   {
     id: "auto_battler",
     title: "Shadow Arena",
-    tagline: "Auto battler: build a team from a shared shop and take on 20 Boss waves.",
+    tagline: "Beat 20 Boss waves.",
     href: "/games/autobattler",
     icon: Swords,
     dailyName: "Daily Arena",

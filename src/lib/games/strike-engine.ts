@@ -40,7 +40,12 @@ import {
 /** Database game key (mini_game_catalog / game_runs.game). */
 export const STRIKE_GAME = "millennium_strike";
 
-export const ENGINE_VERSION = 1;
+/**
+ * 2: steady wheels capped at STEADY_SPEED_MAX (mashing no longer
+ * clears them), every normal stage after the first has a shadow
+ * card, first-lap bosses turn a little slower.
+ */
+export const ENGINE_VERSION = 2;
 
 export const TICKS_PER_SECOND = 60;
 
@@ -100,6 +105,17 @@ export const SCORE_FLAT_BOUND = 40;
 const SPEED_MAX = 4.2;
 
 /**
+ * A steady wheel never turns faster than this (degrees per tick).
+ * Throwing as fast as the game allows (one card per THROW_INTERVAL
+ * ticks) then lands the cards STEADY_SPEED_MAX x THROW_INTERVAL =
+ * 8.96 degrees apart, closer than CARD_GAP: mashing clashes on the
+ * second card, so even the calm wheels need a rhythm. Speed on the
+ * later stages comes from the wave / pulse / burst patterns, which
+ * all slow down (or stop) somewhere in their cycle.
+ */
+export const STEADY_SPEED_MAX = 1.12;
+
+/**
  * A "flip" cycle turns back at this fraction of the forward speed.
  * Never 1: an exactly symmetric back-and-forth would keep the wheel
  * inside one arc forever, so the far side could never be reached.
@@ -107,6 +123,13 @@ const SPEED_MAX = 4.2;
 export const FLIP_BACK = 0.5;
 
 const BOSS_SPEED_MAX = 6.5;
+
+/**
+ * Boss speed factor on the first lap (stages 5-35); every later lap
+ * adds 0.2. The first boss is a newcomer's first real wall, so it
+ * turns a little slower than its signature speed.
+ */
+const BOSS_FIRST_LAP = 0.85;
 
 export type PatternKind =
   | "steady"
@@ -514,7 +537,7 @@ export function makeStage(
     pattern = {
       ...def.pattern,
       dir,
-      speed: Math.min(BOSS_SPEED_MAX, def.pattern.speed * (1 + lap * 0.15) * jitter),
+      speed: Math.min(BOSS_SPEED_MAX, def.pattern.speed * (BOSS_FIRST_LAP + lap * 0.2) * jitter),
     };
 
     need = Math.min(MAX_CARDS, 8 + Math.floor(bossIndex / 2));
@@ -549,7 +572,10 @@ export function makeStage(
 
     switch (kind) {
       case "steady":
-        pattern = base;
+        pattern = {
+          ...base,
+          speed: Math.min(STEADY_SPEED_MAX, base.speed),
+        };
         break;
 
       case "wave":
@@ -596,7 +622,7 @@ export function makeStage(
       ? 0
       : boss
         ? Math.min(MAX_PRE_STUCK, 1 + Math.min(2, Math.floor((index / BOSS_EVERY - 1) / 2)))
-        : rng.int(0, Math.min(3, 1 + Math.floor(index / 5)));
+        : rng.int(1, Math.min(3, 1 + Math.floor(index / 5)));
 
   const preStuck: number[] = [];
 

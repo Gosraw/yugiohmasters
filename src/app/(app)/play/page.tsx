@@ -43,8 +43,8 @@ import {
 //   - Duel Companion: Life Points counter, dice, coin, timer.
 //   - League standings: the league table.
 //
-// Mini games live on their own /games hub (Pyramid Climb, Auto
-// Battler) with daily/weekly leaderboards.
+// Mini games live on their own /games hub (src/lib/games/registry.ts)
+// with daily/weekly leaderboards.
 // =========================================================
 
 type PlayLink = {
@@ -64,7 +64,7 @@ const LINKS: PlayLink[] = [
   {
     href: "/games",
     label: "Mini Games",
-    description: "Pyramid Climb and more — daily and weekly leaderboards with rewards.",
+    description: "Climb, Stack, Strike, Rush and Arena. Daily and weekly boards, DP for the winners.",
     icon: Gamepad2,
   },
   {

@@ -1005,7 +1005,7 @@ export function ObeliskPlay({
                 ? (
                     <p
                       key={Math.floor(combo / 10)}
-                      className="stack-combo-pop rounded-full border border-amber-300/50 bg-[rgb(6_9_22/.55)] px-3 py-1 text-xs font-black uppercase tracking-[.2em] text-amber-200 tabular-nums backdrop-blur-sm"
+                      className="stack-combo-pop rounded-full border border-amber-300/50 bg-[rgb(6_9_22/.78)] px-3 py-1 text-xs font-black uppercase tracking-[.2em] text-amber-200 tabular-nums"
                     >
                       Combo ×{combo}
                     </p>
@@ -1019,7 +1019,7 @@ export function ObeliskPlay({
               ? (
                   <p
                     key={toast.key}
-                    className="stack-combo-pop mt-1 rounded-xl border border-[rgb(255_148_62/.55)] bg-[rgb(40_14_8/.6)] px-4 py-1.5 font-display text-lg font-black uppercase tracking-[.12em] text-[#ffd9a0] backdrop-blur-sm"
+                    className="stack-combo-pop mt-1 rounded-xl border border-[rgb(255_148_62/.55)] bg-[rgb(40_14_8/.82)] px-4 py-1.5 font-display text-lg font-black uppercase tracking-[.12em] text-[#ffd9a0]"
                   >
                     {toast.text}
                   </p>
@@ -1031,14 +1031,18 @@ export function ObeliskPlay({
             passedBest && playing && !toast
               ? (
                   <p className="mt-1 text-[11px] font-bold uppercase tracking-[.22em] text-amber-300/90">
-                    New best!
+                    {
+                      run.mode === "daily"
+                        ? "Past your practice best"
+                        : "New best!"
+                    }
                   </p>
                 )
               : null
           }
         </div>
 
-        <div className="pointer-events-none absolute left-4 top-[calc(env(safe-area-inset-top,0px)+20px)] grid gap-1 text-[10px] font-bold uppercase tracking-[.2em]">
+        <div className="pointer-events-none absolute left-4 top-[calc(env(safe-area-inset-top,0px)+20px)] grid gap-1 @max-[299px]:hidden text-[10px] font-bold uppercase tracking-[.2em]">
           <p className="text-amber-200/70">
             {
               run.mode === "daily"
@@ -1253,7 +1257,11 @@ export function ObeliskPlay({
                               <Sparkles
                                 size={13}
                               />
-                              New best this week
+                              {
+                                result.mode === "daily"
+                                  ? "Beats your practice best"
+                                  : "New best this week"
+                              }
                             </p>
                           )
                         : null
@@ -1355,7 +1363,12 @@ export function ObeliskPlay({
                       canPlayAgain && response
                         ? (
                             <p className="mt-2 text-[11px] text-zinc-500">
-                              Tap anywhere or press Space to play again
+                              <span className="pointer-fine:hidden">
+                                Tap anywhere to play again
+                              </span>
+                              <span className="hidden pointer-fine:inline">
+                                Click anywhere or press Space to play again
+                              </span>
                             </p>
                           )
                         : null

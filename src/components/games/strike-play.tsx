@@ -177,6 +177,8 @@ export type StrikeOutcome = {
 
 export type StrikeResult = {
   mode: "daily" | "practice";
+  /** How the run ended (shown next to the mode on the result card). */
+  end?: RunEnd;
   score: number;
   stages: number;
   orbs: number;
@@ -1000,14 +1002,18 @@ export function StrikePlay({
             passedBest && !result
               ? (
                   <p className="mt-1 text-[10px] font-bold uppercase tracking-[.22em] text-amber-300/90">
-                    New best!
+                    {
+                      run.mode === "daily"
+                        ? "Past your practice best"
+                        : "New best!"
+                    }
                   </p>
                 )
               : null
           }
         </div>
 
-        <p className="pointer-events-none absolute left-4 top-[calc(env(safe-area-inset-top,0px)+22px)] text-[10px] font-bold uppercase tracking-[.2em] text-amber-200/70">
+        <p className="pointer-events-none absolute left-4 top-[calc(env(safe-area-inset-top,0px)+22px)] @max-[299px]:hidden text-[10px] font-bold uppercase tracking-[.2em] text-amber-200/70">
           {
             run.mode === "daily"
               ? "Daily Strike"
@@ -1075,10 +1081,10 @@ export function StrikePlay({
         {/* Ready: nothing moves until the first tap. */}
         <div
           aria-hidden={!ready}
-          className={`pointer-events-none absolute inset-x-0 top-[61%] flex justify-center px-6 transition-opacity duration-200 ease-out motion-reduce:transition-none ${ready && !paused && !result ? "opacity-100" : "opacity-0"}`}
+          className={`pointer-events-none absolute inset-x-0 top-[61%] flex justify-center px-6 [@media(max-height:500px)]:top-auto [@media(max-height:500px)]:bottom-[18%] transition-opacity duration-200 ease-out motion-reduce:transition-none ${ready && !paused && !result ? "opacity-100" : "opacity-0"}`}
         >
-          <div className="rounded-2xl border border-[rgb(242_196_90/.35)] bg-[rgb(6_9_22/.72)] px-6 py-4 text-center backdrop-blur-sm">
-            <p className="gold-text font-display text-2xl font-black">
+          <div className="rounded-2xl border border-[rgb(242_196_90/.35)] bg-[rgb(6_9_22/.72)] px-6 py-4 text-center backdrop-blur-sm [@media(max-height:500px)]:px-4 [@media(max-height:500px)]:py-2.5">
+            <p className="gold-text whitespace-nowrap font-display text-2xl font-black [@media(max-height:500px)]:text-xl">
               Tap to start
             </p>
 
@@ -1086,11 +1092,11 @@ export function StrikePlay({
               Then tap to throw a card
             </p>
 
-            <p className="mt-1 text-xs text-zinc-400">
+            <p className="mt-1 text-xs text-zinc-400 [@media(max-height:500px)]:hidden">
               Don&apos;t hit a card that&apos;s already stuck
             </p>
 
-            <p className="mt-1 hidden text-xs text-zinc-400 pointer-fine:block">
+            <p className="mt-1 hidden text-xs text-zinc-400 pointer-fine:block [@media(max-height:500px)]:hidden">
               Click or press Space · P pauses
             </p>
           </div>
@@ -1195,6 +1201,11 @@ export function StrikePlay({
                           ? "Daily Strike"
                           : "Practice run"
                       }
+                      {
+                        result.end === "clash"
+                          ? " · Card clash"
+                          : ""
+                      }
                     </p>
 
                     <p className="gold-text mt-1 font-display text-6xl font-black leading-none tabular-nums">
@@ -1222,7 +1233,11 @@ export function StrikePlay({
                               <Sparkles
                                 size={13}
                               />
-                              New best this week
+                              {
+                                result.mode === "daily"
+                                  ? "Beats your practice best"
+                                  : "New best this week"
+                              }
                             </p>
                           )
                         : null
@@ -1324,7 +1339,12 @@ export function StrikePlay({
                       canPlayAgain && response
                         ? (
                             <p className="mt-2 text-[11px] text-zinc-500">
-                              Tap anywhere or press Space to play again
+                              <span className="pointer-fine:hidden">
+                                Tap anywhere to play again
+                              </span>
+                              <span className="hidden pointer-fine:inline">
+                                Click anywhere or press Space to play again
+                              </span>
                             </p>
                           )
                         : null

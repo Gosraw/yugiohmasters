@@ -29,3 +29,33 @@ centred portrait column on wide screens.
 
 Order: (1) first (infra), then (2) and (3) in parallel, then a QA pass
 on all three + final commit and report (docs/NACHTRAPPORT update).
+
+## QA pass (2026-10-14, local devstack)
+
+Played all three in headless Chromium at iPhone 13 (touch), 1440x900
+(mouse/keyboard) and 844x390 landscape: practice runs, pause/resume,
+reload + resume, game over, instant restart, Daily (one attempt, hub
+shows it as used), leaderboards, a tampered score (rejected: "Score
+does not match the replay"). No console errors; JS per frame < 1 ms.
+Scripted players (same engine, many seeds) for the difficulty curve:
+
+| Game | casual | decent | expert | mash |
+|---|---|---|---|---|
+| Stack (blocks / run length) | 29 / 30 s | 46 / 43 s | 79 / 63 s | 0 |
+| Strike (pts / run length) | 78 / 19 s | 83 / 14 s | 180 / 24 s | 1 (was 33) |
+| Rush (pts / run length) | 65 / 14 s | 129 / 21 s | 212 / 25 s | 4 |
+
+Decisions:
+- **Strike engine v2**: steady wheels capped at 1.12 deg/tick, so
+  throwing as fast as possible lands cards 8.96 deg apart (< the 10 deg
+  clash gap) and mashing dies on the 2nd card; every normal stage
+  after the first has a shadow card; first-lap bosses turn at 0.85x
+  (still a full turn within 20 s). Open v1 runs are refused with
+  "Game version changed".
+- Daily runs no longer say "New best this week" (the weekly board is
+  practice only): they say "Beats your practice best".
+- Leaderboard units: Stack "blocks", Strike/Rush "pts".
+- /games: one art tile per game (`mini-game-art.tsx`), one-line
+  taglines, a Daily status chip and today's leader.
+- Landscape phones: side labels hide when the column is < 300 px and
+  the "Tap to start" card is compact on short screens.

@@ -6,8 +6,6 @@ import type {
 
 import {
   ChevronRight,
-  Mountain,
-  Swords,
 } from "lucide-react";
 
 import {
@@ -15,8 +13,18 @@ import {
 } from "@/lib/supabase/queries";
 
 import {
-  loadClimberPageData,
-} from "@/lib/games/climber-data";
+  getLeagueIdForUser,
+} from "@/lib/league-stats";
+
+import {
+  loadMiniGameSummary,
+  type MiniGameSummary,
+} from "@/lib/games/mini-game-data";
+
+import {
+  MINI_GAMES,
+  type MiniGameEntry,
+} from "@/lib/games/registry";
 
 // =========================================================
 // MINI GAMES HUB (2.0)
@@ -25,11 +33,27 @@ import {
 // daily challenge (same level for everyone, 1 attempt) and a
 // weekly board (unlimited practice, best score counts). Rewards
 // only go to the leaderboard winners.
+//
+// The list comes from src/lib/games/registry.ts: a new game adds
+// one entry there and shows up here.
 // =========================================================
 
 export const metadata: Metadata = {
   title: "Mini games",
 };
+
+function dailyLine(
+  game: MiniGameEntry,
+  summary: MiniGameSummary
+) {
+  if (summary.daily.status === "open") {
+    return `Today's ${game.dailyName} is waiting for you.`;
+  }
+
+  return summary.daily.score !== null
+    ? `Today: ${game.formatScore(summary.daily.score)}`
+    : `${game.dailyName} used for today.`;
+}
 
 export default async function GamesPage() {
   const {
@@ -37,21 +61,28 @@ export default async function GamesPage() {
     userId,
   } = await requireUser();
 
-  const climber =
-    await loadClimberPageData(
+  const leagueId =
+    await getLeagueIdForUser(
       supabase,
       userId
     );
 
-  const leader =
-    climber.dayBoard[0] ?? null;
-
-  const dailyLine =
-    climber.daily.status === "open"
-      ? "Today's Daily Climb is waiting for you."
-      : climber.daily.score !== null
-        ? `Today: ${climber.daily.score.toLocaleString("en-US")} m`
-        : "Daily Climb used for today.";
+  // Loading the hub also settles finished days / weeks (pays the
+  // leaderboard winners once), for every game that shows a status.
+  const summaries =
+    await Promise.all(
+      MINI_GAMES.map(
+        (game) =>
+          game.showDailyStatus
+            ? loadMiniGameSummary(
+                supabase,
+                userId,
+                game.id,
+                leagueId
+              )
+            : Promise.resolve(null)
+      )
+    );
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
@@ -68,73 +99,68 @@ export default async function GamesPage() {
         weekly board you can grind. Winners earn Duel Points.
       </p>
 
-      <Link
-        href="/games/climber"
-        className="arena-frame panel group relative mt-6 flex items-center gap-4 overflow-hidden p-5 transition-transform duration-150 active:scale-[.99] motion-reduce:transition-none"
-      >
-        <div className="spell-glow -right-10 -top-10 h-40 w-40" />
+      <div className="mt-6 grid gap-3">
+        {MINI_GAMES.map(
+          (game, index) => {
+            const Icon =
+              game.icon;
 
-        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-300/40 bg-amber-300/10 text-amber-300 shadow-[0_0_20px_rgba(242,196,90,.2)]">
-          <Mountain
-            size={26}
-          />
-        </div>
+            const summary =
+              summaries[index];
 
-        <div className="relative min-w-0 flex-1">
-          <p className="font-display text-lg font-bold text-amber-100">
-            Pyramid Climb
-          </p>
+            return (
+              <Link
+                key={game.id}
+                href={game.href}
+                className="arena-frame panel group relative flex items-center gap-4 overflow-hidden p-5 transition-transform duration-150 active:scale-[.99] motion-reduce:transition-none"
+              >
+                <div className="spell-glow -right-10 -top-10 h-40 w-40" />
 
-          <p className="mt-0.5 text-sm leading-5 text-zinc-400">
-            Bounce your Boss up the Millennium pyramid.
-          </p>
+                <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-300/40 bg-amber-300/10 text-amber-300 shadow-[0_0_20px_rgba(242,196,90,.2)]">
+                  <Icon
+                    size={26}
+                  />
+                </div>
 
-          <p className="mt-2 text-xs font-semibold text-amber-200/90">
-            {dailyLine}
-          </p>
-
-          {
-            leader
-              ? (
-                  <p className="mt-0.5 text-xs text-zinc-500">
-                    Leading today: {leader.name} · {leader.score.toLocaleString("en-US")} m
+                <div className="relative min-w-0 flex-1">
+                  <p className="font-display text-lg font-bold text-amber-100">
+                    {game.title}
                   </p>
-                )
-              : null
+
+                  <p className="mt-0.5 text-sm leading-5 text-zinc-400">
+                    {game.tagline}
+                  </p>
+
+                  {
+                    summary?.hasLeague
+                      ? (
+                          <p className="mt-2 text-xs font-semibold text-amber-200/90">
+                            {dailyLine(game, summary)}
+                          </p>
+                        )
+                      : null
+                  }
+
+                  {
+                    summary?.leader
+                      ? (
+                          <p className="mt-0.5 text-xs text-zinc-500">
+                            Leading today: {summary.leader.name} · {game.formatScore(summary.leader.score)}
+                          </p>
+                        )
+                      : null
+                  }
+                </div>
+
+                <ChevronRight
+                  size={20}
+                  className="relative shrink-0 text-amber-300/70"
+                />
+              </Link>
+            );
           }
-        </div>
-
-        <ChevronRight
-          size={20}
-          className="relative shrink-0 text-amber-300/70"
-        />
-      </Link>
-
-      <Link
-        href="/games/autobattler"
-        className="panel group relative mt-3 flex items-center gap-4 overflow-hidden p-5 transition-transform duration-150 active:scale-[.99] motion-reduce:transition-none"
-      >
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-300/40 bg-amber-300/10 text-amber-300">
-          <Swords
-            size={24}
-          />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-lg font-bold text-amber-100">
-            Shadow Arena
-          </p>
-
-          <p className="mt-0.5 text-sm leading-5 text-zinc-400">
-            Auto battler: build a team from a shared shop and take on 20 Boss waves.
-          </p>
-        </div>
-
-        <ChevronRight
-          size={20}
-          className="shrink-0 text-amber-300/70"
-        />
-      </Link>
+        )}
+      </div>
     </main>
   );
 }

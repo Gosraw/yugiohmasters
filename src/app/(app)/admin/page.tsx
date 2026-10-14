@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
 import { requireUser } from "@/lib/supabase/queries";
+import { miniGameTitle } from "@/lib/games/registry";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +99,7 @@ export default async function AdminPage() {
     };
   });
 
-  const gameName = (game: string) => (game === "auto_battler" ? "Shadow Arena" : game === "pyramid_climb" ? "Pyramid Climb" : game);
+  const gameName = (game: string) => miniGameTitle(game);
 
   const sections: Section[] = [
     {

@@ -885,3 +885,31 @@ html[data-home-seen] .dc-stagger > * { animation: none; }
     animation-delay: 0s !important;
   }
 }
+
+/* ---------------------------------------------------------
+   Pyramid Stack (src/components/games/stack-play.tsx)
+   --------------------------------------------------------- */
+
+@keyframes stack-combo-pop {
+  0% { transform: scale(.6); opacity: 0; }
+  45% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes stack-result-in {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.stack-combo-pop {
+  animation: stack-combo-pop 260ms cubic-bezier(.2, .9, .3, 1.2) both;
+}
+
+.stack-result-in {
+  animation: stack-result-in 320ms cubic-bezier(.2, .8, .2, 1) 180ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stack-combo-pop,
+  .stack-result-in { animation: none; }
+}

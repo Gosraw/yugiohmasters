@@ -157,6 +157,7 @@ export async function getClimberRunSeed(
 
   const run =
     (data as {
+      run_game: string;
       run_seed: string;
       run_mode: "daily" | "practice";
       run_status: string;
@@ -165,6 +166,7 @@ export async function getClimberRunSeed(
 
   if (
     !run ||
+    run.run_game !== CLIMBER_GAME ||
     run.run_status !== "started" ||
     run.run_engine_version !== ENGINE_VERSION
   ) {
@@ -213,6 +215,7 @@ export async function submitClimberRun(
 
   const run =
     (runData as {
+      run_game: string;
       run_seed: string;
       run_mode: "daily" | "practice";
       run_status: string;
@@ -221,9 +224,12 @@ export async function submitClimberRun(
       run_iso_week: string;
     }[] | null)?.[0];
 
+  // Only Pyramid Climb runs: replaying another game's run id with
+  // the climber engine would put a climb score on that game's board.
   if (
     runError ||
-    !run
+    !run ||
+    run.run_game !== CLIMBER_GAME
   ) {
     return {
       ok: false,

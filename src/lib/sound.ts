@@ -205,7 +205,9 @@ export function play(
   name: SoundName,
   delayMs = 0,
   /** 0..1; quieter for frequent in-game sounds. */
-  volume = VOLUME
+  volume = VOLUME,
+  /** Playback rate; above 1 also raises the pitch (combo chimes). */
+  rate = 1
 ) {
   if (!isBrowser()) return;
 
@@ -228,6 +230,11 @@ export function play(
 
     audio.volume = volume;
     audio.currentTime = 0;
+
+    // preservesPitch = false: a faster rate is also a higher note.
+    (audio as HTMLAudioElement & { preservesPitch?: boolean }).preservesPitch =
+      rate === 1;
+    audio.playbackRate = rate;
 
     audio
       .play()

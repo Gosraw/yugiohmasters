@@ -611,9 +611,16 @@ export function ClimberPlay({
   };
 
   return (
+    // The tower always plays in a portrait column: on a phone that is
+    // the whole screen, on a wide laptop window it is a centred strip
+    // (like Doodle Jump on desktop). Without it the world scaled to
+    // the full window width and only a sliver of the tower showed.
+    <div
+      className="fixed inset-0 z-[55] flex h-[100dvh] w-full touch-none select-none justify-center overflow-hidden overscroll-none bg-[radial-gradient(ellipse_at_center,#0b1230_0%,#03050f_70%)] [-webkit-touch-callout:none] [-webkit-user-select:none]"
+    >
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[55] h-[100dvh] w-full touch-none select-none overflow-hidden overscroll-none bg-[#03050f] [-webkit-touch-callout:none] [-webkit-user-select:none]"
+      className="relative h-full w-full max-w-[calc(100dvh*0.6)] touch-none select-none overflow-hidden overscroll-none bg-[#03050f] shadow-[0_0_0_1px_rgba(242,196,90,.18),0_0_60px_rgba(0,0,0,.6)]"
       role="application"
       aria-label="Pyramid Climb. Steer with the left and right arrow keys, by holding the left or right half of the screen, or by tilting your phone."
     >
@@ -749,6 +756,7 @@ export function ClimberPlay({
             )
           : null
       }
+    </div>
     </div>
   );
 }

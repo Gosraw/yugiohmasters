@@ -227,6 +227,7 @@ Apply with the loop in step 2 (`2026101[245]*.sql`). Two special cases:
 | `202610152030_practice_challenge_guards.sql` | Season duels no longer block practice challenges; decline / cancel / wager RPCs refuse season duels; `accept_practice_challenge` (accept + stake in one transaction); no result / no payout on a one-sided wager (refunded instead); either player can cancel a stuck accepted wager duel; an admin may settle a wager. | matches, wagers |
 | `202610152040_initial_draft_guards.sql` | Initial Draft strictly one-time (any seat in a non-cancelled draft counts, advisory lock), Boss Route required first; the admin `start_initial_draft` refuses players who had one. | draft |
 | `202610152050_small_security_and_goal_fixes.sql` | `consume_reward_voucher` and `_phase*_verify_introspect` no longer callable by anon / players; tiebreak duels don't count for weekly goals. | security, weekly goals |
+| `202610301100_hide_mini_games.sql` | 2.0 launches without mini games: every `mini_game_catalog` game goes inactive (`start_game_run` refuses them) and players can no longer call `settle_mini_game_period` (no mini game payouts). Nothing dropped; idempotent. The app hides `/games` behind `MINI_GAMES_ENABLED` in `src/lib/games/flag.ts`. | mini games |
 
 **Backwards compatibility.** These migrations share the production database with the live `main` app.
 `202610121000` takes effect immediately: Master Duel-forbidden cards that are already `format_eligible` become offerable in the live draft and shop.

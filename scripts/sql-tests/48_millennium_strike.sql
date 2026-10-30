@@ -4,6 +4,11 @@
 --  * submit_game_run applies the bound; an honest score lands on the
 --    day board
 
+-- 202610301100_hide_mini_games switches every catalog game off for
+-- the 2.0 launch. This file tests the game flow itself, so it turns
+-- them back on inside its own (rolled back) transaction.
+update public.mini_game_catalog set active = true;
+
 create function pg_temp.expect_error(statement text, expected_fragment text, label text)
 returns void
 language plpgsql

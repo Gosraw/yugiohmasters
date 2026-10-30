@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
 import { requireUser } from "@/lib/supabase/queries";
 import { miniGameTitle } from "@/lib/games/registry";
+import { MINI_GAMES_ENABLED } from "@/lib/games/flag";
 
 export const dynamic = "force-dynamic";
 
@@ -142,17 +143,22 @@ export default async function AdminPage() {
         `Weekly goal categories: ${Array.isArray(weekly?.categories) ? (weekly.categories as string[]).join(", ") : "-"}.`,
       ],
     },
-    {
-      title: "Mini games",
-      description: "Leaderboard rewards per game.",
-      fields: miniRewards.map((row) => ({
-        key: `mini_game.${row.game}.${row.period}.${row.place}`,
-        label: `${gameName(row.game)} - ${row.period === "day" ? "daily" : "weekly"} #${row.place}`,
-        hint: row.voucher_pack_code ? `Plus ${voucherLabel(row.voucher_pack_code)}.` : undefined,
-        value: row.dp,
-        suffix: "DP",
-      })),
-    },
+    // Hidden while mini games are switched off (src/lib/games/flag.ts).
+    ...(MINI_GAMES_ENABLED
+      ? [
+          {
+            title: "Mini games",
+            description: "Leaderboard rewards per game.",
+            fields: miniRewards.map((row) => ({
+              key: `mini_game.${row.game}.${row.period}.${row.place}`,
+              label: `${gameName(row.game)} - ${row.period === "day" ? "daily" : "weekly"} #${row.place}`,
+              hint: row.voucher_pack_code ? `Plus ${voucherLabel(row.voucher_pack_code)}.` : undefined,
+              value: row.dp,
+              suffix: "DP",
+            })),
+          },
+        ]
+      : []),
     {
       title: "Perks",
       description: "Real-life achievement (perk) DP.",

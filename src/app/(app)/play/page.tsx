@@ -22,6 +22,10 @@ import {
 } from "@/lib/league-stats";
 
 import {
+  MINI_GAMES_ENABLED,
+} from "@/lib/games/flag";
+
+import {
   getActiveSeasonCompetition,
   logicalRoundFor,
   totalLogicalRounds,
@@ -44,7 +48,9 @@ import {
 //   - League standings: the league table.
 //
 // Mini games live on their own /games hub (src/lib/games/registry.ts)
-// with daily/weekly leaderboards.
+// with daily/weekly leaderboards. Their card only shows while
+// MINI_GAMES_ENABLED (src/lib/games/flag.ts) is on - 2.0 launches
+// without them.
 // =========================================================
 
 type PlayLink = {
@@ -54,6 +60,13 @@ type PlayLink = {
   icon: LucideIcon;
 };
 
+const MINI_GAMES_LINK: PlayLink = {
+  href: "/games",
+  label: "Mini Games",
+  description: "Reflex: Climb, Stack, Strike, Rush. Strategy: Merge, Tomb, Peaks, Arena. Daily + weekly boards, DP for the winners.",
+  icon: Gamepad2,
+};
+
 const LINKS: PlayLink[] = [
   {
     href: "/matches/new",
@@ -61,12 +74,13 @@ const LINKS: PlayLink[] = [
     description: "Played a friendly duel? Tap who won. Add a DP or card wager if you dare.",
     icon: Swords,
   },
-  {
-    href: "/games",
-    label: "Mini Games",
-    description: "Reflex: Climb, Stack, Strike, Rush. Strategy: Merge, Tomb, Peaks, Arena. Daily + weekly boards, DP for the winners.",
-    icon: Gamepad2,
-  },
+  ...(
+    MINI_GAMES_ENABLED
+      ? [
+          MINI_GAMES_LINK,
+        ]
+      : []
+  ),
   {
     href: "/duel-companion",
     label: "Duel Companion",

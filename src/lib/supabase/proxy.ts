@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublicEnv } from "./env";
 import { onboardingRedirectPath } from "./onboarding-gate";
 import { isMissingDetailPage } from "./missing-detail";
+import { MINI_GAMES_ENABLED } from "@/lib/games/flag";
 import {
   ONBOARDED_COOKIE,
   ONBOARDED_MAX_AGE,
@@ -63,6 +64,14 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
+  }
+
+  // Mini games are switched off for the 2.0 launch (src/lib/games/flag.ts):
+  // /games/* goes to Home before any game page (or its leaderboard
+  // settlement) runs. src/app/(app)/games/layout.tsx is the backup for
+  // requests that skip this proxy (prefetches).
+  if (!MINI_GAMES_ENABLED && (pathname === "/games" || pathname.startsWith("/games/"))) {
+    return redirectWithCookies(request, response, "/");
   }
 
   // =========================================================

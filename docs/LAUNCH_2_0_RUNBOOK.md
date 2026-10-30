@@ -44,10 +44,13 @@ Zeg tegen de ontwikkelaar welke je wilt. Uit zetten kan op twee manieren: het be
 Laat de ontwikkelaar de hele avond eerst één keer naspelen op de **lokale testdatabase** (op de Mac, nooit de echte):
 
 1. `node scripts/devstack/db.mjs migrate`
-2. Het reset-script met `mode=dry_run`, daarna met `mode=apply` (zie stap 3 en 4 hieronder, maar dan met het lokale adres `postgres://postgres@127.0.0.1:54322/postgres`).
-3. De test-bots: `npm run test:e2e:mobile`
+2. Stap 2b (de seizoenscijfers), met het lokale adres `postgres://postgres@127.0.0.1:54322/postgres`. Sla deze niet over: anders kloppen de Boss-prijzen niet.
+3. Het reset-script met `mode=dry_run`, daarna met `mode=apply` (zie stap 3 en 4 hieronder, met hetzelfde lokale adres).
+4. De test-bots: `npm run test:e2e:mobile`. Let op: de bots **wissen eerst de lokale testdatabase** en bouwen hem opnieuw op. Doe ze dus als laatste.
 
 **STOP als:** iets hiervan rood wordt.
+
+*Generale repetitie gedaan op 30 oktober 2026 (lokaal, `launch_date=2026-10-30`): alles groen, zie het verslag van die avond.*
 
 ---
 
@@ -80,16 +83,9 @@ Daarna voer je de migraties uit, **in deze volgorde**, één voor één:
 for f in supabase/migrations/2026101[245]*.sql supabase/migrations/20261030*.sql; do case "$f" in *202610120500_card_votes.sql) echo "-- skip $f"; continue;; esac; echo "== $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f" || break; done
 ```
 
-Deze regel doet alle bestanden van 12, 14, 15 en 30 oktober, in de goede volgorde (30 oktober = de 14 nieuwe Boss Paths en het verbergen van de minigames). Eén bestand wordt bewust **overgeslagen** (`202610120500_card_votes.sql`): de echte database heeft de stemming al sinds 12 oktober, en dat oude testbestand zou daar een fout geven. Je ziet dan `-- skip ...`; dat is goed.
+Deze regel doet alle bestanden van 12, 14, 15 en 30 oktober, in de goede volgorde. De bestanden van 30 oktober zijn: de 14 nieuwe Boss Paths (`202610301000`), het verbergen van de minigames (`202610301100`), de uitslag van de kaartstemming (`202610301200`) en een kleine reparatie voor kaart-inzetten (`202610301300`). Je hoeft die dus **niet** nog eens los uit te voeren. Eén bestand wordt bewust **overgeslagen** (`202610120500_card_votes.sql`): de echte database heeft de stemming al sinds 12 oktober, en dat oude testbestand zou daar een fout geven. Je ziet dan `-- skip ...`; dat is goed.
 
-De uitslag van de kaartstemming zit in `202610301200_classic_v2_format_after_vote.sql`, en het verbergen van de minigames in `202610301100_hide_mini_games.sql`. Allebei zijn bestanden van 30 oktober. Doet de regel hierboven de bestanden van 30 oktober (`20261030*`) nog niet? Voer ze dan daarna los uit, in deze volgorde:
-
-```
-psql "$DB" -v ON_ERROR_STOP=1 -q -f supabase/migrations/202610301100_hide_mini_games.sql
-psql "$DB" -v ON_ERROR_STOP=1 -q -f supabase/migrations/202610301200_classic_v2_format_after_vote.sql
-```
-
-Bij het laatste bestand zie je `Classic v2 seed OK: 6167 includes, 188 banlist rows, 6167 proposed rarities`.
+Bij het bestand `202610301200_classic_v2_format_after_vote.sql` zie je `Classic v2 seed OK: 6167 includes, 188 banlist rows, 6167 proposed rarities` (en nog iets erachter). Het laatste bestand in de lijst is `202610301300_wager_card_competition_deck_guard.sql`.
 
 Wat je ziet: per bestand een regel `== supabase/migrations/...`, en geen `ERROR`.
 
@@ -105,15 +101,19 @@ Deze stap zet ze in de database:
 psql "$DB" -v ON_ERROR_STOP=1 -c "set duelist.approve_season2_numbers = 'yes'" -f supabase/proposals/season2_numbers.sql
 ```
 
-Daarna: in `tests/e2e/economy-rules.ts` de 2.0-cijfers aanzetten, zodat
-de testbots de nieuwe bedragen controleren.
+Wat je ziet: `SET`, `BEGIN`, `DO`, `UPDATE 42` (14 routes × 3 stages; meer als er nog oude routes met spelers zijn, dat is goed), `UPDATE 1`, `UPDATE 0`, `COMMIT`.
+
+**STOP als:** je `ERROR` ziet.
+
+(De testbots in `tests/e2e/economy-rules.ts` hoef je **niet** aan te passen. Dat is werk voor de ontwikkelaar, zie de appendix.)
 
 ### Stap 3: Proefdraaien van de reset (verandert niets)
 
-Kies de **startdatum van Seizoen 2**, bijvoorbeeld maandag `2026-10-19`.
+Kies de **startdatum van Seizoen 2**. Voor vanavond is dat `2026-10-30`.
+(Goed om te weten: "Week 1" is de week van maandag tot en met zondag waarin die datum valt. Bij 30 oktober (een vrijdag) loopt Week 1 dus tot en met zondag 1 november, en gaan de weekdoelen maandag 2 november opnieuw in.)
 
 ```
-psql "$DB" -v ON_ERROR_STOP=1 -v launch_date=2026-10-19 -v mode=dry_run -f scripts/season2/reset-and-activate.sql
+psql "$DB" -v ON_ERROR_STOP=1 -v launch_date=2026-10-30 -v mode=dry_run -f scripts/season2/reset-and-activate.sql
 ```
 
 Wat je moet zien:
@@ -128,6 +128,7 @@ Controleer in de `POST-FLIGHT`-regels:
 - `exactly 6167 eligible cards` (het aantal na de stemming; vóór de stemming was het 6136).
 - `rarities live - Legendary 21, Secret Rare 219, Ultra Rare 1103, Super Rare 1270, Rare 1513, Normal 2041`
 - het juiste aantal spelers bij `league memberships (roles unchanged)`.
+- `14 Boss Paths active (stage prices 1800 / 3200 / 5500)`. Staat daar `900 / 1400 / 2400`? Dan is stap 2b niet gelukt: **STOP** en doe eerst stap 2b.
 
 **STOP als:** je `ERROR` of `ABORTED` ziet. Er is dan niets veranderd. Kopieer de melding en vraag om hulp.
 
@@ -136,7 +137,7 @@ Controleer in de `POST-FLIGHT`-regels:
 Precies hetzelfde commando, maar nu met `mode=apply`:
 
 ```
-psql "$DB" -v ON_ERROR_STOP=1 -v launch_date=2026-10-19 -v mode=apply -f scripts/season2/reset-and-activate.sql
+psql "$DB" -v ON_ERROR_STOP=1 -v launch_date=2026-10-30 -v mode=apply -f scripts/season2/reset-and-activate.sql
 ```
 
 Als laatste regel moet je `SEASON 2 RESET APPLIED (committed).` zien.
@@ -151,7 +152,7 @@ Als laatste regel moet je `SEASON 2 RESET APPLIED (committed).` zien.
 
 ### Stap 5: De nieuwe app live zetten
 
-**Vooraf in Vercel:** `SUPABASE_SECRET_KEY` moet gezet zijn (server-only env var, nooit `NEXT_PUBLIC_`); zonder die sleutel worden mini-game-scores (Pyramid Climb / Shadow Arena) niet opgeslagen.
+**Vooraf in Vercel (verplicht):** `SUPABASE_SECRET_KEY` moet gezet zijn voor **Production** (server-only env var, nooit `NEXT_PUBLIC_`). Zonder die sleutel kan niemand een titel kiezen op zijn profiel, ook niet de titel "Season 2 Champion" (de minigames staan uit, die gebruiken hem nu niet).
 
 Pas nu wordt de `v2`-branch samengevoegd met `main`. Vercel zet de nieuwe app dan vanzelf live.
 Laat dit door de ontwikkelaar doen, of doe het zelf als je weet hoe.
@@ -161,10 +162,10 @@ Wacht tot Vercel "Ready" zegt.
 
 Log in op `https://yugiohmasters.vercel.app` en loop dit rijtje af:
 
-1. Je komt automatisch bij **Boss Path kiezen**. Kies een route.
+1. Je komt automatisch bij **Boss Path kiezen**. Je ziet **14 routes**, elk met een plaatje en "How it plays". Kies een route.
 2. Daarna start de **Initial Draft**. Kies alle kaarten. Controleer dat je geen Synchro-kaarten ziet en geen kaarten van na 2014, behalve de bekende uitzonderingen zoals Chocolate Magician Girl.
-3. Na de draft heb je **3 welkomstpacks**: 1 Normal, 1 Premium en 1 Deluxe. Open ze in de Shop.
-4. **Wallet**: je DP begint op 0, plus wat je net verdiend hebt.
+3. Na de draft heb je **3 welkomstpacks**: 1 Standard (Normal), 1 Premium en 1 Deluxe. Open ze in de Shop.
+4. **Wallet**: je DP begint op 0. Na het openen van 2 packs krijg je meteen 150 DP van het weekdoel "Open 2 packs"; dat is goed.
 5. **Deck builder**: probeer 2× Foolish Burial in één deck te doen. De tweede moet geweigerd worden ("limited to 1 per deck"). Raigeki mag 1×.
 6. **Home**: er staat "Season 2 · Week 1".
 7. Laat de andere twee spelers hetzelfde doen.
@@ -180,7 +181,7 @@ Dat zet alles terug naar het moment van de back-up.
 
 ## Technical appendix (English)
 
-### Every 2.0 migration (2026-10-12 / 14 / 15), in apply order
+### Every 2.0 migration (2026-10-12 / 14 / 15 / 30), in apply order
 
 Apply with the loop in step 2 (`2026101[245]*.sql` then `20261030*.sql`). Two special cases:
 
@@ -233,6 +234,7 @@ Apply with the loop in step 2 (`2026101[245]*.sql` then `20261030*.sql`). Two sp
 | `202610301000_boss_routes_v3.sql` | **Generated** (`scripts/generate-boss-routes-v3-migration.mjs` from `data/boss-route-registry-v3.mjs`). The 14 Season 2 Boss Paths (`s2_*` codes, 4 stages + 11 one-copy grants each, `boss_routes.how_it_plays`). The 20 Season 1 routes are retired (`is_active = false`, display order + 100); retired routes no player holds are deleted right away, the rest by the reset script after it wipes `player_boss_paths`. Stage prices are copied from the live config (never hardcoded), so step 2b still sets 1,800 / 3,200 / 5,500. Exemption tightened: `is_boss_route_exempt_card` / `is_boss_route_reserved_card` only see active routes; deck legality through the exemption is per owner (`is_duelist_circle_deck_legal_for`, used by `validate_deck_card`); `duelist_circle_deck_copy_limit` waives a banlist limit only for route cards outside the pool. Aborts if any card name does not resolve. Idempotent. | boss paths, card pool |
 | `202610301100_hide_mini_games.sql` | 2.0 launches without mini games: every `mini_game_catalog` game goes inactive (`start_game_run` refuses them) and players can no longer call `settle_mini_game_period` (no mini game payouts). Nothing dropped; idempotent. The app hides `/games` behind `MINI_GAMES_ENABLED` in `src/lib/games/flag.ts`. | mini games |
 | `202610301200_classic_v2_format_after_vote.sql` | **Generated** (`build-v2-format-migration.mjs`), the card vote result (`docs/CARD_VOTE_RESULT_2026-10-30.md`, `data/cardpool/vote-results-2026-10-30.json`). Replaces the inactive Classic v2 format's rows from `202610121030`: 6,167 include overrides; 188 banlist rows (69 forbidden / 104 limited / 15 semi); 6,167 proposed rarities (Legendary 21 / Secret 219 / Ultra 1,103 / Super 1,270 / Rare 1,513 / Normal 2,041); same 151 catalog additions. Ends with count assertions; re-runnable. Must run AFTER `202610121030`. | card pool |
+| `202610301300_wager_card_competition_deck_guard.sql` | Launch-rehearsal fix: `add_match_wager_card` (and so `accept_practice_challenge`) refuses a card that sits in a competition-locked deck, like trades already do. Before, such a wager could never settle: the duel completed, the wager stayed `proposed` and both staked cards stayed locked for good. Same patch technique and marker as `202610152030`; same signature; idempotent. SQL test `60_wager_card_deck_lock`. | matches, wagers |
 
 **Backwards compatibility.** These migrations share the production database with the live `main` app.
 `202610121000` takes effect immediately: Master Duel-forbidden cards that are already `format_eligible` become offerable in the live draft and shop.
@@ -288,6 +290,7 @@ So apply the whole set on launch night only, directly followed by the reset scri
 - 2026-10-30, after the vote (`202610301100` + `202610301200` on a throwaway copy of the devstack DB, the reset script with 6136 -> 6167): every assertion passed; 6,167 eligible cards; Legendary 21, Secret 219, Ultra 1,103, Super 1,270, Rare 1,513, Normal 2,041.
 - The singles rotation was regenerated.
 - Everything was rolled back.
+- **2026-10-30 launch rehearsal** (fresh `db.mjs reset`, three Season 1 players seeded, then step 2b, step 3 `dry_run` and step 4 `apply` exactly as written with `launch_date=2026-10-30`): every assertion passed, `SEASON 2 RESET APPLIED (committed).`; wiped 1,383 rows; 6,167 eligible cards; Legendary 21 / Secret 219 / Ultra 1,103 / Super 1,270 / Rare 1,513 / Normal 2,041; 14 Boss Paths at 1,800 / 3,200 / 5,500; slots 3,000 / 5,500. Then all three players were onboarded and played a full 3-round season in a real browser (iPhone 13 and 1440x900).
 
 A follow-up smoke test, done in the same rolled-back transaction, also passed:
 
@@ -332,7 +335,7 @@ node scripts/cardpool/build-v2-format-migration.mjs \
   - the copy limit is waived only for exempt cards **outside** the pool (`format_eligible = false`, e.g. Dark Magician of Chaos). Route cards inside the pool keep their banlist limit (e.g. Chaos Sorcerer stays semi-limited);
   - exempt cards are still never `format_eligible`, so draft, shop packs and singles never offer one that is outside the pool. Example: Blue-Eyes Alternative White Dragon, a post-2014 stage-2 evolution, stays out of packs.
 - **Always blocks, even when true:** `not_available` in Master Duel and an explicit `exclude` override.
-- **Design rule for the 14 routes:** a grant is `exclusive` exactly when it is outside the pool (71 pool-external route cards: evolutions + exclusive grants); in-pool grants stay non-exclusive, so other players can still pull them. Stage-4 Bosses are always reserved (never in packs).
+- **Design rule for the 14 routes:** a grant is `exclusive` exactly when it is outside the pool (68 pool-external route cards: evolutions + exclusive grants, per `generate-boss-routes-v3-migration.mjs --check` and the local DB on 2026-10-30); in-pool grants stay non-exclusive, so other players can still pull them. Stage-4 Bosses are always reserved (never in packs).
 - **Turn it off without regenerating:**
   ```sql
   update public.duelist_circle_formats set boss_route_exempt = false where code = 'duelist_circle_classic_v2';
@@ -366,12 +369,16 @@ The full suite (`node scripts/sql-tests/run.mjs`) passes: 31 files / 573 checks 
 
 2026-10-15 additions: `52_shop_rarity_ladder` (A), `53_admin_own_duel_proposals` (B), `54_season_champion_title` (C), `55_practice_challenge_guards` (H1-H3), `56_initial_draft_guards` (M4 + Boss Route), `57_small_security_and_goal_fixes`. E2E: `tests/e2e/05-admin-own-duel.spec.ts` (B proposal -> opponent accepts on the round screen; C champion title + badge).
 
+2026-10-30: the full suite passes with **34 files / 615 checks** (fresh reset + `seed-demo.mjs bossg samo`), including `60_wager_card_deck_lock` (a card in a competition-locked deck can't be wagered). Test bots: `npx playwright test --workers=1` 138 passed (mobile + desktop, 8.3 min). `TZ=UTC npx vitest run` 489 passed, `tsc --noEmit`, `eslint src`, `npm run check:sql` and `npm run build` clean.
+
 2026-10-30 addition: `59_boss_routes_v3` (14 active routes x 4 stages x 11 grants, names resolve, no Synchro/Link/Pendulum, prices copied from config, retired routes cannot be chosen, the exemption works for the route owner only and in-pool route cards keep their limit). Balance: `node scripts/boss-route-balance.mjs --check`; registry: `node scripts/generate-boss-routes-v3-migration.mjs --check`.
 
 ### Known follow-ups (not done here)
 
 - **`src/lib/master-duel.ts`** still mirrors the old conservative rule. `isMasterDuelOfferable` uses `copyLimit > 0`, and `evaluateMasterDuelDeckLegality` flags MD-forbidden / limited / unknown cards. The deck builder's "Master Duel check" will therefore warn about cards that are fine in Unlimited rooms. Change it to block only `not_available`, and show our own `duelist_circle_card_limits` instead.
-- **Deck builder UI** (`src/components/deck-builder/deck-store.ts`) blocks `!format_eligible` client-side. If the Boss exemption stays on, it must also allow route-exempt cards, for example via an RPC or column based on `is_duelist_circle_deck_legal`. It should also show our banlist limits, which can be read from `duelist_circle_card_limits` via RLS.
+- ~~Deck builder UI blocks `!format_eligible` client-side~~ **Done:** the builder uses `deck_legal` (`format_eligible` or a route-exempt card of the player's own active route, `decks/[id]/_lib/deck-builder-data.ts`) and shows our banlist limits. Verified in the 2026-10-30 rehearsal: the route owner can add Magician's Rod / Dark Magician of Chaos; another player gets a disabled "+".
 - **No general "max 3 copies per deck" rule** exists server-side, and it never has. Only the banlist limits are enforced. Adding a default of 3 is a new deck rule and needs the owner's OK.
-- **Welcome voucher labels** still say "Season 1 welcome bonus" (`claim_welcome_packs`). This is cosmetic.
-- **Test bots:** `npm run test:e2e` resets the local DB in its global setup, so it was not run here. Run it during the rehearsal (step C).
+- ~~Welcome voucher labels still say "Season 1 welcome bonus"~~ **Done** in `202610121640` (note "Welcome bonus"; only the internal `source_type` is still `season1_welcome_bonus`).
+- **Test bots and the 2.0 numbers:** `tests/e2e/economy-rules.ts` has no 2.0 rule set yet, and the bots' global setup resets the local DB **without** step 2b, so they check the old placement numbers (400 / 300 / 200) on purpose. Switching them to 2.0 needs both: a `RULES_2_0` object (placements 350 / 200 / 100) and a global setup that applies `supabase/proposals/season2_numbers.sql` after the reset. Developer task, not a launch-night step.
+- **Card wager picker** (`matches/new`, and the accept form on `matches/[id]`) still lists cards that sit in a competition-locked deck. Since `202610301300` picking one gives a clear error ("…locked for a competition and cannot be wagered") and the half-made challenge is cancelled; hiding them from the list is a nicer follow-up. Edge case still open: a card that was staked **before** its deck got locked (wager first, season start after) can still not settle.
+- **Season finalize:** when a non-admin confirms the last duel of the season, the season does not finalize itself; the admin gets "Season ready to finalize" under Attention and taps **Finalize Competition** (verified 2026-10-30).

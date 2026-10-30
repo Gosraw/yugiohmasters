@@ -434,7 +434,7 @@ export default async function BossHubPage() {
                     <p className="text-xs text-zinc-600">
                       {cost ===
                       null
-                        ? "Free — your first Boss Route"
+                        ? "Free — spin the wheel for your first Boss Path"
                         : `Unlock for ${cost.toLocaleString("en-US")} DP`}
                     </p>
 
@@ -447,7 +447,7 @@ export default async function BossHubPage() {
                       />
                       {cost ===
                       null
-                        ? "Choose Route"
+                        ? "Spin the Wheel"
                         : "Unlock Slot"}
                     </Link>
 

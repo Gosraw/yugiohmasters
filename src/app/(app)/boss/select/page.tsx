@@ -7,6 +7,7 @@ import {
   Coins,
   Crown,
   Home,
+  Lock,
   Sparkles,
 } from "lucide-react";
 
@@ -31,9 +32,17 @@ import {
 } from "@/components/submit-button";
 
 import {
-  chooseBossPath,
   unlockBossPathSlot,
 } from "@/app/actions/boss-routes";
+
+import {
+  BossPathWheel,
+} from "@/components/boss-path-wheel";
+
+import {
+  getFreeRouteIds,
+  loadWheelRoutes,
+} from "@/lib/boss-wheel";
 
 import {
   getBossSlotPrices,
@@ -41,6 +50,7 @@ import {
 } from "@/lib/boss-prices";
 
 import {
+  BOSS_ARENA_FALLBACK,
   getBossArenaImage,
 } from "@/lib/boss-arena";
 
@@ -48,16 +58,20 @@ export const dynamic =
   "force-dynamic";
 
 // =========================================================
-// BOSS PATH SELECT (task 142)
+// BOSS PATH SELECT (task 142, 2.0 wheel)
 //
-// Grid of all active routes (the 14 Season 2 Boss Paths,
-// data/boss-route-registry-v3.mjs) for whichever slot the player is
-// currently filling (?slot=1|2|3, linked from the Boss Hub).
-// Slot 1 is always free; slots 2/3 show their DP price. Every route
-// card also lists what its evolutions cost - Boss evolution is DP
-// only in 2.0, and all prices come from the database (see
-// src/lib/boss-prices.ts), never from constants in this file.
-// A route already chosen in another slot is shown but disabled.
+// ?slot=1 (the onboarding gate sends new players here): the Boss
+// Path WHEEL. The first route is not chosen - the player spins and
+// the server (spin_boss_path_wheel, 202610301400) hands out a
+// random route nobody in the league holds yet. Once a player has a
+// slot-1 route this page shows that route instead of the wheel.
+//
+// ?slot=2|3 (linked from the Boss Hub): grid of all active routes
+// with the slot's DP price. Still a free choice, but only among
+// routes nobody in the league holds yet (the database refuses the
+// others too). Every route card also lists what its evolutions cost
+// - Boss evolution is DP only in 2.0, and all prices come from the
+// database (see src/lib/boss-prices.ts), never from constants here.
 // =========================================================
 
 type StarProfile = {
@@ -151,6 +165,19 @@ export default async function BossPathSelectPage({
     userId,
   } = await requireUser();
 
+  if (slot === 1) {
+    return (
+      <BossPathWheelPage
+        supabase={
+          supabase
+        }
+        userId={
+          userId
+        }
+      />
+    );
+  }
+
   const {
     data: profileData,
     error: profileError,
@@ -213,7 +240,6 @@ export default async function BossPathSelectPage({
     );
 
   const prerequisiteMet =
-    slot === 1 ||
     existingPaths.some(
       (path) =>
         path.route_slot ===
@@ -252,6 +278,7 @@ export default async function BossPathSelectPage({
   const [
     slotPrices,
     stagePrices,
+    freeRouteIds,
   ] = await Promise.all([
     getBossSlotPrices(
       supabase
@@ -262,7 +289,16 @@ export default async function BossPathSelectPage({
         (route) => route.id
       )
     ),
+    getFreeRouteIds(
+      supabase
+    ),
   ]);
+
+  // Every route at most once per league (202610301400).
+  const freeRoutes =
+    new Set(
+      freeRouteIds
+    );
 
   const cost =
     slotPrices[slot];
@@ -308,11 +344,11 @@ export default async function BossPathSelectPage({
                 size={13}
               />
             }
-            title="Choose Your Boss Route"
+            title="Choose Your Next Boss Route"
             description={
               cost === null
-                ? "Your first route is free. Pick the legend you want to become — you'll grind it through four evolution stages over the season."
-                : `Unlocking this slot costs ${cost.toLocaleString("en-US")} DP, charged once. Stage 1 is granted immediately after.`
+                ? "This slot has no price configured yet."
+                : `Unlocking this slot costs ${cost.toLocaleString("en-US")} DP, charged once. Stage 1 is granted immediately after. Every route belongs to one duelist only, so routes others already hold are locked.`
             }
             action={
               <div className="rounded-xl border border-amber-300/20 bg-amber-300/[0.06] px-4 py-2.5 text-right">
@@ -386,8 +422,15 @@ export default async function BossPathSelectPage({
                       route.id
                     );
 
+                  const takenInLeague =
+                    !alreadyChosenElsewhere &&
+                    !freeRoutes.has(
+                      route.id
+                    );
+
                   const disabled =
                     alreadyChosenElsewhere ||
+                    takenInLeague ||
                     !canAfford;
 
                   return (
@@ -395,7 +438,7 @@ export default async function BossPathSelectPage({
                       key={
                         route.id
                       }
-                      className={`panel relative flex flex-col overflow-hidden p-5 ${alreadyChosenElsewhere ? "opacity-50" : ""}`}
+                      className={`panel relative flex flex-col overflow-hidden p-5 ${alreadyChosenElsewhere || takenInLeague ? "opacity-50" : ""}`}
                     >
                       {/* next/image lazy-loads: only the arenas on
                           screen are downloaded, not all 14 at once. */}
@@ -539,13 +582,19 @@ export default async function BossPathSelectPage({
                             />
                             Already Chosen
                           </span>
+                        ) : takenInLeague ? (
+                          <span className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-black uppercase tracking-wider text-zinc-500">
+                            <Lock
+                              size={
+                                14
+                              }
+                            />
+                            Taken in your league
+                          </span>
                         ) : (
                           <form
                             action={
-                              slot ===
-                              1
-                                ? chooseBossPath
-                                : unlockBossPathSlot
+                              unlockBossPathSlot
                             }
                           >
                             <input
@@ -556,16 +605,13 @@ export default async function BossPathSelectPage({
                               }
                             />
 
-                            {slot !==
-                              1 && (
-                              <input
-                                type="hidden"
-                                name="route_slot"
-                                value={
-                                  slot
-                                }
-                              />
-                            )}
+                            <input
+                              type="hidden"
+                              name="route_slot"
+                              value={
+                                slot
+                              }
+                            />
 
                             {cost ===
                             null ? (
@@ -609,6 +655,172 @@ export default async function BossPathSelectPage({
               )}
             </div>
           )}
+      </div>
+    </main>
+  );
+}
+
+// =========================================================
+// SLOT 1: THE BOSS PATH WHEEL
+// =========================================================
+
+type SupabaseClient =
+  Awaited<
+    ReturnType<typeof requireUser>
+  >["supabase"];
+
+async function BossPathWheelPage({
+  supabase,
+  userId,
+}: {
+  supabase: SupabaseClient;
+  userId: string;
+}) {
+  const [
+    {
+      data: slotOneData,
+      error: slotOneError,
+    },
+    {
+      data: completedDraft,
+    },
+  ] = await Promise.all([
+    supabase
+      .from(
+        "player_boss_paths"
+      )
+      .select(
+        "id,route_id"
+      )
+      .eq(
+        "profile_id",
+        userId
+      )
+      .eq(
+        "route_slot",
+        1
+      )
+      .maybeSingle(),
+    supabase
+      .from(
+        "draft_players"
+      )
+      .select("id")
+      .eq(
+        "profile_id",
+        userId
+      )
+      .eq(
+        "status",
+        "completed"
+      )
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (slotOneError) {
+    throw new Error(
+      slotOneError.message
+    );
+  }
+
+  const slotOne =
+    slotOneData as {
+      id: string;
+      route_id: string;
+    } | null;
+
+  let assigned: {
+    pathId: string;
+    route: Awaited<
+      ReturnType<typeof loadWheelRoutes>
+    >[number];
+  } | null = null;
+
+  let wheelRoutes: Awaited<
+    ReturnType<typeof loadWheelRoutes>
+  > = [];
+
+  if (slotOne) {
+    const [
+      route,
+    ] = await loadWheelRoutes(
+      supabase,
+      [
+        slotOne.route_id,
+      ]
+    );
+
+    if (route) {
+      assigned = {
+        pathId:
+          slotOne.id,
+        route,
+      };
+    }
+  } else {
+    wheelRoutes =
+      await loadWheelRoutes(
+        supabase,
+        await getFreeRouteIds(
+          supabase
+        )
+      );
+  }
+
+  return (
+    <main className="relative min-h-screen overflow-hidden pb-28">
+      <div className="pointer-events-none absolute inset-0">
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-[560px] bg-cover bg-top opacity-35 [mask-image:linear-gradient(180deg,#000_35%,transparent)]"
+          style={{
+            backgroundImage: `url(${BOSS_ARENA_FALLBACK})`,
+          }}
+        />
+
+        <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-amber-400/[0.07] blur-[150px]" />
+
+        <div className="absolute -right-40 top-60 h-[460px] w-[460px] rounded-full bg-violet-500/[0.05] blur-[160px]" />
+      </div>
+
+      <div className="relative mx-auto max-w-4xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <div className="text-center">
+          <p className="hud-label inline-flex items-center gap-1.5 text-amber-300/85">
+            <Crown
+              size={11}
+            />
+            {assigned
+              ? "Your first Boss Path"
+              : "Step 1 of 2 · Free"}
+          </p>
+
+          <h1 className="gold-text mt-2 text-2xl font-black sm:text-4xl">
+            {assigned
+              ? "The wheel has spoken"
+              : "Spin for Your Boss Path"}
+          </h1>
+
+          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-zinc-400 sm:mt-3">
+            {assigned
+              ? "This is the legend you grow into this season, through four evolution stages."
+              : "Fate picks your first Boss Path. One spin, and it is yours for the season."}
+          </p>
+        </div>
+
+        <div className="mt-4 sm:mt-8">
+          <BossPathWheel
+            routes={
+              wheelRoutes
+            }
+            assigned={
+              assigned
+            }
+            draftDone={Boolean(
+              completedDraft
+            )}
+          />
+        </div>
       </div>
     </main>
   );

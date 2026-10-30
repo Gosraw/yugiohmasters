@@ -191,7 +191,7 @@ export default async function DraftPage() {
         withFeedback(
           "/boss/select?slot=1",
           "error",
-          "Choose your Boss Route first - your Initial Draft starts right after."
+          "Spin the Boss Path wheel first - your Initial Draft starts right after."
         )
       );
     }

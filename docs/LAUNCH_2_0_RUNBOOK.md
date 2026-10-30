@@ -83,9 +83,9 @@ Daarna voer je de migraties uit, **in deze volgorde**, één voor één:
 for f in supabase/migrations/2026101[245]*.sql supabase/migrations/20261030*.sql; do case "$f" in *202610120500_card_votes.sql) echo "-- skip $f"; continue;; esac; echo "== $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f" || break; done
 ```
 
-Deze regel doet alle bestanden van 12, 14, 15 en 30 oktober, in de goede volgorde. De bestanden van 30 oktober zijn: de 14 nieuwe Boss Paths (`202610301000`), het verbergen van de minigames (`202610301100`), de uitslag van de kaartstemming (`202610301200`) en een kleine reparatie voor kaart-inzetten (`202610301300`). Je hoeft die dus **niet** nog eens los uit te voeren. Eén bestand wordt bewust **overgeslagen** (`202610120500_card_votes.sql`): de echte database heeft de stemming al sinds 12 oktober, en dat oude testbestand zou daar een fout geven. Je ziet dan `-- skip ...`; dat is goed.
+Deze regel doet alle bestanden van 12, 14, 15 en 30 oktober, in de goede volgorde. De bestanden van 30 oktober zijn: de 14 nieuwe Boss Paths (`202610301000`), het verbergen van de minigames (`202610301100`), de uitslag van de kaartstemming (`202610301200`), een kleine reparatie voor kaart-inzetten (`202610301300`) en het Boss Path-rad (`202610301400`). Je hoeft die dus **niet** nog eens los uit te voeren. Eén bestand wordt bewust **overgeslagen** (`202610120500_card_votes.sql`): de echte database heeft de stemming al sinds 12 oktober, en dat oude testbestand zou daar een fout geven. Je ziet dan `-- skip ...`; dat is goed.
 
-Bij het bestand `202610301200_classic_v2_format_after_vote.sql` zie je `Classic v2 seed OK: 6167 includes, 188 banlist rows, 6167 proposed rarities` (en nog iets erachter). Het laatste bestand in de lijst is `202610301300_wager_card_competition_deck_guard.sql`.
+Bij het bestand `202610301200_classic_v2_format_after_vote.sql` zie je `Classic v2 seed OK: 6167 includes, 191 banlist rows, 6167 proposed rarities` (en nog iets erachter). Het laatste bestand in de lijst is `202610301400_boss_route_wheel.sql`; daar zie je `BOSS ROUTE WHEEL: spin_boss_path_wheel, ... are in place.`
 
 Wat je ziet: per bestand een regel `== supabase/migrations/...`, en geen `ERROR`.
 
@@ -162,13 +162,13 @@ Wacht tot Vercel "Ready" zegt.
 
 Log in op `https://yugiohmasters.vercel.app` en loop dit rijtje af:
 
-1. Je komt automatisch bij **Boss Path kiezen**. Je ziet **14 routes**, elk met een plaatje en "How it plays". Kies een route.
+1. Je komt automatisch bij het **Boss Path-rad**. Op het rad staan de routes die nog niemand in de league heeft (bij de eerste speler alle **14**). Tik op **Spin the Wheel**: het rad draait een paar seconden en stopt op jouw route. Daarna zie je de route met plaatje, verhaal, "How it plays" en je Stage 1-kaart. Ververs de pagina: je ziet dezelfde route, geen rad meer (één keer draaien, nooit opnieuw). Tik op **Continue to your Initial Draft**.
 2. Daarna start de **Initial Draft**. Kies alle kaarten. Controleer dat je geen Synchro-kaarten ziet en geen kaarten van na 2014, behalve de bekende uitzonderingen zoals Chocolate Magician Girl.
 3. Na de draft heb je **3 welkomstpacks**: 1 Standard (Normal), 1 Premium en 1 Deluxe. Open ze in de Shop.
 4. **Wallet**: je DP begint op 0. Na het openen van 2 packs krijg je meteen 150 DP van het weekdoel "Open 2 packs"; dat is goed.
 5. **Deck builder**: probeer 2× Foolish Burial in één deck te doen. De tweede moet geweigerd worden ("limited to 1 per deck"). Raigeki mag 1×.
 6. **Home**: er staat "Season 2 · Week 1".
-7. Laat de andere twee spelers hetzelfde doen.
+7. Laat de andere twee spelers hetzelfde doen. Controleer dat jullie alle drie een **andere** route hebben (het rad geeft een route maar één keer per league).
 
 **STOP als:** iets hiervan niet klopt. Maak een schermafbeelding en vraag om hulp.
 
@@ -233,8 +233,9 @@ Apply with the loop in step 2 (`2026101[245]*.sql` then `20261030*.sql`). Two sp
 | `202610152050_small_security_and_goal_fixes.sql` | `consume_reward_voucher` and `_phase*_verify_introspect` no longer callable by anon / players; tiebreak duels don't count for weekly goals. | security, weekly goals |
 | `202610301000_boss_routes_v3.sql` | **Generated** (`scripts/generate-boss-routes-v3-migration.mjs` from `data/boss-route-registry-v3.mjs`). The 14 Season 2 Boss Paths (`s2_*` codes, 4 stages + 11 one-copy grants each, `boss_routes.how_it_plays`). The 20 Season 1 routes are retired (`is_active = false`, display order + 100); retired routes no player holds are deleted right away, the rest by the reset script after it wipes `player_boss_paths`. Stage prices are copied from the live config (never hardcoded), so step 2b still sets 1,800 / 3,200 / 5,500. Exemption tightened: `is_boss_route_exempt_card` / `is_boss_route_reserved_card` only see active routes; deck legality through the exemption is per owner (`is_duelist_circle_deck_legal_for`, used by `validate_deck_card`); `duelist_circle_deck_copy_limit` waives a banlist limit only for route cards outside the pool. Aborts if any card name does not resolve. Idempotent. | boss paths, card pool |
 | `202610301100_hide_mini_games.sql` | 2.0 launches without mini games: every `mini_game_catalog` game goes inactive (`start_game_run` refuses them) and players can no longer call `settle_mini_game_period` (no mini game payouts). Nothing dropped; idempotent. The app hides `/games` behind `MINI_GAMES_ENABLED` in `src/lib/games/flag.ts`. | mini games |
-| `202610301200_classic_v2_format_after_vote.sql` | **Generated** (`build-v2-format-migration.mjs`), the card vote result (`docs/CARD_VOTE_RESULT_2026-10-30.md`, `data/cardpool/vote-results-2026-10-30.json`). Replaces the inactive Classic v2 format's rows from `202610121030`: 6,167 include overrides; 188 banlist rows (69 forbidden / 104 limited / 15 semi); 6,167 proposed rarities (Legendary 21 / Secret 219 / Ultra 1,103 / Super 1,270 / Rare 1,513 / Normal 2,041); same 151 catalog additions. Ends with count assertions; re-runnable. Must run AFTER `202610121030`. | card pool |
+| `202610301200_classic_v2_format_after_vote.sql` | **Generated** (`build-v2-format-migration.mjs`), the card vote result (`docs/CARD_VOTE_RESULT_2026-10-30.md`, `data/cardpool/vote-results-2026-10-30.json`). Replaces the inactive Classic v2 format's rows from `202610121030`: 6,167 include overrides; 191 banlist rows (69 forbidden / 107 limited / 15 semi; incl. the owner's 3 Boss route balance limits: Shien's Advisor, Ancient Gear Fusion, Chaos Ancient Gear Giant); 6,167 proposed rarities (Legendary 21 / Secret 219 / Ultra 1,103 / Super 1,270 / Rare 1,513 / Normal 2,041); same 151 catalog additions. Ends with count assertions; re-runnable. Must run AFTER `202610121030`. | card pool |
 | `202610301300_wager_card_competition_deck_guard.sql` | Launch-rehearsal fix: `add_match_wager_card` (and so `accept_practice_challenge`) refuses a card that sits in a competition-locked deck, like trades already do. Before, such a wager could never settle: the duel completed, the wager stayed `proposed` and both staked cards stayed locked for good. Same patch technique and marker as `202610152030`; same signature; idempotent. SQL test `60_wager_card_deck_lock`. | matches, wagers |
+| `202610301400_boss_route_wheel.sql` | **Boss Path wheel** (owner decision 2026-10-30). New `spin_boss_path_wheel()` (players only): picks a random active route with a Stage 1 that no current league member holds, creates the slot-1 path and grants Stage 1 through the same insert + `_boss_route_grant_stage` as before (shared internal `_boss_path_start`), all in one transaction. Idempotent: a second call returns the route already assigned (`newly_assigned = false`), never a new roll. Race-safe: the spin, `choose_boss_path` and `unlock_second_third_boss_path` all take one per-league advisory lock (`_boss_route_claim_lock`) before reading which routes are free. `choose_boss_path(uuid)` keeps its signature and grant but refuses a NEW slot-1 route from the API roles (`anon`/`authenticated`): "decided by the wheel"; a retry for the route a player already holds still returns that path (old main keeps working for existing players). Slots 2/3 (`unlock_second_third_boss_path`) stay a free choice, but a route another member holds is refused before any DP moves. `boss_path_free_routes()` gives the app the free route ids (wheel slices, slot 2/3 grid). No unique index on purpose: before the reset two players may share a retired Season 1 route; retired/inactive routes are never on the wheel. Friendly error when every route is taken. No data changes; idempotent. SQL test `61_boss_route_wheel`. | boss paths, onboarding |
 
 **Backwards compatibility.** These migrations share the production database with the live `main` app.
 `202610121000` takes effect immediately: Master Duel-forbidden cards that are already `format_eligible` become offerable in the live draft and shop.
@@ -295,7 +296,7 @@ So apply the whole set on launch night only, directly followed by the reset scri
 A follow-up smoke test, done in the same rolled-back transaction, also passed:
 
 - `claim_welcome_packs()` granted Normal + Premium + Deluxe again;
-- `choose_boss_path` worked;
+- `choose_boss_path` worked (since `202610301400` the first route comes from `spin_boss_path_wheel`; `choose_boss_path` now refuses a new slot-1 route from the API);
 - `start_personal_initial_draft` worked;
 - the first draft offer held only pool cards.
 

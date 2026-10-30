@@ -4,7 +4,8 @@
 // user's own JWT, through the local gateway) - exactly what the UI
 // does, just without clicking 64 draft picks:
 //
-//   bootstrap_private_league -> choose_boss_path -> claim_welcome_packs
+//   bootstrap_private_league -> Boss Path (see ensureBossPath) ->
+//   claim_welcome_packs
 //   -> start_personal_initial_draft -> (create_next_draft_offer ->
 //   pick_draft_card) x 64
 //
@@ -111,8 +112,10 @@ const TEST_USERS = JSON.parse(
   readFileSync(path.resolve(import.meta.dirname, "test-users.json"), "utf8")
 ).users;
 
-// Each test user gets a different Boss Route (by display_order), so
-// the bots never collide on route-specific scarcity.
+// Each test user gets a different, FIXED Boss Route (by
+// display_order), so the SQL tests and bots can rely on who holds
+// what. Every route is at most once per league anyway (2.0 wheel,
+// 202610301400); a taken route falls back to the first free one.
 const ROUTE_ORDER_BY_USER = {
   bossg: 1,
   samo: 2,
@@ -184,10 +187,35 @@ async function ensureBossPath(supabase, userId, username) {
     "boss routes"
   );
 
-  const wanted = ROUTE_ORDER_BY_USER[username] ?? 1;
-  const route = routes.find((r) => r.display_order === wanted) ?? routes[0];
+  const free = new Set(check(await supabase.rpc("boss_path_free_routes"), "boss_path_free_routes") ?? []);
+  const freeRoutes = routes.filter((r) => free.has(r.id));
 
-  check(await supabase.rpc("choose_boss_path", { target_route_id: route.id }), "choose_boss_path");
+  if (freeRoutes.length === 0) {
+    throw new Error(`No free Boss Route left for ${username}`);
+  }
+
+  const wanted = ROUTE_ORDER_BY_USER[username] ?? 1;
+  const route = freeRoutes.find((r) => r.display_order === wanted) ?? freeRoutes[0];
+
+  // 2.0: through the API a first Boss Path only comes from the wheel
+  // (spin_boss_path_wheel, random - the UI and the onboarding bot use
+  // that). A fixture wants a fixed route, so this local, trusted
+  // database session calls choose_boss_path as the player (no API
+  // role -> allowed, with the same claim lock, league-wide check and
+  // Stage 1 grant).
+  const sql = postgres(DB_URL, {
+    max: 1,
+    onnotice: () => {},
+  });
+
+  try {
+    await sql.begin(async (tx) => {
+      await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: userId, role: "authenticated" })}, true)`;
+      await tx`select public.choose_boss_path(${route.id}::uuid)`;
+    });
+  } finally {
+    await sql.end();
+  }
 
   return true;
 }

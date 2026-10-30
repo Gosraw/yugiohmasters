@@ -25,7 +25,7 @@ import { FRESH_USER } from "./helpers/users";
 
 // Onboarding bot: a brand-new player (fardin, left untouched by
 // global-setup) goes through the real phone UI:
-//   Boss Path select -> Initial Draft (all 64 picks) -> welcome packs
+//   Boss Path wheel -> Initial Draft (all 64 picks) -> welcome packs
 //   -> Home
 // and the database must show exactly what the rules promise.
 
@@ -68,21 +68,58 @@ test("a new player completes onboarding through the real UI", async ({ page }) =
 
   await login(page, FRESH_USER);
 
-  // ---- 1. Boss Path select ----
+  // ---- 1. Boss Path wheel ----
   // (Opened directly with slot=1; the gate test above checks the
-  // redirect itself.)
+  // redirect itself.) The route is random, decided by the server
+  // (spin_boss_path_wheel): no route codes here.
   if (!(await hasBossPath(FRESH_USER))) {
     await page.goto("/boss/select?slot=1");
 
-    const chooseRoute = page.getByRole("button", { name: "Choose This Route" });
+    // A direct API call can't pick a slot-1 route: the wheel only.
+    await expect(page.getByRole("button", { name: "Choose This Route" })).toHaveCount(0);
 
-    await expect(chooseRoute.first()).toBeVisible();
-    // Third route: bossg and samo were seeded with routes 1 and 2.
-    await chooseRoute.nth(2).click();
-    await expect(page).toHaveURL(/\/boss\/[0-9a-f-]{36}/, { timeout: 60_000 });
+    const spin = page.getByRole("button", { name: "Spin the Wheel" });
+
+    await expect(spin).toBeVisible();
+    await spin.click();
+
+    const reveal = page.getByRole("dialog");
+
+    await expect(reveal.getByText("The wheel has chosen")).toBeVisible({ timeout: 60_000 });
+    await expect(reveal.getByRole("link", { name: "Continue to your Initial Draft" })).toBeVisible();
   }
 
-  expect(await hasBossPath(FRESH_USER), "Boss Path chosen").toBe(true);
+  expect(await hasBossPath(FRESH_USER), "Boss Path assigned by the wheel").toBe(true);
+
+  const [wheelRoute] = await db()`
+    select r.id::text as route_id, r.name, r.is_active,
+      (select count(*)::int
+       from public.player_boss_paths other
+       join public.league_members lm on lm.profile_id = other.profile_id
+       where other.route_id = r.id
+         and lm.league_id = (select league_id from public.league_members where profile_id = p.profile_id limit 1)) as holders
+    from public.player_boss_paths p
+    join public.boss_routes r on r.id = p.route_id
+    join public.profiles pr on pr.id = p.profile_id
+    where pr.username = ${FRESH_USER} and p.route_slot = 1
+  `;
+
+  expect(wheelRoute.is_active, "the wheel only hands out active routes").toBe(true);
+  expect(wheelRoute.holders, "nobody else in the league holds this route").toBe(1);
+
+  // One spin = your path: a reload shows the same route, no wheel.
+  await page.goto("/boss/select?slot=1");
+  await expect(page.getByRole("heading", { name: wheelRoute.name })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Spin the Wheel" })).toHaveCount(0);
+
+  const [stillSame] = await db()`
+    select count(*)::int as paths, max(p.route_id::text) as route_id
+    from public.player_boss_paths p
+    join public.profiles pr on pr.id = p.profile_id
+    where pr.username = ${FRESH_USER}
+  `;
+
+  expect(stillSame, "still exactly one Boss Path, same route").toEqual({ paths: 1, route_id: wheelRoute.route_id });
 
   // ---- 2. Initial Draft ----
   await page.goto("/draft");

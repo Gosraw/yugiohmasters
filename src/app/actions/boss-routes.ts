@@ -16,11 +16,17 @@ import {
   requireUser,
 } from "@/lib/supabase/queries";
 
+import {
+  loadWheelRoutes,
+  type WheelRoute,
+} from "@/lib/boss-wheel";
+
 // =========================================================
 // BOSS ROUTE ACTIONS (task 142)
 //
 // Thin server-action wrappers around the SECURITY DEFINER RPCs
-// added in 202609012000_boss_route_rpcs.sql. All the real rules
+// added in 202609012000_boss_route_rpcs.sql (first route: the wheel,
+// 202610301400_boss_route_wheel.sql). All the real rules
 // (idempotency, DP prices from the database, in-order stage
 // progression) live in the database - these actions only parse
 // form input, call the RPC, and redirect with a friendly message.
@@ -61,55 +67,96 @@ function revalidateBossPaths(
 }
 
 // =========================================================
-// CHOOSE FIRST BOSS ROUTE (free)
+// SPIN THE BOSS PATH WHEEL (first route, free, random)
+//
+// 2.0 (migration 202610301400): the first Boss Path is not chosen.
+// spin_boss_path_wheel picks a random route nobody in the league
+// holds yet, creates the path and grants Stage 1 - all on the
+// server, once. Calling it again returns the same route. This
+// action does not redirect: the wheel on /boss/select stays on
+// screen, spins and lands on the route returned here, then reveals
+// it. No revalidatePath either - that would re-render the page in
+// the middle of the spin, and every page that shows Boss Paths is
+// rendered per request anyway.
 // =========================================================
 
-export async function chooseBossPath(
-  formData: FormData
-) {
+export type SpinWheelState =
+  | {
+      status: "idle";
+    }
+  | {
+      status: "spun";
+      pathId: string;
+      newlyAssigned: boolean;
+      route: WheelRoute;
+    }
+  | {
+      status: "error";
+      message: string;
+    };
+
+type SpinResult = {
+  player_boss_path_id: string;
+  route_id: string;
+  route_code: string;
+  route_name: string;
+  newly_assigned: boolean;
+};
+
+// Used through useActionState; the previous state and the (empty)
+// form are not needed.
+export async function spinBossPathWheel(): Promise<SpinWheelState> {
   const {
     supabase,
   } = await requireUser();
 
-  const routeId = String(
-    formData.get(
-      "route_id"
-    ) ?? ""
-  ).trim();
-
-  if (!routeId) {
-    failTo(
-      "/boss/select?slot=1",
-      "Choose a Boss Route first."
-    );
-  }
-
   const {
-    data: pathId,
+    data,
     error,
   } = await supabase.rpc(
-    "choose_boss_path",
-    {
-      target_route_id:
-        routeId,
-    }
+    "spin_boss_path_wheel"
   );
 
-  if (error || !pathId) {
-    failTo(
-      "/boss/select?slot=1",
-      error?.message ??
-        "Could not choose this Boss Route."
-    );
+  const result =
+    data as SpinResult | null;
+
+  if (
+    error ||
+    !result?.route_id
+  ) {
+    return {
+      status: "error",
+      message:
+        error?.message ??
+        "The wheel could not spin. Please try again.",
+    };
   }
 
-  revalidateBossPaths(
-    pathId
+  const [
+    route,
+  ] = await loadWheelRoutes(
+    supabase,
+    [
+      result.route_id,
+    ]
   );
 
-  redirect(
-    `/boss/${pathId}?success=${encodeURIComponent("Boss Route chosen! Stage 1 is yours.")}`
-  );
+  if (!route) {
+    return {
+      status: "error",
+      message:
+        "Your Boss Path is set, but it could not be shown. Reload the page.",
+    };
+  }
+
+  return {
+    status: "spun",
+    pathId:
+      result.player_boss_path_id,
+    newlyAssigned:
+      result.newly_assigned,
+    route,
+  };
 }
 
 // =========================================================

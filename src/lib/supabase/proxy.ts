@@ -85,16 +85,17 @@ export async function updateSession(request: NextRequest) {
   // recomputed from the database until onboarding is complete (only
   // then is a short-lived "onboarded" cookie set, see below).
   //
-  // Required order (per the launch-flow spec): pick a Boss Route
-  // (public.player_boss_paths, via the existing choose_boss_path RPC
-  // on /boss/select) before the Initial Draft (public.draft_players,
+  // Required order (per the launch-flow spec): a Boss Route
+  // (public.player_boss_paths; since 2.0 a random one from the wheel,
+  // spin_boss_path_wheel on /boss/select?slot=1) before the Initial
+  // Draft (public.draft_players,
   // via the existing draft system reachable at /draft) before normal
   // league pages. /profile stays reachable throughout (logout lives
   // there and is explicitly allowed to remain available); /api/*
   // routes are never redirected since a redirect response would
   // break a fetch() call rather than send a player anywhere.
   //
-  // League membership is a silent prerequisite of choose_boss_path
+  // League membership is a silent prerequisite of spin_boss_path_wheel
   // (it raises 'Current user is not a league member' without one)
   // that nothing currently creates except a page-load side effect of
   // the OLD cosmetic /onboarding flow (bootstrap_private_league()).

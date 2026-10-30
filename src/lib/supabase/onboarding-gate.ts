@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Where a signed-in player still has to go before the normal app:
-// Boss Path select (route slot 1) first, then the Initial Draft.
+// the Boss Path wheel (/boss/select?slot=1, route slot 1) first, then
+// the Initial Draft.
 // null = onboarding done. Shared by the proxy (every request) and
 // the login/signup actions: a Server Action redirect renders its
 // target page in the same response without running the proxy, so

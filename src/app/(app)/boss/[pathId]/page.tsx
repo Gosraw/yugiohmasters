@@ -66,6 +66,7 @@ type BossRoute = {
   code: string;
   name: string;
   teaser_story: string;
+  how_it_plays: string | null;
   star_profile: Record<
     string,
     number
@@ -206,7 +207,7 @@ export default async function BossPathDetailPage({
     supabase
       .from("boss_routes")
       .select(
-        "id,code,name,teaser_story,star_profile,target_power_grade"
+        "id,code,name,teaser_story,how_it_plays,star_profile,target_power_grade"
       )
       .eq(
         "id",
@@ -567,6 +568,20 @@ export default async function BossPathDetailPage({
             }
           />
         </div>
+
+        {route.how_it_plays && (
+          <div className="panel mt-4 px-4 py-3">
+            <p className="text-[9px] font-black uppercase tracking-wider text-amber-300/80">
+              How it plays
+            </p>
+
+            <p className="mt-1 text-sm leading-6 text-zinc-300">
+              {
+                route.how_it_plays
+              }
+            </p>
+          </div>
+        )}
 
         {mastered && (
           <div className="mt-4 flex items-center gap-3 rounded-2xl border border-amber-300/30 bg-amber-300/[0.08] p-4">

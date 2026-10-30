@@ -205,6 +205,7 @@ export async function loadBuilderCards(
   const rules =
     await loadDeckRules(
       supabase,
+      userId,
       catalogRows
     );
 
@@ -218,7 +219,11 @@ export async function loadBuilderCards(
       ...rest
     } = row;
 
+    // The Boss-route exemption only matters for cards outside the
+    // pool; a route card inside the pool keeps its normal limit
+    // (duelist_circle_deck_copy_limit, 202610301000).
     const exempt =
+      !row.format_eligible &&
       rules.exemptIds.has(
         row.id
       );
@@ -282,13 +287,16 @@ type ActiveFormat = {
  *     like duelist_circle_deck_copy_limit().
  *   - exemptIds: cards that are deck legal without being
  *     format_eligible because the format has boss_route_exempt, like
- *     is_duelist_circle_deck_legal(): a Boss evolution monster or a
- *     route-exclusive grant, not not_available, not excluded. Exempt
- *     cards also have no copy limit.
+ *     is_duelist_circle_deck_legal_for(): an evolution monster or a
+ *     route-exclusive grant of an ACTIVE Boss Route that THIS player
+ *     has, not not_available, not excluded. Only exempt cards that are
+ *     outside the pool lose their copy limit (the caller checks
+ *     format_eligible).
  * No active format = no limits and no exemptions.
  */
 async function loadDeckRules(
   supabase: Supabase,
+  userId: string,
   catalogRows: CatalogRow[]
 ): Promise<{
   limits: Map<string, number>;
@@ -372,89 +380,40 @@ async function loadDeckRules(
         )
     );
 
-  if (!format.boss_route_exempt) {
-    for (const row of limitRows) {
-      limits.set(
-        row.card_catalog_id,
-        row.max_copies
-      );
-    }
+  for (const row of limitRows) {
+    limits.set(
+      row.card_catalog_id,
+      row.max_copies
+    );
+  }
 
+  if (!format.boss_route_exempt) {
     return {
       limits,
       exemptIds,
     };
   }
 
-  const [
-    stageRows,
-    grantRows,
-    excludeRows,
-  ] = await Promise.all([
-    fetchInBatches<string, {
-      evolution_card_catalog_id: string;
-    }>(
-      ids,
-      (
-        batch,
-        from,
-        to
-      ) => supabase
-        .from("boss_route_stages")
-        .select(
-          "evolution_card_catalog_id"
-        )
-        .in(
-          "evolution_card_catalog_id",
-          batch
-        )
-        .order(
-          "evolution_card_catalog_id",
-          {
-            ascending: true,
-          }
-        )
-        .range(
-          from,
-          to
-        )
-    ),
-    fetchInBatches<string, {
+  const routeCardIds =
+    await loadOwnBossRouteCardIds(
+      supabase,
+      userId
+    );
+
+  if (routeCardIds.size === 0) {
+    return {
+      limits,
+      exemptIds,
+    };
+  }
+
+  const excludeRows =
+    await fetchInBatches<string, {
       card_catalog_id: string;
     }>(
-      ids,
-      (
-        batch,
-        from,
-        to
-      ) => supabase
-        .from("boss_route_stage_grants")
-        .select(
-          "card_catalog_id"
-        )
-        .eq(
-          "is_route_exclusive",
-          true
-        )
-        .in(
-          "card_catalog_id",
-          batch
-        )
-        .order(
-          "card_catalog_id",
-          {
-            ascending: true,
-          }
-        )
-        .range(
-          from,
-          to
-        )
-    ),
-    fetchInBatches<string, {
-      card_catalog_id: string;
-    }>(
-      ids,
+      [
+        ...routeCardIds,
+      ],
       (
         batch,
         from,
@@ -486,8 +445,7 @@ async function loadDeckRules(
           from,
           to
         )
-    ),
-  ]);
+    );
 
   const excluded =
     new Set(
@@ -507,17 +465,9 @@ async function loadDeckRules(
       )
     );
 
-  for (const id of [
-    ...stageRows.map(
-      (row) =>
-        row.evolution_card_catalog_id
-    ),
-    ...grantRows.map(
-      (row) =>
-        row.card_catalog_id
-    ),
-  ]) {
+  for (const id of routeCardIds) {
     if (
+      statusById.has(id) &&
       !excluded.has(id) &&
       statusById.get(id) !==
         "not_available"
@@ -526,23 +476,152 @@ async function loadDeckRules(
     }
   }
 
-  for (const row of limitRows) {
-    if (
-      !exemptIds.has(
-        row.card_catalog_id
-      )
-    ) {
-      limits.set(
-        row.card_catalog_id,
-        row.max_copies
-      );
-    }
-  }
-
   return {
     limits,
     exemptIds,
   };
+}
+
+/**
+ * Evolution cards (every stage) and route-exclusive grants of the
+ * ACTIVE Boss Routes this player has - the cards the Boss-route
+ * exemption lets them deck (is_boss_route_exempt_for_profile in the
+ * database). At most 3 routes, so a handful of small queries.
+ */
+async function loadOwnBossRouteCardIds(
+  supabase: Supabase,
+  userId: string
+): Promise<Set<string>> {
+  const ids =
+    new Set<string>();
+
+  const {
+    data: paths,
+    error: pathsError,
+  } = await supabase
+    .from("player_boss_paths")
+    .select(
+      "route_id"
+    )
+    .eq(
+      "profile_id",
+      userId
+    );
+
+  if (pathsError) {
+    throw new Error(
+      pathsError.message
+    );
+  }
+
+  const routeIds =
+    (paths ?? []).map(
+      (path) =>
+        path.route_id as string
+    );
+
+  if (routeIds.length === 0) {
+    return ids;
+  }
+
+  const {
+    data: routes,
+    error: routesError,
+  } = await supabase
+    .from("boss_routes")
+    .select(
+      "id"
+    )
+    .in(
+      "id",
+      routeIds
+    )
+    .eq(
+      "is_active",
+      true
+    );
+
+  if (routesError) {
+    throw new Error(
+      routesError.message
+    );
+  }
+
+  const activeRouteIds =
+    (routes ?? []).map(
+      (route) =>
+        route.id as string
+    );
+
+  if (activeRouteIds.length === 0) {
+    return ids;
+  }
+
+  const {
+    data: stages,
+    error: stagesError,
+  } = await supabase
+    .from("boss_route_stages")
+    .select(
+      "id,evolution_card_catalog_id"
+    )
+    .in(
+      "route_id",
+      activeRouteIds
+    );
+
+  if (stagesError) {
+    throw new Error(
+      stagesError.message
+    );
+  }
+
+  for (const stage of stages ?? []) {
+    ids.add(
+      stage.evolution_card_catalog_id as string
+    );
+  }
+
+  const stageIds =
+    (stages ?? []).map(
+      (stage) =>
+        stage.id as string
+    );
+
+  if (stageIds.length === 0) {
+    return ids;
+  }
+
+  const {
+    data: grants,
+    error: grantsError,
+  } = await supabase
+    .from("boss_route_stage_grants")
+    .select(
+      "card_catalog_id"
+    )
+    .in(
+      "stage_id",
+      stageIds
+    )
+    .eq(
+      "is_route_exclusive",
+      true
+    );
+
+  if (grantsError) {
+    throw new Error(
+      grantsError.message
+    );
+  }
+
+  for (const grant of grants ?? []) {
+    ids.add(
+      grant.card_catalog_id as string
+    );
+  }
+
+  return ids;
 }
 
 export async function loadDeckInstanceIds(

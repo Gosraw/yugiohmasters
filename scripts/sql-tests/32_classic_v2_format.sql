@@ -81,11 +81,11 @@ begin
     format('exemption on: %s Boss-route cards outside the pool are deck-legal (never offered: format_eligible stays false)', exempt_extra));
 
   perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal(
-    (select id from public.card_catalog where name = 'Crimson Nova the Dark Cubic Lord')),
-    true, 'exemption on: Crimson Nova (post-2014 Cubic route boss) is deck-legal');
+    (select id from public.card_catalog where name = 'Cyber Dragon Infinity')),
+    true, 'exemption on: Cyber Dragon Infinity (post-2014 Cyber Dragon route boss) is deck-legal (card level; per owner: 59_boss_routes_v3)');
   perform pg_temp.assert_eq(
-    (select format_eligible from public.card_catalog where name = 'Souleating Oviraptor'),
-    false, 'exemption on: Souleating Oviraptor (post-2014 route evolution) is still never offered by draft/shop');
+    (select format_eligible from public.card_catalog where name = 'Blue-Eyes Alternative White Dragon'),
+    false, 'exemption on: Blue-Eyes Alternative White Dragon (post-2014 route evolution) is still never offered by draft/shop');
 
   -- ... and OFF: deck legality = the pool.
   update public.duelist_circle_formats set boss_route_exempt = false where id = v2.id;
@@ -94,8 +94,8 @@ begin
     (select count(*)::integer from public.card_catalog c where public.is_duelist_circle_deck_legal(c.id)),
     6167, 'exemption off: exactly the 6,167 pool cards are deck-legal');
   perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal(
-    (select id from public.card_catalog where name = 'Crimson Nova the Dark Cubic Lord')),
-    false, 'exemption off: Crimson Nova is not deck-legal');
+    (select id from public.card_catalog where name = 'Cyber Dragon Infinity')),
+    false, 'exemption off: Cyber Dragon Infinity is not deck-legal');
 
   -- Synchro leak closed, unknown-status pool card in.
   perform pg_temp.assert_eq(public.is_duelist_circle_format_eligible(

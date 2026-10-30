@@ -50,7 +50,8 @@ export const dynamic =
 // =========================================================
 // BOSS PATH SELECT (task 142)
 //
-// Grid of all 20 routes for whichever slot the player is
+// Grid of all active routes (the 14 Season 2 Boss Paths,
+// data/boss-route-registry-v3.mjs) for whichever slot the player is
 // currently filling (?slot=1|2|3, linked from the Boss Hub).
 // Slot 1 is always free; slots 2/3 show their DP price. Every route
 // card also lists what its evolutions cost - Boss evolution is DP
@@ -73,6 +74,7 @@ type BossRoute = {
   name: string;
   display_order: number;
   teaser_story: string;
+  how_it_plays: string | null;
   star_profile: StarProfile;
   target_power_grade: string;
 };
@@ -224,7 +226,7 @@ export default async function BossPathSelectPage({
   } = await supabase
     .from("boss_routes")
     .select(
-      "id,code,name,display_order,teaser_story,star_profile,target_power_grade"
+      "id,code,name,display_order,teaser_story,how_it_plays,star_profile,target_power_grade"
     )
     .eq(
       "is_active",
@@ -396,7 +398,7 @@ export default async function BossPathSelectPage({
                       className={`panel relative flex flex-col overflow-hidden p-5 ${alreadyChosenElsewhere ? "opacity-50" : ""}`}
                     >
                       {/* next/image lazy-loads: only the arenas on
-                          screen are downloaded, not all 20 at once. */}
+                          screen are downloaded, not all 14 at once. */}
                       <div
                         aria-hidden="true"
                         className="relative -mx-5 -mt-5 mb-4 h-28 overflow-hidden [mask-image:linear-gradient(180deg,#000_55%,transparent)]"
@@ -439,6 +441,20 @@ export default async function BossPathSelectPage({
                           route.teaser_story
                         }
                       </p>
+
+                      {route.how_it_plays && (
+                        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2.5">
+                          <p className="text-[9px] font-black uppercase tracking-wider text-amber-300/80">
+                            How it plays
+                          </p>
+
+                          <p className="mt-1 text-xs leading-5 text-zinc-300">
+                            {
+                              route.how_it_plays
+                            }
+                          </p>
+                        </div>
+                      )}
 
                       <div className="mt-4 space-y-1.5">
                         {STAR_LABELS.map(

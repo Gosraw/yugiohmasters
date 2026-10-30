@@ -23,7 +23,9 @@
 --   to 0, ledger cleared), decks, matches + wagers, trades,
 --   competitions (+ results, grants, deck locks), drafts (so every
 --   player does a new Initial Draft), Boss Paths / evolution
---   progress, pack luck + pity, reward vouchers, shop purchase /
+--   progress (and then the 20 retired Season 1 Boss Routes - the 14
+--   Season 2 routes from 202610301000 stay), pack luck + pity,
+--   reward vouchers, shop purchase /
 --   pack-opening history, weekly goals, Season Path XP + tier
 --   grants, bounty / catch-up grants, mini game runs + rewards,
 --   P2W achievement claims, coach insights, and the welcome-pack
@@ -49,7 +51,7 @@
 --     RESTRICT / NO ACTION foreign key aborts the run.
 --   - Post-flight proves: wiped tables are empty, memberships and
 --     roles are byte-for-byte the same, the pool is exactly the
---     6,136 cards, every pool card has its proposed rarity.
+--     6,167 cards, every pool card has its proposed rarity.
 -- =========================================================
 
 \set ON_ERROR_STOP on
@@ -151,6 +153,7 @@ declare
   v_current_seasons integer;
   v_launch date := current_setting('season2.launch_date')::date;
   v_admins integer;
+  v_boss_routes integer;
 begin
   -- 1. Every table classified.
   select string_agg(c.relname, ', ' order by c.relname)
@@ -209,8 +212,8 @@ begin
     raise exception 'PRE-FLIGHT ABORTED: duelist_circle_classic_v2 is already active - the Season 2 reset has already been applied. Running it again would wipe the new season.';
   end if;
 
-  if v_includes <> 6136 or v_rarities <> 6136 or v_limits = 0 then
-    raise exception 'PRE-FLIGHT ABORTED: Classic v2 data incomplete (includes %, proposed rarities %, banlist rows %; expected 6136 / 6136 / >0). If the pool changed after the vote, update the expected numbers here deliberately.', v_includes, v_rarities, v_limits;
+  if v_includes <> 6167 or v_rarities <> 6167 or v_limits = 0 then
+    raise exception 'PRE-FLIGHT ABORTED: Classic v2 data incomplete (includes %, proposed rarities %, banlist rows %; expected 6167 / 6167 / >0). If the pool changed after the vote, update the expected numbers here deliberately.', v_includes, v_rarities, v_limits;
   end if;
 
   -- 4. Season calendar.
@@ -234,8 +237,23 @@ begin
     raise exception 'PRE-FLIGHT ABORTED: % league(s) with members have no admin - fix that first (claim_league_admin_if_none).', v_admins;
   end if;
 
-  raise notice 'PRE-FLIGHT OK: all tables classified, no blocking FKs, Classic v2 ready (% includes, % rarities, % banlist rows), launch_date %, mode %.',
-    v_includes, v_rarities, v_limits, v_launch, current_setting('season2.mode');
+  -- 6. The 14 Season 2 Boss Paths are in (202610301000_boss_routes_v3).
+  select count(*) into v_boss_routes from public.boss_routes where is_active;
+
+  if v_boss_routes <> 14
+    or exists (select 1 from public.boss_routes where is_active and code not like 's2\_%')
+    or exists (
+      select 1
+      from public.boss_routes r
+      where r.is_active
+        and (select count(*) from public.boss_route_stages s where s.route_id = r.id) <> 4
+    )
+  then
+    raise exception 'PRE-FLIGHT ABORTED: expected the 14 Season 2 Boss Paths (s2_*, 4 stages each) to be the only active routes, found % active - apply 202610301000_boss_routes_v3.sql first.', v_boss_routes;
+  end if;
+
+  raise notice 'PRE-FLIGHT OK: all tables classified, no blocking FKs, Classic v2 ready (% includes, % rarities, % banlist rows), % Boss Paths, launch_date %, mode %.',
+    v_includes, v_rarities, v_limits, v_boss_routes, v_launch, current_setting('season2.mode');
 end;
 $preflight$;
 
@@ -298,6 +316,14 @@ delete from public.game_runs where true;
 delete from public.player_boss_achievement_events where true;
 delete from public.player_boss_stage_unlocks where true;
 delete from public.player_boss_paths where true;
+
+-- The 20 Season 1 Boss Routes were retired by 202610301000_boss_routes_v3
+-- but stayed while a player still had one. Nobody has a path now, so
+-- delete them (cascades to their stages, grants and achievement rows -
+-- config only, no card_instances). From here on the draft / pack / shop
+-- exclusions and the deck exemption only see the 14 Season 2 routes.
+delete from public.boss_routes where not is_active;
+
 delete from public.player_pack_luck where true;
 delete from public.dashboard_coach_insights where true;
 delete from public.season1_welcome_bonus_claims where true;
@@ -526,8 +552,8 @@ begin
 
   select count(*) into v_eligible from public.card_catalog where format_eligible;
 
-  if v_eligible <> 6136 then
-    raise exception 'POST-FLIGHT FAILED: % format_eligible cards, expected exactly 6136', v_eligible;
+  if v_eligible <> 6167 then
+    raise exception 'POST-FLIGHT FAILED: % format_eligible cards, expected exactly 6167', v_eligible;
   end if;
 
   if exists (
@@ -540,7 +566,7 @@ begin
   ) then
     raise exception 'POST-FLIGHT FAILED: an eligible card is not in the Classic v2 pool';
   end if;
-  raise notice 'POST-FLIGHT: duelist_circle_classic_v2 active, exactly 6136 eligible cards (boss_route_exempt = %)', v_format.boss_route_exempt;
+  raise notice 'POST-FLIGHT: duelist_circle_classic_v2 active, exactly 6167 eligible cards (boss_route_exempt = %)', v_format.boss_route_exempt;
 
   -- Rarities.
   select count(*) into v_wrong_rarity
@@ -563,6 +589,25 @@ begin
        where c.format_eligible
        group by c.game_rarity
      ) d);
+
+  -- Boss Paths: exactly the 14 Season 2 routes, nothing retired left.
+  if (select count(*) from public.boss_routes where is_active) <> 14
+    or exists (select 1 from public.boss_routes where not is_active)
+    or exists (
+      select 1
+      from public.boss_route_stages s
+      join public.boss_routes r on r.id = s.route_id
+      where (s.stage_number = 1 and s.dp_cost_to_reach is not null)
+         or (s.stage_number > 1 and coalesce(s.dp_cost_to_reach, 0) <= 0)
+    )
+    or (select count(*) from public.boss_route_stages) <> 56
+  then
+    raise exception 'POST-FLIGHT FAILED: Boss Paths are not exactly the 14 Season 2 routes with 4 priced stages each';
+  end if;
+  raise notice 'POST-FLIGHT: 14 Boss Paths active (stage prices % / % / %), Season 1 routes removed',
+    (select min(dp_cost_to_reach) from public.boss_route_stages where stage_number = 2),
+    (select min(dp_cost_to_reach) from public.boss_route_stages where stage_number = 3),
+    (select min(dp_cost_to_reach) from public.boss_route_stages where stage_number = 4);
 
   -- Shop regenerated from the new pool.
   if not exists (select 1 from public.shop_rotations where status = 'active' and starts_at <= now() and ends_at > now()) then

@@ -30,11 +30,11 @@ node scripts/cardpool/build-v2-format-migration.mjs --out supabase/migrations/<n
 
 ### B. Jouw beslissing over de Boss Routes
 
-Sommige Boss Routes geven kaarten die eigenlijk niet in de nieuwe pool zitten. Voorbeelden: de hele Cubic-route (van na 2014) en Dark Magician of Chaos (verboden in 2014).
+Seizoen 2 heeft **14 nieuwe Boss Paths** (zie `docs/BOSS_PATHS_V3.md`). Sommige daarvan geven kaarten die eigenlijk niet in de nieuwe pool zitten. Voorbeelden: Dark Magician of Chaos (verboden in 2014) en Cyber Dragon Infinity (van na 2014).
 
 Er staat nu een **schakelaar** klaar. Die staat standaard **AAN**.
 
-- **AAN**: de eigenaar van een route mag zijn eigen Boss-monsters en route-kaarten gewoon in zijn deck doen. Ook als ze buiten de pool vallen of op de banlijst staan. Andere spelers krijgen ze nooit via packs, draft of shop.
+- **AAN**: de eigenaar van een route mag zijn eigen Boss-monsters en route-kaarten gewoon in zijn deck doen, ook als ze buiten de pool vallen. Alleen wie die route heeft, mag ze gebruiken. Andere spelers krijgen ze nooit via packs, draft of shop, en ook niet via een ruil (dan weigert de deckbouwer de kaart). Route-kaarten die wél in de pool zitten, houden gewoon hun banlijst-limiet.
 - **UIT**: route-kaarten volgen gewoon dezelfde regels als alle andere kaarten.
 
 Zeg tegen de ontwikkelaar welke je wilt. Uit zetten kan op twee manieren: het bestand opnieuw maken met `--no-boss-route-exemption`, of later met één regel SQL (zie de appendix).
@@ -77,10 +77,10 @@ DB="postgresql://...het adres uit Supabase..."
 Daarna voer je de migraties uit, **in deze volgorde**, één voor één:
 
 ```
-for f in supabase/migrations/2026101[245]*.sql; do case "$f" in *202610120500_card_votes.sql) echo "-- skip $f"; continue;; esac; echo "== $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f" || break; done
+for f in supabase/migrations/2026101[245]*.sql supabase/migrations/20261030*.sql; do case "$f" in *202610120500_card_votes.sql) echo "-- skip $f"; continue;; esac; echo "== $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f" || break; done
 ```
 
-Deze regel doet alle bestanden van 12, 14 en 15 oktober, in de goede volgorde. Eén bestand wordt bewust **overgeslagen** (`202610120500_card_votes.sql`): de echte database heeft de stemming al sinds 12 oktober, en dat oude testbestand zou daar een fout geven. Je ziet dan `-- skip ...`; dat is goed.
+Deze regel doet alle bestanden van 12, 14, 15 en 30 oktober, in de goede volgorde (30 oktober = de 14 nieuwe Boss Paths en het verbergen van de minigames). Eén bestand wordt bewust **overgeslagen** (`202610120500_card_votes.sql`): de echte database heeft de stemming al sinds 12 oktober, en dat oude testbestand zou daar een fout geven. Je ziet dan `-- skip ...`; dat is goed.
 
 De uitslag van de kaartstemming zit in `202610301200_classic_v2_format_after_vote.sql`, en het verbergen van de minigames in `202610301100_hide_mini_games.sql`. Allebei zijn bestanden van 30 oktober. Doet de regel hierboven de bestanden van 30 oktober (`20261030*`) nog niet? Voer ze dan daarna los uit, in deze volgorde:
 
@@ -182,7 +182,7 @@ Dat zet alles terug naar het moment van de back-up.
 
 ### Every 2.0 migration (2026-10-12 / 14 / 15), in apply order
 
-Apply with the loop in step 2 (`2026101[245]*.sql`). Two special cases:
+Apply with the loop in step 2 (`2026101[245]*.sql` then `20261030*.sql`). Two special cases:
 
 - **`202610120500_card_votes.sql` must be SKIPPED on production.** Production already has the live vote (applied 2026-10-12 via `manual_deploy/20261012_live_vote_and_hotfix.sql`, i.e. the `202610121900` version). Re-running `202610120500` there fails with `cannot change return type of existing function` on `get_vote_results` (verified on the local DB, 2026-10-15) and would stop the loop. The loop in step 2 skips it.
 - **`202610121900_card_votes_live.sql` is already applied on production (2026-10-12) and is safe to run again.** Everything in it is `create table if not exists` / `add column if not exists` / guarded constraint blocks / `create or replace` / `drop ... if exists` + re-create (trigger, policies, the three RPCs, all inside one `begin`/`commit`), and grants are re-applied. Re-running it is a no-op for data (verified on the local DB, 2026-10-15). Skipping it is fine too.
@@ -230,6 +230,7 @@ Apply with the loop in step 2 (`2026101[245]*.sql`). Two special cases:
 | `202610152030_practice_challenge_guards.sql` | Season duels no longer block practice challenges; decline / cancel / wager RPCs refuse season duels; `accept_practice_challenge` (accept + stake in one transaction); no result / no payout on a one-sided wager (refunded instead); either player can cancel a stuck accepted wager duel; an admin may settle a wager. | matches, wagers |
 | `202610152040_initial_draft_guards.sql` | Initial Draft strictly one-time (any seat in a non-cancelled draft counts, advisory lock), Boss Route required first; the admin `start_initial_draft` refuses players who had one. | draft |
 | `202610152050_small_security_and_goal_fixes.sql` | `consume_reward_voucher` and `_phase*_verify_introspect` no longer callable by anon / players; tiebreak duels don't count for weekly goals. | security, weekly goals |
+| `202610301000_boss_routes_v3.sql` | **Generated** (`scripts/generate-boss-routes-v3-migration.mjs` from `data/boss-route-registry-v3.mjs`). The 14 Season 2 Boss Paths (`s2_*` codes, 4 stages + 11 one-copy grants each, `boss_routes.how_it_plays`). The 20 Season 1 routes are retired (`is_active = false`, display order + 100); retired routes no player holds are deleted right away, the rest by the reset script after it wipes `player_boss_paths`. Stage prices are copied from the live config (never hardcoded), so step 2b still sets 1,800 / 3,200 / 5,500. Exemption tightened: `is_boss_route_exempt_card` / `is_boss_route_reserved_card` only see active routes; deck legality through the exemption is per owner (`is_duelist_circle_deck_legal_for`, used by `validate_deck_card`); `duelist_circle_deck_copy_limit` waives a banlist limit only for route cards outside the pool. Aborts if any card name does not resolve. Idempotent. | boss paths, card pool |
 | `202610301100_hide_mini_games.sql` | 2.0 launches without mini games: every `mini_game_catalog` game goes inactive (`start_game_run` refuses them) and players can no longer call `settle_mini_game_period` (no mini game payouts). Nothing dropped; idempotent. The app hides `/games` behind `MINI_GAMES_ENABLED` in `src/lib/games/flag.ts`. | mini games |
 | `202610301200_classic_v2_format_after_vote.sql` | **Generated** (`build-v2-format-migration.mjs`), the card vote result (`docs/CARD_VOTE_RESULT_2026-10-30.md`, `data/cardpool/vote-results-2026-10-30.json`). Replaces the inactive Classic v2 format's rows from `202610121030`: 6,167 include overrides; 188 banlist rows (69 forbidden / 104 limited / 15 semi); 6,167 proposed rarities (Legendary 21 / Secret 219 / Ultra 1,103 / Super 1,270 / Rare 1,513 / Normal 2,041); same 151 catalog additions. Ends with count assertions; re-runnable. Must run AFTER `202610121030`. | card pool |
 
@@ -247,11 +248,12 @@ So apply the whole set on launch night only, directly followed by the reset scri
   - Classic v2 must have 6,167 includes, 6,167 rarities and at least 1 banlist row (6,136 before the 2026-10-30 vote; the script's expected numbers must say 6167);
   - exactly one current season, which is season 2;
   - `launch_date` must be within −7 to +60 days;
-  - every league that has members must have an admin.
+  - every league that has members must have an admin;
+  - the 14 Season 2 Boss Paths (`s2_*`, 4 stages each) are the only active routes (`202610301000` applied).
 - **Wipe (50 tables):**
   - weekly goals (progress, grants, sets), Season Path XP and tier grants, bounty / catch-up grants;
   - mini game runs, settlements and grants;
-  - Boss paths, unlocks and events; pack luck; coach insights; welcome claims;
+  - Boss paths, unlocks and events, then the retired Season 1 Boss Routes themselves (`delete from boss_routes where not is_active`, cascades to their stages / grants / achievement rows); pack luck; coach insights; welcome claims;
   - drafts, shop history, pity and vouchers;
   - competitions (and everything that hangs off them), matches, result proposals, wagers and the DP ledger;
   - Shadow Arena ghost boards (`arena_board_snapshots`, `arena_run_ghosts`);
@@ -275,6 +277,7 @@ So apply the whole set on launch night only, directly followed by the reset scri
   - v2 is the only active format, and exactly the 6,167 pool cards are eligible (6,136 before the vote);
   - every pool card has its proposed rarity;
   - the active singles rotation only holds pool cards;
+  - exactly the 14 Boss Paths are left (56 stages, every stage 2-4 priced, no retired route);
   - as information only, it prints special packs that have fewer than 40 cards left in the new pool.
 
 **Local dry run (2026-10-12, devstack DB, `launch_date=2026-10-19`):**
@@ -323,19 +326,17 @@ node scripts/cardpool/build-v2-format-migration.mjs \
 
 `duelist_circle_formats.boss_route_exempt` (default **true** in the generated seed).
 
-- **Exempt cards.** `is_boss_route_exempt_card()` covers every `boss_route_stages.evolution_card_catalog_id` (all stages) plus every `boss_route_stage_grants` row with `is_route_exclusive`.
+- **Exempt cards** (since `202610301000`, the 14 Season 2 Boss Paths): `is_boss_route_exempt_card()` covers every `boss_route_stages.evolution_card_catalog_id` (all stages) plus every `boss_route_stage_grants` row with `is_route_exclusive`, of **active** routes only.
 - **When true:**
-  - exempt cards are **deck-legal** (`is_duelist_circle_deck_legal`) and have no copy limit;
-  - they are still never `format_eligible`, so draft, shop packs and singles never offer one that is outside the pool. Example: Souleating Oviraptor, a post-2014 stage-2 evolution, stays out of packs.
+  - an exempt card is **deck-legal for its route owner only**: `validate_deck_card` asks `is_duelist_circle_deck_legal_for(card, deck owner)`, which needs a `player_boss_paths` row on an active route that hands out the card. Another player who got a copy (e.g. by trade) cannot deck it. `is_duelist_circle_deck_legal(card)` stays as the card-level answer;
+  - the copy limit is waived only for exempt cards **outside** the pool (`format_eligible = false`, e.g. Dark Magician of Chaos). Route cards inside the pool keep their banlist limit (e.g. Chaos Sorcerer stays semi-limited);
+  - exempt cards are still never `format_eligible`, so draft, shop packs and singles never offer one that is outside the pool. Example: Blue-Eyes Alternative White Dragon, a post-2014 stage-2 evolution, stays out of packs.
 - **Always blocks, even when true:** `not_available` in Master Duel and an explicit `exclude` override.
-- **Live data: 47 route cards are affected.**
-  - 43 are outside the pool. Examples: the whole Cubic route, Blue-Eyes Jet Dragon, Cyber Dragon Infinity, The Dark Magicians, Dark Magician of Chaos, Dimension Fusion and Return from the Different Dimension (2014-forbidden exclusive grants).
-  - 4 are in the pool but on the banlist: BLS - Envoy of the Beginning (limited), Chaos Sorcerer (semi), Ojama Trio (semi) and Toon Cannon Soldier (limited).
+- **Design rule for the 14 routes:** a grant is `exclusive` exactly when it is outside the pool (71 pool-external route cards: evolutions + exclusive grants); in-pool grants stay non-exclusive, so other players can still pull them. Stage-4 Bosses are always reserved (never in packs).
 - **Turn it off without regenerating:**
   ```sql
   update public.duelist_circle_formats set boss_route_exempt = false where code = 'duelist_circle_classic_v2';
   ```
-- **Note on the clash list.** The clash list in `docs/cardpool-v2-foundation.md` came from `data/boss-route-registry.mjs`. The live DB route data differs after the Season 1 fix migrations. For example, the Chaos stage-4 boss is BLS - Envoy of the Beginning, not Chaos Emperor Dragon, and the DM stage-4 boss is The Dark Magicians. Chaos Emperor Dragon is therefore simply forbidden, with no route conflict.
 
 ### Tests
 
@@ -364,6 +365,8 @@ node scripts/cardpool/build-v2-format-migration.mjs \
 The full suite (`node scripts/sql-tests/run.mjs`) passes: 31 files / 573 checks (2026-10-15, on a fresh `node scripts/devstack/db.mjs reset` followed by `node scripts/devstack/seed-demo.mjs bossg samo` - the shop tests need the local test rarities seed-demo gives the catalog; on QA-dirty data `22_season_bounty_catch_up` can fail).
 
 2026-10-15 additions: `52_shop_rarity_ladder` (A), `53_admin_own_duel_proposals` (B), `54_season_champion_title` (C), `55_practice_challenge_guards` (H1-H3), `56_initial_draft_guards` (M4 + Boss Route), `57_small_security_and_goal_fixes`. E2E: `tests/e2e/05-admin-own-duel.spec.ts` (B proposal -> opponent accepts on the round screen; C champion title + badge).
+
+2026-10-30 addition: `59_boss_routes_v3` (14 active routes x 4 stages x 11 grants, names resolve, no Synchro/Link/Pendulum, prices copied from config, retired routes cannot be chosen, the exemption works for the route owner only and in-pool route cards keep their limit). Balance: `node scripts/boss-route-balance.mjs --check`; registry: `node scripts/generate-boss-routes-v3-migration.mjs --check`.
 
 ### Known follow-ups (not done here)
 

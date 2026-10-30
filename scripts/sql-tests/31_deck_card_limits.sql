@@ -115,7 +115,12 @@ begin
   perform pg_temp.assert_eq(public.duelist_circle_deck_copy_limit(legendary_card), null::integer, 'Raigeki: no deck limit');
 
   -- Boss-route exemption (flag on by default): DMoC is the DM route
-  -- boss, so its 2014 "forbidden" does not apply...
+  -- boss, so its 2014 "forbidden" does not apply... (the waiver is only
+  -- for route cards OUTSIDE the pool - 202610301000 - so DMoC gets the
+  -- eligibility the launch recompute gives it: not in the pool)
+  update public.card_catalog
+  set format_eligible = public.is_duelist_circle_format_eligible(id, (select id from public.duelist_circle_formats where code = 'duelist_circle_classic_v2'))
+  where id = dmoc;
   perform pg_temp.assert_eq(public.duelist_circle_deck_copy_limit(dmoc), null::integer,
     'boss_route_exempt: Dark Magician of Chaos (route boss) has no deck limit');
   -- ...and with the flag off it is forbidden again.

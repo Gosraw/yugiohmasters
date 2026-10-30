@@ -39,15 +39,11 @@ begin
   -- Fresh Boss Path for bossg (test setup; rolled back).
   delete from public.player_boss_paths where profile_id = pg_temp.uid_of('bossg');
 
+  -- Season 2 routes (202610301000) have no achievement events at all;
+  -- any active route will do.
   select r.id into route_one
   from public.boss_routes r
   where r.is_active
-    and exists (
-      select 1
-      from public.boss_route_achievement_requirements q
-      join public.boss_route_stages s on s.id = q.target_stage_id
-      where s.route_id = r.id and s.stage_number = 2
-    )
   order by r.name
   limit 1;
 
@@ -83,7 +79,7 @@ begin
   perform pg_temp.assert_eq(
     (select current_stage from public.player_boss_paths where id = path_id),
     2,
-    'stage 2 reached with DP only (the route has achievement requirements for stage 2, they are ignored)'
+    'stage 2 reached with DP only (no achievement gate)'
   );
   perform pg_temp.assert_eq(pg_temp.balance('bossg'), 0, 'exactly 900 DP charged for stage 2');
 

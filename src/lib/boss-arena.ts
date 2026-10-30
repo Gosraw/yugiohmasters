@@ -1,17 +1,20 @@
 // =========================================================
 // BOSS ARENA ART (Season 2, "Night Temple" style)
 //
-// One original fal.ai arena background per Boss Route, stored as
-// compact JPEGs in public/v2/arenas/<route code>.jpg. The route
-// code is boss_routes.code (see data/boss-route-registry.mjs).
-// Unknown or missing codes fall back to the shared temple
-// background so a new route never shows a broken image.
+// One original fal.ai arena background per art file, stored as
+// compact JPEGs in public/v2/arenas/<art>.jpg. The 20 files were
+// made for the Season 1 routes; the 14 Season 2 Boss Paths
+// (data/boss-route-registry-v3.mjs, codes "s2_*") reuse the closest
+// one through BOSS_ARENA_ART below. Unknown or missing codes fall
+// back to the shared temple background so a new route never shows
+// a broken image.
 // =========================================================
 
 export const BOSS_ARENA_FALLBACK =
   "/v2/temple-night.jpg";
 
-const BOSS_ARENA_CODES =
+// Every file in public/v2/arenas (without .jpg).
+const BOSS_ARENA_FILES =
   new Set([
     "chaos_bls",
     "dark_magician",
@@ -35,19 +38,60 @@ const BOSS_ARENA_CODES =
     "cubic",
   ]);
 
+// Season 2 route code -> arena file.
+const BOSS_ARENA_ART: Record<string, string> = {
+  s2_dark_magician:
+    "dark_magician",
+  s2_cyber_dragon:
+    "cyber_dragon",
+  s2_armed_ojama:
+    "armed_dragon_ojama",
+  s2_blue_eyes:
+    "blue_eyes",
+  s2_red_eyes:
+    "red_eyes",
+  s2_elemental_hero:
+    "elemental_hero",
+  s2_chaos_bls:
+    "chaos_bls",
+  // Grand gate between two statues: the closest thing to an arena.
+  s2_gladiator_beast:
+    "cubic",
+  s2_zombie:
+    "zombie",
+  s2_harpie:
+    "harpie",
+  s2_toon:
+    "toon",
+  s2_galaxy_eyes:
+    "galaxy_photon",
+  s2_atlantean_ocean:
+    "legendary_fisherman",
+  // The glowing volcano behind the temple gate.
+  s2_volcanic:
+    "dinosaur",
+};
+
 export function getBossArenaImage(
   routeCode:
     | string
     | null
     | undefined
 ) {
+  if (!routeCode) {
+    return BOSS_ARENA_FALLBACK;
+  }
+
+  const art =
+    BOSS_ARENA_ART[routeCode] ??
+    routeCode;
+
   if (
-    routeCode &&
-    BOSS_ARENA_CODES.has(
-      routeCode
+    BOSS_ARENA_FILES.has(
+      art
     )
   ) {
-    return `/v2/arenas/${routeCode}.jpg`;
+    return `/v2/arenas/${art}.jpg`;
   }
 
   return BOSS_ARENA_FALLBACK;

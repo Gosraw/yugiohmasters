@@ -144,7 +144,7 @@ export function CompetitionCreateFormV2({
           name="name"
           required
           maxLength={100}
-          placeholder="Season 1 Circuit"
+          placeholder="Friday Night Cup"
           className="field w-full"
         />
       </label>

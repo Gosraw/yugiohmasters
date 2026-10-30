@@ -50,10 +50,16 @@ begin
     (select string_agg(display_order::text, ',' order by display_order) from public.boss_routes where is_active),
     '1,2,3,4,5,6,7,8,9,10,11,12,13,14', 'display order 1-14');
   perform pg_temp.assert_true(
-    exists (select 1 from public.boss_routes where code = 's2_dark_magician' and is_active)
-      and exists (select 1 from public.boss_routes where code = 's2_cyber_dragon' and is_active)
-      and exists (select 1 from public.boss_routes where code = 's2_armed_ojama' and is_active),
-    'the three players'' routes exist (Dark Magician, Cyber Dragon, Armed Dragon & Ojama)');
+    exists (select 1 from public.boss_routes where code = 's2_six_samurai' and is_active)
+      and exists (select 1 from public.boss_routes where code = 's2_crystal_beast' and is_active)
+      and exists (select 1 from public.boss_routes where code = 's2_ancient_gear' and is_active),
+    'the three newest routes exist (Six Samurai, Crystal Beast, Ancient Gear)');
+  -- Owner decision 2026-10-30: the routes the players already used in
+  -- Season 1 are not Season 2 routes.
+  perform pg_temp.assert_eq(
+    (select count(*)::integer from public.boss_routes
+     where code in ('s2_dark_magician', 's2_cyber_dragon', 's2_armed_ojama')),
+    0, 'no Dark Magician / Cyber Dragon / Armed Dragon & Ojama route in Season 2');
 
   select string_agg(r.code, ', ') into v_bad
   from public.boss_routes r
@@ -177,30 +183,32 @@ begin
     'not found or inactive',
     'choose_boss_path refuses a retired route');
 
-  perform public.choose_boss_path((select id from public.boss_routes where code = 's2_dark_magician'));
+  perform public.choose_boss_path((select id from public.boss_routes where code = 's2_six_samurai'));
   perform pg_temp.expect_error(
     format('select public.unlock_second_third_boss_path(2, %L)', retired),
     'not found or inactive',
     'a retired route cannot be unlocked as slot 2 either');
 
-  perform pg_temp.assert_eq(public.is_boss_route_exempt_card(pg_temp.card('Dark Magician')), true,
-    'Dark Magician is exempt through the active Dark Magician route');
+  perform pg_temp.assert_eq(public.is_boss_route_exempt_card(pg_temp.card('The Six Samurai - Zanji')), true,
+    'The Six Samurai - Zanji is exempt through the active Six Samurai route');
+  perform pg_temp.assert_eq(public.is_boss_route_exempt_card(pg_temp.card('Dark Magician')), false,
+    'Dark Magician (only on the retired test route) is not exempt');
 
   perform pg_temp.assert_eq(
     (select count(*)::integer
      from public.player_boss_stage_unlocks u
      join public.player_boss_paths p on p.id = u.player_boss_path_id
      where p.profile_id = pg_temp.uid_of('bossg')),
-    1, 'choosing the Dark Magician route unlocks stage 1');
+    1, 'choosing the Six Samurai route unlocks stage 1');
   perform pg_temp.assert_true(
     exists (
       select 1
       from public.card_instances ci
       join public.player_boss_paths p on p.id = ci.original_source_id
       where p.profile_id = pg_temp.uid_of('bossg')
-        and ci.card_catalog_id = pg_temp.card('Magician''s Rod')
+        and ci.card_catalog_id = pg_temp.card('Shien''s Smoke Signal')
     ),
-    'stage 1 grants arrive (Magician''s Rod, pool-external, 1 copy)');
+    'stage 1 grants arrive (Shien''s Smoke Signal)');
 end;
 $$;
 
@@ -210,14 +218,14 @@ $$;
 do $$
 declare
   v2 public.duelist_circle_formats;
-  dmoc uuid := pg_temp.card('Dark Magician of Chaos');   -- DM route Boss, 2014 forbidden (outside the pool)
-  rod uuid := pg_temp.card('Magician''s Rod');           -- DM route exclusive grant, post-2014
+  rihan uuid := pg_temp.card('Secret Six Samurai - Rihan');  -- Six Samurai route Boss, post-2014 (outside the pool)
+  kizaru uuid := pg_temp.card('Secret Six Samurai - Kizaru'); -- Six Samurai route exclusive grant, post-2014
   sorcerer uuid := pg_temp.card('Chaos Sorcerer');       -- Chaos route stage 3, IN the pool, semi-limited
   bossg_path uuid;
   bossg_deck uuid;
   samo_deck uuid;
-  samo_dmoc uuid;
-  bossg_dmoc uuid;
+  samo_rihan uuid;
+  bossg_rihan uuid;
   samo_league uuid;
 begin
   select * into v2 from public.duelist_circle_formats where code = 'duelist_circle_classic_v2';
@@ -226,70 +234,75 @@ begin
   update public.card_catalog c
   set format_eligible = public.is_duelist_circle_format_eligible(c.id, v2.id);
 
-  perform pg_temp.assert_eq((select format_eligible from public.card_catalog where id = dmoc), false,
-    'Dark Magician of Chaos is outside the Classic pool');
-  perform pg_temp.assert_eq((select format_eligible from public.card_catalog where id = rod), false,
-    'Magician''s Rod is outside the Classic pool');
-  perform pg_temp.assert_eq(public.is_boss_route_reserved_card(dmoc), true,
+  perform pg_temp.assert_eq((select format_eligible from public.card_catalog where id = rihan), false,
+    'Secret Six Samurai - Rihan is outside the Classic pool');
+  perform pg_temp.assert_eq((select format_eligible from public.card_catalog where id = kizaru), false,
+    'Secret Six Samurai - Kizaru is outside the Classic pool');
+  perform pg_temp.assert_eq(public.is_boss_route_reserved_card(rihan), true,
     'a stage-4 Boss is reserved (never in packs / draft / shop)');
-  perform pg_temp.assert_eq(public.is_boss_route_reserved_card(rod), true,
+  perform pg_temp.assert_eq(public.is_boss_route_reserved_card(kizaru), true,
     'an exclusive grant is reserved');
 
-  -- bossg has the Dark Magician route (section 2), samo picks Cyber Dragon.
+  -- bossg has the Six Samurai route (section 2), samo picks Ancient Gear.
   delete from public.player_boss_paths where profile_id = pg_temp.uid_of('samo');
   perform pg_temp.act_as('samo');
-  perform public.choose_boss_path((select id from public.boss_routes where code = 's2_cyber_dragon'));
+  perform public.choose_boss_path((select id from public.boss_routes where code = 's2_ancient_gear'));
 
-  perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal_for(dmoc, pg_temp.uid_of('bossg')), true,
-    'route owner: Dark Magician of Chaos is deck-legal');
-  perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal_for(dmoc, pg_temp.uid_of('samo')), false,
-    'other player: Dark Magician of Chaos is NOT deck-legal');
-  perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal_for(rod, pg_temp.uid_of('samo')), false,
-    'other player: Magician''s Rod is NOT deck-legal');
+  perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal_for(rihan, pg_temp.uid_of('bossg')), true,
+    'route owner: Secret Six Samurai - Rihan is deck-legal');
+  perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal_for(rihan, pg_temp.uid_of('samo')), false,
+    'other player: Secret Six Samurai - Rihan is NOT deck-legal');
+  perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal_for(kizaru, pg_temp.uid_of('samo')), false,
+    'other player: Secret Six Samurai - Kizaru is NOT deck-legal');
   perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal_for(
-      pg_temp.card('Cyber Dragon Infinity'), pg_temp.uid_of('samo')), true,
-    'samo''s own pool-external Boss (Cyber Dragon Infinity) is deck-legal for samo');
+      pg_temp.card('Ancient Gear Wyvern'), pg_temp.uid_of('samo')), true,
+    'samo''s own pool-external grant (Ancient Gear Wyvern) is deck-legal for samo');
+  perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal_for(
+      pg_temp.card('Ancient Gear Wyvern'), pg_temp.uid_of('bossg')), false,
+    '...but not for bossg');
 
   -- Copy limits: waived only for route cards outside the pool.
-  perform pg_temp.assert_eq(public.duelist_circle_deck_copy_limit(dmoc), null::integer,
-    'Dark Magician of Chaos (outside the pool): no deck limit through the exemption');
+  perform pg_temp.assert_eq(public.duelist_circle_deck_copy_limit(rihan), null::integer,
+    'Secret Six Samurai - Rihan (outside the pool): no deck limit through the exemption');
   perform pg_temp.assert_eq(public.duelist_circle_deck_copy_limit(sorcerer), 2,
     'Chaos Sorcerer (route evolution, IN the pool): keeps its semi-limit of 2');
 
-  -- Through the real deck path: bossg reaches stage 4 and decks DMoC...
+  -- Through the real deck path: bossg reaches stage 4 and decks Rihan...
   select id into bossg_path from public.player_boss_paths where profile_id = pg_temp.uid_of('bossg') and route_slot = 1;
   perform public._boss_route_grant_stage(bossg_path, 4);
-  select ci.id into bossg_dmoc
+  select ci.id into bossg_rihan
   from public.card_instances ci
-  where ci.current_owner_id = pg_temp.uid_of('bossg') and ci.card_catalog_id = dmoc
+  where ci.current_owner_id = pg_temp.uid_of('bossg') and ci.card_catalog_id = rihan
   limit 1;
-  perform pg_temp.assert_true(bossg_dmoc is not null, 'stage 4 grants the Boss to its owner');
+  perform pg_temp.assert_true(bossg_rihan is not null, 'stage 4 grants the Boss to its owner');
 
   perform pg_temp.act_as('bossg');
   bossg_deck := public.create_deck(
     (select league_id from public.league_members where profile_id = pg_temp.uid_of('bossg')),
     'SQL test boss deck');
-  perform public.add_card_to_deck(bossg_deck, bossg_dmoc);
-  raise notice 'ok: the route owner can put Dark Magician of Chaos in a deck';
+  perform public.add_card_to_deck(bossg_deck, bossg_rihan);
+  perform pg_temp.assert_eq(
+    (select section::text from public.deck_cards where deck_id = bossg_deck and card_instance_id = bossg_rihan),
+    'extra', 'the route owner can put Secret Six Samurai - Rihan in a deck (Extra Deck)');
 
   -- ...while a copy in samo's hands (e.g. a trade) is refused.
   select league_id into samo_league from public.league_members where profile_id = pg_temp.uid_of('samo');
   perform set_config('app.boss_route_grant', 'true', true);
   insert into public.card_instances (league_id, card_catalog_id, copy_number, current_owner_id, original_owner_id, original_acquisition_type)
-  values (samo_league, dmoc, 0, pg_temp.uid_of('samo'), pg_temp.uid_of('samo'), 'development')
-  returning id into samo_dmoc;
+  values (samo_league, rihan, 0, pg_temp.uid_of('samo'), pg_temp.uid_of('samo'), 'development')
+  returning id into samo_rihan;
   perform set_config('app.boss_route_grant', '', true);
 
   perform pg_temp.act_as('samo');
   samo_deck := public.create_deck(samo_league, 'SQL test samo deck');
   perform pg_temp.expect_error(
-    format('select public.add_card_to_deck(%L, %L)', samo_deck, samo_dmoc),
+    format('select public.add_card_to_deck(%L, %L)', samo_deck, samo_rihan),
     'not legal in the Duelist Circle format',
-    'another player cannot deck Dark Magician of Chaos');
+    'another player cannot deck Secret Six Samurai - Rihan');
 
   -- Exemption switched off: even the owner follows the pool.
   update public.duelist_circle_formats set boss_route_exempt = false where id = v2.id;
-  perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal_for(dmoc, pg_temp.uid_of('bossg')), false,
-    'exemption off: the owner cannot deck Dark Magician of Chaos either');
+  perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal_for(rihan, pg_temp.uid_of('bossg')), false,
+    'exemption off: the owner cannot deck Secret Six Samurai - Rihan either');
 end;
 $$;

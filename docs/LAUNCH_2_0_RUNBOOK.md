@@ -30,7 +30,7 @@ node scripts/cardpool/build-v2-format-migration.mjs --out supabase/migrations/<n
 
 ### B. Jouw beslissing over de Boss Routes
 
-Seizoen 2 heeft **14 nieuwe Boss Paths** (zie `docs/BOSS_PATHS_V3.md`). Sommige daarvan geven kaarten die eigenlijk niet in de nieuwe pool zitten. Voorbeelden: Dark Magician of Chaos (verboden in 2014) en Cyber Dragon Infinity (van na 2014).
+Seizoen 2 heeft **14 nieuwe Boss Paths** (zie `docs/BOSS_PATHS_V3.md`). Sommige daarvan geven kaarten die eigenlijk niet in de nieuwe pool zitten. Voorbeelden: Secret Six Samurai - Rihan en Neo Blue-Eyes Ultimate Dragon (allebei van na 2014).
 
 Er staat nu een **schakelaar** klaar. Die staat standaard **AAN**.
 
@@ -332,7 +332,7 @@ node scripts/cardpool/build-v2-format-migration.mjs \
 - **Exempt cards** (since `202610301000`, the 14 Season 2 Boss Paths): `is_boss_route_exempt_card()` covers every `boss_route_stages.evolution_card_catalog_id` (all stages) plus every `boss_route_stage_grants` row with `is_route_exclusive`, of **active** routes only.
 - **When true:**
   - an exempt card is **deck-legal for its route owner only**: `validate_deck_card` asks `is_duelist_circle_deck_legal_for(card, deck owner)`, which needs a `player_boss_paths` row on an active route that hands out the card. Another player who got a copy (e.g. by trade) cannot deck it. `is_duelist_circle_deck_legal(card)` stays as the card-level answer;
-  - the copy limit is waived only for exempt cards **outside** the pool (`format_eligible = false`, e.g. Dark Magician of Chaos). Route cards inside the pool keep their banlist limit (e.g. Chaos Sorcerer stays semi-limited);
+  - the copy limit is waived only for exempt cards **outside** the pool (`format_eligible = false`, e.g. Secret Six Samurai - Rihan). Route cards inside the pool keep their banlist limit (e.g. Chaos Sorcerer stays semi-limited);
   - exempt cards are still never `format_eligible`, so draft, shop packs and singles never offer one that is outside the pool. Example: Blue-Eyes Alternative White Dragon, a post-2014 stage-2 evolution, stays out of packs.
 - **Always blocks, even when true:** `not_available` in Master Duel and an explicit `exclude` override.
 - **Design rule for the 14 routes:** a grant is `exclusive` exactly when it is outside the pool (68 pool-external route cards: evolutions + exclusive grants, per `generate-boss-routes-v3-migration.mjs --check` and the local DB on 2026-10-30); in-pool grants stay non-exclusive, so other players can still pull them. Stage-4 Bosses are always reserved (never in packs).
@@ -376,7 +376,7 @@ The full suite (`node scripts/sql-tests/run.mjs`) passes: 31 files / 573 checks 
 ### Known follow-ups (not done here)
 
 - **`src/lib/master-duel.ts`** still mirrors the old conservative rule. `isMasterDuelOfferable` uses `copyLimit > 0`, and `evaluateMasterDuelDeckLegality` flags MD-forbidden / limited / unknown cards. The deck builder's "Master Duel check" will therefore warn about cards that are fine in Unlimited rooms. Change it to block only `not_available`, and show our own `duelist_circle_card_limits` instead.
-- ~~Deck builder UI blocks `!format_eligible` client-side~~ **Done:** the builder uses `deck_legal` (`format_eligible` or a route-exempt card of the player's own active route, `decks/[id]/_lib/deck-builder-data.ts`) and shows our banlist limits. Verified in the 2026-10-30 rehearsal: the route owner can add Magician's Rod / Dark Magician of Chaos; another player gets a disabled "+".
+- ~~Deck builder UI blocks `!format_eligible` client-side~~ **Done:** the builder uses `deck_legal` (`format_eligible` or a route-exempt card of the player's own active route, `decks/[id]/_lib/deck-builder-data.ts`) and shows our banlist limits. Verified in the 2026-10-30 rehearsal: the route owner can add Magician's Rod / Dark Magician of Chaos; another player gets a disabled "+". (That Dark Magician route was replaced by Six Samurai later on 2026-10-30; same mechanism, covered by SQL test 59.)
 - **No general "max 3 copies per deck" rule** exists server-side, and it never has. Only the banlist limits are enforced. Adding a default of 3 is a new deck rule and needs the owner's OK.
 - ~~Welcome voucher labels still say "Season 1 welcome bonus"~~ **Done** in `202610121640` (note "Welcome bonus"; only the internal `source_type` is still `season1_welcome_bonus`).
 - **Test bots and the 2.0 numbers:** `tests/e2e/economy-rules.ts` has no 2.0 rule set yet, and the bots' global setup resets the local DB **without** step 2b, so they check the old placement numbers (400 / 300 / 200) on purpose. Switching them to 2.0 needs both: a `RULES_2_0` object (placements 350 / 200 / 100) and a global setup that applies `supabase/proposals/season2_numbers.sql` after the reset. Developer task, not a launch-night step.

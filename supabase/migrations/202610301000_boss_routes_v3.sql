@@ -64,7 +64,7 @@ from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 where s.stage_number in (2, 3, 4)
   and s.dp_cost_to_reach is not null
-  and r.code not in ('s2_dark_magician', 's2_cyber_dragon', 's2_armed_ojama', 's2_blue_eyes', 's2_red_eyes', 's2_elemental_hero', 's2_chaos_bls', 's2_gladiator_beast', 's2_zombie', 's2_harpie', 's2_toon', 's2_galaxy_eyes', 's2_atlantean_ocean', 's2_volcanic')
+  and r.code not in ('s2_blue_eyes', 's2_red_eyes', 's2_elemental_hero', 's2_ancient_gear', 's2_crystal_beast', 's2_chaos_bls', 's2_six_samurai', 's2_gladiator_beast', 's2_zombie', 's2_harpie', 's2_toon', 's2_galaxy_eyes', 's2_atlantean_ocean', 's2_volcanic')
 group by s.stage_number;
 
 -- A re-run (no old routes left after the Season 2 reset) copies from
@@ -75,7 +75,7 @@ from public.boss_route_stages s
 join public.boss_routes r on r.id = s.route_id
 where s.stage_number in (2, 3, 4)
   and s.dp_cost_to_reach is not null
-  and r.code in ('s2_dark_magician', 's2_cyber_dragon', 's2_armed_ojama', 's2_blue_eyes', 's2_red_eyes', 's2_elemental_hero', 's2_chaos_bls', 's2_gladiator_beast', 's2_zombie', 's2_harpie', 's2_toon', 's2_galaxy_eyes', 's2_atlantean_ocean', 's2_volcanic')
+  and r.code in ('s2_blue_eyes', 's2_red_eyes', 's2_elemental_hero', 's2_ancient_gear', 's2_crystal_beast', 's2_chaos_bls', 's2_six_samurai', 's2_gladiator_beast', 's2_zombie', 's2_harpie', 's2_toon', 's2_galaxy_eyes', 's2_atlantean_ocean', 's2_volcanic')
   and s.stage_number not in (select stage_number from boss_v3_prices)
 group by s.stage_number;
 
@@ -94,11 +94,11 @@ $prices$;
 update public.boss_routes
 set is_active = false,
     display_order = case when display_order < 100 then display_order + 100 else display_order end
-where code not in ('s2_dark_magician', 's2_cyber_dragon', 's2_armed_ojama', 's2_blue_eyes', 's2_red_eyes', 's2_elemental_hero', 's2_chaos_bls', 's2_gladiator_beast', 's2_zombie', 's2_harpie', 's2_toon', 's2_galaxy_eyes', 's2_atlantean_ocean', 's2_volcanic')
+where code not in ('s2_blue_eyes', 's2_red_eyes', 's2_elemental_hero', 's2_ancient_gear', 's2_crystal_beast', 's2_chaos_bls', 's2_six_samurai', 's2_gladiator_beast', 's2_zombie', 's2_harpie', 's2_toon', 's2_galaxy_eyes', 's2_atlantean_ocean', 's2_volcanic')
   and (is_active or display_order < 100);
 
 delete from public.boss_routes r
-where r.code not in ('s2_dark_magician', 's2_cyber_dragon', 's2_armed_ojama', 's2_blue_eyes', 's2_red_eyes', 's2_elemental_hero', 's2_chaos_bls', 's2_gladiator_beast', 's2_zombie', 's2_harpie', 's2_toon', 's2_galaxy_eyes', 's2_atlantean_ocean', 's2_volcanic')
+where r.code not in ('s2_blue_eyes', 's2_red_eyes', 's2_elemental_hero', 's2_ancient_gear', 's2_crystal_beast', 's2_chaos_bls', 's2_six_samurai', 's2_gladiator_beast', 's2_zombie', 's2_harpie', 's2_toon', 's2_galaxy_eyes', 's2_atlantean_ocean', 's2_volcanic')
   and not r.is_active
   and not exists (select 1 from public.player_boss_paths p where p.route_id = r.id)
   and not exists (
@@ -139,13 +139,13 @@ create temp table boss_v3_grants (
 ) on commit drop;
 
 insert into boss_v3_routes (code, name, display_order, teaser_story, how_it_plays, star_profile, target_power_grade) values
-  ('s2_dark_magician', 'Dark Magician', 1, 'The ultimate wizard never fights alone. Every spell in the book was written for him, and the apprentice who carries his staff knows exactly which page to turn to next.', 'Get Dark Magician on the field every turn and turn your spells into removal: Thousand Knives and Dark Magic Attack only work while he is out, so every turn is about protecting one wizard.', '{"startStrength":4,"growth":3,"bossPower":4,"synergy":5,"flexibility":2}'::jsonb, 'A'),
-  ('s2_cyber_dragon', 'Cyber Dragon', 2, 'A machine that wakes the moment your opponent thinks they are ahead. One cyber dragon becomes two, two become three, and the factory never stops building.', 'Punish the player who goes first: Cyber Dragons drop for free whenever only the opponent has monsters, then fuse into one huge Machine for a fast, heavy hit.', '{"startStrength":4,"growth":3,"bossPower":4,"synergy":4,"flexibility":3}'::jsonb, 'A'),
-  ('s2_armed_ojama', 'Armed Dragon & Ojama', 3, 'The Ojama brothers never win a fight, but they always get in the way. While they make a mess of the other side of the field, a small dragon quietly levels up into a walking armoury.', 'Level an Armed Dragon up from LV3 to LV10 while the Ojamas clog your opponent''s zones and feed your discards: every discard at LV5/LV7/LV10 blows up their monsters.', '{"startStrength":3,"growth":3,"bossPower":5,"synergy":4,"flexibility":3}'::jsonb, 'A'),
-  ('s2_blue_eyes', 'Blue-Eyes White Dragon', 4, 'Three white dragons, three thousand attack each, and a duelist who refused to believe in anything smaller. The legend says they were never meant to stay apart.', 'Pure power: cheat 3000-ATK dragons onto the field turn after turn, then fuse them into something your opponent''s monsters simply cannot fight.', '{"startStrength":3,"growth":4,"bossPower":4,"synergy":4,"flexibility":2}'::jsonb, 'A'),
-  ('s2_red_eyes', 'Red-Eyes Black Dragon', 5, 'It was never the strongest dragon in the room, only the one with the most potential. Knock it down and it comes back angrier, and every fall leaves a scar on the other player.', 'Your graveyard is your hand: Red-Eyes keep coming back from the GY, and every big dragon that hits the field or the GY burns your opponent''s Life Points.', '{"startStrength":3,"growth":3,"bossPower":4,"synergy":4,"flexibility":3}'::jsonb, 'A'),
-  ('s2_elemental_hero', 'Elemental HERO', 6, 'Every hero has a weakness, which is why they never come alone. Two of them step into the light together, and something new walks out.', 'A toolbox: keep your heroes small, then fuse them into the exact answer the board needs - a monster-shrinker, a backrow-breaker or a burning finisher.', '{"startStrength":3,"growth":3,"bossPower":4,"synergy":4,"flexibility":5}'::jsonb, 'A'),
-  ('s2_chaos_bls', 'Chaos Soldier', 7, 'Light and darkness, held in perfect balance by a warrior who was born from a ritual. Feed the graveyard one of each, and the balance tips - always in his favour.', 'Keep one LIGHT and one DARK monster in your graveyard at all times: they power the ritual soldiers and the Boss, who banish whatever stands in the way.', '{"startStrength":4,"growth":3,"bossPower":5,"synergy":4,"flexibility":3}'::jsonb, 'A'),
+  ('s2_blue_eyes', 'Blue-Eyes White Dragon', 1, 'Three white dragons, three thousand attack each, and a duelist who refused to believe in anything smaller. The legend says they were never meant to stay apart.', 'Pure power: cheat 3000-ATK dragons onto the field turn after turn, then fuse them into something your opponent''s monsters simply cannot fight.', '{"startStrength":3,"growth":4,"bossPower":4,"synergy":4,"flexibility":2}'::jsonb, 'A'),
+  ('s2_red_eyes', 'Red-Eyes Black Dragon', 2, 'It was never the strongest dragon in the room, only the one with the most potential. Knock it down and it comes back angrier, and every fall leaves a scar on the other player.', 'Your graveyard is your hand: Red-Eyes keep coming back from the GY, and every big dragon that hits the field or the GY burns your opponent''s Life Points.', '{"startStrength":3,"growth":3,"bossPower":4,"synergy":4,"flexibility":3}'::jsonb, 'A'),
+  ('s2_elemental_hero', 'Elemental HERO', 3, 'Every hero has a weakness, which is why they never come alone. Two of them step into the light together, and something new walks out.', 'A toolbox: keep your heroes small, then fuse them into the exact answer the board needs - a monster-shrinker, a backrow-breaker or a burning finisher.', '{"startStrength":3,"growth":3,"bossPower":4,"synergy":4,"flexibility":5}'::jsonb, 'A'),
+  ('s2_ancient_gear', 'Ancient Gear', 4, 'In a forgotten cellar under the academy, rusted gears begin to turn again. Every machine that climbs out is bigger than the last, and none of them lets you pull a trick while it swings.', 'Tribute small gears into giant ones: Ancient Gear monsters shut off your opponent''s Spells and Traps whenever they attack, so you win by building one huge, piercing machine and swinging into a board that cannot answer in battle.', '{"startStrength":3,"growth":3,"bossPower":4,"synergy":4,"flexibility":2}'::jsonb, 'A'),
+  ('s2_crystal_beast', 'Crystal Beast', 5, 'Seven gems were sent across the sea, and the ship never arrived. The beasts sleep inside their crystals until someone gathers all seven - and then the sky turns every colour at once.', 'Your monsters never really die: a destroyed Crystal Beast turns into a gem in your Spell & Trap Zone. Collect gems to fuel a 4000-ATK thunder wall, and once seven different beasts are gathered, call a dragon that can send the whole field back to the Deck.', '{"startStrength":3,"growth":3,"bossPower":4,"synergy":5,"flexibility":2}'::jsonb, 'A'),
+  ('s2_chaos_bls', 'Chaos Soldier', 6, 'Light and darkness, held in perfect balance by a warrior who was born from a ritual. Feed the graveyard one of each, and the balance tips - always in his favour.', 'Keep one LIGHT and one DARK monster in your graveyard at all times: they power the ritual soldiers and the Boss, who banish whatever stands in the way.', '{"startStrength":4,"growth":3,"bossPower":5,"synergy":4,"flexibility":3}'::jsonb, 'A'),
+  ('s2_six_samurai', 'Six Samurai', 7, 'Six warriors swore an oath under one banner. Alone each one is just a sword, but they guard each other''s backs - and the clan''s oldest secret only wakes when three different clans stand side by side.', 'Swarm the field with samurai that summon each other for free and take hits for one another, then take the opponent apart one card per turn: they pop Spells and Traps, destroy monsters, and finally banish whatever is left.', '{"startStrength":3,"growth":3,"bossPower":4,"synergy":5,"flexibility":3}'::jsonb, 'A'),
   ('s2_gladiator_beast', 'Gladiator Beasts', 8, 'In the arena nobody fights twice in a row. When the trumpet sounds, the beast who just fought walks out of the gate and a fresh one walks in, angrier than the last.', 'Attack every turn, then tag your Gladiator Beast out for a fresh one from the Deck with a new effect - and shuffle three of them together into the Boss who stops spells and traps.', '{"startStrength":3,"growth":4,"bossPower":4,"synergy":5,"flexibility":3}'::jsonb, 'A'),
   ('s2_zombie', 'Zombie Horde', 9, 'You can destroy them. You can send them to the grave. It only makes them closer to home. The horde does not count its losses - it counts how many get back up.', 'Trade monsters freely, because the graveyard is a second hand: Zombies revive each other every turn, and the Boss turns every Zombie effect into a banish.', '{"startStrength":3,"growth":3,"bossPower":4,"synergy":4,"flexibility":3}'::jsonb, 'A'),
   ('s2_harpie', 'Harpie Ladies', 10, 'Three sisters, one pet dragon and a hunting ground where no trap is safe. They are graceful, they are fast, and they never, ever come alone.', 'Flood the field with Harpie Ladies: each one that lands on the hunting ground pops a Spell or Trap, and a full flock blows up monsters and swoops in for direct hits.', '{"startStrength":3,"growth":4,"bossPower":3,"synergy":5,"flexibility":3}'::jsonb, 'A'),
@@ -155,18 +155,6 @@ insert into boss_v3_routes (code, name, display_order, teaser_story, how_it_play
   ('s2_volcanic', 'Volcanic Inferno', 14, 'Deep under the mountain the fire never sleeps. Small sparks become cannons, cannons become eruptions, and every monster that stands near the crater pays the price in Life Points.', 'Win without attacking: feed small Volcanics to the Blaze Accelerators to destroy monsters and burn Life Points, then let the Boss melt the whole opposing field.', '{"startStrength":4,"growth":3,"bossPower":4,"synergy":4,"flexibility":2}'::jsonb, 'A');
 
 insert into boss_v3_stages (code, stage_number, card_name) values
-  ('s2_dark_magician', 1, 'Dark Magician'),
-  ('s2_dark_magician', 2, 'Dark Magician Girl'),
-  ('s2_dark_magician', 3, 'Ebon Illusion Magician'),
-  ('s2_dark_magician', 4, 'Dark Magician of Chaos'),
-  ('s2_cyber_dragon', 1, 'Cyber Dragon'),
-  ('s2_cyber_dragon', 2, 'Cyber Twin Dragon'),
-  ('s2_cyber_dragon', 3, 'Cyber End Dragon'),
-  ('s2_cyber_dragon', 4, 'Cyber Dragon Infinity'),
-  ('s2_armed_ojama', 1, 'Armed Dragon LV3'),
-  ('s2_armed_ojama', 2, 'Armed Dragon LV5'),
-  ('s2_armed_ojama', 3, 'Armed Dragon LV7'),
-  ('s2_armed_ojama', 4, 'Armed Dragon LV10'),
   ('s2_blue_eyes', 1, 'Blue-Eyes White Dragon'),
   ('s2_blue_eyes', 2, 'Blue-Eyes Alternative White Dragon'),
   ('s2_blue_eyes', 3, 'Blue-Eyes Twin Burst Dragon'),
@@ -179,10 +167,22 @@ insert into boss_v3_stages (code, stage_number, card_name) values
   ('s2_elemental_hero', 2, 'Elemental HERO Flame Wingman'),
   ('s2_elemental_hero', 3, 'Elemental HERO Great Tornado'),
   ('s2_elemental_hero', 4, 'Elemental HERO Shining Flare Wingman'),
+  ('s2_ancient_gear', 1, 'Ancient Gear Soldier'),
+  ('s2_ancient_gear', 2, 'Ancient Gear Engineer'),
+  ('s2_ancient_gear', 3, 'Ancient Gear Golem'),
+  ('s2_ancient_gear', 4, 'Ultimate Ancient Gear Golem'),
+  ('s2_crystal_beast', 1, 'Crystal Beast Sapphire Pegasus'),
+  ('s2_crystal_beast', 2, 'Crystal Beast Rainbow Dragon'),
+  ('s2_crystal_beast', 3, 'Hamon, Lord of Striking Thunder'),
+  ('s2_crystal_beast', 4, 'Rainbow Dragon'),
   ('s2_chaos_bls', 1, 'Black Luster Soldier'),
   ('s2_chaos_bls', 2, 'Black Luster Soldier - Super Soldier'),
   ('s2_chaos_bls', 3, 'Chaos Sorcerer'),
   ('s2_chaos_bls', 4, 'Black Luster Soldier - Envoy of the Beginning'),
+  ('s2_six_samurai', 1, 'The Six Samurai - Zanji'),
+  ('s2_six_samurai', 2, 'Grandmaster of the Six Samurai'),
+  ('s2_six_samurai', 3, 'Enishi, Shien''s Chancellor'),
+  ('s2_six_samurai', 4, 'Secret Six Samurai - Rihan'),
   ('s2_gladiator_beast', 1, 'Gladiator Beast Laquari'),
   ('s2_gladiator_beast', 2, 'Gladiator Beast Darius'),
   ('s2_gladiator_beast', 3, 'Gladiator Beast Gyzarus'),
@@ -213,39 +213,6 @@ insert into boss_v3_stages (code, stage_number, card_name) values
   ('s2_volcanic', 4, 'Volcanic Doomfire');
 
 insert into boss_v3_grants (code, stage_number, card_name, is_route_exclusive, quantity) values
-  ('s2_dark_magician', 1, 'Apprentice Illusion Magician', false, 1),
-  ('s2_dark_magician', 1, 'Magician''s Rod', true, 1),
-  ('s2_dark_magician', 1, 'Thousand Knives', false, 1),
-  ('s2_dark_magician', 2, 'Dark Magic Attack', false, 1),
-  ('s2_dark_magician', 2, 'Magician Navigation', true, 1),
-  ('s2_dark_magician', 2, 'Magical Dimension', false, 1),
-  ('s2_dark_magician', 3, 'Eternal Soul', false, 1),
-  ('s2_dark_magician', 3, 'Magician of Dark Illusion', true, 1),
-  ('s2_dark_magician', 3, 'Sage''s Stone', false, 1),
-  ('s2_dark_magician', 4, 'Dedication through Light and Darkness', false, 1),
-  ('s2_dark_magician', 4, 'Illusion Magic', true, 1),
-  ('s2_cyber_dragon', 1, 'Cyber Dragon Core', false, 1),
-  ('s2_cyber_dragon', 1, 'Cyber Emergency', false, 1),
-  ('s2_cyber_dragon', 1, 'Cyber Dragon Herz', false, 1),
-  ('s2_cyber_dragon', 2, 'Power Bond', false, 1),
-  ('s2_cyber_dragon', 2, 'Cyber Revsystem', true, 1),
-  ('s2_cyber_dragon', 2, 'Cyber Dragon Nachster', true, 1),
-  ('s2_cyber_dragon', 3, 'Cyber Dragon Nova', false, 1),
-  ('s2_cyber_dragon', 3, 'Cyber Network', false, 1),
-  ('s2_cyber_dragon', 3, 'Overload Fusion', false, 1),
-  ('s2_cyber_dragon', 4, 'Cyber Eternity Dragon', true, 1),
-  ('s2_cyber_dragon', 4, 'Cyber Repair Plant', false, 1),
-  ('s2_armed_ojama', 1, 'Level Up!', false, 1),
-  ('s2_armed_ojama', 1, 'Ojamagic', false, 1),
-  ('s2_armed_ojama', 1, 'Ojama Trio', false, 1),
-  ('s2_armed_ojama', 2, 'Ojama Pajama', true, 1),
-  ('s2_armed_ojama', 2, 'Ojama Green', false, 1),
-  ('s2_armed_ojama', 2, 'Armed Dragon Thunder LV3', true, 1),
-  ('s2_armed_ojama', 3, 'Ojama Delta Hurricane!!', false, 1),
-  ('s2_armed_ojama', 3, 'Armed Dragon Flash', true, 1),
-  ('s2_armed_ojama', 3, 'Ojama Black', false, 1),
-  ('s2_armed_ojama', 4, 'Big Bang Shot', false, 1),
-  ('s2_armed_ojama', 4, 'Ojama Yellow', false, 1),
   ('s2_blue_eyes', 1, 'The White Stone of Legend', false, 1),
   ('s2_blue_eyes', 1, 'Trade-In', false, 1),
   ('s2_blue_eyes', 1, 'Return of the Dragon Lords', false, 1),
@@ -279,6 +246,28 @@ insert into boss_v3_grants (code, stage_number, card_name, is_route_exclusive, q
   ('s2_elemental_hero', 3, 'Masked HERO Divine Wind', true, 1),
   ('s2_elemental_hero', 4, 'Miracle Fusion', false, 1),
   ('s2_elemental_hero', 4, 'Fifth Hope', false, 1),
+  ('s2_ancient_gear', 1, 'Ancient Gear Wyvern', true, 1),
+  ('s2_ancient_gear', 1, 'Ancient Gear Box', false, 1),
+  ('s2_ancient_gear', 1, 'Geartown', false, 1),
+  ('s2_ancient_gear', 2, 'Ancient Gear Beast', false, 1),
+  ('s2_ancient_gear', 2, 'Ancient Gear Reborn', true, 1),
+  ('s2_ancient_gear', 2, 'Ancient Gear Fist', false, 1),
+  ('s2_ancient_gear', 3, 'Ancient Gear Frame', true, 1),
+  ('s2_ancient_gear', 3, 'Ancient Gear Hunting Hound', true, 1),
+  ('s2_ancient_gear', 3, 'Ancient Gear Workshop', false, 1),
+  ('s2_ancient_gear', 4, 'Ancient Gear Gadjiltron Dragon', false, 1),
+  ('s2_ancient_gear', 4, 'Ancient Gear Castle', false, 1),
+  ('s2_crystal_beast', 1, 'Crystal Beast Ruby Carbuncle', false, 1),
+  ('s2_crystal_beast', 1, 'Crystal Bond', true, 1),
+  ('s2_crystal_beast', 1, 'Rare Value', false, 1),
+  ('s2_crystal_beast', 2, 'Crystal Beast Amethyst Cat', false, 1),
+  ('s2_crystal_beast', 2, 'Crystal Beast Topaz Tiger', false, 1),
+  ('s2_crystal_beast', 2, 'Crystal Conclave', true, 1),
+  ('s2_crystal_beast', 3, 'Ancient City - Rainbow Ruins', false, 1),
+  ('s2_crystal_beast', 3, 'Crystal Beast Amber Mammoth', false, 1),
+  ('s2_crystal_beast', 3, 'Crystal Beast Cobalt Eagle', false, 1),
+  ('s2_crystal_beast', 4, 'Crystal Beast Emerald Tortoise', false, 1),
+  ('s2_crystal_beast', 4, 'Rainbow Path', false, 1),
   ('s2_chaos_bls', 1, 'Super Soldier Synthesis', true, 1),
   ('s2_chaos_bls', 1, 'Gateway to Chaos', true, 1),
   ('s2_chaos_bls', 1, 'D.D. Warrior Lady', false, 1),
@@ -290,6 +279,17 @@ insert into boss_v3_grants (code, stage_number, card_name, is_route_exclusive, q
   ('s2_chaos_bls', 3, 'Gaia The Fierce Knight', false, 1),
   ('s2_chaos_bls', 4, 'Super Soldier Shield', true, 1),
   ('s2_chaos_bls', 4, 'Black Luster Ritual', false, 1),
+  ('s2_six_samurai', 1, 'Shien''s Smoke Signal', false, 1),
+  ('s2_six_samurai', 1, 'Legendary Six Samurai - Kizan', false, 1),
+  ('s2_six_samurai', 1, 'The Six Samurai - Yaichi', false, 1),
+  ('s2_six_samurai', 2, 'Six Samurai United', false, 1),
+  ('s2_six_samurai', 2, 'Secret Six Samurai - Kizaru', true, 1),
+  ('s2_six_samurai', 2, 'The Six Samurai - Kamon', false, 1),
+  ('s2_six_samurai', 3, 'Musakani Magatama', false, 1),
+  ('s2_six_samurai', 3, 'Six Strike - Double Assault', true, 1),
+  ('s2_six_samurai', 3, 'Shien''s Squire', false, 1),
+  ('s2_six_samurai', 4, 'Secret Skills of the Six Samurai', true, 1),
+  ('s2_six_samurai', 4, 'The Six Samurai - Irou', false, 1),
   ('s2_gladiator_beast', 1, 'Gladiator Proving Ground', false, 1),
   ('s2_gladiator_beast', 1, 'Test Tiger', false, 1),
   ('s2_gladiator_beast', 1, 'Gladiator Beast Equeste', false, 1),

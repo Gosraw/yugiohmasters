@@ -40,20 +40,21 @@ const BOSS_ARENA_FILES =
 
 // Season 2 route code -> arena file.
 const BOSS_ARENA_ART: Record<string, string> = {
-  s2_dark_magician:
-    "dark_magician",
-  s2_cyber_dragon:
-    "cyber_dragon",
-  s2_armed_ojama:
-    "armed_dragon_ojama",
   s2_blue_eyes:
     "blue_eyes",
   s2_red_eyes:
     "red_eyes",
   s2_elemental_hero:
     "elemental_hero",
+  s2_ancient_gear:
+    "ancient_gear",
+  s2_crystal_beast:
+    "crystal_beast",
   s2_chaos_bls:
     "chaos_bls",
+  // Armour racks, weapons and a forge: a samurai armoury.
+  s2_six_samurai:
+    "armed_dragon_ojama",
   // Grand gate between two statues: the closest thing to an arena.
   s2_gladiator_beast:
     "cubic",

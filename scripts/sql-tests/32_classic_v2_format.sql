@@ -1,5 +1,6 @@
--- 2.0 card pool, part 3 (generated 202610121030): the inactive
--- 'duelist_circle_classic_v2' format = exactly the 6,136 playable
+-- 2.0 card pool, part 3 (generated 202610121030, replaced after the
+-- group vote by 202610301200): the inactive
+-- 'duelist_circle_classic_v2' format = exactly the 6,167 playable
 -- cards of data/cardpool/classic-v2-pool.json, proposed rarities kept
 -- apart from live game_rarity, Boss-route exemption behind a flag.
 
@@ -22,7 +23,7 @@ begin
 
   perform pg_temp.assert_eq(
     (select count(*)::integer from public.format_card_overrides where format_id = v2.id and override_type = 'include'),
-    6136, '6,136 curated includes');
+    6167, '6,167 curated includes');
 
   -- OCG-only Master Duel cards were added to the catalog, inactive.
   perform pg_temp.assert_eq(
@@ -37,10 +38,10 @@ begin
   -- Proposed rarities: complete, matching ranking-v2, NOT live.
   perform pg_temp.assert_eq(
     (select count(*)::integer from public.duelist_circle_proposed_rarities where format_code = v2.code),
-    6136, '6,136 proposed rarities');
+    6167, '6,167 proposed rarities');
   perform pg_temp.assert_eq(
     (select count(*)::integer from public.duelist_circle_proposed_rarities where format_code = v2.code and proposed_rarity = 'Legendary'),
-    45, '45 proposed Legendaries (ranking-v2)');
+    21, '21 proposed Legendaries (ranking-v2 after the group vote, 202610301200)');
   perform pg_temp.assert_eq(
     (select proposed_rarity from public.duelist_circle_proposed_rarities p
      join public.card_catalog c on c.id = p.card_catalog_id
@@ -60,7 +61,7 @@ begin
   from public.card_catalog c
   where public.is_duelist_circle_format_eligible(c.id, v2.id);
 
-  perform pg_temp.assert_eq(eligible_count, 6136, 'format eligibility = exactly the 6,136 playable pool cards');
+  perform pg_temp.assert_eq(eligible_count, 6167, 'format eligibility = exactly the 6,167 playable pool cards');
 
   perform pg_temp.assert_eq(public.is_duelist_circle_format_eligible(
     (select id from public.card_catalog where name = 'Chaos Emperor Dragon - Envoy of the End'), v2.id),
@@ -91,7 +92,7 @@ begin
 
   perform pg_temp.assert_eq(
     (select count(*)::integer from public.card_catalog c where public.is_duelist_circle_deck_legal(c.id)),
-    6136, 'exemption off: exactly the 6,136 pool cards are deck-legal');
+    6167, 'exemption off: exactly the 6,167 pool cards are deck-legal');
   perform pg_temp.assert_eq(public.is_duelist_circle_deck_legal(
     (select id from public.card_catalog where name = 'Crimson Nova the Dark Cubic Lord')),
     false, 'exemption off: Crimson Nova is not deck-legal');

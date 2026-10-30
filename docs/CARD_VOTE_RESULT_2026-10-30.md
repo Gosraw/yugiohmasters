@@ -1,7 +1,21 @@
 # Uitslag kaartstemming (2026-10-30)
 
-**Status: VOORSTEL. Er is nog niets veranderd.** Dit is de lijst die uit de stemming komt.
-Pas als jij "ja" zegt (of wijzigingen geeft), komen de uitslagen in de echte bestanden en in de 2.0-database.
+**Status: TOEGEPAST (30 oktober 2026).** Jij hebt de uitslag goedgekeurd, met de besluiten hieronder.
+De uitslag zit nu in de bestanden en in `supabase/migrations/202610301200_classic_v2_format_after_vote.sql`. Dat bestand gaat op de lanceeravond mee met de andere migraties.
+
+## Besluit eigenaar (30 oktober 2026)
+
+1. **De stemming is dicht.** Vlak voor het toepassen is alles nog één keer geteld, alleen door te lezen. Er was niets veranderd: dezelfde 542 stemmen en dezelfde 222 veranderingen. De laatste stem was van 15 oktober.
+2. **Alle 34 kaarten die terugkomen uit "verboden" mogen maximaal 1 keer per deck,** elk met de zeldzaamheid waarop gestemd is. Dat geldt ook voor Imperial Order, Royal Oppression, Time Seal, Gravity Bind, de Barrier Statues, de Vanity-kaarten, Cannon Soldier en Magical Explosion.
+3. **Giant Trunade** (Legendary → Secret Rare) mag ook **maximaal 1 keer per deck**.
+4. **Mind Drain** wordt 3 per deck, zoals gestemd. Hij blijft Ultra Rare.
+5. **21 Legendaries is goed.** De vrijgekomen plekken worden niet opgevuld. Kaarten waarover niet gestemd is, houden precies hun zeldzaamheid (dat is ook nagecontroleerd).
+6. **De 33 kaarten met een gelijkspel** blijven zoals voorgesteld. Er zijn geen aanpassingen.
+
+**Gevolg voor de banlijst:**
+- 69 kaarten zijn verboden.
+- 104 kaarten mogen maximaal 1 keer per deck (was 70).
+- 15 kaarten mogen maximaal 2 keer per deck.
 
 ## Hoe is er geteld?
 
@@ -21,7 +35,7 @@ Van de 409 kaarten veranderen er **222**. 187 blijven zoals voorgesteld: 154 omd
 
 | Soort verandering | Aantal |
 |---|---|
-| Verboden → **toegestaan** | **34** (19× Secret Rare, 10× Ultra Rare, 2× Super Rare, 3× Rare) |
+| Verboden → **toegestaan** (max 1 per deck) | **34** (19× Secret Rare, 10× Ultra Rare, 2× Super Rare, 3× Rare) |
 | Legendary → Secret Rare | **21** |
 | Legendary → **verboden** | **3** (Sophia, Goddess of Rebirth · Meklord Emperor Wisel · Evilswarm Exciton Knight) |
 | Max 1 per deck → 3 per deck | **1** (Mind Drain; blijft Ultra Rare) |
@@ -65,7 +79,7 @@ Van de 409 kaarten veranderen er **222**. 187 blijven zoals voorgesteld: 154 omd
 - **Van de 32 andere Legendaries worden er 20 Secret Rare.** Daardoor zijn er straks maar 21 Legendaries in plaats van 45.
 - **Bij 150 van de 222 veranderingen heeft alleen sam gestemd.** Volgens de regel telt dat gewoon, want hij was de enige stemmer. Het zijn vooral de Boss Route-lijsten. Kijk daar even naar als je wilt.
 
-## Vragen voor jou (graag antwoord voordat ik iets toepas)
+## Vragen die er waren (zijn nu beantwoord, zie "Besluit eigenaar")
 
 1. **Hoeveel per deck mogen 4 kaarten die op de officiële lijst van oktober 2014 verboden waren?**
    - Het gaat om Imperial Order, Royal Oppression, Time Seal en Giant Trunade.
@@ -128,40 +142,40 @@ Hier kun jij beslissen als je wilt. Anders blijft het voorstel staan.
 
 | Kaart | Voorstel | Uitslag | Stemmen |
 |---|---|---|---|
-| Anti-Spell Fragrance | Verboden | **Toegestaan als Ultra Rare** (3 per deck) | faro: toestaan (Super Rare) · sam: toestaan (Ultra Rare) · bossg\*: toestaan (Ultra Rare) |
-| Archlord Kristya | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Ultra Rare) · bossg\*: toestaan (Secret Rare) |
-| Barrier Statue of the Abyss | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Secret Rare) |
-| Barrier Statue of the Drought | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Secret Rare) |
-| Barrier Statue of the Heavens | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Secret Rare) |
-| Barrier Statue of the Inferno | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Secret Rare) |
-| Barrier Statue of the Stormwinds | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Secret Rare) |
-| Barrier Statue of the Torrent | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Secret Rare) |
-| Cannon Soldier | Verboden | **Toegestaan als Rare** (3 per deck) | faro: toestaan (Normal) · sam: toestaan (Rare) |
-| Cannon Soldier MK-2 | Verboden | **Toegestaan als Rare** (3 per deck) | faro: toestaan (Normal) · sam: toestaan (Rare) |
-| Chain Material | Verboden | **Toegestaan als Ultra Rare** (3 per deck) | faro: toestaan (Normal) · sam: toestaan (Ultra Rare) |
-| Evilswarm Ophion | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Normal) · sam: toestaan (Ultra Rare) · bossg\*: toestaan (Secret Rare) |
-| Fossil Dyna Pachycephalo | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Secret Rare) · sam: buiten houden · bossg\*: toestaan (Ultra Rare) |
-| Gozen Match | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Secret Rare) · bossg\*: toestaan (Secret Rare) |
-| Gravity Bind | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Super Rare) · sam: toestaan (Secret Rare) |
-| Imperial Order | Verboden | **Toegestaan als Secret Rare** (per deck: zie vraag 1) | faro: toestaan (Rare) · sam: toestaan (Secret Rare) · bossg: toestaan (Ultra Rare) |
-| Level Limit - Area B | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Secret Rare) |
-| Magical Explosion | Verboden | **Toegestaan als Rare** (max 1 per deck, zoals de lijst van 2014) | faro: toestaan (Normal) · sam: toestaan (Rare) |
-| Majesty's Fiend | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Ultra Rare) · sam: toestaan (Secret Rare) · bossg\*: toestaan (Secret Rare) |
-| Mask of Restrict | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Secret Rare) |
-| Messenger of Peace | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Super Rare) · sam: toestaan (Secret Rare) |
-| Mistake | Verboden | **Toegestaan als Ultra Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Ultra Rare) · bossg\*: toestaan (Ultra Rare) |
-| Non-Fusion Area | Verboden | **Toegestaan als Ultra Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Ultra Rare) · bossg\*: toestaan (Ultra Rare) |
-| Red Screen | Verboden | **Toegestaan als Ultra Rare** (3 per deck) | faro: toestaan (Normal) · sam: toestaan (Ultra Rare) |
-| Rivalry of Warlords | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Secret Rare) · bossg\*: toestaan (Secret Rare) |
-| Royal Decree | Verboden | **Toegestaan als Secret Rare** (3 per deck) | faro: toestaan (Super Rare) · sam: toestaan (Secret Rare) · bossg: toestaan (Secret Rare) |
-| Royal Oppression | Verboden | **Toegestaan als Ultra Rare** (per deck: zie vraag 1) | faro: toestaan (Secret Rare) · sam: toestaan (Ultra Rare) · bossg: toestaan (Ultra Rare) |
-| Summon Limit | Verboden | **Toegestaan als Ultra Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Ultra Rare) |
-| Time Seal | Verboden | **Toegestaan als Super Rare** (per deck: zie vraag 1) | faro: toestaan (Normal) · sam: toestaan (Rare) · bossg: toestaan (Super Rare) |
-| Vanity's Emptiness | Verboden | **Toegestaan als Ultra Rare** (3 per deck) | faro: toestaan (Ultra Rare) · sam: toestaan (Ultra Rare) · bossg: toestaan (Ultra Rare) |
-| Vanity's Fiend | Verboden | **Toegestaan als Ultra Rare** (3 per deck) | faro: toestaan (Rare) · sam: toestaan (Ultra Rare) · bossg: toestaan (Ultra Rare) |
-| Vanity's Ruler | Verboden | **Toegestaan als Ultra Rare** (3 per deck) | faro: toestaan (Ultra Rare) · sam: toestaan (Super Rare) · bossg\*: buiten houden |
-| Wall of Revealing Light | Verboden | **Toegestaan als Secret Rare** (max 1 per deck, zoals de lijst van 2014) | faro: toestaan (Ultra Rare) · sam: toestaan (Secret Rare) |
-| Wind-Up Magician | Verboden | **Toegestaan als Super Rare** (max 1 per deck, zoals de lijst van 2014) | faro: toestaan (Normal) · sam: toestaan (Super Rare) |
+| Anti-Spell Fragrance | Verboden | **Toegestaan als Ultra Rare** (max 1 per deck) | faro: toestaan (Super Rare) · sam: toestaan (Ultra Rare) · bossg\*: toestaan (Ultra Rare) |
+| Archlord Kristya | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Ultra Rare) · bossg\*: toestaan (Secret Rare) |
+| Barrier Statue of the Abyss | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Secret Rare) |
+| Barrier Statue of the Drought | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Secret Rare) |
+| Barrier Statue of the Heavens | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Secret Rare) |
+| Barrier Statue of the Inferno | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Secret Rare) |
+| Barrier Statue of the Stormwinds | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Secret Rare) |
+| Barrier Statue of the Torrent | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Secret Rare) |
+| Cannon Soldier | Verboden | **Toegestaan als Rare** (max 1 per deck) | faro: toestaan (Normal) · sam: toestaan (Rare) |
+| Cannon Soldier MK-2 | Verboden | **Toegestaan als Rare** (max 1 per deck) | faro: toestaan (Normal) · sam: toestaan (Rare) |
+| Chain Material | Verboden | **Toegestaan als Ultra Rare** (max 1 per deck) | faro: toestaan (Normal) · sam: toestaan (Ultra Rare) |
+| Evilswarm Ophion | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Normal) · sam: toestaan (Ultra Rare) · bossg\*: toestaan (Secret Rare) |
+| Fossil Dyna Pachycephalo | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Secret Rare) · sam: buiten houden · bossg\*: toestaan (Ultra Rare) |
+| Gozen Match | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Secret Rare) · bossg\*: toestaan (Secret Rare) |
+| Gravity Bind | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Super Rare) · sam: toestaan (Secret Rare) |
+| Imperial Order | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Secret Rare) · bossg: toestaan (Ultra Rare) |
+| Level Limit - Area B | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Secret Rare) |
+| Magical Explosion | Verboden | **Toegestaan als Rare** (max 1 per deck) | faro: toestaan (Normal) · sam: toestaan (Rare) |
+| Majesty's Fiend | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Ultra Rare) · sam: toestaan (Secret Rare) · bossg\*: toestaan (Secret Rare) |
+| Mask of Restrict | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Secret Rare) |
+| Messenger of Peace | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Super Rare) · sam: toestaan (Secret Rare) |
+| Mistake | Verboden | **Toegestaan als Ultra Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Ultra Rare) · bossg\*: toestaan (Ultra Rare) |
+| Non-Fusion Area | Verboden | **Toegestaan als Ultra Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Ultra Rare) · bossg\*: toestaan (Ultra Rare) |
+| Red Screen | Verboden | **Toegestaan als Ultra Rare** (max 1 per deck) | faro: toestaan (Normal) · sam: toestaan (Ultra Rare) |
+| Rivalry of Warlords | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Secret Rare) · bossg\*: toestaan (Secret Rare) |
+| Royal Decree | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Super Rare) · sam: toestaan (Secret Rare) · bossg: toestaan (Secret Rare) |
+| Royal Oppression | Verboden | **Toegestaan als Ultra Rare** (max 1 per deck) | faro: toestaan (Secret Rare) · sam: toestaan (Ultra Rare) · bossg: toestaan (Ultra Rare) |
+| Summon Limit | Verboden | **Toegestaan als Ultra Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Super Rare) · bossg\*: toestaan (Ultra Rare) |
+| Time Seal | Verboden | **Toegestaan als Super Rare** (max 1 per deck) | faro: toestaan (Normal) · sam: toestaan (Rare) · bossg: toestaan (Super Rare) |
+| Vanity's Emptiness | Verboden | **Toegestaan als Ultra Rare** (max 1 per deck) | faro: toestaan (Ultra Rare) · sam: toestaan (Ultra Rare) · bossg: toestaan (Ultra Rare) |
+| Vanity's Fiend | Verboden | **Toegestaan als Ultra Rare** (max 1 per deck) | faro: toestaan (Rare) · sam: toestaan (Ultra Rare) · bossg: toestaan (Ultra Rare) |
+| Vanity's Ruler | Verboden | **Toegestaan als Ultra Rare** (max 1 per deck) | faro: toestaan (Ultra Rare) · sam: toestaan (Super Rare) · bossg\*: buiten houden |
+| Wall of Revealing Light | Verboden | **Toegestaan als Secret Rare** (max 1 per deck) | faro: toestaan (Ultra Rare) · sam: toestaan (Secret Rare) |
+| Wind-Up Magician | Verboden | **Toegestaan als Super Rare** (max 1 per deck) | faro: toestaan (Normal) · sam: toestaan (Super Rare) |
 
 ### Voorstel: max 1 per deck
 
@@ -178,7 +192,7 @@ Hier kun jij beslissen als je wilt. Anders blijft het voorstel staan.
 | Kaart | Voorstel | Uitslag | Stemmen |
 |---|---|---|---|
 | Evilswarm Exciton Knight | Legendary | **Verboden** | faro: klopt · sam: te sterk · bossg\*: te sterk |
-| Giant Trunade | Legendary | **Secret Rare** (per deck: zie vraag 1) | faro: klopt · sam: te zwak · bossg\*: te zwak |
+| Giant Trunade | Legendary | **Secret Rare** (max 1 per deck) | faro: klopt · sam: te zwak · bossg\*: te zwak |
 
 ### Legendary-kaarten
 

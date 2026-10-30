@@ -12,13 +12,13 @@ Het technische deel (Engels) staat onderaan, in de [Appendix](#technical-appendi
 
 ### A. De stemming afronden
 
-De groep stemt in de app over de kaarten (**Profile → Card Vote**).
-Daarna moeten de uitslagen in twee bestanden komen:
+**Klaar (30 oktober 2026).** De stemming is gesloten en de uitslag is verwerkt, met jouw besluiten. Zie `docs/CARD_VOTE_RESULT_2026-10-30.md`.
 
-- `data/banlists/duelist-circle-proposal.json`
-- `data/cardpool/ranking-v2.json`
+- `data/cardpool/vote-results-2026-10-30.json`: de uitslag per kaart.
+- `data/banlists/duelist-circle-proposal.json` en `data/cardpool/ranking-v2.json`: bijgewerkt.
+- `supabase/migrations/202610301200_classic_v2_format_after_vote.sql`: het nieuwe databestand. Er zijn nu 6.167 speelbare kaarten, waarvan 21 Legendary.
 
-Dat doet de ontwikkelaar (of een AI-hulp) voor je. Daarna maakt die het databestand opnieuw met:
+Je hoeft hier niets meer te doen. Moet de uitslag ooit opnieuw, dan draait de ontwikkelaar dit (met een **nieuwe** bestandsnaam, want het bestand van 30 oktober is dan misschien al gebruikt):
 
 ```
 node scripts/cardpool/build-pool.mjs
@@ -82,11 +82,14 @@ for f in supabase/migrations/2026101[245]*.sql; do case "$f" in *202610120500_ca
 
 Deze regel doet alle bestanden van 12, 14 en 15 oktober, in de goede volgorde. Eén bestand wordt bewust **overgeslagen** (`202610120500_card_votes.sql`): de echte database heeft de stemming al sinds 12 oktober, en dat oude testbestand zou daar een fout geven. Je ziet dan `-- skip ...`; dat is goed.
 
-Heb je in stap A een nieuw bestand gemaakt (`..._classic_v2_format_after_vote.sql`)? Voer dat daarna ook uit:
+De uitslag van de kaartstemming zit in `202610301200_classic_v2_format_after_vote.sql`, en het verbergen van de minigames in `202610301100_hide_mini_games.sql`. Allebei zijn bestanden van 30 oktober. Doet de regel hierboven de bestanden van 30 oktober (`20261030*`) nog niet? Voer ze dan daarna los uit, in deze volgorde:
 
 ```
-psql "$DB" -v ON_ERROR_STOP=1 -q -f supabase/migrations/<nieuwe-datum>_classic_v2_format_after_vote.sql
+psql "$DB" -v ON_ERROR_STOP=1 -q -f supabase/migrations/202610301100_hide_mini_games.sql
+psql "$DB" -v ON_ERROR_STOP=1 -q -f supabase/migrations/202610301200_classic_v2_format_after_vote.sql
 ```
+
+Bij het laatste bestand zie je `Classic v2 seed OK: 6167 includes, 188 banlist rows, 6167 proposed rarities`.
 
 Wat je ziet: per bestand een regel `== supabase/migrations/...`, en geen `ERROR`.
 
@@ -122,8 +125,8 @@ Wat je moet zien:
 
 Controleer in de `POST-FLIGHT`-regels:
 
-- `exactly 6136 eligible cards`. Is de pool na de stemming veranderd? Dan staat hier het nieuwe aantal.
-- `rarities live - Legendary 45, ...`
+- `exactly 6167 eligible cards` (het aantal na de stemming; vóór de stemming was het 6136).
+- `rarities live - Legendary 21, Secret Rare 219, Ultra Rare 1103, Super Rare 1270, Rare 1513, Normal 2041`
 - het juiste aantal spelers bij `league memberships (roles unchanged)`.
 
 **STOP als:** je `ERROR` of `ABORTED` ziet. Er is dan niets veranderd. Kopieer de melding en vraag om hulp.
@@ -200,7 +203,7 @@ Apply with the loop in step 2 (`2026101[245]*.sql`). Two special cases:
 | `202610120900_shadow_arena.sql` | Auto battler on top of the mini game tables. Check for later `2026101209xx` auto battler files too. | auto battler |
 | `202610121000_master_duel_unlimited_rooms.sql` | **Master Duel = Unlimited rooms.** `is_master_duel_offerable()` now blocks only `not_available` (forbidden / limited / semi / unlimited / unknown pass). The format engine blocks `not_available` absolutely, and lets `unknown` through only for curated include overrides. Same signatures, so every caller (draft, shop packs, singles, special packs, format engine) picks it up. | card pool |
 | `202610121010_classic_v2_banlist_and_format_schema.sql` | `duelist_circle_card_limits` (our banlist) + `duelist_circle_proposed_rarities`; format flags `curated_pool_only` and `boss_route_exempt`; `is_boss_route_exempt_card()`; final `is_duelist_circle_format_eligible()`; `is_duelist_circle_deck_legal()`; `duelist_circle_deck_copy_limit()`; `validate_deck_card` now uses deck legality; two new triggers enforce copy limits on `deck_cards` insert/update (`add_card_to_deck`) and on `decks.status → ready` (`set_deck_status`). With no active format, nothing changes. | card pool |
-| `202610121030_classic_v2_format_seed.sql` | **Generated** (`scripts/cardpool/build-v2-format-migration.mjs`). Adds 151 OCG-only Master Duel cards to `card_catalog` (`format_eligible = false`, MD status `unknown`); the inactive format row `duelist_circle_classic_v2`; 6,136 include overrides; 185 banlist rows (100 forbidden / 70 limited / 15 semi); 6,136 proposed rarities (Legendary 45 / Secret 200 / Ultra 1,145 / Super 1,193 / Rare 1,509 / Normal 2,044). Ends with count assertions. Re-runnable: it replaces this format's rows and never touches `is_active`. | card pool |
+| `202610121030_classic_v2_format_seed.sql` | **Generated** (`scripts/cardpool/build-v2-format-migration.mjs`). Adds 151 OCG-only Master Duel cards to `card_catalog` (`format_eligible = false`, MD status `unknown`); the inactive format row `duelist_circle_classic_v2`; 6,136 include overrides; 185 banlist rows (100 forbidden / 70 limited / 15 semi); 6,136 proposed rarities (Legendary 45 / Secret 200 / Ultra 1,145 / Super 1,193 / Rare 1,509 / Normal 2,044). Ends with count assertions. Re-runnable: it replaces this format's rows and never touches `is_active`. Superseded after the group vote by `202610301200`. | card pool |
 | `202610121100_perk_weekly_cap.sql` | Weekly cap on perk (real-life achievement) DP: `perk_config.weekly_dp_cap` (default 600, null = no cap), ISO week in Europe/Amsterdam on approval time; `approve_achievement_claim()` refuses approvals over the cap (claim stays pending); `perk_dp_this_week()` read helper. | rewards |
 | `202610121110_shadow_arena_title.sql` | `_mini_game_title()` labels the auto battler "Shadow Arena" in reward descriptions / ledger notes (game key stays `auto_battler`; old ledger rows keep their text). | auto battler |
 | `202610121200_security_review_fixes.sql` | Security: RLS + no client rights on `season1_welcome_bonus_claims` (closes repeatable welcome-pack claims); `perk_dp_this_week` no longer callable by anon; drops default write grants on the 2.0 season / weekly-goal / title tables. Additive. | security |
@@ -228,6 +231,7 @@ Apply with the loop in step 2 (`2026101[245]*.sql`). Two special cases:
 | `202610152040_initial_draft_guards.sql` | Initial Draft strictly one-time (any seat in a non-cancelled draft counts, advisory lock), Boss Route required first; the admin `start_initial_draft` refuses players who had one. | draft |
 | `202610152050_small_security_and_goal_fixes.sql` | `consume_reward_voucher` and `_phase*_verify_introspect` no longer callable by anon / players; tiebreak duels don't count for weekly goals. | security, weekly goals |
 | `202610301100_hide_mini_games.sql` | 2.0 launches without mini games: every `mini_game_catalog` game goes inactive (`start_game_run` refuses them) and players can no longer call `settle_mini_game_period` (no mini game payouts). Nothing dropped; idempotent. The app hides `/games` behind `MINI_GAMES_ENABLED` in `src/lib/games/flag.ts`. | mini games |
+| `202610301200_classic_v2_format_after_vote.sql` | **Generated** (`build-v2-format-migration.mjs`), the card vote result (`docs/CARD_VOTE_RESULT_2026-10-30.md`, `data/cardpool/vote-results-2026-10-30.json`). Replaces the inactive Classic v2 format's rows from `202610121030`: 6,167 include overrides; 188 banlist rows (69 forbidden / 104 limited / 15 semi); 6,167 proposed rarities (Legendary 21 / Secret 219 / Ultra 1,103 / Super 1,270 / Rare 1,513 / Normal 2,041); same 151 catalog additions. Ends with count assertions; re-runnable. Must run AFTER `202610121030`. | card pool |
 
 **Backwards compatibility.** These migrations share the production database with the live `main` app.
 `202610121000` takes effect immediately: Master Duel-forbidden cards that are already `format_eligible` become offerable in the live draft and shop.
@@ -240,7 +244,7 @@ So apply the whole set on launch night only, directly followed by the reset scri
 - **Pre-flight:**
   - every public table must be in the wipe/keep plan, and an unknown table aborts the run (new auto battler tables must be classified first);
   - no kept table may have a RESTRICT / NO ACTION FK to a wiped table;
-  - Classic v2 must have 6,136 includes, 6,136 rarities and at least 1 banlist row (update these numbers on purpose if the vote changes the pool);
+  - Classic v2 must have 6,167 includes, 6,167 rarities and at least 1 banlist row (6,136 before the 2026-10-30 vote; the script's expected numbers must say 6167);
   - exactly one current season, which is season 2;
   - `launch_date` must be within −7 to +60 days;
   - every league that has members must have an admin.
@@ -268,7 +272,7 @@ So apply the whole set on launch night only, directly followed by the reset scri
   - memberships and roles are identical to the snapshot;
   - profiles, leagues, catalog, titles and votes have the same counts;
   - the season starts on `launch_date`;
-  - v2 is the only active format, and exactly the 6,136 pool cards are eligible;
+  - v2 is the only active format, and exactly the 6,167 pool cards are eligible (6,136 before the vote);
   - every pool card has its proposed rarity;
   - the active singles rotation only holds pool cards;
   - as information only, it prints special packs that have fewer than 40 cards left in the new pool.
@@ -278,6 +282,7 @@ So apply the whole set on launch night only, directly followed by the reset scri
 - Every assertion passed.
 - It would wipe 1,704 rows and reset 4,850 DP across 3 profiles.
 - Result: 6,136 eligible cards. Rarities: Legendary 45, Secret 200, Ultra 1,145, Super 1,193, Rare 1,509, Normal 2,044.
+- 2026-10-30, after the vote (`202610301100` + `202610301200` on a throwaway copy of the devstack DB, the reset script with 6136 -> 6167): every assertion passed; 6,167 eligible cards; Legendary 21, Secret 219, Ultra 1,103, Super 1,270, Rare 1,513, Normal 2,041.
 - The singles rotation was regenerated.
 - Everything was rolled back.
 
@@ -311,6 +316,7 @@ node scripts/cardpool/build-v2-format-migration.mjs \
   - the forbidden count must equal the number of non-playable pool cards;
   - the ranking must cover exactly the playable cards;
   - the output must pass the quote-safety scanner (`findUnsafeSqlLiteral`).
+- **Group vote (2026-10-30).** `rank-pool.mjs` reads `data/cardpool/vote-results-2026-10-30.json`: it cuts the tiers on the PRE-vote statuses (the ranking the group voted on), then lays every changed card's voted rarity / status on top. Freed slots are not refilled (owner), so no card outside the vote moves. Deck limits come from `duelist-circle-proposal.json` (every card the vote allowed is `limited_1_per_deck`, owner). `rank-pool.mjs` no longer rewrites `ranking-vote-lists.json` (the record of what was voted on) unless you pass `--write-vote-lists`.
 - **Once a seed has been applied anywhere,** emit a **new** file name. The SQL replaces the format's rows, so a later file supersedes the earlier one.
 
 ### Boss-route exemption (owner decided 2026-10-12: exempt = ON)
@@ -349,8 +355,8 @@ node scripts/cardpool/build-v2-format-migration.mjs \
   - `set_deck_status('ready')` refuses a deck after a limit is tightened.
 - `32_classic_v2_format.sql`:
   - the format row is inactive, curated, Fusion + Xyz only, cutoff 2014;
-  - 6,136 includes, 151 catalog additions and 6,136 rarities, with live `game_rarity` untouched;
-  - eligibility is exactly 6,136;
+  - 6,167 includes, 151 catalog additions, 6,167 rarities and 21 Legendaries (after the 2026-10-30 vote), with live `game_rarity` untouched;
+  - eligibility is exactly 6,167;
   - deck legality with the exemption on and off;
   - Junk Synchron and Synchro Barrier are out;
   - the unknown-status OCG card is in.

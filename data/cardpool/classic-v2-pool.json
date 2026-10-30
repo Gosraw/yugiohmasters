@@ -1,6 +1,6 @@
 {
  "summary": {
-  "generated_at": "2026-10-12T00:23:13.731Z",
+  "generated_at": "2026-10-30T14:21:21.298Z",
   "catalog": {
    "source": "https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes",
    "fetched_at": "2026-10-12T00:11:00.803Z",
@@ -15,7 +15,7 @@
    "effective_from": "2014-10-01",
    "effective_to": "2014-12-31"
   },
-  "proposal_entries": 61,
+  "proposal_entries": 62,
   "exclusion_counts_catalog_wide": {
    "catalog_total": 14606,
    "out_of_scope_type": 230,
@@ -34,7 +34,7 @@
    "not_in_master_duel": 23
   },
   "pool_total": 6236,
-  "pool_playable": 6136,
+  "pool_playable": 6167,
   "pool_by_source": {
    "core": 6211,
    "curated_include": 25
@@ -58,12 +58,12 @@
    "Flip Tuner Effect Monster": 1
   },
   "pool_by_final_status": {
-   "unlimited": 6038,
+   "unlimited": 6037,
    "semi_limited": 15,
    "limited": 60,
-   "forbidden": 100,
-   "limited_1_per_deck": 10,
-   "legendary_unique": 13
+   "limited_1_per_deck": 44,
+   "forbidden": 69,
+   "legendary_unique": 11
   },
   "pool_by_era_banlist": {
    "unlimited": 6084,
@@ -74,20 +74,23 @@
   "verdict_overrides_era": [
    "Chain Strike: semi_limited -> limited_1_per_deck",
    "Dark Hole: limited -> legendary_unique",
-   "Giant Trunade: forbidden -> legendary_unique",
+   "Giant Trunade: forbidden -> limited_1_per_deck",
    "Harpie's Feather Duster: forbidden -> legendary_unique",
    "Heavy Storm: forbidden -> legendary_unique",
-   "Magical Explosion: limited -> forbidden",
+   "Imperial Order: forbidden -> limited_1_per_deck",
+   "Magical Explosion: limited -> limited_1_per_deck",
    "Raigeki: limited -> legendary_unique",
+   "Royal Oppression: forbidden -> limited_1_per_deck",
+   "Time Seal: forbidden -> limited_1_per_deck",
    "Torrential Tribute: limited -> legendary_unique",
-   "Wall of Revealing Light: limited -> forbidden",
-   "Wind-Up Magician: limited -> forbidden"
+   "Wall of Revealing Light: limited -> limited_1_per_deck",
+   "Wind-Up Magician: limited -> limited_1_per_deck"
   ],
   "classic_not_in_master_duel": 23,
   "soft_mechanic_mentions_kept": 88,
   "boss_route_issue_counts": {
-   "info": 14,
-   "blocking": 17,
+   "info": 15,
+   "blocking": 16,
    "era_gap": 38
   },
   "boss_route_issues": [
@@ -260,11 +263,11 @@
     "issue": "not in pool: 2015-2018 release, no include override"
    },
    {
-    "severity": "blocking",
+    "severity": "info",
     "route": "dinosaur",
     "card": "Fossil Dyna Pachycephalo",
     "role": "stage 2 support grant",
-    "issue": "status forbidden (our proposal)"
+    "issue": "status limited_1_per_deck (our proposal)"
    },
    {
     "severity": "era_gap",
@@ -5065,12 +5068,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 41098335,
@@ -6157,12 +6160,12 @@
    "in_md": true,
    "md_rarity": "Ultra Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 18378582,
@@ -9097,12 +9100,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 19740112,
@@ -9118,12 +9121,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 46145256,
@@ -9139,12 +9142,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 47961808,
@@ -9160,12 +9163,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 73356503,
@@ -9181,12 +9184,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 10963799,
@@ -9202,12 +9205,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 88610708,
@@ -17098,12 +17101,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "burn_loop",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 14702066,
@@ -17119,12 +17122,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "burn_loop",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 95614612,
@@ -18337,12 +18340,12 @@
    "in_md": true,
    "md_rarity": "Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "ftk_otk_engine",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 91623717,
@@ -39085,12 +39088,12 @@
    "in_md": true,
    "md_rarity": "Ultra Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "legendary_unique",
+   "dc_verdict": "forbidden",
    "dc_category": "mass_removal",
-   "final_status": "legendary_unique",
-   "max_copies_per_deck": 1,
-   "league_unique": true,
-   "playable": true
+   "final_status": "forbidden",
+   "max_copies_per_deck": 0,
+   "league_unique": false,
+   "playable": false
   },
   {
    "id": 31456110,
@@ -39295,12 +39298,12 @@
    "in_md": true,
    "md_rarity": "Ultra Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 38273745,
@@ -44839,12 +44842,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 23869735,
@@ -50446,11 +50449,11 @@
    "in_md": true,
    "md_rarity": "Ultra Rare",
    "era_banlist": "forbidden",
-   "dc_verdict": "legendary_unique",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "mass_removal",
-   "final_status": "legendary_unique",
+   "final_status": "limited_1_per_deck",
    "max_copies_per_deck": 1,
-   "league_unique": true,
+   "league_unique": false,
    "playable": true
   },
   {
@@ -53407,12 +53410,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 79571449,
@@ -54562,12 +54565,12 @@
    "in_md": true,
    "md_rarity": "Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_stall",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 35220244,
@@ -60778,12 +60781,12 @@
    "in_md": true,
    "md_rarity": "Ultra Rare",
    "era_banlist": "forbidden",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 90434657,
@@ -69052,12 +69055,12 @@
    "in_md": true,
    "md_rarity": "Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_stall",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 61850482,
@@ -72370,12 +72373,12 @@
    "in_md": true,
    "md_rarity": "Ultra Rare",
    "era_banlist": "limited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "ftk_otk_engine",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 46474915,
@@ -73126,12 +73129,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 60102563,
@@ -74239,12 +74242,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 56948373,
@@ -75877,12 +75880,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": null,
-   "dc_category": null,
-   "final_status": "unlimited",
-   "max_copies_per_deck": 3,
+   "dc_verdict": "forbidden",
+   "dc_category": "group_vote",
+   "final_status": "forbidden",
+   "max_copies_per_deck": 0,
    "league_unique": false,
-   "playable": true
+   "playable": false
   },
   {
    "id": 77864539,
@@ -76612,12 +76615,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_stall",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 49808196,
@@ -77473,10 +77476,10 @@
    "in_md": true,
    "md_rarity": "Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "limited_1_per_deck",
-   "dc_category": "lock_floodgate",
-   "final_status": "limited_1_per_deck",
-   "max_copies_per_deck": 1,
+   "dc_verdict": null,
+   "dc_category": null,
+   "final_status": "unlimited",
+   "max_copies_per_deck": 3,
    "league_unique": false,
    "playable": true
   },
@@ -78754,12 +78757,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 45159319,
@@ -84445,12 +84448,12 @@
    "in_md": true,
    "md_rarity": "Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 20065549,
@@ -95806,12 +95809,12 @@
    "in_md": true,
    "md_rarity": "Common",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_stall",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 81354330,
@@ -98158,12 +98161,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 56339050,
@@ -98914,12 +98917,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 54040221,
@@ -99061,12 +99064,12 @@
    "in_md": true,
    "md_rarity": "Ultra Rare",
    "era_banlist": "forbidden",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 26586849,
@@ -106495,12 +106498,12 @@
    "in_md": true,
    "md_rarity": "Ultra Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": null,
-   "dc_category": null,
-   "final_status": "unlimited",
-   "max_copies_per_deck": 3,
+   "dc_verdict": "forbidden",
+   "dc_category": "group_vote",
+   "final_status": "forbidden",
+   "max_copies_per_deck": 0,
    "league_unique": false,
-   "playable": true
+   "playable": false
   },
   {
    "id": 88619463,
@@ -111052,12 +111055,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 89493368,
@@ -118297,12 +118300,12 @@
    "in_md": true,
    "md_rarity": "Ultra Rare",
    "era_banlist": "forbidden",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_turn_skip",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 71625222,
@@ -123421,12 +123424,12 @@
    "in_md": true,
    "md_rarity": "Ultra Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 47084486,
@@ -123442,12 +123445,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 72634965,
@@ -123463,12 +123466,12 @@
    "in_md": true,
    "md_rarity": "Ultra Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_floodgate",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 32233746,
@@ -125185,12 +125188,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "limited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "lock_stall",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 2779999,
@@ -127243,12 +127246,12 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "limited",
-   "dc_verdict": "forbidden",
+   "dc_verdict": "limited_1_per_deck",
    "dc_category": "hand_loop",
-   "final_status": "forbidden",
-   "max_copies_per_deck": 0,
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
-   "playable": false
+   "playable": true
   },
   {
    "id": 42874792,

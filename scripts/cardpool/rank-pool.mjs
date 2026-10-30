@@ -28,6 +28,15 @@
 //      regression suite) are applied as overrides, the same doctrine
 //      Season 1 used (scripts/apply-final-season1-rarities.mjs).
 //   5. Tier sizes are cut by rank to the Season 1 shape (TARGETS).
+//   6. Group vote (data/cardpool/vote-results-2026-10-30.json): steps
+//      3-5 run on the PRE-vote statuses (the ranking the group voted
+//      on), then every card the vote changed gets its voted rarity /
+//      status on top. Freed slots are NOT refilled (owner, 2026-10-30),
+//      so no card outside the vote moves.
+//
+// data/cardpool/ranking-vote-lists.json is the record of what was
+// voted on; it is only rewritten with --write-vote-lists (it also
+// reads data/boss-route-registry.mjs for the route lists).
 
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -110,6 +119,24 @@ function toCatalogRow(c) {
 const poolFile = read("data/cardpool/classic-v2-pool.json");
 const catalog = new Map(read("data/external/ygoprodeck-cardinfo.json").data.map((c) => [c.id, c]));
 const proposal = read("data/banlists/duelist-circle-proposal.json");
+const vote = read("data/cardpool/vote-results-2026-10-30.json");
+const voteById = new Map(vote.cards.filter((v) => v.changed).map((v) => [v.id, v]));
+const WRITE_VOTE_LISTS = process.argv.includes("--write-vote-lists");
+
+// Status the card had in the ranking the group voted on.
+const preVoteStatus = (pc) => voteById.get(pc.id)?.before.status ?? pc.final_status;
+
+for (const v of voteById.values()) {
+  const pc = (poolFile.cards ?? []).find((c) => c.id === v.id);
+
+  if (!pc) {
+    throw new Error(`vote card ${v.id} (${v.name}) is not in classic-v2-pool.json`);
+  }
+
+  if (pc.final_status !== v.after.status) {
+    throw new Error(`${v.name}: pool status ${pc.final_status} but the vote says ${v.after.status} - update duelist-circle-proposal.json and rerun build-pool.mjs`);
+  }
+}
 const round2 = read("docs/human-calibration-round2-2026-08-30.json").cards;
 
 const HUMAN = {};
@@ -134,7 +161,7 @@ for (const [name, value] of Object.entries(APPROVED_9)) {
 
 const evaluated = [];
 
-for (const pc of poolFile.cards.filter((c) => c.playable)) {
+for (const pc of poolFile.cards.filter((c) => c.playable || preVoteStatus(c) !== "forbidden")) {
   const raw = catalog.get(pc.id);
 
   if (!raw) {
@@ -151,6 +178,7 @@ for (const pc of poolFile.cards.filter((c) => c.playable)) {
 
   evaluated.push({
     pc,
+    status: preVoteStatus(pc),
     raw,
     row,
     scores,
@@ -209,7 +237,7 @@ function assign(cards, options) {
   const sc = (c) => (options.useCorrections ? c.corrected.scores : c.scores);
 
   for (const c of cards) {
-    if (c.pc.final_status === "legendary_unique") {
+    if (c.status === "legendary_unique") {
       fixed.set(c, "Legendary");
       note(c, "owner concept: one-sided board wipe / proposal 'legendary_unique' -> Legendary (1 copy in the league)");
       continue;
@@ -303,12 +331,12 @@ function assign(cards, options) {
 
   // Banlist floors (limited cards tend toward higher rarity).
   for (const c of free) {
-    const floor = floorFor(c.pc.final_status);
+    const floor = floorFor(c.status);
     const now = out.get(c);
 
     if (rank(floor) > rank(now)) {
       out.set(c, floor);
-      note(c, `2014 list / proposal status "${c.pc.final_status}" -> at least ${floor} (was ${now})`);
+      note(c, `2014 list / proposal status "${c.status}" -> at least ${floor} (was ${now})`);
     }
   }
 
@@ -324,9 +352,34 @@ function assign(cards, options) {
   };
 }
 
-const finalAssign = assign(evaluated, { useHuman: true, useCorrections: true });
-const noHumanCorrected = assign(evaluated, { useHuman: false, useCorrections: true });
-const noHumanRaw = assign(evaluated, { useHuman: false, useCorrections: false });
+// The tier cut runs on the pre-vote pool (see step 6 above).
+const cutCards = evaluated.filter((c) => c.status !== "forbidden");
+const finalAssign = assign(cutCards, { useHuman: true, useCorrections: true });
+const noHumanCorrected = assign(cutCards, { useHuman: false, useCorrections: true });
+const noHumanRaw = assign(cutCards, { useHuman: false, useCorrections: false });
+
+// Step 6: the group vote on top. Cards that are not playable after the
+// vote drop out; every changed card gets its voted rarity.
+const finalRarity = new Map();
+
+for (const c of evaluated.filter((e) => e.pc.playable)) {
+  const v = voteById.get(c.pc.id);
+  const rarity = v ? v.after.rarity : finalAssign.rarity.get(c);
+
+  if (!rarity) {
+    throw new Error(`${c.pc.name}: no rarity after the vote`);
+  }
+
+  finalRarity.set(c, rarity);
+
+  if (v && v.after.rarity !== v.before.rarity) {
+    finalAssign.notes.set(c, [...(finalAssign.notes.get(c) ?? []), `group vote 2026-10-30: ${v.proposed} -> ${v.result} (${v.votes.join("; ")})`]);
+  } else if (v) {
+    finalAssign.notes.set(c, [...(finalAssign.notes.get(c) ?? []), `group vote 2026-10-30: ${v.proposed} -> ${v.result}, rarity stays ${rarity}`]);
+  }
+}
+
+const ranked = evaluated.filter((e) => finalRarity.has(e));
 
 // ---------------------------------------------------------------
 // Calibration agreement
@@ -345,7 +398,7 @@ function agreement(label, rarityOf, subset) {
 
   for (const [name, human] of Object.entries(HUMAN)) {
     if (subset && human.source !== subset) continue;
-    const c = evaluated.find((e) => e.pc.name === name);
+    const c = cutCards.find((e) => e.pc.name === name);
     if (!c) continue;
     const r = rarityOf(c);
     res.cards++;
@@ -366,7 +419,7 @@ const VARIANTS = [
   ["engine + correction layer (proposeRarity on corrected scores)", (c) => c.correctedRarity],
   ["engine + policy + tier sizing (no corrections, no human overrides)", (c) => noHumanRaw.rarity.get(c)],
   ["engine + corrections + policy + tier sizing (no human overrides)", (c) => noHumanCorrected.rarity.get(c)],
-  ["final (with human overrides)", (c) => finalAssign.rarity.get(c)],
+  ["final (with human overrides, before the group vote)", (c) => finalAssign.rarity.get(c)],
 ];
 
 const calibration = {};
@@ -394,9 +447,9 @@ function reasonsFor(c) {
   return reasons;
 }
 
-const sortedFinal = [...evaluated].sort(
+const sortedFinal = [...ranked].sort(
   (a, b) =>
-    rank(finalAssign.rarity.get(b)) - rank(finalAssign.rarity.get(a)) ||
+    rank(finalRarity.get(b)) - rank(finalRarity.get(a)) ||
     b.corrected.scores.draftValue - a.corrected.scores.draftValue
 );
 
@@ -407,7 +460,7 @@ const rankingCards = sortedFinal.map((c, index) => ({
   type: c.pc.type,
   archetype: c.raw.archetype ?? null,
   status: c.pc.final_status,
-  proposed_rarity: finalAssign.rarity.get(c),
+  proposed_rarity: finalRarity.get(c),
   engine_rarity: c.engineRarity,
   context: c.context,
   scores: {
@@ -461,12 +514,20 @@ const ranking = {
     excluded_forbidden: excludedCards.length,
     targets: TARGETS,
     distribution,
+    distribution_before_group_vote: Object.fromEntries(
+      [...RARITY_ORDER].reverse().map((r) => [r, [...finalAssign.rarity.values()].filter((x) => x === r).length])
+    ),
+    group_vote: {
+      file: "data/cardpool/vote-results-2026-10-30.json",
+      changed_cards: voteById.size,
+      note: "Tiers were cut on the pre-vote statuses; the vote result is laid on top and freed slots are not refilled (owner, 2026-10-30).",
+    },
     engine_only_distribution: Object.fromEntries(
-      [...RARITY_ORDER].reverse().map((r) => [r, evaluated.filter((c) => c.engineRarity === r).length])
+      [...RARITY_ORDER].reverse().map((r) => [r, ranked.filter((c) => c.engineRarity === r).length])
     ),
     legendary_by_type: byTypeLegendary,
     correction_tag_counts: Object.fromEntries(
-      Object.keys(TAG_LABELS).map((t) => [t, evaluated.filter((c) => c.corrected.tags.includes(t)).length])
+      Object.keys(TAG_LABELS).map((t) => [t, ranked.filter((c) => c.corrected.tags.includes(t)).length])
     ),
     calibration: Object.fromEntries(
       Object.entries(calibration).map(([k, v]) => [
@@ -662,7 +723,9 @@ const voteLists = {
   lists,
 };
 
-writeFileSync(path.join(ROOT, "data/cardpool/ranking-vote-lists.json"), JSON.stringify(voteLists, null, 1) + "\n");
+if (WRITE_VOTE_LISTS) {
+  writeFileSync(path.join(ROOT, "data/cardpool/ranking-vote-lists.json"), JSON.stringify(voteLists, null, 1) + "\n");
+}
 
 // ---------------------------------------------------------------
 // Report
@@ -682,7 +745,8 @@ for (const [subset, rows] of Object.entries(calibration)) {
   }
 }
 
-console.log("\nvote lists:", voteLists.totals);
+console.log("\ngroup vote: %d changed cards applied (before the vote: %o)", voteById.size, ranking.summary.distribution_before_group_vote);
+console.log(`\nvote lists${WRITE_VOTE_LISTS ? "" : " (NOT written - pass --write-vote-lists; the file is the record of the 2026-10-12 vote)"}:`, voteLists.totals);
 for (const l of lists) {
   console.log(`  ${l.key}: ${l.items.length} entries, ${l.items.filter((i) => i.vote_here).length} votes`);
 }

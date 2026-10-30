@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-12T00:23:13.731Z",
+  "generated_at": "2026-10-30T14:21:21.298Z",
   "catalog": {
     "source": "https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes",
     "fetched_at": "2026-10-12T00:11:00.803Z",
@@ -14,7 +14,7 @@
     "effective_from": "2014-10-01",
     "effective_to": "2014-12-31"
   },
-  "proposal_entries": 61,
+  "proposal_entries": 62,
   "exclusion_counts_catalog_wide": {
     "catalog_total": 14606,
     "out_of_scope_type": 230,
@@ -33,7 +33,7 @@
     "not_in_master_duel": 23
   },
   "pool_total": 6236,
-  "pool_playable": 6136,
+  "pool_playable": 6167,
   "pool_by_source": {
     "core": 6211,
     "curated_include": 25
@@ -57,12 +57,12 @@
     "Flip Tuner Effect Monster": 1
   },
   "pool_by_final_status": {
-    "unlimited": 6038,
+    "unlimited": 6037,
     "semi_limited": 15,
     "limited": 60,
-    "forbidden": 100,
-    "limited_1_per_deck": 10,
-    "legendary_unique": 13
+    "limited_1_per_deck": 44,
+    "forbidden": 69,
+    "legendary_unique": 11
   },
   "pool_by_era_banlist": {
     "unlimited": 6084,
@@ -73,20 +73,23 @@
   "verdict_overrides_era": [
     "Chain Strike: semi_limited -> limited_1_per_deck",
     "Dark Hole: limited -> legendary_unique",
-    "Giant Trunade: forbidden -> legendary_unique",
+    "Giant Trunade: forbidden -> limited_1_per_deck",
     "Harpie's Feather Duster: forbidden -> legendary_unique",
     "Heavy Storm: forbidden -> legendary_unique",
-    "Magical Explosion: limited -> forbidden",
+    "Imperial Order: forbidden -> limited_1_per_deck",
+    "Magical Explosion: limited -> limited_1_per_deck",
     "Raigeki: limited -> legendary_unique",
+    "Royal Oppression: forbidden -> limited_1_per_deck",
+    "Time Seal: forbidden -> limited_1_per_deck",
     "Torrential Tribute: limited -> legendary_unique",
-    "Wall of Revealing Light: limited -> forbidden",
-    "Wind-Up Magician: limited -> forbidden"
+    "Wall of Revealing Light: limited -> limited_1_per_deck",
+    "Wind-Up Magician: limited -> limited_1_per_deck"
   ],
   "classic_not_in_master_duel": 23,
   "soft_mechanic_mentions_kept": 88,
   "boss_route_issue_counts": {
-    "info": 14,
-    "blocking": 17,
+    "info": 15,
+    "blocking": 16,
     "era_gap": 38
   },
   "boss_route_issues": [
@@ -259,11 +262,11 @@
       "issue": "not in pool: 2015-2018 release, no include override"
     },
     {
-      "severity": "blocking",
+      "severity": "info",
       "route": "dinosaur",
       "card": "Fossil Dyna Pachycephalo",
       "role": "stage 2 support grant",
-      "issue": "status forbidden (our proposal)"
+      "issue": "status limited_1_per_deck (our proposal)"
     },
     {
       "severity": "era_gap",

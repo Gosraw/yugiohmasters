@@ -14,7 +14,17 @@ De uitslag zit nu in de bestanden en in `supabase/migrations/202610301200_classi
 
 **Gevolg voor de banlijst:**
 - 69 kaarten zijn verboden.
-- 104 kaarten mogen maximaal 1 keer per deck (was 70).
+- 107 kaarten mogen maximaal 1 keer per deck (was 70). Daar zitten de 3 kaarten van hieronder bij.
+
+**Later toegevoegd door de eigenaar (30 oktober 2026, voor de balans van de nieuwe Boss Routes):**
+deze 3 kaarten uit de pool mogen ook **maximaal 1 keer per deck**. Hun zeldzaamheid blijft hetzelfde.
+Dit komt niet uit de stemming, maar is een besluit van de eigenaar.
+
+| Kaart | Was | Wordt | Zeldzaamheid (blijft) | Waarom |
+|---|---|---|---|---|
+| Shien's Advisor | 3 per deck | **Max 1 per deck** | Super Rare | Six Samurai-route |
+| Ancient Gear Fusion | 3 per deck | **Max 1 per deck** | Normal | Ancient Gear-route |
+| Chaos Ancient Gear Giant | 3 per deck | **Max 1 per deck** | Normal | Ancient Gear-route |
 - 15 kaarten mogen maximaal 2 keer per deck.
 
 ## Hoe is er geteld?

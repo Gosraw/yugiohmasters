@@ -1,6 +1,6 @@
 {
  "summary": {
-  "generated_at": "2026-10-30T14:21:21.298Z",
+  "generated_at": "2026-10-30T19:39:09.152Z",
   "catalog": {
    "source": "https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes",
    "fetched_at": "2026-10-12T00:11:00.803Z",
@@ -15,7 +15,7 @@
    "effective_from": "2014-10-01",
    "effective_to": "2014-12-31"
   },
-  "proposal_entries": 62,
+  "proposal_entries": 65,
   "exclusion_counts_catalog_wide": {
    "catalog_total": 14606,
    "out_of_scope_type": 230,
@@ -58,10 +58,10 @@
    "Flip Tuner Effect Monster": 1
   },
   "pool_by_final_status": {
-   "unlimited": 6037,
+   "unlimited": 6034,
    "semi_limited": 15,
    "limited": 60,
-   "limited_1_per_deck": 44,
+   "limited_1_per_deck": 47,
    "forbidden": 69,
    "legendary_unique": 11
   },
@@ -89,7 +89,7 @@
   "classic_not_in_master_duel": 23,
   "soft_mechanic_mentions_kept": 88,
   "boss_route_issue_counts": {
-   "info": 15,
+   "info": 16,
    "blocking": 16,
    "era_gap": 38
   },
@@ -401,6 +401,13 @@
     "card": "Limiter Removal",
     "role": "stage 2 support grant",
     "issue": "status limited (2014 list)"
+   },
+   {
+    "severity": "info",
+    "route": "ancient_gear",
+    "card": "Ancient Gear Fusion",
+    "role": "stage 3 support grant",
+    "issue": "status limited_1_per_deck (our proposal)"
    },
    {
     "severity": "era_gap",
@@ -4417,10 +4424,10 @@
    "in_md": true,
    "md_rarity": "Super Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": null,
-   "dc_category": null,
-   "final_status": "unlimited",
-   "max_copies_per_deck": 3,
+   "dc_verdict": "limited_1_per_deck",
+   "dc_category": "boss_route_balance",
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
    "playable": true
   },
@@ -18592,10 +18599,10 @@
    "in_md": true,
    "md_rarity": "Ultra Rare",
    "era_banlist": "unlimited",
-   "dc_verdict": null,
-   "dc_category": null,
-   "final_status": "unlimited",
-   "max_copies_per_deck": 3,
+   "dc_verdict": "limited_1_per_deck",
+   "dc_category": "boss_route_balance",
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
    "playable": true
   },
@@ -103201,10 +103208,10 @@
    "in_md": true,
    "md_rarity": "Common",
    "era_banlist": "unlimited",
-   "dc_verdict": null,
-   "dc_category": null,
-   "final_status": "unlimited",
-   "max_copies_per_deck": 3,
+   "dc_verdict": "limited_1_per_deck",
+   "dc_category": "boss_route_balance",
+   "final_status": "limited_1_per_deck",
+   "max_copies_per_deck": 1,
    "league_unique": false,
    "playable": true
   },

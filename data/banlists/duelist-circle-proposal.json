@@ -86,7 +86,11 @@
     { "name": "Elemental HERO Absolute Zero", "verdict": "legendary_unique", "category": "mass_removal", "reason": "Easy HERO Fusion; when it leaves the field all the opponent's monsters are destroyed.", "confidence": "low" },
 
     { "name": "Meklord Emperor Wisel", "verdict": "forbidden", "category": "group_vote", "reason": "Group vote 2026-10-30: too strong for Legendary -> forbidden.", "confidence": "vote", "group_vote_2026_10_30": "Legendary -> forbidden (faro: too_weak; sam: too_strong; bossg (transferred): too_strong)" },
-    { "name": "Sophia, Goddess of Rebirth", "verdict": "forbidden", "category": "group_vote", "reason": "Group vote 2026-10-30: too strong for Legendary -> forbidden.", "confidence": "vote", "group_vote_2026_10_30": "Legendary -> forbidden (faro: too_strong; sam: too_weak; bossg (transferred): too_strong)" }
+    { "name": "Sophia, Goddess of Rebirth", "verdict": "forbidden", "category": "group_vote", "reason": "Group vote 2026-10-30: too strong for Legendary -> forbidden.", "confidence": "vote", "group_vote_2026_10_30": "Legendary -> forbidden (faro: too_strong; sam: too_weak; bossg (transferred): too_strong)" },
+
+    { "name": "Shien's Advisor", "verdict": "limited_1_per_deck", "category": "boss_route_balance", "reason": "Owner decision 2026-10-30, Boss route balance: pool card that powers the Six Samurai route; max 1 per deck, rarity unchanged.", "confidence": "owner", "rank_as_status": "unlimited" },
+    { "name": "Ancient Gear Fusion", "verdict": "limited_1_per_deck", "category": "boss_route_balance", "reason": "Owner decision 2026-10-30, Boss route balance: pool card that powers the Ancient Gear route; max 1 per deck, rarity unchanged.", "confidence": "owner", "rank_as_status": "unlimited" },
+    { "name": "Chaos Ancient Gear Giant", "verdict": "limited_1_per_deck", "category": "boss_route_balance", "reason": "Owner decision 2026-10-30, Boss route balance: pool card that powers the Ancient Gear route; max 1 per deck, rarity unchanged.", "confidence": "owner", "rank_as_status": "unlimited" }
   ],
   "removed_by_group_vote": [
     { "name": "Mind Drain", "verdict": "limited_1_per_deck", "category": "lock_floodgate", "reason": "Current text only stops hand monster effects (hand traps); mild floodgate.", "confidence": "low", "group_vote_2026_10_30": "limited_1 -> unlimited (faro: too_weak; sam: agree; bossg (transferred): too_weak); 3 per deck (2014 list: unlimited), rarity stays Ultra Rare" }

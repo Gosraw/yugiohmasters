@@ -123,8 +123,13 @@ const vote = read("data/cardpool/vote-results-2026-10-30.json");
 const voteById = new Map(vote.cards.filter((v) => v.changed).map((v) => [v.id, v]));
 const WRITE_VOTE_LISTS = process.argv.includes("--write-vote-lists");
 
+// Owner limits added after the vote that must not move the card's
+// rarity (proposal entry "rank_as_status", e.g. the Boss route balance
+// limits of 2026-10-30): the tier cut treats the card as that status.
+const rankAsStatus = new Map(proposal.entries.filter((e) => e.rank_as_status).map((e) => [e.name, e.rank_as_status]));
+
 // Status the card had in the ranking the group voted on.
-const preVoteStatus = (pc) => voteById.get(pc.id)?.before.status ?? pc.final_status;
+const preVoteStatus = (pc) => voteById.get(pc.id)?.before.status ?? rankAsStatus.get(pc.name) ?? pc.final_status;
 
 for (const v of voteById.values()) {
   const pc = (poolFile.cards ?? []).find((c) => c.id === v.id);

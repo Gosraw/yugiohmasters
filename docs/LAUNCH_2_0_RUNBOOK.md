@@ -45,7 +45,7 @@ Laat de ontwikkelaar de hele avond eerst één keer naspelen op de **lokale test
 
 1. `node scripts/devstack/db.mjs migrate`
 2. Stap 2b (de seizoenscijfers), met het lokale adres `postgres://postgres@127.0.0.1:54322/postgres`. Sla deze niet over: anders kloppen de Boss-prijzen niet.
-3. Het reset-script met `mode=dry_run`, daarna met `mode=apply` (zie stap 3 en 4 hieronder, met hetzelfde lokale adres).
+3. Het reset-script met `mode=dry_run`, daarna met `mode=apply` (zie stap 3 en 4 in de appendix, met hetzelfde lokale adres).
 4. De test-bots: `npm run test:e2e:mobile`. Let op: de bots **wissen eerst de lokale testdatabase** en bouwen hem opnieuw op. Doe ze dus als laatste.
 
 **STOP als:** iets hiervan rood wordt.
@@ -58,7 +58,102 @@ Laat de ontwikkelaar de hele avond eerst één keer naspelen op de **lokale test
 
 Spreek af dat niemand de app gebruikt tussen stap 1 en stap 6.
 
-### Stap 1: Back-up maken (verplicht)
+### Stap 1 t/m 4: één script doet het werk
+
+Je hebt het **adres van de echte database** nodig. Dat vind je in het Supabase Dashboard: **Connect → Session pooler → Connection string (URI)**. Vervang daarin `[YOUR-PASSWORD]` door het database-wachtwoord. Dat adres is geheim: deel het met niemand en zet het nergens in de code.
+
+Dit is alles wat je doet:
+
+1. Open **Terminal**.
+2. Plak deze twee regels en druk op Enter:
+
+   ```
+   cd ~/Projects/duelist-circle
+   bash scripts/season2/launch.sh
+   ```
+
+3. Het script vraagt om het adres. **Plak het en druk op Enter.** Je ziet niets verschijnen tijdens het plakken; dat hoort zo.
+4. Het script werkt nu een paar minuten. Het vraagt daarna: `Typ WISSEN en druk op Enter`. **Typ `WISSEN`** (hoofdletters) en druk op Enter.
+5. Je ziet `KLAAR. De database staat op Seizoen 2.`
+
+**Wat het script doet, in deze volgorde:**
+
+- **Controles vooraf.** Staat Seizoen 2 al aan? Mag deze login alles aanpassen? Dit verandert niets.
+- **Back-up.** Een bestand op je Bureaublad: `duelist-backup-<datum>.dump`. Daarin staan wachtwoord-gegevens van accounts, dus deel het niet en bewaar het tot na de lancering.
+- **Database bijwerken.** Eerst `202610115900_prod_drift_normalize.sql`, die de verschillen repareert tussen de echte database en wat wij hebben getest. Daarna alle 2.0-bestanden.
+- **Seizoenscijfers.** Boss 1.800 / 3.200 / 5.500, routes 3.000 / 5.500, rondeplaatsen 350 / 200 / 100.
+- **Vergelijken.** Heeft de database nu precies de vorm die getest is? Zo niet, dan stopt het hier, nog vóór er iets gewist is.
+- **Proefdraaien.** De reset op proef, met controle op 6.167 kaarten, 21 Legendaries en 14 Boss-paden.
+- **De echte reset.** Pas na jouw `WISSEN`.
+
+**Wat er gewist wordt:** alle kaarten, alle DP, decks, potjes, competities, drafts, Boss-voortgang, luck, vouchers, weekdoelen, Season Path, minigame-scores en ruilen.
+
+**Wat blijft:** alle accounts, wachtwoorden, de league en wie er lid is. Ook blijft wie admin is, dus jij blijft admin. Seizoenstitels blijven ook.
+
+**STOP als:** je `GESTOPT` ziet. Kopieer de hele melding en vraag om hulp.
+
+- Er staat dan altijd bij wat er wel en niet gebeurd is.
+- Vóór `WISSEN` is er nog niets gewist. Na een oplossing mag je hetzelfde commando gewoon opnieuw starten: het gaat verder waar het stopte. Bewaar dan de **eerste** back-up, want dat is de enige van vóór de wijzigingen.
+- Gaat de reset zelf fout, dan wordt hij helemaal teruggedraaid.
+- Is de lancering al gelukt en start je het script nog een keer, dan weigert het (`Seizoen 2 staat al aan`) en gebeurt er niets.
+
+Wil je het stap voor stap met de hand doen? Dat staat in de appendix, onder *Manual launch steps*. Normaal heb je dat niet nodig.
+
+### Stap 5: De nieuwe app live zetten
+
+**Vooraf in Vercel (verplicht):** `SUPABASE_SECRET_KEY` moet gezet zijn voor **Production** (server-only env var, nooit `NEXT_PUBLIC_`). Zonder die sleutel kan niemand een titel kiezen op zijn profiel, ook niet de titel "Season 2 Champion" (de minigames staan uit, die gebruiken hem nu niet).
+
+Pas nu wordt de `v2`-branch samengevoegd met `main`. Vercel zet de nieuwe app dan vanzelf live.
+Laat dit door de ontwikkelaar doen, of doe het zelf als je weet hoe.
+Wacht tot Vercel "Ready" zegt.
+
+### Stap 6: Controle op je telefoon
+
+Log in op `https://yugiohmasters.vercel.app` en loop dit rijtje af:
+
+1. Je komt automatisch bij het **Boss Path-rad**. Op het rad staan de routes die nog niemand in de league heeft (bij de eerste speler alle **14**). Tik op **Spin the Wheel**: het rad draait een paar seconden en stopt op jouw route. Daarna zie je de route met plaatje, verhaal, "How it plays" en je Stage 1-kaart. Ververs de pagina: je ziet dezelfde route, geen rad meer (één keer draaien, nooit opnieuw). Tik op **Continue to your Initial Draft**.
+2. Daarna start de **Initial Draft**. Kies alle kaarten. Controleer dat je geen Synchro-kaarten ziet en geen kaarten van na 2014, behalve de bekende uitzonderingen zoals Chocolate Magician Girl.
+3. Na de draft heb je **3 welkomstpacks**: 1 Standard (Normal), 1 Premium en 1 Deluxe. Open ze in de Shop.
+4. **Wallet**: je DP begint op 0. De weekdoelen verschillen per week. Is een pack-doel (zoals "Open 2 packs" of "Collect 20 new cards") deze week gekozen, dan krijg je na het openen 150 DP; dat is goed. Zie je 0 DP, dan is dat ook goed.
+5. **Deck builder**: probeer 2× Foolish Burial in één deck te doen. De tweede moet geweigerd worden ("limited to 1 per deck"). Raigeki mag 1×.
+6. **Home**: er staat "Season 2 · Week 1".
+7. Laat de andere twee spelers hetzelfde doen. Controleer dat jullie alle drie een **andere** route hebben (het rad geeft een route maar één keer per league).
+
+**STOP als:** iets hiervan niet klopt. Maak een schermafbeelding en vraag om hulp.
+
+### Als het echt misgaat (na stap 4)
+
+Vraag om hulp en verander zelf niets meer. Er zijn twee manieren om terug te gaan:
+
+- Het back-upbestand op je Bureaublad (`duelist-backup-<datum>.dump`). Zijn er meerdere, gebruik dan de **oudste** van vanavond. Terugzetten doet de ontwikkelaar.
+- **Supabase Dashboard → Database → Backups → Restore**, als daar een back-up van vóór vanavond staat. Dat zet de hele database terug naar dat moment.
+
+---
+
+## Technical appendix (English)
+
+### Why launch.sh exists: production drift (found 2026-11-01)
+
+Production's Season 1 database was maintained by hand and has no migration history, so it is not what `supabase/migrations/*` builds. A read-only copy, compared with a replay of every migration before `202610120100`, differed in 334 places. `202610115900_prod_drift_normalize.sql` closes those in one DO block (see the table below).
+
+- It only runs on the old shape, recognised by the hand-made `seasons` table (`seasons.league_id`). On the devstack replay, or on a second run, it does nothing.
+- It stops without changing anything if that old table has rows.
+- `launch.sh` applies each file in one transaction and records it in a temporary `duelist_launch.applied` table, because not every 2.0 migration can run twice (`202610120100` cannot). A re-run continues after the last applied file. The schema is dropped at the end of a finished launch.
+- **After changing any migration, rebuild the expected fingerprint**, or `launch.sh` stops before the reset (a safe stop, nothing wiped). On a fresh `db.mjs reset`:
+
+  ```
+  psql postgres://postgres@127.0.0.1:54322/postgres -At -v ON_ERROR_STOP=1 -f scripts/season2/schema-fingerprint.sql > scripts/season2/schema-fingerprint.expected
+  ```
+
+  For a deliberate, understood difference: `DUELIST_LAUNCH_ACCEPT_SCHEMA_DIFF=yes bash scripts/season2/launch.sh`.
+- Tools, local databases only: `node scripts/season2/compare-schema.mjs <urlA> <urlB> [outDir]` and `node scripts/season2/compare-config-data.mjs <urlA> <urlB>`.
+- Rehearsal without prompts: `DUELIST_LAUNCH_OUT_DIR=<dir> DUELIST_LAUNCH_TEST_DB=<local url> bash scripts/season2/launch.sh`.
+
+### Manual launch steps (only if launch.sh cannot be used)
+
+The steps `launch.sh` automates, in the original Dutch.
+
+#### Stap 1: Back-up maken (verplicht)
 
 1. Ga naar het Supabase Dashboard en open het project.
 2. Ga naar **Database → Backups** en maak een handmatige back-up.
@@ -66,7 +161,7 @@ Spreek af dat niemand de app gebruikt tussen stap 1 en stap 6.
 
 **STOP als:** je niet zeker weet dat de back-up gelukt is.
 
-### Stap 2: De database bijwerken (migraties)
+#### Stap 2: De database bijwerken (migraties)
 
 Je hebt het **adres van de echte database** nodig. Dat vind je in het Supabase Dashboard: **Connect → Connection string (URI)**.
 Daarin staat een wachtwoord, dus deel dat adres met niemand en zet het nergens in de code.
@@ -80,18 +175,18 @@ DB="postgresql://...het adres uit Supabase..."
 Daarna voer je de migraties uit, **in deze volgorde**, één voor één:
 
 ```
-for f in supabase/migrations/2026101[245]*.sql supabase/migrations/20261030*.sql; do case "$f" in *202610120500_card_votes.sql) echo "-- skip $f"; continue;; esac; echo "== $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f" || break; done
+for f in supabase/migrations/202610115900_prod_drift_normalize.sql supabase/migrations/2026101[245]*.sql supabase/migrations/20261030*.sql; do case "$f" in *202610120500_card_votes.sql) echo "-- skip $f"; continue;; esac; echo "== $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f" || break; done
 ```
 
-Deze regel doet alle bestanden van 12, 14, 15 en 30 oktober, in de goede volgorde. De bestanden van 30 oktober zijn: de 14 nieuwe Boss Paths (`202610301000`), het verbergen van de minigames (`202610301100`), de uitslag van de kaartstemming (`202610301200`), een kleine reparatie voor kaart-inzetten (`202610301300`), het Boss Path-rad (`202610301400`) en een reparatie zodat Boss-beloningen nooit vastlopen op het aantal exemplaren (`202610301500`). Je hoeft die dus **niet** nog eens los uit te voeren. Eén bestand wordt bewust **overgeslagen** (`202610120500_card_votes.sql`): de echte database heeft de stemming al sinds 12 oktober, en dat oude testbestand zou daar een fout geven. Je ziet dan `-- skip ...`; dat is goed.
+Deze regel doet eerst de reparatie (`202610115900`) en daarna alle bestanden van 12, 14, 15 en 30 oktober, in de goede volgorde. De bestanden van 30 oktober zijn: de 14 nieuwe Boss Paths (`202610301000`), het verbergen van de minigames (`202610301100`), de uitslag van de kaartstemming (`202610301200`), een kleine reparatie voor kaart-inzetten (`202610301300`), het Boss Path-rad (`202610301400`) en een reparatie zodat Boss-beloningen nooit vastlopen op het aantal exemplaren (`202610301500`). Je hoeft die dus **niet** nog eens los uit te voeren. Eén bestand wordt bewust **overgeslagen** (`202610120500_card_votes.sql`): de echte database heeft de stemming al sinds 12 oktober, en dat oude testbestand zou daar een fout geven. Je ziet dan `-- skip ...`; dat is goed.
 
 Bij het bestand `202610301200_classic_v2_format_after_vote.sql` zie je `Classic v2 seed OK: 6167 includes, 191 banlist rows, 6167 proposed rarities` (en nog iets erachter). Bij `202610301400_boss_route_wheel.sql` zie je `BOSS ROUTE WHEEL: spin_boss_path_wheel, ... are in place.` Het laatste bestand in de lijst is `202610301500_boss_grant_copy_number.sql`.
 
 Wat je ziet: per bestand een regel `== supabase/migrations/...`, en geen `ERROR`.
 
-**STOP als:** je ergens `ERROR` ziet. De lus stopt dan vanzelf. Het bestand met de fout is niet half uitgevoerd. Kopieer de foutmelding en vraag om hulp.
+**STOP als:** je ergens `ERROR` ziet. De lus stopt dan vanzelf. Een bestand zonder eigen transactie kan half uitgevoerd zijn, en niet elk bestand kan twee keer. Start de lus dus niet opnieuw: kopieer de foutmelding en vraag om hulp.
 
-### Stap 2b: De goedgekeurde seizoenscijfers zetten
+#### Stap 2b: De goedgekeurde seizoenscijfers zetten
 
 Je hebt de cijfers uit de simulator op 12 oktober goedgekeurd (Boss
 1.800 / 3.200 / 5.500, routes 3.000 / 5.500, rondeplaatsen 350/200/100).
@@ -107,7 +202,7 @@ Wat je ziet: `SET`, `BEGIN`, `DO`, `UPDATE 42` (14 routes × 3 stages; meer als 
 
 (De testbots in `tests/e2e/economy-rules.ts` hoef je **niet** aan te passen. Dat is werk voor de ontwikkelaar, zie de appendix.)
 
-### Stap 3: Proefdraaien van de reset (verandert niets)
+#### Stap 3: Proefdraaien van de reset (verandert niets)
 
 Kies de **startdatum van Seizoen 2**. Voor vanavond is dat `2026-10-30`.
 (Goed om te weten: "Week 1" is de week van maandag tot en met zondag waarin die datum valt. Bij 30 oktober (een vrijdag) loopt Week 1 dus tot en met zondag 1 november, en gaan de weekdoelen maandag 2 november opnieuw in.)
@@ -132,7 +227,7 @@ Controleer in de `POST-FLIGHT`-regels:
 
 **STOP als:** je `ERROR` of `ABORTED` ziet. Er is dan niets veranderd. Kopieer de melding en vraag om hulp.
 
-### Stap 4: De echte reset
+#### Stap 4: De echte reset
 
 Precies hetzelfde commando, maar nu met `mode=apply`:
 
@@ -150,46 +245,16 @@ Als laatste regel moet je `SEASON 2 RESET APPLIED (committed).` zien.
 
 **STOP als:** je `ERROR` ziet. Het script is één geheel. Bij een fout wordt **alles** teruggedraaid, en is er dus niets veranderd. Vraag dan om hulp.
 
-### Stap 5: De nieuwe app live zetten
-
-**Vooraf in Vercel (verplicht):** `SUPABASE_SECRET_KEY` moet gezet zijn voor **Production** (server-only env var, nooit `NEXT_PUBLIC_`). Zonder die sleutel kan niemand een titel kiezen op zijn profiel, ook niet de titel "Season 2 Champion" (de minigames staan uit, die gebruiken hem nu niet).
-
-Pas nu wordt de `v2`-branch samengevoegd met `main`. Vercel zet de nieuwe app dan vanzelf live.
-Laat dit door de ontwikkelaar doen, of doe het zelf als je weet hoe.
-Wacht tot Vercel "Ready" zegt.
-
-### Stap 6: Controle op je telefoon
-
-Log in op `https://yugiohmasters.vercel.app` en loop dit rijtje af:
-
-1. Je komt automatisch bij het **Boss Path-rad**. Op het rad staan de routes die nog niemand in de league heeft (bij de eerste speler alle **14**). Tik op **Spin the Wheel**: het rad draait een paar seconden en stopt op jouw route. Daarna zie je de route met plaatje, verhaal, "How it plays" en je Stage 1-kaart. Ververs de pagina: je ziet dezelfde route, geen rad meer (één keer draaien, nooit opnieuw). Tik op **Continue to your Initial Draft**.
-2. Daarna start de **Initial Draft**. Kies alle kaarten. Controleer dat je geen Synchro-kaarten ziet en geen kaarten van na 2014, behalve de bekende uitzonderingen zoals Chocolate Magician Girl.
-3. Na de draft heb je **3 welkomstpacks**: 1 Standard (Normal), 1 Premium en 1 Deluxe. Open ze in de Shop.
-4. **Wallet**: je DP begint op 0. Na het openen van 2 packs krijg je meteen 150 DP van het weekdoel "Open 2 packs"; dat is goed.
-5. **Deck builder**: probeer 2× Foolish Burial in één deck te doen. De tweede moet geweigerd worden ("limited to 1 per deck"). Raigeki mag 1×.
-6. **Home**: er staat "Season 2 · Week 1".
-7. Laat de andere twee spelers hetzelfde doen. Controleer dat jullie alle drie een **andere** route hebben (het rad geeft een route maar één keer per league).
-
-**STOP als:** iets hiervan niet klopt. Maak een schermafbeelding en vraag om hulp.
-
-### Als het echt misgaat (na stap 4)
-
-Zet de back-up van stap 1 terug: **Supabase Dashboard → Database → Backups → Restore**.
-Dat zet alles terug naar het moment van de back-up.
-
----
-
-## Technical appendix (English)
-
 ### Every 2.0 migration (2026-10-12 / 14 / 15 / 30), in apply order
 
-Apply with the loop in step 2 (`2026101[245]*.sql` then `20261030*.sql`). Two special cases:
+`launch.sh` applies these in this order, after `202610115900`. Two special cases:
 
 - **`202610120500_card_votes.sql` must be SKIPPED on production.** Production already has the live vote (applied 2026-10-12 via `manual_deploy/20261012_live_vote_and_hotfix.sql`, i.e. the `202610121900` version). Re-running `202610120500` there fails with `cannot change return type of existing function` on `get_vote_results` (verified on the local DB, 2026-10-15) and would stop the loop. The loop in step 2 skips it.
 - **`202610121900_card_votes_live.sql` is already applied on production (2026-10-12) and is safe to run again.** Everything in it is `create table if not exists` / `add column if not exists` / guarded constraint blocks / `create or replace` / `drop ... if exists` + re-create (trigger, policies, the three RPCs, all inside one `begin`/`commit`), and grants are re-applied. Re-running it is a no-op for data (verified on the local DB, 2026-10-15). Skipping it is fine too.
 
 | File | What it does | Owner |
 |---|---|---|
+| `202610115900_prod_drift_normalize.sql` | **Generated once from a read-only production copy; production only** (does nothing on any other shape). Puts production's hand-kept schema where the 2.0 chain expects it: drops 13 old competition / shop functions and 3 unused hand-made tables (`_admin_function_backups`, `next_pack_overrides`, `forced_next_pack_card`); removes the old `seasons` table; reshapes `competitions`, `competition_players`, `competition_results`, `competition_reward_rules`, `competition_reward_grants`, `matches`, `shop_rotations`; adds what production never got (`round_third_dp`, `dashboard_coach_insights`, `trade_activity`, the third-place checks); replaces 13 function definitions with the migrations' version; takes direct write rights on game tables and `_credit_duel_points` away from signed-in players; sets the round numbers to 300 / 400 / 300 / 200 (step 2b then sets 350 / 200 / 100); repairs the catalog (10 cards re-keyed to the pool's card id, 17 pool cards added), the Iron Legion pool and the special pack slot themes. | launch |
 | `202610120100_dp_ledger_descriptions_and_helpers.sql` | `duel_point_transactions.description` (NOT NULL, trigger-filled, backfilled); `_credit_duel_points` takes an optional description; DP helpers. | rewards |
 | `202610120110_competition_only_match_dp.sql` | Only competition matches pay match DP; ad-hoc duels pay nothing (wagers unchanged). | rewards |
 | `202610120120_round_rewards_resettle_on_correction.sql` | Fixes `settle_round_rewards_v2` crash; an admin correction re-settles the round grants (reversals kept as history). | rewards |
@@ -374,6 +439,17 @@ The full suite (`node scripts/sql-tests/run.mjs`) passes: 31 files / 573 checks 
 2026-10-30: the full suite passes with **34 files / 615 checks** (fresh reset + `seed-demo.mjs bossg samo`), including `60_wager_card_deck_lock` (a card in a competition-locked deck can't be wagered). Test bots: `npx playwright test --workers=1` 138 passed (mobile + desktop, 8.3 min). `TZ=UTC npx vitest run` 489 passed, `tsc --noEmit`, `eslint src`, `npm run check:sql` and `npm run build` clean.
 
 2026-10-30 addition: `59_boss_routes_v3` (14 active routes x 4 stages x 11 grants, names resolve, no Synchro/Link/Pendulum, prices copied from config, retired routes cannot be chosen, the exemption works for the route owner only and in-pool route cards keep their limit). Balance: `node scripts/boss-route-balance.mjs --check`; registry: `node scripts/generate-boss-routes-v3-migration.mjs --check`.
+
+2026-11-01, on a local copy of production (public schema and data, stub `auth.users`), `launch.sh` from start to finish:
+
+- **Parity with the devstack after replay, seed, 2b and reset:** functions (220), function rights, column types, constraints, indexes, triggers, policies, table and column rights, views, sequences and types are identical. What is left is harmless: `_devstack_migrations` (devstack only), `on_auth_user_created` (not in the copy; `launch.sh` warns if production lacks it), the column order of `competitions` and `competition_reward_grants` (nothing inserts by position), and the owner's own rights.
+- **Config data:** identical except data production legitimately has more of: `boss_monster_options`, the live vote, 8 `settings` rows with the same values as the code's fallbacks, 6 overrides of the inactive Classic v1. On the 6,167 eligible cards every compared column matches.
+- **Also passed:** as a non-superuser owner (like real Supabase, fingerprint equal); restart after a stop mid-way (continues, fingerprint equal); a third run refuses; the backup restores.
+- **SQL tests on the copy before the reset:** 35 of 36 files, 679 checks. `05` only misses its own fixture size (9 reserved cards in the pool, it asks for more than 10) and passes with the threshold at 5. **After the reset:** the same 8 files fail as on the devstack after a reset, because they assert pre-launch numbers.
+- **Browser, iPhone 13, 3 fresh players on the copy:** wheel (3 different routes), Initial Draft (64 cards, all from the pool), 3 welcome packs, ready deck, Boss evolution (-1,800 DP), Start Season, one full round with confirmations. Payout: 100 / 75 per duel, participation 300 + Premium, places 350 + Standard / 200 / 100; season bounty 75 on top for #1. Route smoke bot: 54 passed.
+- **Regular devstack afterwards:** 36 SQL files / 685 checks, `npx playwright test --workers=1` 138 passed, `TZ=UTC npx vitest run` 489 passed, `tsc --noEmit`, `eslint src` and `npm run check:sql` clean.
+
+The 4th profile on production, `getsuga`, signed up on 2026-09-11, is not in the league and has no cards or DP. The reset keeps the account. After login that player sees the "League full" screen.
 
 ### Known follow-ups (not done here)
 

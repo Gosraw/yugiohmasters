@@ -155,6 +155,13 @@ the owner's Mac (Cowork-style), some things to know:
   Any migration applied for 2.0 hits real players immediately, even
   before `v2` is merged — make DB changes backwards-compatible with
   the live `main` app, and confirm with the owner before applying.
+- Production's schema was kept by hand and has no migration history
+  (`supabase_migrations` doesn't exist). The launch runs through
+  `scripts/season2/launch.sh`, whose first migration
+  (`202610115900_prod_drift_normalize.sql`) repairs that drift. It stops
+  before the reset if the result differs from
+  `scripts/season2/schema-fingerprint.expected`, so after changing a
+  migration rebuild that file (see the runbook appendix).
 - `backup/mac-local-2026-10-12` on GitHub holds changes that only
   existed in the old Downloads clone (one unpushed commit, edited
   manual_deploy SQL, reports). Not yet reviewed against `main` — check

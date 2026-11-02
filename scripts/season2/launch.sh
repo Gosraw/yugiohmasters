@@ -68,7 +68,17 @@ else
   IFS= read -r -s DB
   echo
 
+  # A terminal can wrap pasted text in invisible markers (ESC[200~ and
+  # ESC[201~) or add a stray return or space; the pooler then refuses
+  # the address as "Invalid format for user or db_name".
+  DB="$(printf '%s' "$DB" | LC_ALL=C tr -d '\000-\040\177' | sed -e 's/\[200~//g' -e 's/\[201~//g')"
+
   [ -n "$DB" ] || stop "Er is geen adres geplakt."
+
+  case "$DB" in
+    postgresql://*@*|postgres://*@*) ;;
+    *) stop "Dit lijkt geen database-adres. Het moet beginnen met postgresql:// (er is niets veranderd)." ;;
+  esac
 
   case "$DB" in
     *"[YOUR-PASSWORD]"*|*"[YOUR_PASSWORD]"*)

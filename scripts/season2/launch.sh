@@ -209,7 +209,7 @@ SQL
 
 DONE="|$(psql "$DB" -At -c "select string_agg(name, '|') from duelist_launch.applied" 2>>"$LOG")|"
 
-for f in supabase/migrations/202610115900_prod_drift_normalize.sql supabase/migrations/2026101[245]*.sql supabase/migrations/20261030*.sql; do
+for f in supabase/migrations/202610115900_prod_drift_normalize.sql supabase/migrations/2026101[245]*.sql supabase/migrations/20261030*.sql supabase/migrations/20261102*.sql; do
   case "$f" in
     # Production already has the live vote; this old test version
     # would fail there (see the runbook).

@@ -113,7 +113,7 @@ Log in op `https://yugiohmasters.vercel.app` en loop dit rijtje af:
 
 1. Je komt automatisch bij het **Boss Path-rad**. Op het rad staan de routes die nog niemand in de league heeft (bij de eerste speler alle **14**). Tik op **Spin the Wheel**: het rad draait een paar seconden en stopt op jouw route. Daarna zie je de route met plaatje, verhaal, "How it plays" en je Stage 1-kaart. Ververs de pagina: je ziet dezelfde route, geen rad meer (één keer draaien, nooit opnieuw). Tik op **Continue to your Initial Draft**.
 2. Daarna start de **Initial Draft**. Kies alle kaarten. Controleer dat je geen Synchro-kaarten ziet en geen kaarten van na 2014, behalve de bekende uitzonderingen zoals Chocolate Magician Girl.
-3. Na de draft heb je **3 welkomstpacks**: 1 Standard (Normal), 1 Premium en 1 Deluxe. Open ze in de Shop.
+3. Na de draft heb je **3 welkomstpacks**: 1 Standard (Normal, 5 kaarten), 1 Premium (10 kaarten) en 1 Deluxe (14 kaarten). Open ze in de Shop.
 4. **Wallet**: je DP begint op 0. De weekdoelen verschillen per week. Is een pack-doel (zoals "Open 2 packs" of "Collect 20 new cards") deze week gekozen, dan krijg je na het openen 150 DP; dat is goed. Zie je 0 DP, dan is dat ook goed.
 5. **Deck builder**: probeer 2× Foolish Burial in één deck te doen. De tweede moet geweigerd worden ("limited to 1 per deck"). Raigeki mag 1×.
 6. **Home**: er staat "Season 2 · Week 1".
@@ -131,6 +131,14 @@ Vraag om hulp en verander zelf niets meer. Er zijn twee manieren om terug te gaa
 ---
 
 ## Technical appendix (English)
+
+### Pack rebalance after the launch (2026-11-02)
+
+`launch.sh` ran on production on 2026-11-02, before the pack rebalance existed, and refuses to run again. So production gets it by hand: paste **all of** `supabase/manual_deploy/20261102_pack_rebalance.sql` into the Supabase SQL Editor and press Run. It must be done before the new app goes live. The result is one row; `checks_passed` must be `true`. Pressing Run twice does no harm.
+
+That file is `202611021000_pack_rebalance.sql` plus a verification SELECT, built by `node scripts/season2/build-pack-rebalance-manual.mjs` (`--check` compares). Edit the migration, not the manual file.
+
+`launch.sh` also applies `20261102*.sql`, and `schema-fingerprint.expected` includes it, so a fresh rehearsal on a copy from before the launch still matches. See the migrations table for what changes.
 
 ### Why launch.sh exists: production drift (found 2026-11-01)
 
@@ -175,7 +183,7 @@ DB="postgresql://...het adres uit Supabase..."
 Daarna voer je de migraties uit, **in deze volgorde**, één voor één:
 
 ```
-for f in supabase/migrations/202610115900_prod_drift_normalize.sql supabase/migrations/2026101[245]*.sql supabase/migrations/20261030*.sql; do case "$f" in *202610120500_card_votes.sql) echo "-- skip $f"; continue;; esac; echo "== $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f" || break; done
+for f in supabase/migrations/202610115900_prod_drift_normalize.sql supabase/migrations/2026101[245]*.sql supabase/migrations/20261030*.sql supabase/migrations/20261102*.sql; do case "$f" in *202610120500_card_votes.sql) echo "-- skip $f"; continue;; esac; echo "== $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "$f" || break; done
 ```
 
 Deze regel doet eerst de reparatie (`202610115900`) en daarna alle bestanden van 12, 14, 15 en 30 oktober, in de goede volgorde. De bestanden van 30 oktober zijn: de 14 nieuwe Boss Paths (`202610301000`), het verbergen van de minigames (`202610301100`), de uitslag van de kaartstemming (`202610301200`), een kleine reparatie voor kaart-inzetten (`202610301300`), het Boss Path-rad (`202610301400`) en een reparatie zodat Boss-beloningen nooit vastlopen op het aantal exemplaren (`202610301500`). Je hoeft die dus **niet** nog eens los uit te voeren. Eén bestand wordt bewust **overgeslagen** (`202610120500_card_votes.sql`): de echte database heeft de stemming al sinds 12 oktober, en dat oude testbestand zou daar een fout geven. Je ziet dan `-- skip ...`; dat is goed.
@@ -245,7 +253,7 @@ Als laatste regel moet je `SEASON 2 RESET APPLIED (committed).` zien.
 
 **STOP als:** je `ERROR` ziet. Het script is één geheel. Bij een fout wordt **alles** teruggedraaid, en is er dus niets veranderd. Vraag dan om hulp.
 
-### Every 2.0 migration (2026-10-12 / 14 / 15 / 30), in apply order
+### Every 2.0 migration (2026-10-12 / 14 / 15 / 30, 2026-11-02), in apply order
 
 `launch.sh` applies these in this order, after `202610115900`. Two special cases:
 
@@ -302,6 +310,7 @@ Als laatste regel moet je `SEASON 2 RESET APPLIED (committed).` zien.
 | `202610301300_wager_card_competition_deck_guard.sql` | Launch-rehearsal fix: `add_match_wager_card` (and so `accept_practice_challenge`) refuses a card that sits in a competition-locked deck, like trades already do. Before, such a wager could never settle: the duel completed, the wager stayed `proposed` and both staked cards stayed locked for good. Same patch technique and marker as `202610152030`; same signature; idempotent. SQL test `60_wager_card_deck_lock`. | matches, wagers |
 | `202610301400_boss_route_wheel.sql` | **Boss Path wheel** (owner decision 2026-10-30). New `spin_boss_path_wheel()` (players only): picks a random active route with a Stage 1 that no current league member holds, creates the slot-1 path and grants Stage 1 through the same insert + `_boss_route_grant_stage` as before (shared internal `_boss_path_start`), all in one transaction. Idempotent: a second call returns the route already assigned (`newly_assigned = false`), never a new roll. Race-safe: the spin, `choose_boss_path` and `unlock_second_third_boss_path` all take one per-league advisory lock (`_boss_route_claim_lock`) before reading which routes are free. `choose_boss_path(uuid)` keeps its signature and grant but refuses a NEW slot-1 route from the API roles (`anon`/`authenticated`): "decided by the wheel"; a retry for the route a player already holds still returns that path (old main keeps working for existing players). Slots 2/3 (`unlock_second_third_boss_path`) stay a free choice, but a route another member holds is refused before any DP moves. `boss_path_free_routes()` gives the app the free route ids (wheel slices, slot 2/3 grid). No unique index on purpose: before the reset two players may share a retired Season 1 route; retired/inactive routes are never on the wheel. Friendly error when every route is taken. No data changes; idempotent. SQL test `61_boss_route_wheel`. | boss paths, onboarding |
 | `202610301500_boss_grant_copy_number.sql` | **Boss grants past copy #3** (found by the wheel agent, fixed 2026-10-31). `_boss_route_grant_stage` deliberately bypasses the league-wide scarcity trigger (`app.boss_route_grant`) and hands out copy `max+1`, but the old `card_instances_copy_number_valid` CHECK (1–3) from 202608190004 still made a spin/evolve/slot unlock fail with a raw error when the league already held 3 copies of an in-pool route card. The CHECK is now `copy_number >= 1`; the real scarcity rule (Legendary 1, others 3) stays enforced for every other source by the unchanged `card_copy_limit` trigger, and the unique (league, card, copy_number) key is unchanged. Idempotent. SQL test `62_boss_grant_copy_number` (fails before, passes after). | boss paths |
+| `202611021000_pack_rebalance.sql` | **Pack rebalance** (owner decisions 2026-11-02; on production via `manual_deploy/20261102_pack_rebalance.sql`, see above). Standard 400 DP / 5 cards, Special 1000 / 10, Premium 900 / 10, Deluxe 1500 / 14; new peak and filler odds (filler now also Super and Ultra). Special Packs: at most 2 cards per archetype. No pack holds a card twice while the pool has others. The last-resort step of the pick goes to the nearest higher rarity instead of a random one. New internal `_pick_shop_pack_card_constrained`; signatures unchanged. | shop |
 
 **Backwards compatibility.** These migrations share the production database with the live `main` app.
 `202610121000` takes effect immediately: Master Duel-forbidden cards that are already `format_eligible` become offerable in the live draft and shop.

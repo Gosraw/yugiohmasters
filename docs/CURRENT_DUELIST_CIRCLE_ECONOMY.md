@@ -35,26 +35,31 @@ Idempotent via `competition_round_reward_grants_active_unique` (one grant per co
 
 ## Pack Shop
 
-Source: `public.shop_pack_types` (`price_dp`, `cards_per_pack`), purchased via `purchase_shop_pack()`. Legendary odds corrected 2026-08-31 (Phase 2 follow-up) — see the Phase 2 follow-up report (Special Pack rotation + Legendary odds) delivered alongside this update for the full audit and rationale.
+Source: `public.shop_pack_types` (`price_dp`, `cards_per_pack`) and, for Special Packs, the active row in `public.shop_special_pack_rotations`. Bought through `purchase_shop_pack()`. Last changed by `202611021000_pack_rebalance.sql` (2026-11-02).
 
-| Pack | Price | Cards | Base Legendary odds | Realized per-pack Legendary EV* |
-|---|---|---|---|---|
-| Standard (`normal`) | 300 DP | 4 | 0.15% | 0.60% |
-| Premium | 900 DP | 5 | 0.30% | 2.20% |
-| Special | 1,200 DP | 5 | 0.25% | 3.00% |
-| Deluxe | 1,500 DP | 7 | 0.50% | 5.00% |
+Every pack has one peak roll (`roll_shop_pack_peak_rarity`), which fills one random slot. Every other slot is a filler roll (`roll_shop_pack_filler_rarity`).
 
-\* Realized EV includes the pre-existing, unmodified "guaranteed floor card" mechanic (Premium/Deluxe/Special's last card is always forced to at least Rare/Super Rare/Super Rare respectively) — this is why the realized rate is materially higher than the base per-card odds, especially for Deluxe/Special. See the follow-up report's Section 5 simulation for why this makes Legendary pacing faster (weeks, not months, at realistic play volumes) than the base-odds hierarchy alone suggests, and the open human decision it raises.
+| Pack | Price | Cards | Peak: Legendary / Secret / Ultra / Super (rest: no peak) | Filler: Normal / Rare / Super / Ultra | Luck per pack |
+|---|---|---|---|---|---|
+| Standard (`normal`) | 400 DP | 5 | 0.25% / 2% / 8% / 25% | 75 / 25 / - / - | 0.25 |
+| Special (`special_*`) | 1,000 DP | 10 | 1.75% / 13% / 30% / 44% | 35 / 50 / 15 / - | 1.25 |
+| Premium | 900 DP | 10 | 2.25% / 15% / 32% / 43% | 30 / 60 / 10 / - | 1 |
+| Deluxe | 1,500 DP | 14 | 8% / 38% / 44% / 10% | 5 / 60 / 30 / 5 | 2 |
 
-Standard and Premium packs are also earned free from ordinary play (every round grants a Premium Pack; every round win grants a Standard Pack) — DP purchases of those two tiers are rarely the bottleneck above casual play.
+- A slot whose rarity has no free copy (or isn't in a Special Pack's pool) takes the best rarity below it, and only then the nearest rarity above it.
+- No pack holds the same card twice unless the pool leaves no other choice.
+- Legendary Luck: at 100 luck the next pack's peak is a Legendary. A pool without a free Legendary gives its best other card and the player keeps their luck. Only a Legendary really pulled resets luck to 0.
+
+Standard and Premium packs are also earned free from ordinary play (see the round rewards above).
 
 ## Special Pack Rotation
 
-Source: `public.shop_special_pack_rotations` + `public.shop_special_pack_slots`, refreshed by `refresh_shop_special_pack_rotation_if_needed()` / `ensure_shop_rotations_current()`, purchased through the same `purchase_shop_pack()` path as the fixed tiers.
+Source: `public.shop_special_pack_rotations` + `public.shop_special_pack_slots` + the curated pools (`shop_special_pack_definitions`, `shop_special_pack_pool_cards`), refreshed by `refresh_shop_special_pack_rotation_if_needed()` / `ensure_shop_rotations_current()`, bought through the same `purchase_shop_pack()`.
 
-- Price: 1,200 DP (5 cards per pack, themed to the active rotation's value).
-- Rotation length: 48 hours per active rotation, server-computed and stored (`ends_at`), not client-side random — survives a restart and exposes time-remaining directly from the row.
-- Structure (updated 2026-08-31, Phase 2 follow-up): **3 rotating categories** (`attribute`, `archetype`, `monster_type`), one active rotation per category at a time — i.e. **3 special packs active at once**, each drawn from a pre-populated, real-catalog-derived table of 5 slots per category (**15 total configured themes**), advancing deterministically in sequence on each refresh rather than randomly. This meets the Phase 2 economy baseline's "15 configured / 3 active" target. One remaining gap: the Shop UI exposes purchase buttons for only 2 of the 3 categories (`attribute`, `archetype`) — the third (`monster_type`) pack is fully purchasable via the API but needs a small future UI addition to become player-facing.
+- Price and size: 1,000 DP, 10 cards. Stored on each rotation row; the generator writes these values into every new row.
+- Rotation length: 48 hours per active rotation, stored in `ends_at`.
+- Structure: 3 categories (`attribute`, `archetype`, `monster_type`), one active rotation each, so 3 Special Packs at once. Each advances in order through 5 slots, one curated pack per slot (15 in total).
+- Archetype cap: at most 2 cards with the same `card_catalog.archetype` in one Special Pack, peak included. A null or empty archetype doesn't count. The peak slot is filled first, so the cap never costs the pack its best card. If a slot can't stay within the cap, the cap gives way for that slot; a purchase never fails because of it.
 
 ## Competition (final standings)
 

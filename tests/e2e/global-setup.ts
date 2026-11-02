@@ -22,7 +22,7 @@ import {
 } from "./helpers/users";
 
 const ROOT = path.resolve(__dirname, "../..");
-const GATEWAY_URL = "http://127.0.0.1:54321";
+const GATEWAY_URL = `http://127.0.0.1:${process.env.DEVSTACK_GATEWAY_PORT ?? 54321}`;
 
 // Runs once before all specs:
 //  1. refuses to run against anything but the local devstack;

@@ -13,7 +13,7 @@ declare
 begin
   -- A DP-paid pack purchase (purchase_shop_pack itself is unchanged)
   -- also shows up in the ledger.
-  perform public._credit_duel_points(pg_temp.uid_of('samo'), 300, 'test_setup');
+  perform public._credit_duel_points(pg_temp.uid_of('samo'), 400, 'test_setup');
   perform pg_temp.act_as('samo');
   balance_before := pg_temp.balance('samo');
 
@@ -25,9 +25,9 @@ begin
     and reason = 'shop_purchase'
     and metadata ->> 'purchase_type' = 'pack';
 
-  perform pg_temp.assert_eq(tx.amount, -300, 'Normal Pack purchase logged as -300');
+  perform pg_temp.assert_eq(tx.amount, -400, 'Normal Pack purchase logged as -400');
   perform pg_temp.assert_eq(tx.description, 'Bought a Standard Pack', 'pack purchase ledger description');
-  perform pg_temp.assert_eq(pg_temp.balance('samo'), balance_before - 300, 'pack purchase debited exactly once');
+  perform pg_temp.assert_eq(pg_temp.balance('samo'), balance_before - 400, 'pack purchase debited exactly once');
 end;
 $$;
 

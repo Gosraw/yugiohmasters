@@ -12,7 +12,7 @@ import { passwordFor } from "./users";
 // Calls the real RPCs AS a player (their own JWT), through the local
 // devstack gateway - the same path the app's server actions take.
 
-export const GATEWAY_URL = "http://127.0.0.1:54321";
+export const GATEWAY_URL = `http://127.0.0.1:${process.env.DEVSTACK_GATEWAY_PORT ?? 54321}`;
 
 // The anon key is derived from the devstack JWT secret in
 // scripts/devstack/keys.mjs (kept as the single source of truth).

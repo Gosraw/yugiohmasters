@@ -133,8 +133,8 @@ export const CURRENT_RULES: EconomyRules = {
   shop: {
     normalPack: {
       code: "normal",
-      priceDp: 300,
-      cards: 7,
+      priceDp: 400,
+      cards: 5,
     },
   },
 };

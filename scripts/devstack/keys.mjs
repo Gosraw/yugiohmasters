@@ -3,7 +3,8 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-export const GATEWAY_PORT = 54321;
+// DEVSTACK_GATEWAY_PORT: when another local Supabase already has 54321.
+export const GATEWAY_PORT = Number(process.env.DEVSTACK_GATEWAY_PORT ?? 54321);
 export const JWT_SECRET = "devstack-jwt-secret-at-least-32-characters-long";
 
 function base64url(input) {

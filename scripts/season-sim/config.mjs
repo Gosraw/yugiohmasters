@@ -5,7 +5,7 @@
 //            (ad-hoc duels give no DP, Boss evolution is DP-only,
 //            one round = one full cycle). Verified against:
 //              202609042200_fix_full_round_economy.sql   (round rewards)
-//              202609011300_final_pack_sizes_and_peak_odds.sql (packs)
+//              202611021000_pack_rebalance.sql           (packs)
 //              202609011400_final_legendary_luck_pity_system.sql (luck)
 //              202609012000_boss_route_rpcs.sql          (Boss prices)
 //              202609012400_p2w_achievements.sql         (perks)
@@ -17,10 +17,10 @@
 // Pack definitions are shared: the proposal does not change pack
 // prices, sizes, odds or the Legendary Luck pity system.
 const PACKS = {
-  normal: { price: 300, cards: 7, luck: 0.25, odds: { legendary: 0.5, secret: 4, ultra: 12, super: 34 } },
+  normal: { price: 400, cards: 5, luck: 0.25, odds: { legendary: 0.25, secret: 2, ultra: 8, super: 25 } },
   premium: { price: 900, cards: 10, luck: 1, odds: { legendary: 2.25, secret: 15, ultra: 32, super: 43 } },
-  special: { price: 1200, cards: 10, luck: 1.25, odds: { legendary: 1.75, secret: 13, ultra: 30, super: 44 } },
-  deluxe: { price: 1500, cards: 14, luck: 2, odds: { legendary: 6.5, secret: 35, ultra: 44, super: 14.5 } },
+  special: { price: 1000, cards: 10, luck: 1.25, odds: { legendary: 1.75, secret: 13, ultra: 30, super: 44 } },
+  deluxe: { price: 1500, cards: 14, luck: 2, odds: { legendary: 8, secret: 38, ultra: 44, super: 10 } },
 };
 
 const SHOP_SINGLES = {

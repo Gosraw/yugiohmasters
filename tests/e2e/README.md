@@ -25,8 +25,8 @@ echte app of de echte database.
    Ook wordt gecontroleerd dat niets dubbel wordt uitbetaald als een
    uitslag opnieuw wordt ingevuld of een pagina wordt ververst, en dat
    een gecorrigeerde uitslag de ronde-beloningen netjes herberekent.
-4. **Shop** – samo koopt een Normal pack met DP: er moeten precies 7
-   kaarten bij komen en precies 300 DP af gaan, één keer.
+4. **Shop** – samo koopt een Normal pack met DP: er moeten precies 5
+   kaarten bij komen en precies 400 DP af gaan, één keer.
 
 De beloningsgetallen staan op **één plek**: `tests/e2e/economy-rules.ts`.
 Als de 2.0-getallen zijn goedgekeurd, hoeft alleen dat bestand aangepast.
@@ -62,6 +62,8 @@ All local, never production:
 | Supabase-compatible gateway | `node scripts/devstack/gateway.mjs` | `127.0.0.1:54321` |
 | App dev server | `node scripts/devstack/dev.mjs 3100` | `http://localhost:3100` |
 
+Another local Supabase already on 54321? Set `DEVSTACK_GATEWAY_PORT` to a free port for the gateway, `dev.mjs`, `seed-demo.mjs` and Playwright alike.
+
 Playwright reuses a running dev server on port 3100 (or starts
 `dev.mjs` itself). Only Chromium is installed; the `mobile` project
 uses the iPhone 13 viewport/touch/user-agent on Chromium.
@@ -93,7 +95,7 @@ desktop pass can run on the same DB after the mobile pass.
 | `01-onboarding.spec.ts` | fardin: Boss Path select → Initial Draft (64 real taps) → Home; DB: 64 draft cards, 60/2/2, no DP; welcome vouchers granted once and opened in the Shop (+pack sizes in cards, no DP) |
 | `02-smoke.spec.ts` | each user logs in through the form; 17 main routes: HTTP < 400, not redirected, no error boundary / 404 text, no console errors, no horizontal overflow on mobile |
 | `03-economy.spec.ts` | admin creates a 3-player competition (RPCs), records the 3 winners on `/competitions/[id]`; exact match DP + full-round rewards + vouchers per player; an outsider can't submit; resubmit / re-settle / refresh grants nothing; wallet shows the rewards; a corrected result re-settles the round exactly (2.0 fix) |
-| `04-shop.spec.ts` | Normal pack price/size match the rules; buying via the Shop page: +7 cards, −300 DP, one purchase row; reload doesn't re-buy; the spend is in the DP ledger once |
+| `04-shop.spec.ts` | Normal pack price/size match the rules; buying via the Shop page: +5 cards, −400 DP, one purchase row; reload doesn't re-buy; the spend is in the DP ledger once |
 
 ### Helpers
 

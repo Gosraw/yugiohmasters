@@ -261,7 +261,7 @@ export const BOSS_ROUTES_V3 = [
     },
   },
   {
-    // Launch list. The live Stage 1 / 2 / 4 grants differ since
+    // Launch list. Live Stage 1 also has Breaker the Magical Warrior since
     // supabase/migrations/202611041000_chaos_soldier_stage1.sql.
     code: "s2_chaos_bls",
     name: "Chaos Soldier",

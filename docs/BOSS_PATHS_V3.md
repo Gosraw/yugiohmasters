@@ -153,10 +153,10 @@ Gemiddelde score: **78.7**. Laagste 76.0, hoogste 81.5: het verschil tussen de s
 
 | Stage | Evolutie | Steunkaarten |
 |---|---|---|
-| 1 (gratis) | Black Luster Soldier | Black Luster Ritual · Gateway to Chaos ✦ · Sonic Bird · D.D. Warrior Lady · Breaker the Magical Warrior |
-| 2 | Black Luster Soldier - Super Soldier ✦ | Envoy of Chaos ✦ · Chaos Valkyria ✦ · Super Soldier Synthesis ✦ |
+| 1 (gratis) | Black Luster Soldier | Super Soldier Synthesis ✦ · Gateway to Chaos ✦ · D.D. Warrior Lady · Breaker the Magical Warrior |
+| 2 | Black Luster Soldier - Super Soldier ✦ | Envoy of Chaos ✦ · Chaos Valkyria ✦ · Sonic Bird |
 | 3 | Chaos Sorcerer | Super Soldier Rebirth ✦ · Chaos Seed · Gaia The Fierce Knight |
-| 4 (Boss) | Black Luster Soldier - Envoy of the Beginning | Super Soldier Shield ✦ |
+| 4 (Boss) | Black Luster Soldier - Envoy of the Beginning | Super Soldier Shield ✦ · Black Luster Ritual |
 
 **Buiten de pool, en waarom dat eerlijk is:**
 
@@ -168,7 +168,7 @@ Gemiddelde score: **78.7**. Laagste 76.0, hoogste 81.5: het verschil tussen de s
 - **Super Soldier Rebirth**: Wissel een BLS op het veld om voor een andere BLS uit je hand, of haal later een BLS terug. 1 keer per beurt.
 - **Super Soldier Shield**: Houdt alleen effecten tegen die een monster als doel kiezen, en alleen met een BLS op het veld. Terugzetten vraagt een Spell Counter, die deze route niet maakt: in de praktijk 1 keer.
 
-**Aangepast op 2026-11-04 (keuze eigenaar):** fase 1 kon zijn monster bijna niet oproepen, omdat Synthesis LIGHT + DARK vraagt en het DARK-deel pas in fase 2 kwam. Daarom is de route herschikt en is Breaker erbij gekomen, zodat deze route als enige 12 steunkaarten heeft. De balansscore hieronder is van vóór deze wissel en is niet opnieuw berekend.
+**Aangepast op 2026-11-04 (keuze eigenaar):** fase 1 kon zijn monster bijna niet oproepen, omdat Synthesis LIGHT + DARK vraagt en het DARK-deel pas in fase 2 kwam. Daarom is Breaker (DARK, level 4) toegevoegd aan fase 1. Er is niets weggehaald, zodat deze route als enige 12 steunkaarten heeft. De balansscore hieronder is van vóór deze wissel en is niet opnieuw berekend.
 
 **Balans:** score **80.3** (+2.0% t.o.v. gemiddeld). Kaartkracht per stage 20 / 19 / 16 / 17 (totaal 72); betrouwbaarheid 6, interactie 8, Boss-impact 9, slechtste/beste potje 5/8 (op 10). Sterren: start 4, groei 3, Boss 5, samenwerking 4, flexibel 3 (op 5).
 

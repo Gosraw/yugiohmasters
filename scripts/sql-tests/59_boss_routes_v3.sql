@@ -89,8 +89,8 @@ begin
     and (select count(*)
          from public.boss_route_stage_grants g
          join public.boss_route_stages s on s.id = g.stage_id
-         where s.route_id = r.id) <> 11;
-  perform pg_temp.assert_eq(v_bad, null::text, 'every route has 11 support grants');
+         where s.route_id = r.id) <> case when r.code = 's2_chaos_bls' then 12 else 11 end;
+  perform pg_temp.assert_eq(v_bad, null::text, 'every route has 11 support grants (Chaos Soldier 12, 202611041000)');
 
   perform pg_temp.assert_eq(
     (select count(*)::integer
@@ -130,7 +130,7 @@ begin
        where r.is_active
      ) x
      join public.card_catalog c on c.id = x.evolution_card_catalog_id),
-    14 * 15, '210 route cards (14 x (4 evolutions + 11 grants)) all resolve to card_catalog rows');
+    14 * 15 + 1, '211 route cards (14 x (4 evolutions + 11 grants) + Chaos Soldier''s extra grant) all resolve to card_catalog rows');
 
   perform pg_temp.assert_eq(
     (select count(distinct x.card_id)::integer
@@ -143,7 +143,7 @@ begin
        join public.boss_routes r on r.id = s.route_id
        where r.is_active
      ) x),
-    210, 'no card is used twice (within or across routes)');
+    211, 'no card is used twice (within or across routes)');
 
   -- Season 1 routes nobody holds are gone; v3 routes have no
   -- achievement gates (2.0 evolution is DP only).

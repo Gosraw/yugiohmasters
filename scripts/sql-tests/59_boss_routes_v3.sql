@@ -42,13 +42,13 @@ declare
 begin
   perform pg_temp.assert_eq(
     (select count(*)::integer from public.boss_routes where is_active),
-    15, '15 active Boss Paths (Earthbound Immortals added 202611131000)');
+    16, '16 active Boss Paths (Earthbound 202611131000, Utopia 202611141000)');
   perform pg_temp.assert_eq(
     (select count(*)::integer from public.boss_routes where is_active and code like 's2\_%' and how_it_plays is not null),
-    15, 'all 15 are Season 2 routes (s2_*) with a how-it-plays line');
+    16, 'all 16 are Season 2 routes (s2_*) with a how-it-plays line');
   perform pg_temp.assert_eq(
     (select string_agg(display_order::text, ',' order by display_order) from public.boss_routes where is_active),
-    '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15', 'display order 1-15');
+    '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16', 'display order 1-16');
   perform pg_temp.assert_true(
     exists (select 1 from public.boss_routes where code = 's2_six_samurai' and is_active)
       and exists (select 1 from public.boss_routes where code = 's2_crystal_beast' and is_active)
@@ -130,7 +130,7 @@ begin
        where r.is_active
      ) x
      join public.card_catalog c on c.id = x.evolution_card_catalog_id),
-    15 * 15 + 1, '226 route cards (15 x (4 evolutions + 11 grants) + Chaos Soldier''s extra grant) all resolve to card_catalog rows');
+    16 * 15 + 1, '241 route cards (16 x (4 evolutions + 11 grants) + Chaos Soldier''s extra grant) all resolve to card_catalog rows');
 
   perform pg_temp.assert_eq(
     (select count(distinct x.card_id)::integer
@@ -143,7 +143,7 @@ begin
        join public.boss_routes r on r.id = s.route_id
        where r.is_active
      ) x),
-    226, 'no card is used twice (within or across routes)');
+    241, 'no card is used twice (within or across routes)');
 
   -- Season 1 routes nobody holds are gone; v3 routes have no
   -- achievement gates (2.0 evolution is DP only).

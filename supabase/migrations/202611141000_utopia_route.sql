@@ -1,7 +1,8 @@
 -- =========================================================
 -- Utopia Boss Path (owner decision, 2026-11-14)
 --
--- New route s2_utopia "Utopia" (display order 16), chosen by Samo:
+-- New route s2_utopia "Utopia" (display order 16), a preview for Samo
+-- (removed again by 202611141100: Samo keeps Ancient Gear):
 -- Number 39: Utopia -> Number C39: Utopia Ray V -> Number 39: Utopia
 -- Beyond -> Number S39: Utopia the Lightning (Boss).
 --

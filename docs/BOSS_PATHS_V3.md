@@ -30,10 +30,11 @@ De 20 oude Boss Routes van Seizoen 1 zijn vervangen door **14 nieuwe Boss Paths*
 | 10 | **Harpie Ladies** | zwerm, spells/traps slopen | WIND · Winged Beast | gemiddeld | Harpie Channeler | Harpie's Pet Phantasmal Dragon | **79.8** (+1.3%) |
 | 11 | **Toon World** | direct aanvallen, bescherming, lichte stall | gemengd · Toon | gemiddeld | Toon Masked Sorcerer | Toon Black Luster Soldier ✦ | **77.3** (−1.8%) |
 | 12 | **Galaxy-Eyes Photon** | xyz, midrange | LIGHT · Dragon | gemiddeld | Photon Thrasher | Number 107: Galaxy-Eyes Tachyon Dragon | **78.5** (−0.3%) |
-| 13 | **Legendary Ocean** | controle, veldspel, veld leegvegen | WATER · Sea Serpent | gemiddeld | The Legendary Fisherman | Levia-Dragon - Daedalus | **80.8** (+2.6%) |
+| 13 | **Legendary Ocean** | controle, veldspel, veld leegvegen | WATER · Sea Serpent | gemiddeld | The Legendary Fisherman II ✦ | The Legendary Fisherman III ✦ | **81.0** (+3.0%) |
 | 14 | **Volcanic Inferno** | schade (burn), weghalen | FIRE · Pyro | simpel | Volcanic Rocket | Volcanic Doomfire | **79.3** (+0.7%) |
+| 15 | **Earthbound Immortals** ✨ | direct aanvallen, offeren, veldspel | DARK · gemengd | gemiddeld | Earthbound Immortal Cusillu | Earthbound Immortal Ccapac Apu | **76.8** (−2.3%) |
 
-Gemiddelde score: **78.7**. Laagste 76.0, hoogste 81.5: het verschil tussen de sterkste en de zwakste route is **7.0%**. Elke route zit binnen **±7%** van het gemiddelde, en ook de gratis Stage 1 en de Boss-stap liggen dicht bij elkaar (zie "Zo heb ik de balans getest").
+Gemiddelde score: **78.6** (15 routes, sinds 13 november). Laagste 76.0, hoogste 81.5: het verschil tussen de sterkste en de zwakste route is **7.0%**. Elke route zit binnen **±7%** van het gemiddelde, en ook de gratis Stage 1 en de Boss-stap liggen dicht bij elkaar (zie "Zo heb ik de balans getest").
 
 ✦ = kaart buiten de Classic-pool (alleen voor de eigenaar van de route). ✨ = nieuw sinds 30 oktober (avond).
 
@@ -298,22 +299,24 @@ Gemiddelde score: **78.7**. Laagste 76.0, hoogste 81.5: het verschil tussen de s
 
 ## 13. Legendary Ocean
 
-**Zo speel je het:** Speel rond het veldspel Umi: je zeeslangen worden sterker, je Atlanteans vernietigen kaarten als je ze als 'kosten' gebruikt, en de Boss kan de zee opofferen om het hele veld schoon te vegen.
+*Aangepast op 13 november 2026 (keuze van BossG, die deze route speelt): The Legendary Fisherman wordt overgeslagen. De route begint met Fisherman II en eindigt met Fisherman III als Boss.*
+
+**Zo speel je het:** Speel rond het veldspel Umi: je zeeslangen worden sterker, je Atlanteans vernietigen kaarten als je ze als 'kosten' gebruikt, en de oude visser komt een laatste keer terug om de zee schoon te vegen.
 
 | Stage | Evolutie | Steunkaarten |
 |---|---|---|
-| 1 (gratis) | The Legendary Fisherman | Umi · Atlantean Heavy Infantry · Codarus |
-| 2 | The Legendary Fisherman II ✦ | Atlantean Marksman · A Legendary Ocean · Big Wave Small Wave |
-| 3 | Poseidra, the Atlantean Dragon | Sea Stealth Attack ✦ · Mother Grizzly · Atlantean Attack Squad |
-| 4 (Boss) | Levia-Dragon - Daedalus | Citadel Whale ✦ · Salvage |
+| 1 (gratis) | The Legendary Fisherman II ✦ | A Legendary Ocean · Atlantean Heavy Infantry · Mother Grizzly |
+| 2 | Poseidra, the Atlantean Dragon | Umi · Codarus · Atlantean Marksman |
+| 3 | Levia-Dragon - Daedalus | Sea Stealth Attack ✦ · Big Wave Small Wave · Torpedo Fish |
+| 4 (Boss) | The Legendary Fisherman III ✦ | Salvage · Atlantean Attack Squad |
 
 **Buiten de pool, en waarom dat eerlijk is:**
 
-- **The Legendary Fisherman II**: Level 5 van 2200 die als The Legendary Fisherman telt; met Umi trekt hij zich niets aan van andere monster-effecten. Zoekt een Level 7 WATER als hij vernietigd wordt. Haalt zelf niets weg.
+- **The Legendary Fisherman II**: Level 5 van 2200 die als The Legendary Fisherman telt; met Umi trekt hij zich niets aan van andere monster-effecten. Zoekt een Level 7 WATER (Poseidra of Daedalus) als hij vernietigd wordt. Haalt zelf niets weg. Met A Legendary Ocean is hij in je hand level 4, dus je kunt hem gewoon oproepen.
 - **Sea Stealth Attack**: Doorlopende trap die Umi activeert; met Umi vernietigt hij een monster dat vecht met jouw WATER-monster van Level 5+, en kan je spells/traps een beurt beschermen.
-- **Citadel Whale**: Komt op het veld door 2 WATER-monsters op te offeren (1 keer per beurt), zet Sea Stealth Attack klaar (als je er nog een hebt) en houdt 1 doel-effect per beurt tegen.
+- **The Legendary Fisherman III**: Komt alleen op het veld door een Fisherman te offeren. Verbant dan alle monsters van de tegenstander, maar mag die beurt niet aanvallen. Daarna kan hij niet vernietigd worden en trekt hij zich niets aan van spells en traps; monster-effecten (terugsturen, verbannen, overnemen) werken wel. De meest beslissende Boss van alle routes, daarom zijn de andere kaarten bewust bescheiden en is Citadel Whale uit de route gehaald.
 
-**Balans:** score **80.8** (+2.6% t.o.v. gemiddeld). Kaartkracht per stage 19 / 21 / 19 / 17 (totaal 76); betrouwbaarheid 6, interactie 8, Boss-impact 8, slechtste/beste potje 5/8 (op 10). Sterren: start 3, groei 3, Boss 4, samenwerking 4, flexibel 3 (op 5).
+**Balans:** score **81.0** (+3.0% t.o.v. gemiddeld). Kaartkracht per stage 20 / 21 / 20 / 17 (totaal 78); betrouwbaarheid 5, interactie 7, Boss-impact 9, slechtste/beste potje 5/9 (op 10). Sterren: start 4, groei 4, Boss 5, samenwerking 4, flexibel 3 (op 5).
 
 ## 14. Volcanic Inferno
 
@@ -335,6 +338,27 @@ Gemiddelde score: **78.7**. Laagste 76.0, hoogste 81.5: het verschil tussen de s
 - **Volcanic Emission**: Trap: pak een Volcanic uit je deck (of roep hem tot het eind van de beurt op), óf schade gelijk aan de aanval van een Pyro - de helft als het je eigen monster is. Elk 1 keer per beurt.
 
 **Balans:** score **79.3** (+0.7% t.o.v. gemiddeld). Kaartkracht per stage 20 / 19 / 18 / 16 (totaal 73); betrouwbaarheid 7, interactie 7, Boss-impact 8, slechtste/beste potje 6/7 (op 10). Sterren: start 4, groei 3, Boss 4, samenwerking 4, flexibel 2 (op 5).
+
+## 15. Earthbound Immortals ✨ nieuw
+
+*Toegevoegd op 13 november 2026 (keuze van Faro, die deze route speelt).*
+
+**Zo speel je het:** Houd een veldspel op het veld en breng één reus van level 10 tegelijk op het veld. Je tegenstander kan hem niet aanvallen, en hij valt je tegenstander direct aan. Zonder veldspel gaat hij kapot, daarom zit er in Stage 1 meteen een bij.
+
+| Stage | Evolutie | Steunkaarten |
+|---|---|---|
+| 1 (gratis) | Earthbound Immortal Cusillu | Mound of the Bound Creator · Double Coston · Earthbound Linewalker |
+| 2 | Earthbound Immortal Aslla piscu | Earthbound Prison ✦ · Earthbound Wave · Earthbound Spirit |
+| 3 | Earthbound Immortal Uru | Earthbound Whirlwind · Earthbound Immortal Revival · Roar of the Earthbound Immortal |
+| 4 (Boss) | Earthbound Immortal Ccapac Apu | Revival of the Immortals · Call of the Earthbound |
+
+**Buiten de pool, en waarom dat eerlijk is:**
+
+- **Earthbound Prison**: Veldspel (houdt dus ook je Immortals in leven) dat je 1 keer per beurt een extra Earthbound-monster laat oproepen en bij het activeren 1 effect-monster van de tegenstander stillegt. De straf (levenspunten halveren) werkt alleen als de tegenstander hem vernietigt terwijl jij een Earthbound-monster hebt. Er is geen Synchro voor nodig.
+
+**Waarom niet de nieuwere Earthbound-kaarten:** Earthbound Prisoner Ground Keeper, Earthbound Geoglyph en Offering to the Immortals noemen Synchro in hun tekst, en de routes mogen niets met Synchro bevatten. Double Coston (telt als 2 offers voor een DARK-monster) zorgt er in plaats daarvan voor dat je al vroeg een Immortal kunt oproepen.
+
+**Balans:** score **76.8** (−2.3% t.o.v. gemiddeld). Kaartkracht per stage 19 / 19 / 21 / 15 (totaal 74); betrouwbaarheid 6, interactie 7, Boss-impact 7, slechtste/beste potje 5/8 (op 10). Sterren: start 3, groei 3, Boss 4, samenwerking 4, flexibel 2 (op 5).
 
 ## Zo heb ik de balans getest
 

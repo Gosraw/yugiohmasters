@@ -1,6 +1,7 @@
 // data/boss-route-registry-v3.mjs
 //
-// BOSS ROUTES V3 - the 14 Season 2 Boss Paths (Duelist Circle 2.0).
+// BOSS ROUTES V3 - the Season 2 Boss Paths (Duelist Circle 2.0): the 14 of
+// the launch, plus Earthbound Immortals (2026-11-13, player choice).
 // Human-maintained source of truth. Generated into SQL by
 //   node scripts/generate-boss-routes-v3-migration.mjs
 // (-> supabase/migrations/202610301000_boss_routes_v3.sql) and scored by
@@ -527,39 +528,42 @@ export const BOSS_ROUTES_V3 = [
     },
   },
   {
+    // Owner decision 2026-11-13 (bossg plays it): The Legendary Fisherman
+    // is skipped, Fisherman II starts and Fisherman III is the Boss.
+    // Live through supabase/migrations/202611131000_player_chosen_boss_paths.sql.
     code: "s2_atlantean_ocean",
     name: "Legendary Ocean",
     displayOrder: 13,
     identity: null,
     targetPowerGrade: "A",
-    starProfile: { startStrength: 3, growth: 3, bossPower: 4, synergy: 4, flexibility: 3 },
+    starProfile: { startStrength: 4, growth: 4, bossPower: 5, synergy: 4, flexibility: 3 },
     teaserStory: "An old fisherman knows the sea better than anyone. He knows where the serpents sleep, which tide pulls ships under, and that one day the ocean itself will rise and wash the whole board clean.",
-    howItPlays: "Play around the Umi field spell: your sea serpents get stronger, your Atlanteans pop cards whenever they are used as a cost, and the Boss can sacrifice the ocean to wipe the field.",
+    howItPlays: "Play around the Umi field spell: your sea serpents get stronger, your Atlanteans pop cards whenever they are used as a cost, and the old fisherman returns one last time to sweep the sea clean of enemies.",
     playStyle: ["control", "field-spell", "board-wipe"],
     stages: [
-      { stageNumber: 1, evolutionCard: "The Legendary Fisherman", impact: 4 },
-      { stageNumber: 2, evolutionCard: "The Legendary Fisherman II", impact: 5 },
-      { stageNumber: 3, evolutionCard: "Poseidra, the Atlantean Dragon", impact: 6 },
-      { stageNumber: 4, evolutionCard: "Levia-Dragon - Daedalus", impact: 8, isBoss: true },
+      { stageNumber: 1, evolutionCard: "The Legendary Fisherman II", impact: 5 },
+      { stageNumber: 2, evolutionCard: "Poseidra, the Atlantean Dragon", impact: 6 },
+      { stageNumber: 3, evolutionCard: "Levia-Dragon - Daedalus", impact: 7 },
+      { stageNumber: 4, evolutionCard: "The Legendary Fisherman III", impact: 9, isBoss: true },
     ],
     supportGrants: [
-      { stageNumber: 1, cardName: "Umi", exclusive: false, impact: 4 },
+      { stageNumber: 1, cardName: "A Legendary Ocean", exclusive: false, impact: 5 },
       { stageNumber: 1, cardName: "Atlantean Heavy Infantry", exclusive: false, impact: 6 },
-      { stageNumber: 1, cardName: "Codarus", exclusive: false, impact: 5 },
+      { stageNumber: 1, cardName: "Mother Grizzly", exclusive: false, impact: 4 },
+      { stageNumber: 2, cardName: "Umi", exclusive: false, impact: 4 },
+      { stageNumber: 2, cardName: "Codarus", exclusive: false, impact: 5 },
       { stageNumber: 2, cardName: "Atlantean Marksman", exclusive: false, impact: 6 },
-      { stageNumber: 2, cardName: "A Legendary Ocean", exclusive: false, impact: 5 },
-      { stageNumber: 2, cardName: "Big Wave Small Wave", exclusive: false, impact: 5 },
       { stageNumber: 3, cardName: "Sea Stealth Attack", exclusive: true, impact: 5 },
-      { stageNumber: 3, cardName: "Mother Grizzly", exclusive: false, impact: 4 },
-      { stageNumber: 3, cardName: "Atlantean Attack Squad", exclusive: false, impact: 4 },
-      { stageNumber: 4, cardName: "Citadel Whale", exclusive: true, impact: 5 },
+      { stageNumber: 3, cardName: "Big Wave Small Wave", exclusive: false, impact: 5 },
+      { stageNumber: 3, cardName: "Torpedo Fish", exclusive: false, impact: 3 },
       { stageNumber: 4, cardName: "Salvage", exclusive: false, impact: 4 },
+      { stageNumber: 4, cardName: "Atlantean Attack Squad", exclusive: false, impact: 4 },
     ],
-    balance: { consistency: 6, interaction: 8, bossImpact: 8, floor: 5, ceiling: 8 },
+    balance: { consistency: 5, interaction: 7, bossImpact: 9, floor: 5, ceiling: 9 },
     fairness: {
-      "The Legendary Fisherman II": "2200 Level 5 named The Legendary Fisherman; with Umi it ignores other monsters' effects. If it is destroyed it searches a Level 7 WATER. No removal of its own.",
+      "The Legendary Fisherman II": "2200 Level 5 named The Legendary Fisherman; with Umi it ignores other monsters' effects. If it is destroyed it searches a Level 7 WATER (Poseidra / Daedalus). No removal of its own. With A Legendary Ocean it is Level 4 in hand, so it can be Normal Summoned.",
       "Sea Stealth Attack": "Continuous trap that activates Umi; with Umi it destroys an opponent's monster that battles your Level 5+ WATER (start of Damage Step) and can protect your face-up Spells/Traps for a turn by banishing a WATER monster until the End Phase.",
-      "Citadel Whale": "Summons itself by tributing 2 WATER monsters (once per turn), Sets Sea Stealth Attack from the Deck (only if you own a second one), and negates one effect that targets a single WATER monster per turn.",
+      "The Legendary Fisherman III": "Only by Tributing The Legendary Fisherman (in this route: Fisherman II on the field, or a Fisherman from packs). On summon it banishes the opponent's monsters but cannot attack that turn; afterwards it cannot be destroyed and ignores Spells/Traps, but monster effects (bounce, banish, steal, negate) still answer it. One copy, the most decisive Boss of the 15, so the route's other grants are deliberately modest (no Citadel Whale).",
     },
   },
   {
@@ -598,6 +602,42 @@ export const BOSS_ROUTES_V3 = [
       "Volcanic Blaze Accelerator": "Continuous spell that replaces a Blaze Accelerator: one extra Volcanic summon from hand per turn, and one monster destruction per turn by sending a Level 1 Pyro from the Deck. One card's worth of removal per turn.",
       "Volcanic Rimfire": "Level 1: when sent to the GY it dumps another Volcanic or replaces a Blaze Accelerator. Fodder that keeps the engine going, once per turn each.",
       "Volcanic Emission": "Trap: take a Volcanic from the Deck (to hand, or summon it until the End Phase), OR burn equal to a Pyro's original ATK - halved if it is your own monster. Each option once per turn.",
+    },
+  },
+  {
+    // Owner decision 2026-11-13: faro chose an Earthbound Immortal route.
+    // Live through supabase/migrations/202611131000_player_chosen_boss_paths.sql.
+    code: "s2_earthbound",
+    name: "Earthbound Immortals",
+    displayOrder: 15,
+    identity: null,
+    targetPowerGrade: "A",
+    starProfile: { startStrength: 3, growth: 3, bossPower: 4, synergy: 4, flexibility: 2 },
+    teaserStory: "Lines older than any city are carved into the desert. Nobody remembers who drew them, but on the right night the giants they show climb out of the sand - and they do not walk around your defences, they step over them.",
+    howItPlays: "Keep a Field Spell on the board and bring out one giant Level 10 Immortal at a time: your opponent cannot attack it, and it attacks your opponent directly.",
+    playStyle: ["direct-attack", "tribute", "field-spell"],
+    stages: [
+      { stageNumber: 1, evolutionCard: "Earthbound Immortal Cusillu", impact: 5 },
+      { stageNumber: 2, evolutionCard: "Earthbound Immortal Aslla piscu", impact: 6 },
+      { stageNumber: 3, evolutionCard: "Earthbound Immortal Uru", impact: 7 },
+      { stageNumber: 4, evolutionCard: "Earthbound Immortal Ccapac Apu", impact: 8, isBoss: true },
+    ],
+    supportGrants: [
+      { stageNumber: 1, cardName: "Mound of the Bound Creator", exclusive: false, impact: 5 },
+      { stageNumber: 1, cardName: "Double Coston", exclusive: false, impact: 6 },
+      { stageNumber: 1, cardName: "Earthbound Linewalker", exclusive: false, impact: 3 },
+      { stageNumber: 2, cardName: "Earthbound Prison", exclusive: true, impact: 6 },
+      { stageNumber: 2, cardName: "Earthbound Wave", exclusive: false, impact: 5 },
+      { stageNumber: 2, cardName: "Earthbound Spirit", exclusive: false, impact: 2 },
+      { stageNumber: 3, cardName: "Earthbound Whirlwind", exclusive: false, impact: 6 },
+      { stageNumber: 3, cardName: "Earthbound Immortal Revival", exclusive: false, impact: 4 },
+      { stageNumber: 3, cardName: "Roar of the Earthbound Immortal", exclusive: false, impact: 4 },
+      { stageNumber: 4, cardName: "Revival of the Immortals", exclusive: false, impact: 4 },
+      { stageNumber: 4, cardName: "Call of the Earthbound", exclusive: false, impact: 3 },
+    ],
+    balance: { consistency: 6, interaction: 7, bossImpact: 7, floor: 5, ceiling: 8 },
+    fairness: {
+      "Earthbound Prison": "Field Spell (so it also keeps the Immortals alive) that gives one extra Normal Summon of an Earthbound monster per turn and negates one opposing Effect Monster chosen when it is activated. Its LP-halving punish only fires when the opponent destroys it while you have an Earthbound monster. No Synchro needed for any part of it.",
     },
   },
 ];

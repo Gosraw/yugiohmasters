@@ -30,11 +30,12 @@ De 20 oude Boss Routes van Seizoen 1 zijn vervangen door **14 nieuwe Boss Paths*
 | 10 | **Harpie Ladies** | zwerm, spells/traps slopen | WIND · Winged Beast | gemiddeld | Harpie Channeler | Harpie's Pet Phantasmal Dragon | **79.8** (+1.3%) |
 | 11 | **Toon World** | direct aanvallen, bescherming, lichte stall | gemengd · Toon | gemiddeld | Toon Masked Sorcerer | Toon Black Luster Soldier ✦ | **77.3** (−1.8%) |
 | 12 | **Galaxy-Eyes Photon** | xyz, midrange | LIGHT · Dragon | gemiddeld | Photon Thrasher | Number 107: Galaxy-Eyes Tachyon Dragon | **78.5** (−0.3%) |
-| 13 | **Legendary Ocean** | controle, veldspel, veld leegvegen | WATER · Sea Serpent | gemiddeld | The Legendary Fisherman II ✦ | The Legendary Fisherman III ✦ | **81.0** (+3.0%) |
+| 13 | **Legendary Ocean** | controle, veldspel, veld leegvegen | WATER · Sea Serpent | gemiddeld | The Legendary Fisherman II ✦ | The Legendary Fisherman III ✦ | **81.0** (+2.9%) |
 | 14 | **Volcanic Inferno** | schade (burn), weghalen | FIRE · Pyro | simpel | Volcanic Rocket | Volcanic Doomfire | **79.3** (+0.7%) |
-| 15 | **Earthbound Immortals** ✨ | direct aanvallen, offeren, veldspel | DARK · gemengd | gemiddeld | Earthbound Immortal Cusillu | Earthbound Immortal Ccapac Apu | **76.8** (−2.3%) |
+| 15 | **Earthbound Immortals** ✨ | direct aanvallen, offeren, veldspel | DARK · gemengd | gemiddeld | Earthbound Immortal Cusillu | Earthbound Immortal Ccapac Apu | **76.8** (−2.5%) |
+| 16 | **Utopia** ✨ | xyz, uitrusting, aanvallen | LIGHT · Warrior | gemiddeld | Number 39: Utopia | Number S39: Utopia the Lightning ✦ | **80.3** (+2.0%) |
 
-Gemiddelde score: **78.6** (15 routes, sinds 13 november). Laagste 76.0, hoogste 81.5: het verschil tussen de sterkste en de zwakste route is **7.0%**. Elke route zit binnen **±7%** van het gemiddelde, en ook de gratis Stage 1 en de Boss-stap liggen dicht bij elkaar (zie "Zo heb ik de balans getest").
+Gemiddelde score: **78.7** (16 routes, sinds 14 november). Laagste 76.0, hoogste 81.5: het verschil tussen de sterkste en de zwakste route is **7.0%**. Elke route zit binnen **±7%** van het gemiddelde, en ook de gratis Stage 1 en de Boss-stap liggen dicht bij elkaar (zie "Zo heb ik de balans getest").
 
 ✦ = kaart buiten de Classic-pool (alleen voor de eigenaar van de route). ✨ = nieuw sinds 30 oktober (avond).
 
@@ -316,7 +317,7 @@ Gemiddelde score: **78.6** (15 routes, sinds 13 november). Laagste 76.0, hoogste
 - **Sea Stealth Attack**: Doorlopende trap die Umi activeert; met Umi vernietigt hij een monster dat vecht met jouw WATER-monster van Level 5+, en kan je spells/traps een beurt beschermen.
 - **The Legendary Fisherman III**: Komt alleen op het veld door een Fisherman te offeren. Verbant dan alle monsters van de tegenstander, maar mag die beurt niet aanvallen. Daarna kan hij niet vernietigd worden en trekt hij zich niets aan van spells en traps; monster-effecten (terugsturen, verbannen, overnemen) werken wel. De meest beslissende Boss van alle routes, daarom zijn de andere kaarten bewust bescheiden en is Citadel Whale uit de route gehaald.
 
-**Balans:** score **81.0** (+3.0% t.o.v. gemiddeld). Kaartkracht per stage 20 / 21 / 20 / 17 (totaal 78); betrouwbaarheid 5, interactie 7, Boss-impact 9, slechtste/beste potje 5/9 (op 10). Sterren: start 4, groei 4, Boss 5, samenwerking 4, flexibel 3 (op 5).
+**Balans:** score **81.0** (+2.9% t.o.v. gemiddeld). Kaartkracht per stage 20 / 21 / 20 / 17 (totaal 78); betrouwbaarheid 5, interactie 7, Boss-impact 9, slechtste/beste potje 5/9 (op 10). Sterren: start 4, groei 4, Boss 5, samenwerking 4, flexibel 3 (op 5).
 
 ## 14. Volcanic Inferno
 
@@ -358,7 +359,38 @@ Gemiddelde score: **78.6** (15 routes, sinds 13 november). Laagste 76.0, hoogste
 
 **Waarom niet de nieuwere Earthbound-kaarten:** Earthbound Prisoner Ground Keeper, Earthbound Geoglyph en Offering to the Immortals noemen Synchro in hun tekst, en de routes mogen niets met Synchro bevatten. Double Coston (telt als 2 offers voor een DARK-monster) zorgt er in plaats daarvan voor dat je al vroeg een Immortal kunt oproepen.
 
-**Balans:** score **76.8** (−2.3% t.o.v. gemiddeld). Kaartkracht per stage 19 / 19 / 21 / 15 (totaal 74); betrouwbaarheid 6, interactie 7, Boss-impact 7, slechtste/beste potje 5/8 (op 10). Sterren: start 3, groei 3, Boss 4, samenwerking 4, flexibel 2 (op 5).
+**Balans:** score **76.8** (−2.5% t.o.v. gemiddeld). Kaartkracht per stage 19 / 19 / 21 / 15 (totaal 74); betrouwbaarheid 6, interactie 7, Boss-impact 7, slechtste/beste potje 5/8 (op 10). Sterren: start 3, groei 3, Boss 4, samenwerking 4, flexibel 2 (op 5).
+
+## 16. Utopia ✨ nieuw
+
+*Toegevoegd op 14 november 2026 (keuze van BossG, die deze route speelt in plaats van Legendary Ocean).*
+
+**Zo speel je het:** Maak van twee monsters van level 4 een Utopia en houd daarmee aanvallen tegen. Daarna maak je hem steeds sterker: je zet een hogere Utopia bovenop hem en geeft hem ZW-pantser, tot één krijger harder slaat dan alles wat je tegenstander ervoor kan zetten.
+
+| Stage | Evolutie | Steunkaarten |
+|---|---|---|
+| 1 (gratis) | Number 39: Utopia | ZS - Armed Sage ✦ · ZW - Sleipnir Mail · ZS - Ascended Sage ✦ |
+| 2 | Number C39: Utopia Ray V | Rank-Up-Magic Limited Barian's Force · ZW - Tornado Bringer · Utopia Buster |
+| 3 | Number 39: Utopia Beyond | Rank-Up-Magic Astral Force · ZW - Lightning Blade · Rising Sun Slash |
+| 4 (Boss) | Number S39: Utopia the Lightning ✦ | Halfway to Forever ✦ · Reverse Breaker |
+
+**Zo komen de evoluties op het veld:**
+
+- **Utopia** (Rank 4): twee monsters van level 4. Met ZS - Armed Sage of ZS - Ascended Sage lukt dat al met 2 kaarten.
+- **Utopia Ray V** (Rank 5): leg Rank-Up-Magic Limited Barian's Force op Utopia. Met Utopia eronder vernietigt hij 1 keer per beurt een monster en doet hij schade gelijk aan de aanval van dat monster.
+- **Utopia Beyond** (Rank 6): leg Rank-Up-Magic Astral Force op Utopia. Bij het oproepen wordt de aanval van alle monsters van de tegenstander 0.
+- **Utopia the Lightning** (Boss, Rank 5): zet hem direct bovenop een Utopia van Rank 4, daar heb je geen spell voor nodig.
+
+**Buiten de pool, en waarom dat eerlijk is:**
+
+- **Number S39: Utopia the Lightning**: Komt bovenop een Rank 4-Utopia, die daarmee zijn materiaal wordt. Zolang hij vecht kan de tegenstander niets activeren, en 1 keer per keten kan hij 2 materialen inleveren om met 5000 aan te vallen. Met de materialen van Utopia plus Utopia zelf zijn dat één of twee grote klappen. Daarna is hij een gewone aanvaller van 2500. Hij kan niets weghalen buiten gevechten om en kan niet als materiaal dienen.
+- **ZS - Armed Sage**: Level 4 die zichzelf uit je hand oproept als je enige monster één ander level 4-monster is. Zo maak je Utopia met 2 kaarten. Een Utopia die met hem is gemaakt zoekt 1 ZW-monster. 1 keer per beurt.
+- **ZS - Ascended Sage**: Level 4 die zichzelf uit je hand oproept als je geen kaarten hebt. Een Utopia die met hem is gemaakt, zoekt 1 Rank-Up-Magic-spell (in deze route Limited Barian's Force of Astral Force). 1 keer per beurt. Hij helpt je de weg omhoog te vinden, maar haalt niets weg.
+- **Halfway to Forever**: Trap die 2 monsters uit je kerkhof terughaalt, met hun effecten uit, en er meteen een LIGHT-Utopia van maakt. Een kaart om terug te komen, met één Xyz per keer.
+
+**Waarom niet de sterkste Utopia-kaarten:** Number S0: Utopic ZEXAL zet het spel van de tegenstander op slot, Shining Hope Road en Utopic Onomatopoeia geven te veel gratis monsters, en de nieuwere Zexal-spells zoeken te makkelijk alles bij elkaar. Die blijven er daarom uit.
+
+**Balans:** score **80.3** (+2.0% t.o.v. gemiddeld). Kaartkracht per stage 19 / 20 / 19 / 17 (totaal 75); betrouwbaarheid 7, interactie 7, Boss-impact 8, slechtste/beste potje 5/8 (op 10). Sterren: start 3, groei 3, Boss 4, samenwerking 4, flexibel 4 (op 5).
 
 ## Zo heb ik de balans getest
 

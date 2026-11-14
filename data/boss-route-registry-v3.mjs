@@ -16,7 +16,7 @@
 //   code            boss_routes.code. "s2_" prefix so the new routes never
 //                   collide with the 20 retired Season 1 rows.
 //   name            display name
-//   displayOrder    1-15
+//   displayOrder    1-16
 //   identity        whose deck this is, or null. Every route is null since
 //                   the owner's 2026-10-30 decision: the three routes the
 //                   players already used in Season 1 (Dark Magician, Cyber
@@ -638,6 +638,46 @@ export const BOSS_ROUTES_V3 = [
     balance: { consistency: 6, interaction: 7, bossImpact: 7, floor: 5, ceiling: 8 },
     fairness: {
       "Earthbound Prison": "Field Spell (so it also keeps the Immortals alive) that gives one extra Normal Summon of an Earthbound monster per turn and negates one opposing Effect Monster chosen when it is activated. Its LP-halving punish only fires when the opponent destroys it while you have an Earthbound monster. No Synchro needed for any part of it.",
+    },
+  },
+  {
+    // Owner decision 2026-11-14: bossg plays Utopia instead of Legendary
+    // Ocean; ZS - Ascended Sage replaced Xyz Change Tactics in Stage 1.
+    // Live through supabase/migrations/202611141200_utopia_route_for_bossg.sql.
+    code: "s2_utopia",
+    name: "Utopia",
+    displayOrder: 16,
+    identity: null,
+    targetPowerGrade: "A",
+    starProfile: { startStrength: 3, growth: 3, bossPower: 4, synergy: 4, flexibility: 4 },
+    teaserStory: "A boy who never gives up, and the warrior of hope who answers when he calls. Every time it looks lost, the armour gets one piece heavier and the sword one piece brighter.",
+    howItPlays: "Stack two Level 4 monsters into Utopia, stop attacks with it, then rank it up and strap ZW armour onto it until one warrior hits harder than anything your opponent can put in front of it.",
+    playStyle: ["xyz", "equip", "beatdown"],
+    stages: [
+      { stageNumber: 1, evolutionCard: "Number 39: Utopia", impact: 5 },
+      { stageNumber: 2, evolutionCard: "Number C39: Utopia Ray V", impact: 6 },
+      { stageNumber: 3, evolutionCard: "Number 39: Utopia Beyond", impact: 6 },
+      { stageNumber: 4, evolutionCard: "Number S39: Utopia the Lightning", impact: 8, isBoss: true },
+    ],
+    supportGrants: [
+      { stageNumber: 1, cardName: "ZS - Armed Sage", exclusive: true, impact: 5 },
+      { stageNumber: 1, cardName: "ZW - Sleipnir Mail", exclusive: false, impact: 4 },
+      { stageNumber: 1, cardName: "ZS - Ascended Sage", exclusive: true, impact: 5 },
+      { stageNumber: 2, cardName: "Rank-Up-Magic Limited Barian's Force", exclusive: false, impact: 5 },
+      { stageNumber: 2, cardName: "ZW - Tornado Bringer", exclusive: false, impact: 5 },
+      { stageNumber: 2, cardName: "Utopia Buster", exclusive: false, impact: 4 },
+      { stageNumber: 3, cardName: "Rank-Up-Magic Astral Force", exclusive: false, impact: 5 },
+      { stageNumber: 3, cardName: "ZW - Lightning Blade", exclusive: false, impact: 4 },
+      { stageNumber: 3, cardName: "Rising Sun Slash", exclusive: false, impact: 4 },
+      { stageNumber: 4, cardName: "Halfway to Forever", exclusive: true, impact: 5 },
+      { stageNumber: 4, cardName: "Reverse Breaker", exclusive: false, impact: 4 },
+    ],
+    balance: { consistency: 7, interaction: 7, bossImpact: 8, floor: 5, ceiling: 8 },
+    fairness: {
+      "Number S39: Utopia the Lightning": "Rank 5, made by putting it on top of a Rank 4 Utopia (that Utopia becomes its material). While it battles the opponent cannot respond, and once per chain it can detach 2 materials to hit with 5000 ATK. With Utopia's 2 materials plus Utopia itself that is one or two big hits, then it is a plain 2500 beater. No removal off the battlefield, and it cannot be used as material.",
+      "ZS - Armed Sage": "Level 4 that summons itself from hand when your only monster is one other Level 4, so it makes Utopia from two cards. A Utopia made with it searches one ZW monster. Once per turn.",
+      "Halfway to Forever": "Trap: revive 2 monsters from your GY with their effects negated and immediately make a LIGHT Utopia from them. A comeback card, one Xyz per activation.",
+      "ZS - Ascended Sage": "Level 4 that summons itself from hand when you control no cards. A Utopia made with it searches one Rank-Up-Magic Normal Spell (in this route: Limited Barian's Force or Astral Force). Once per turn; it fetches the way up, not removal.",
     },
   },
 ];

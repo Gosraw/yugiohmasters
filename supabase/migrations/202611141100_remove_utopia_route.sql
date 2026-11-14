@@ -5,8 +5,8 @@
 -- Samo keeps Ancient Gear. Production was fixed by
 -- supabase/manual_deploy/20261114_sam_back_to_ancient_gear.sql (which
 -- also moved sam back); this migration keeps a replay of the chain in
--- line with production. The design lives on in
--- docs/BOSS_PATH_PROPOSAL_UTOPIA.md.
+-- line with production. Later that day bossg chose Utopia: it went live
+-- again through 202611141200_utopia_route_for_bossg.sql.
 --
 -- Stages and grants cascade. Refuses while a player holds the route.
 -- Safe to run twice.

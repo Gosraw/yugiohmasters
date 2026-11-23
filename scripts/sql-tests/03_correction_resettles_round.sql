@@ -10,6 +10,16 @@
 
 select pg_temp.reset_players();
 
+-- These checks are about the settlement logic, not the live amounts
+-- (the owner tunes those in production). Pin the numbers this file
+-- was written with; the runner rolls this back afterwards.
+update public.league_economy_defaults
+set
+  round_participation_dp = 300,
+  round_first_dp = 400,
+  round_second_dp = 300,
+  round_third_dp = 200;
+
 do $$
 declare
   comp_id uuid;

@@ -970,3 +970,46 @@ html[data-home-seen] .dc-stagger > * { animation: none; }
   .stack-combo-pop,
   .stack-result-in { animation: none; }
 }
+
+/* =========================================================
+   CARD ZOOM (src/components/card-zoom.tsx)
+   Press and hold a card picture opens the large readable view,
+   so the phone's own long-press menu ("save image", link
+   preview) and text selection stay off card pictures.
+========================================================= */
+
+img[src*="images.ygoprodeck.com"],
+a:has(img[src*="images.ygoprodeck.com"]),
+button:has(img[src*="images.ygoprodeck.com"]) {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.card-zoom-backdrop {
+  animation: card-zoom-fade .16s ease-out;
+}
+
+.card-zoom-sheet {
+  /* Opaque (the normal .panel is see-through) so the page behind
+     never shows through the card text. */
+  background: linear-gradient(180deg, #121a38, #0a0e22);
+  animation: card-zoom-rise .2s cubic-bezier(.2, .8, .2, 1);
+}
+
+@keyframes card-zoom-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes card-zoom-rise {
+  from { opacity: 0; transform: translateY(12px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-zoom-backdrop,
+  .card-zoom-sheet {
+    animation: card-zoom-fade .12s ease-out;
+  }
+}

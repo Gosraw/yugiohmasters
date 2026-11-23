@@ -1,6 +1,7 @@
 import { BottomNav } from "@/components/bottom-nav";
 import { ActionFeedbackBanner } from "@/components/action-feedback-banner";
 import { RewardPopup } from "@/components/reward-popup";
+import { CardZoom } from "@/components/card-zoom";
 import { requireUser } from "@/lib/supabase/queries";
 import { getLeagueIdForUser } from "@/lib/league-stats";
 import { getAttentionItems } from "@/lib/attention-items";
@@ -56,6 +57,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {staleOnboardedCookie && <OnboardedCookieReset />}
       <ActionFeedbackBanner />
       <RewardPopup userId={userId} />
+      <CardZoom />
       <div className="pb-24">
         <TabTransition>{children}</TabTransition>
       </div>

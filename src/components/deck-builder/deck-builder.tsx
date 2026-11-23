@@ -21,6 +21,7 @@ import {
 import {
   ArrowLeft,
   CheckCircle2,
+  LayoutList,
   LoaderCircle,
   LockKeyhole,
   Search,
@@ -51,6 +52,13 @@ import {
   type BuilderTab,
   type PanelState,
 } from "./browse-state";
+
+import {
+  getBrowseView,
+  getServerBrowseView,
+  setBrowseView,
+  subscribeBrowseView,
+} from "./browse-view";
 
 import {
   CardDetailSheet,
@@ -493,11 +501,22 @@ export function DeckBuilder({
     parsed.terms.length >
     0;
 
+  // Grid (pictures) or list (pictures + readable card text).
+  const browseView =
+    useSyncExternalStore(
+      subscribeBrowseView,
+      getBrowseView,
+      getServerBrowseView
+    );
+
   useEffect(() => {
-    if (hasTerms) {
+    if (
+      hasTerms ||
+      browseView === "list"
+    ) {
       ensureTexts();
     }
-  }, [hasTerms, ensureTexts]);
+  }, [hasTerms, browseView, ensureTexts]);
 
   const nameIndex =
     useMemo(
@@ -938,6 +957,31 @@ export function DeckBuilder({
             <button
               type="button"
               onClick={() =>
+                setBrowseView(
+                  browseView === "list"
+                    ? "grid"
+                    : "list"
+                )
+              }
+              aria-pressed={
+                browseView === "list"
+              }
+              aria-label="Show card text"
+              title="Show card text"
+              className={`grid size-11 shrink-0 cursor-pointer touch-manipulation place-items-center rounded-xl border transition active:scale-95 ${
+                browseView === "list"
+                  ? "border-amber-300/50 bg-amber-300/15 text-amber-100"
+                  : "border-white/10 bg-white/[0.03] text-zinc-300"
+              }`}
+            >
+              <LayoutList
+                size={18}
+              />
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
                 setFiltersOpen(true)
               }
               aria-label={`Filters${chips.length ? ` (${chips.length} active)` : ""}`}
@@ -1094,6 +1138,18 @@ export function DeckBuilder({
               onRemove={remove}
               onOpen={openDetail}
               onResetFilters={resetAll}
+              view={browseView}
+              texts={
+                textResult?.texts ??
+                null
+              }
+              textState={
+                textResult
+                  ? textResult.error
+                    ? "error"
+                    : "ready"
+                  : "loading"
+              }
             />
           )}
 

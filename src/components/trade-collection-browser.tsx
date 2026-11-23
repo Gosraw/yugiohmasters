@@ -136,7 +136,8 @@ type SortOption =
   | "name-desc"
   | "rarity"
   | "power"
-  | "atk";
+  | "atk"
+  | "archetype";
 
 // =========================================================
 // RARITY
@@ -399,6 +400,12 @@ export function TradeCollectionBrowser({
     useState("all");
 
   const [
+    archetype,
+    setArchetype,
+  ] =
+    useState("all");
+
+  const [
     availability,
     setAvailability,
   ] =
@@ -444,6 +451,65 @@ export function TradeCollectionBrowser({
     }, [
       cards,
     ]);
+
+  // =======================================================
+  // ARCHETYPES (only the ones in this collection, with counts)
+  // =======================================================
+
+  const archetypes =
+    useMemo(() => {
+      const counts =
+        new Map<string, number>();
+
+      for (const group of cards) {
+        const value =
+          group.card.archetype;
+
+        if (value) {
+          counts.set(
+            value,
+            (counts.get(
+              value
+            ) ?? 0) + 1
+          );
+        }
+      }
+
+      return [
+        ...counts,
+      ]
+        .map(
+          ([
+            name,
+            count,
+          ]) => ({
+            name,
+            count,
+          })
+        )
+        .sort(
+          (
+            a,
+            b
+          ) =>
+            a.name.localeCompare(
+              b.name
+            )
+        );
+    }, [
+      cards,
+    ]);
+
+  // A remembered archetype can be gone after the collection changed.
+  const activeArchetype =
+    archetype === "all" ||
+    archetypes.some(
+      (entry) =>
+        entry.name ===
+        archetype
+    )
+      ? archetype
+      : "all";
 
   // =======================================================
   // FILTER + SORT
@@ -509,6 +575,15 @@ export function TradeCollectionBrowser({
                 card.race,
                 race
               )
+            ) {
+              return false;
+            }
+
+            if (
+              activeArchetype !==
+                "all" &&
+              card.archetype !==
+                activeArchetype
             ) {
               return false;
             }
@@ -598,6 +673,23 @@ export function TradeCollectionBrowser({
                 )
               );
 
+            case "archetype":
+              // Cards without an archetype go last.
+              return (
+                Number(
+                  !a.card.archetype
+                ) -
+                  Number(
+                    !b.card.archetype
+                  ) ||
+                (a.card.archetype ?? "").localeCompare(
+                  b.card.archetype ?? ""
+                ) ||
+                a.card.name.localeCompare(
+                  b.card.name
+                )
+              );
+
             case "name-asc":
             default:
               return a.card.name.localeCompare(
@@ -609,6 +701,7 @@ export function TradeCollectionBrowser({
 
       return result;
     }, [
+      activeArchetype,
       availability,
       cardTexts,
       cards,
@@ -627,6 +720,7 @@ export function TradeCollectionBrowser({
       category,
       rarity,
       race,
+      activeArchetype,
       availability,
       sort,
     ].join("|");
@@ -664,6 +758,8 @@ export function TradeCollectionBrowser({
       "all" ||
     race !==
       "all" ||
+    activeArchetype !==
+      "all" ||
     availability !==
       "all" ||
     sort !==
@@ -678,6 +774,9 @@ export function TradeCollectionBrowser({
       "all"
     );
     setRace(
+      "all"
+    );
+    setArchetype(
       "all"
     );
     setAvailability(
@@ -986,6 +1085,53 @@ export function TradeCollectionBrowser({
 
           <label>
             <span className="mb-2 block text-[10px] font-black uppercase tracking-[.18em] text-zinc-600">
+              Archetype
+            </span>
+
+            <select
+              value={
+                activeArchetype
+              }
+              onChange={(
+                event
+              ) =>
+                setArchetype(
+                  event
+                    .target
+                    .value
+                )
+              }
+              disabled={
+                archetypes.length ===
+                0
+              }
+              className="field w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="all">
+                All archetypes
+              </option>
+
+              {archetypes.map(
+                (
+                  entry
+                ) => (
+                  <option
+                    key={
+                      entry.name
+                    }
+                    value={
+                      entry.name
+                    }
+                  >
+                    {entry.name} ({entry.count})
+                  </option>
+                )
+              )}
+            </select>
+          </label>
+
+          <label>
+            <span className="mb-2 block text-[10px] font-black uppercase tracking-[.18em] text-zinc-600">
               Sort By
             </span>
 
@@ -1022,6 +1168,10 @@ export function TradeCollectionBrowser({
 
               <option value="atk">
                 Highest ATK
+              </option>
+
+              <option value="archetype">
+                Archetype A–Z
               </option>
             </select>
           </label>
@@ -1246,6 +1396,19 @@ export function TradeCollectionBrowser({
                         </span>
                       )}
                     </div>
+
+                    {card.archetype && (
+                      <p
+                        title={
+                          card.archetype
+                        }
+                        className="mt-1 truncate text-[10px] font-bold text-amber-300/70"
+                      >
+                        {
+                          card.archetype
+                        }
+                      </p>
+                    )}
 
                     {group.selectedCount >
                       0 && (

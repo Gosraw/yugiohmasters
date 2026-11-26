@@ -81,6 +81,77 @@ export function totalLogicalRounds(
   );
 }
 
+/**
+ * The season rounds paid out together with `round` (migration
+ * 202611271000: competitions.reward_rounds_per_payout from
+ * reward_grouping_from_round). Mirrors _competition_reward_block:
+ * rounds before the grouping start pay one by one, and the last
+ * block stops at the season's final round.
+ */
+export function rewardBlockFor(
+  round: number,
+  roundsPerPayout: number,
+  groupingFromRound: number,
+  totalRounds: number
+) {
+  const perPayout =
+    Math.max(
+      1,
+      Math.floor(roundsPerPayout)
+    );
+
+  const from =
+    Math.max(
+      1,
+      Math.floor(groupingFromRound)
+    );
+
+  if (
+    perPayout === 1 ||
+    round < from
+  ) {
+    return {
+      first: round,
+      last: round,
+    };
+  }
+
+  const first =
+    from +
+    Math.floor(
+      (round - from) / perPayout
+    ) *
+      perPayout;
+
+  const fullLast =
+    first +
+    perPayout -
+    1;
+
+  return {
+    first,
+    last:
+      totalRounds >= round
+        ? Math.min(
+            fullLast,
+            totalRounds
+          )
+        : fullLast,
+  };
+}
+
+/** "Round 4" or "Rounds 4-6". */
+export function roundRangeLabel(
+  block: {
+    first: number;
+    last: number;
+  }
+) {
+  return block.first === block.last
+    ? `Round ${block.last}`
+    : `Rounds ${block.first}–${block.last}`;
+}
+
 export type ActiveSeason = {
   id: string;
   name: string;

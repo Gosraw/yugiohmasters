@@ -23,6 +23,8 @@ import {
 
 import {
   logicalRoundFor,
+  rewardBlockFor,
+  roundRangeLabel,
   totalLogicalRounds,
 } from "@/lib/competitions/season";
 
@@ -226,6 +228,7 @@ export default async function CompetitionRoundPage({
     rulesResult,
     economyResult,
     grantsResult,
+    payoutResult,
   ] = await Promise.all([
     supabase
       .from("league_members")
@@ -275,7 +278,28 @@ export default async function CompetitionRoundPage({
       .neq("reward_role", "participation")
       .order("round_number", { ascending: false })
       .limit(3),
+    // Own query: these columns arrive with migration 202611271000;
+    // before that the error is ignored and every round pays alone.
+    supabase
+      .from("competitions")
+      .select("reward_rounds_per_payout,reward_grouping_from_round")
+      .eq("id", competitionId)
+      .maybeSingle(),
   ]);
+
+  const payoutSettings =
+    payoutResult.error
+      ? null
+      : (payoutResult.data as {
+          reward_rounds_per_payout: number | null;
+          reward_grouping_from_round: number | null;
+        } | null);
+
+  const roundsPerPayout =
+    payoutSettings?.reward_rounds_per_payout ?? 1;
+
+  const groupingFromRound =
+    payoutSettings?.reward_grouping_from_round ?? 1;
 
   if (!membershipResult.data) {
     notFound();
@@ -361,10 +385,15 @@ export default async function CompetitionRoundPage({
       ROLE_ORDER.indexOf(b.role)
   );
 
+  // A rule that gives nothing (e.g. "Everyone" switched off,
+  // 202611271000) is not shown.
   const visibleRoundRules = roundRules.filter(
     (rule) =>
       ROLE_ORDER.includes(rule.role) &&
-      (rule.role !== "round_third" || playerCount >= 3)
+      (rule.role !== "round_third" || playerCount >= 3) &&
+      (rule.duel_points > 0 ||
+        (rule.voucher_type !== null &&
+          rule.voucher_quantity > 0))
   );
 
   // ------------------------------------------------------
@@ -457,6 +486,34 @@ export default async function CompetitionRoundPage({
 
   const lastSettledRound =
     grants[0]?.round_number ?? null;
+
+  // Rounds paid out together (202611271000), for the labels below.
+  const lastSettledLabel =
+    lastSettledRound === null
+      ? null
+      : roundRangeLabel(
+          rewardBlockFor(
+            lastSettledRound,
+            roundsPerPayout,
+            groupingFromRound,
+            seasonRounds
+          )
+        );
+
+  const currentPayoutBlock =
+    currentSeasonRound === null
+      ? null
+      : rewardBlockFor(
+          currentSeasonRound,
+          roundsPerPayout,
+          groupingFromRound,
+          seasonRounds
+        );
+
+  const payoutIsGrouped =
+    currentPayoutBlock !== null &&
+    currentPayoutBlock.first !==
+      currentPayoutBlock.last;
 
   const lastRoundPlacements =
     lastSettledRound === null
@@ -633,8 +690,16 @@ export default async function CompetitionRoundPage({
               <Gift
                 size={13}
               />
-              When the round is complete
+              {payoutIsGrouped && currentPayoutBlock
+                ? `When rounds ${currentPayoutBlock.first}–${currentPayoutBlock.last} are complete`
+                : "When the round is complete"}
             </p>
+
+            {payoutIsGrouped && currentPayoutBlock && (
+              <p className="mt-1 text-[11px] font-bold text-zinc-500">
+                One payout for these {currentPayoutBlock.last - currentPayoutBlock.first + 1} rounds. Places count over all their duels.
+              </p>
+            )}
 
             <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
               {visibleRoundRules.map(
@@ -663,7 +728,7 @@ export default async function CompetitionRoundPage({
       {lastRoundPlacements.length > 0 && (
         <section className="mt-5 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
           <p className="text-[10px] font-black uppercase tracking-[.2em] text-zinc-500">
-            Round {lastSettledRound} result
+            {lastSettledLabel} result
           </p>
 
           <ol className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm">
